@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — Zenda</title>
+  <link rel="stylesheet" href="global.css">
+  <link rel="stylesheet" href="auth.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text y='24' x='4' font-size='22' font-family='sans-serif' font-weight='900' fill='white'>Z</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body>
+
+<div class="auth-page">
+
+  <!-- ====== LEFT PANEL ====== -->
+  <div class="auth-left">
+    <div class="auth-left-logo">
+      <div class="auth-left-logo-icon">⚡</div>
+      Zenda
+    </div>
+
+    <div class="auth-left-content">
+      <h2>Welcome back to your workspace</h2>
+      <p>Your team is waiting. Sign in to manage tasks, track activity, and stay on top of everything.</p>
+
+      <div class="auth-features">
+        <div class="auth-feature">
+          <div class="auth-feature-icon">🔔</div>
+          Real-time notifications
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon">📊</div>
+          Live dashboard insights
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon">🔐</div>
+          Secure OTP verification
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon">📱</div>
+          Works on all devices
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-deco-cards">
+      <div class="auth-deco-card">
+        <span>🔐</span> <div><div style="font-size:0.7rem;opacity:0.6">Last Login</div><div>2 minutes ago</div></div>
+      </div>
+      <div class="auth-deco-card">
+        <span>📋</span> <div><div style="font-size:0.7rem;opacity:0.6">Pending Tasks</div><div>5 tasks</div></div>
+      </div>
+    </div>
+
+    <div class="auth-left-footer">© 2025 Zenda. All rights reserved.</div>
+  </div>
+
+  <!-- ====== RIGHT PANEL ====== -->
+  <div class="auth-right">
+    <div class="auth-form-container">
+
+      <a href="index.html" class="auth-back-link">← Back to Home</a>
+
+      <!-- Step dots -->
+      <div class="step-indicator">
+        <div class="step-dot active" id="dot-1"></div>
+        <div class="step-dot" id="dot-2"></div>
+        <span class="step-label" id="step-label">Credentials</span>
+      </div>
+
+      <!-- ===== STEP 1: Login Form ===== -->
+      <div id="step-1">
+        <div class="auth-form-header">
+          <h1 class="auth-form-title">Sign in</h1>
+          <p class="auth-form-subtitle">New here? <a href="signup.html">Create a company</a></p>
+        </div>
+
+        <!-- Role Toggle -->
+        <div class="role-toggle">
+          <button class="role-toggle-btn active" id="tab-owner" onclick="switchTab('owner')">
+            👑 Owner / Manager
+          </button>
+          <button class="role-toggle-btn" id="tab-staff" onclick="switchTab('staff')">
+            💼 Staff
+          </button>
+        </div>
+
+        <!-- Owner/Manager Login -->
+        <form class="auth-form" id="owner-form" onsubmit="return false">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input class="form-input" id="owner-email" type="email" placeholder="you@company.com" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <div class="password-wrapper">
+              <input class="form-input" id="owner-password" type="password" placeholder="Your password" required>
+              <button type="button" class="password-toggle" onclick="togglePwd('owner-password', this)">👁</button>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-primary w-full" id="owner-login-btn" onclick="handleOwnerLogin()">
+            Send OTP & Sign In →
+          </button>
+        </form>
+
+        <!-- Staff Login -->
+        <form class="auth-form hidden" id="staff-form" onsubmit="return false">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input class="form-input" id="staff-email" type="email" placeholder="your@email.com" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Your Unique ID</label>
+            <input class="form-input font-mono" id="staff-uid" type="text" placeholder="e.g. STF483920" required style="letter-spacing:0.05em">
+            <div class="form-hint">Your unique ID is printed on your Zenda ID card</div>
+          </div>
+
+          <button type="button" class="btn btn-secondary w-full" id="staff-login-btn" onclick="handleStaffLogin()">
+            Send OTP & Sign In →
+          </button>
+        </form>
+
+        <div class="divider" style="margin-top:20px">
+          <span>Don't have an account?</span>
+        </div>
+        <div style="text-align:center;margin-top:12px">
+          <a href="signup.html" class="btn btn-ghost w-full">Create a Company →</a>
+        </div>
+      </div>
+
+      <!-- ===== STEP 2: OTP ===== -->
+      <div id="step-2" class="hidden">
+        <div class="otp-section">
+          <div style="font-size:2.5rem;margin-bottom:12px">✉️</div>
+          <div class="otp-title">Verify it's you</div>
+          <p class="otp-desc">
+            We sent a 6-digit code to<br>
+            <span class="otp-email-highlight" id="login-otp-email"></span>
+          </p>
+
+          <div class="otp-group" id="login-otp-inputs">
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+          </div>
+
+          <div style="margin-top:20px">
+            <button class="btn btn-primary w-full" id="verify-login-btn" onclick="handleVerifyLoginOTP()">
+              Verify & Enter →
+            </button>
+          </div>
+
+          <div class="otp-resend">
+            Didn't get it?
+            <button id="login-resend-btn" onclick="handleLoginResend()">Resend</button>
+            <span class="otp-timer" id="login-otp-timer"></span>
+          </div>
+
+          <div style="margin-top:16px">
+            <button onclick="goBack()" class="auth-back-link" style="justify-content:center">← Change details</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+  import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
+  import { userLogin, staffLogin, redirectIfLoggedIn } from './auth.js';
+  import { sendOTP, verifyUserOTP, initOTPInputs, getOTPValue, startOTPTimer, clearOTPInputs } from './otp.js';
+  import { showToast, setButtonLoading, isValidEmail, saveSession } from './utils.js';
+  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  redirectIfLoggedIn('dashboard/dashboard.html');
+
+  if (EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') {
+    emailjs.init(EMAILJS_CONFIG.publicKey);
+  }
+
+  let currentTab = 'owner';
+  let currentStep = 1;
+  let loginEmail = '';
+
+  // ---- Switch Tab ----
+  window.switchTab = function(tab) {
+    currentTab = tab;
+    document.getElementById('tab-owner').classList.toggle('active', tab === 'owner');
+    document.getElementById('tab-staff').classList.toggle('active', tab === 'staff');
+    document.getElementById('owner-form').classList.toggle('hidden', tab !== 'owner');
+    document.getElementById('staff-form').classList.toggle('hidden', tab !== 'staff');
+  };
+
+  // ---- Toggle password ----
+  window.togglePwd = function(id, btn) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? '👁' : '🙈';
+  };
+
+  // ---- Go to step 2 ----
+  function goToOTPStep(email) {
+    loginEmail = email;
+    document.getElementById('step-1').classList.add('hidden');
+    document.getElementById('step-2').classList.remove('hidden');
+    document.getElementById('login-otp-email').textContent = email;
+    document.getElementById('dot-1').className = 'step-dot done';
+    document.getElementById('dot-2').className = 'step-dot active';
+    document.getElementById('step-label').textContent = 'Verify Email';
+    currentStep = 2;
+
+    initOTPInputs('#login-otp-inputs', () => {});
+    const timer = document.getElementById('login-otp-timer');
+    const resend = document.getElementById('login-resend-btn');
+    startOTPTimer(timer, resend, 60);
+  }
+
+  // ---- Go back ----
+  window.goBack = function() {
+    document.getElementById('step-2').classList.add('hidden');
+    document.getElementById('step-1').classList.remove('hidden');
+    document.getElementById('dot-1').className = 'step-dot active';
+    document.getElementById('dot-2').className = 'step-dot';
+    document.getElementById('step-label').textContent = 'Credentials';
+    currentStep = 1;
+    clearOTPInputs('#login-otp-inputs');
+  };
+
+  // ---- Owner Login: send OTP ----
+  window.handleOwnerLogin = async function() {
+    const email    = document.getElementById('owner-email').value.trim();
+    const password = document.getElementById('owner-password').value;
+
+    if (!email || !password) { showToast('Fill in all fields.', 'error'); return; }
+    if (!isValidEmail(email)) { showToast('Invalid email.', 'error'); return; }
+
+    const btn = document.getElementById('owner-login-btn');
+    setButtonLoading(btn, true);
+
+    try {
+      // Verify credentials first (Firebase will throw if wrong)
+      // We do a quick sign-in check... actually we need to verify creds before OTP
+      // Strategy: Try signIn, if success send OTP then verify OTP before redirecting
+      // For simplicity, we send OTP and then login on verify
+      await sendOTP(email, '', 'Zenda');
+      goToOTPStep(email);
+      showToast('OTP sent to ' + email, 'success');
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+    } finally {
+      setButtonLoading(btn, false, 'Send OTP & Sign In →');
+    }
+  };
+
+  // ---- Staff Login: send OTP ----
+  window.handleStaffLogin = async function() {
+    const email = document.getElementById('staff-email').value.trim();
+    const uid   = document.getElementById('staff-uid').value.trim();
+
+    if (!email || !uid) { showToast('Fill in all fields.', 'error'); return; }
+    if (!isValidEmail(email)) { showToast('Invalid email.', 'error'); return; }
+
+    const btn = document.getElementById('staff-login-btn');
+    setButtonLoading(btn, true);
+
+    try {
+      await sendOTP(email, '', 'Zenda');
+      goToOTPStep(email);
+      showToast('OTP sent to ' + email, 'success');
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+    } finally {
+      setButtonLoading(btn, false, 'Send OTP & Sign In →');
+    }
+  };
+
+  // ---- Verify OTP + Login ----
+  window.handleVerifyLoginOTP = async function() {
+    const otp = getOTPValue('#login-otp-inputs');
+    if (otp.length !== 6) { showToast('Enter the 6-digit code.', 'error'); return; }
+
+    const btn = document.getElementById('verify-login-btn');
+    setButtonLoading(btn, true);
+
+    try {
+      // Verify OTP
+      const result = await verifyUserOTP(loginEmail, otp);
+      if (!result.success) {
+        showToast(result.message, 'error');
+        clearOTPInputs('#login-otp-inputs');
+        return;
+      }
+
+      // Now actually sign in
+      let userData;
+      if (currentTab === 'owner') {
+        const password = document.getElementById('owner-password').value;
+        userData = await userLogin(loginEmail, password);
+      } else {
+        const uid = document.getElementById('staff-uid').value.trim();
+        userData = await staffLogin(loginEmail, uid);
+      }
+
+      saveSession(userData);
+      showToast('Welcome back, ' + userData.name + '!', 'success');
+
+      setTimeout(() => {
+        window.location.href = 'dashboard.html';
+      }, 800);
+
+    } catch (err) {
+      showToast('Login failed: ' + err.message, 'error');
+      clearOTPInputs('#login-otp-inputs');
+    } finally {
+      setButtonLoading(btn, false, 'Verify & Enter →');
+    }
+  };
+
+  // ---- Resend OTP ----
+  window.handleLoginResend = async function() {
+    try {
+      await sendOTP(loginEmail, '', 'Zenda');
+      clearOTPInputs('#login-otp-inputs');
+      const timer = document.getElementById('login-otp-timer');
+      const resend = document.getElementById('login-resend-btn');
+      startOTPTimer(timer, resend, 60);
+      showToast('New OTP sent!', 'success');
+    } catch {
+      showToast('Failed to resend.', 'error');
+    }
+  };
+</script>
+
+</body>
+</html>

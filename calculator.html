@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculator — Zenda Apps</title>
+  <link rel="stylesheet" href="global.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366F1'/><text y='24' x='5' font-size='20'>🧮</text></svg>">
+  <style>
+    body { background: #F0F0FF; min-height: 100vh; display: flex; flex-direction: column; }
+
+    .app-header {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .app-header-left { display: flex; align-items: center; gap: 10px; }
+    .app-header-icon {
+      width: 34px; height: 34px;
+      background: #EEF2FF;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+    .app-header-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .calc-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 24px;
+      padding: 32px 20px;
+    }
+
+    .calculator {
+      background: white;
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 32px rgba(99,102,241,0.12);
+      overflow: hidden;
+      width: 320px;
+      flex-shrink: 0;
+    }
+
+    .calc-display {
+      background: linear-gradient(145deg, #1E1B4B, #4F46E5);
+      padding: 24px 20px 16px;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .calc-expression {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.5);
+      text-align: right;
+      min-height: 20px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .calc-value {
+      font-family: var(--font-display);
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: white;
+      text-align: right;
+      line-height: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+
+    .calc-buttons {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .calc-btn {
+      height: 58px;
+      border: none;
+      border-radius: 14px;
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .calc-btn:active { transform: scale(0.93); }
+
+    .btn-num   { background: #F4F4F5; color: #111827; }
+    .btn-num:hover { background: #E4E4E7; }
+
+    .btn-op    { background: #EEF2FF; color: #4F46E5; }
+    .btn-op:hover { background: #E0E7FF; }
+
+    .btn-eq    { background: linear-gradient(135deg, #4F46E5, #7C3AED); color: white; }
+    .btn-eq:hover { filter: brightness(1.08); }
+
+    .btn-clear { background: #FEE2E2; color: #DC2626; }
+    .btn-clear:hover { background: #FECACA; }
+
+    .btn-zero  { grid-column: span 2; }
+    .btn-action { background: #F59E0B20; color: #B45309; }
+    .btn-action:hover { background: #F59E0B30; }
+
+    /* History panel */
+    .history-panel {
+      background: white;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      width: 240px;
+      max-height: 480px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .history-header {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .history-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .history-clear {
+      background: none;
+      border: none;
+      font-size: 0.75rem;
+      color: var(--danger);
+      cursor: pointer;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+    }
+    .history-clear:hover { background: var(--danger-light); }
+
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .history-item {
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background var(--transition);
+      border-bottom: 1px solid transparent;
+    }
+    .history-item:hover { background: var(--surface-2); }
+    .history-expr {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .history-result {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .history-empty {
+      text-align: center;
+      padding: 32px 16px;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 640px) {
+      .history-panel { display: none; }
+      .calc-wrapper { padding: 20px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- App Header -->
+<div class="app-header">
+  <div class="app-header-left">
+    <button onclick="window.close()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:4px 8px">←</button>
+    <div class="app-header-icon">🧮</div>
+    <div class="app-header-title">Calculator</div>
+  </div>
+  <div style="font-size:0.78rem;color:var(--text-muted)" id="sync-status">Syncing...</div>
+</div>
+
+<!-- Calculator -->
+<div class="calc-wrapper">
+  <div class="calculator">
+    <div class="calc-display">
+      <div class="calc-expression" id="calc-expr"></div>
+      <div class="calc-value" id="calc-display">0</div>
+    </div>
+
+    <div class="calc-buttons">
+      <!-- Row 1 -->
+      <button class="calc-btn btn-clear" onclick="calcClear()">AC</button>
+      <button class="calc-btn btn-action" onclick="calcToggleSign()">+/−</button>
+      <button class="calc-btn btn-action" onclick="calcPercent()">%</button>
+      <button class="calc-btn btn-op" onclick="calcOp('÷')">÷</button>
+
+      <!-- Row 2 -->
+      <button class="calc-btn btn-num" onclick="calcNum('7')">7</button>
+      <button class="calc-btn btn-num" onclick="calcNum('8')">8</button>
+      <button class="calc-btn btn-num" onclick="calcNum('9')">9</button>
+      <button class="calc-btn btn-op" onclick="calcOp('×')">×</button>
+
+      <!-- Row 3 -->
+      <button class="calc-btn btn-num" onclick="calcNum('4')">4</button>
+      <button class="calc-btn btn-num" onclick="calcNum('5')">5</button>
+      <button class="calc-btn btn-num" onclick="calcNum('6')">6</button>
+      <button class="calc-btn btn-op" onclick="calcOp('−')">−</button>
+
+      <!-- Row 4 -->
+      <button class="calc-btn btn-num" onclick="calcNum('1')">1</button>
+      <button class="calc-btn btn-num" onclick="calcNum('2')">2</button>
+      <button class="calc-btn btn-num" onclick="calcNum('3')">3</button>
+      <button class="calc-btn btn-op" onclick="calcOp('+')">+</button>
+
+      <!-- Row 5 -->
+      <button class="calc-btn btn-num btn-zero" onclick="calcNum('0')">0</button>
+      <button class="calc-btn btn-num" onclick="calcDot()">.</button>
+      <button class="calc-btn btn-eq" onclick="calcEquals()">=</button>
+    </div>
+  </div>
+
+  <!-- History Panel -->
+  <div class="history-panel">
+    <div class="history-header">
+      <div class="history-title">History</div>
+      <button class="history-clear" onclick="clearHistory()">Clear all</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="history-empty">No calculations yet</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+  import { saveCalcHistory, loadCalcHistory } from './apps.js';
+  import { showToast } from './utils.js';
+
+  // Get UID from URL
+  const params = new URLSearchParams(window.location.search);
+  const uid    = params.get('uid');
+
+  // Calculator state
+  let display  = '0';
+  let expr     = '';
+  let operator = null;
+  let prevVal  = null;
+  let newInput = false;
+  let history  = [];
+
+  const displayEl = document.getElementById('calc-display');
+  const exprEl    = document.getElementById('calc-expr');
+  const syncEl    = document.getElementById('sync-status');
+
+  // ---- Load history from Firebase ----
+  async function loadHistory() {
+    if (!uid) { syncEl.textContent = 'Not synced'; return; }
+    try {
+      history = await loadCalcHistory(uid);
+      renderHistory();
+      syncEl.textContent = 'Synced ✓';
+    } catch {
+      syncEl.textContent = 'Offline';
+    }
+  }
+
+  // ---- Save history ----
+  async function saveHistory() {
+    if (!uid) return;
+    try {
+      await saveCalcHistory(uid, history);
+      syncEl.textContent = 'Synced ✓';
+    } catch {
+      syncEl.textContent = 'Sync failed';
+    }
+  }
+
+  // ---- Render history ----
+  function renderHistory() {
+    const list = document.getElementById('history-list');
+    if (!history.length) {
+      list.innerHTML = '<div class="history-empty">No calculations yet</div>';
+      return;
+    }
+    list.innerHTML = [...history].reverse().map((h, i) => `
+      <div class="history-item" onclick="restoreHistory(${history.length - 1 - i})">
+        <div class="history-expr">${h.expr}</div>
+        <div class="history-result">${h.result}</div>
+      </div>
+    `).join('');
+  }
+
+  window.restoreHistory = function(i) {
+    display  = history[i].result.toString();
+    newInput = true;
+    updateDisplay();
+  };
+
+  window.clearHistory = function() {
+    history = [];
+    renderHistory();
+    saveHistory();
+  };
+
+  // ---- Update display ----
+  function updateDisplay(val) {
+    if (val !== undefined) display = val;
+    let shown = display;
+    if (shown.length > 12) shown = parseFloat(shown).toExponential(4);
+    displayEl.textContent = shown;
+    exprEl.textContent    = expr;
+  }
+
+  // ---- Calculator logic ----
+  window.calcNum = function(n) {
+    if (newInput) { display = n; newInput = false; }
+    else { display = display === '0' ? n : display + n; }
+    if (display.length > 14) return;
+    updateDisplay();
+  };
+
+  window.calcDot = function() {
+    if (newInput) { display = '0.'; newInput = false; }
+    else if (!display.includes('.')) display += '.';
+    updateDisplay();
+  };
+
+  window.calcOp = function(op) {
+    prevVal  = parseFloat(display);
+    operator = op;
+    expr     = display + ' ' + op;
+    newInput = true;
+    updateDisplay();
+  };
+
+  window.calcEquals = function() {
+    if (operator === null || prevVal === null) return;
+    const curr = parseFloat(display);
+    const ops  = { '+': prevVal + curr, '−': prevVal - curr, '×': prevVal * curr, '÷': curr !== 0 ? prevVal / curr : 'Error' };
+    const result = ops[operator];
+    const fullExpr = `${prevVal} ${operator} ${curr}`;
+    const resultStr = typeof result === 'number' ? parseFloat(result.toFixed(10)).toString() : result;
+
+    expr = fullExpr + ' =';
+    display  = resultStr;
+    operator = null;
+    prevVal  = null;
+    newInput = true;
+    updateDisplay();
+
+    if (result !== 'Error') {
+      history.push({ expr: fullExpr, result: resultStr, time: new Date().toISOString() });
+      renderHistory();
+      saveHistory();
+    }
+  };
+
+  window.calcClear = function() {
+    display = '0'; expr = ''; operator = null; prevVal = null; newInput = false;
+    updateDisplay();
+  };
+
+  window.calcToggleSign = function() {
+    display = (parseFloat(display) * -1).toString();
+    updateDisplay();
+  };
+
+  window.calcPercent = function() {
+    display = (parseFloat(display) / 100).toString();
+    updateDisplay();
+  };
+
+  // Keyboard support
+  document.addEventListener('keydown', (e) => {
+    if (e.key >= '0' && e.key <= '9') calcNum(e.key);
+    else if (e.key === '.') calcDot();
+    else if (e.key === '+') calcOp('+');
+    else if (e.key === '-') calcOp('−');
+    else if (e.key === '*') calcOp('×');
+    else if (e.key === '/') { e.preventDefault(); calcOp('÷'); }
+    else if (e.key === 'Enter' || e.key === '=') calcEquals();
+    else if (e.key === 'Escape') calcClear();
+    else if (e.key === 'Backspace') {
+      display = display.length > 1 ? display.slice(0, -1) : '0';
+      updateDisplay();
+    }
+  });
+
+  loadHistory();
+  updateDisplay();
+</script>
+
+</body>
+</html>

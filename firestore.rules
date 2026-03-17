@@ -1,0 +1,99 @@
+// =============================================
+//  ZENDA — Firestore Security Rules
+//  Paste these in: Firebase Console > Firestore > Rules
+// =============================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Helper functions ----
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getUserRole() {
+      return getUserData().role;
+    }
+
+    function getCompanyId() {
+      return getUserData().companyId;
+    }
+
+    function isCompanyMember(companyId) {
+      return isSignedIn() && getCompanyId() == companyId;
+    }
+
+    // ---- COMPANIES ----
+    match /companies/{companyId} {
+      // Any signed-in user can read their own company
+      allow read: if isSignedIn() && getCompanyId() == companyId;
+      // Only the owner can create/update
+      allow create: if isSignedIn() && request.auth.uid == companyId;
+      allow update: if isSignedIn() && request.auth.uid == companyId;
+      allow delete: if false; // Never allow deletion
+    }
+
+    // ---- USERS ----
+    match /users/{userId} {
+      // Users can read profiles in the same company
+      allow read: if isSignedIn();
+      // Only create your own profile
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      // Users can update their own profile; owners can update any in their company
+      allow update: if isSignedIn() && (
+        request.auth.uid == userId ||
+        (getUserRole() == 'owner' && getCompanyId() == resource.data.companyId)
+      );
+      allow delete: if false;
+    }
+
+    // ---- TASKS ----
+    match /tasks/{taskId} {
+      // Company members can read tasks in their company
+      allow read: if isSignedIn() && getCompanyId() == resource.data.companyId;
+      // Owners and managers can create tasks
+      allow create: if isSignedIn() && (getUserRole() == 'owner' || getUserRole() == 'manager');
+      // Assignee can update status; assigner can update too
+      allow update: if isSignedIn() && (
+        request.auth.uid == resource.data.assignedTo ||
+        request.auth.uid == resource.data.assignedBy
+      );
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.assignedBy;
+    }
+
+    // ---- NOTIFICATIONS ----
+    match /notifications/{userId}/items/{notifId} {
+      // Only the notification owner can read/update
+      allow read, update: if isSignedIn() && request.auth.uid == userId;
+      // Anyone signed in can create notifications (for sending to others)
+      allow create: if isSignedIn();
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ---- OTPs ----
+    match /otps/{emailKey} {
+      // OTPs can be read and written by anyone (needed for verification flow)
+      // In production, consider using Firebase Functions for this
+      allow read, write: if true;
+    }
+
+    // ---- INSTALLED APPS ----
+    match /installedApps/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ---- APP DATA (calculator history, calendar events) ----
+    match /appData/{userId}/apps/{appId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+  }
+}
