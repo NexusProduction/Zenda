@@ -1,34 +1,43 @@
 import { db, firebaseConfig } from './firebase-config.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   doc, setDoc, getDoc, collection, query,
   where, getDocs, onSnapshot, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { generateStaffId } from './utils.js';
 
+// ── Secondary app so owner stays signed in ──
 let _secondaryApp = null;
 function getSecondaryAuth() {
   if (!_secondaryApp) {
-    _secondaryApp = initializeApp(firebaseConfig, 'zenda-staff-creator');
+    _secondaryApp = initializeApp(firebaseConfig, 'zenda-secondary');
   }
   return getAuth(_secondaryApp);
 }
 
 export async function createStaff({ name, email, password, role, companyId, companyName, createdBy, designation }) {
-  // Use provided password or fall back to uniqueId
+  // Validate all required fields
+  if (!name || !name.trim())        throw new Error('FIELD:name:Full name is required.');
+  if (!email || !email.trim())      throw new Error('FIELD:email:Email address is required.');
+  if (!password || !password.trim()) throw new Error('FIELD:password:Password is required.');
+  if (!designation || !designation.trim()) throw new Error('FIELD:designation:Designation is required.');
+
   const uniqueId = generateStaffId(role);
-  const staffPassword = password || uniqueId;
 
   try {
     const secondaryAuth = getSecondaryAuth();
-    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, staffPassword);
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), password.trim());
     const uid = cred.user.uid;
     await secondaryAuth.signOut();
 
     await setDoc(doc(db, 'users', uid), {
-      name, email, role, companyId, uniqueId,
-      designation: designation || role.charAt(0).toUpperCase() + role.slice(1),
+      name: name.trim(),
+      email: email.trim(),
+      role,
+      companyId,
+      uniqueId,
+      designation: designation.trim(),
       createdBy,
       createdAt: new Date().toISOString()
     });
@@ -41,20 +50,19 @@ export async function createStaff({ name, email, password, role, companyId, comp
 
     await setDoc(doc(db, 'installedApps', uid), { apps: ['calculator'] });
 
-    return { uid, name, email, role, uniqueId, companyId, companyName, designation: designation || role };
+    return { uid, name: name.trim(), email: email.trim(), role, uniqueId, companyId, companyName, designation: designation.trim() };
 
   } catch (err) {
-    if (err.code === 'auth/email-already-in-use') {
-      throw new Error('This email is already registered. Use a different email.');
-    }
+    if (err.message.startsWith('FIELD:')) throw err;
+    if (err.code === 'auth/email-already-in-use') throw new Error('This email is already registered. Use a different email.');
+    if (err.code === 'auth/weak-password') throw new Error('FIELD:password:Password must be at least 6 characters.');
+    if (err.code === 'auth/invalid-email') throw new Error('FIELD:email:Invalid email address format.');
     throw err;
   }
 }
 
 export async function deleteStaffMember(uid) {
-  // Delete all user data
   await deleteDoc(doc(db, 'users', uid));
-  // Clean up related data
   try { await deleteDoc(doc(db, 'installedApps', uid)); } catch(e) {}
   try { await deleteDoc(doc(db, 'appData', uid, 'apps', 'calculator')); } catch(e) {}
   try { await deleteDoc(doc(db, 'appData', uid, 'apps', 'calendar')); } catch(e) {}
