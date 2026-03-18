@@ -2,1082 +2,645 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Dashboard — Zenda</title>
   <link rel="stylesheet" href="global.css">
   <link rel="stylesheet" href="dashboard.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text y='24' x='4' font-size='22' font-family='sans-serif' font-weight='900' fill='white'>Z</text></svg>">
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
-
-<!-- Loading overlay -->
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-logo">⚡ Zenda</div>
   <div class="spinner spinner-primary"></div>
 </div>
-
-<!-- Panel overlay (closes side panels) -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 <div class="panel-overlay" id="panel-overlay" onclick="closeAllPanels()"></div>
 
-<!-- ============================================================
-     TOPBAR
-============================================================ -->
 <div class="topbar">
   <div class="topbar-left">
-    <!-- Mobile hamburger -->
-    <button class="btn-icon hide-desktop" id="hamburger-btn" onclick="toggleSidebar()">☰</button>
-    <div class="topbar-logo">
-      <div class="topbar-logo-icon">⚡</div>
-      Zenda
-    </div>
-    <div class="topbar-company-name" id="topbar-company">Loading...</div>
+    <button class="btn-icon" onclick="toggleSidebar()">☰</button>
+    <div class="topbar-logo"><div class="topbar-logo-icon">⚡</div>Zenda</div>
+    <div class="topbar-company-name" id="topbar-company">...</div>
   </div>
-
+  <div class="topbar-stats" id="topbar-stats">
+    <div class="topbar-stat-pill" onclick="showView('home')">👥 <span class="pill-val" id="pill-staff">—</span> Staff</div>
+    <div class="topbar-stat-pill" onclick="setFilter('pending')">📋 <span class="pill-val" id="pill-pending">—</span> Pending</div>
+    <div class="topbar-stat-pill" onclick="setFilter('done')">✅ <span class="pill-val" id="pill-done">—</span> Done</div>
+    <div class="topbar-stat-pill" onclick="togglePanel('notif')">🔔 <span class="pill-val" id="pill-unread">—</span> Unread</div>
+  </div>
   <div class="topbar-right">
-    <!-- Notification button -->
-    <button class="notif-btn" onclick="togglePanel('notif')" title="Notifications">
-      🔔
-      <div class="notif-badge hidden" id="notif-badge">0</div>
-    </button>
-
-    <!-- Profile button -->
+    <button class="notif-btn" onclick="togglePanel('notif')">🔔<div class="notif-badge hidden" id="notif-badge">0</div></button>
     <button class="profile-btn" onclick="togglePanel('profile')">
-      <div class="avatar avatar-sm" id="topbar-avatar" style="font-size:0.75rem;font-weight:700"></div>
+      <div class="avatar avatar-sm" id="topbar-avatar"></div>
       <span class="profile-btn-name" id="topbar-name">...</span>
-      <span class="profile-btn-chevron">▾</span>
+      <span style="font-size:.7rem;color:var(--text-muted)">▾</span>
     </button>
   </div>
 </div>
 
-<!-- ============================================================
-     APP BODY
-============================================================ -->
 <div class="app-body">
+<aside class="sidebar" id="sidebar">
+  <nav class="sidebar-nav">
+    <div class="sidebar-section-label">Main</div>
+    <div class="sidebar-item active" onclick="showView('home')" id="nav-home"><span class="sidebar-item-icon">🏠</span><span class="sidebar-item-text">Dashboard</span></div>
+    <div class="sidebar-item" onclick="showView('tasks')" id="nav-tasks"><span class="sidebar-item-icon">📋</span><span class="sidebar-item-text">Tasks</span><span class="sidebar-item-badge hidden" id="tasks-badge">0</span></div>
+    <div class="sidebar-item" id="nav-assign" onclick="openAssignModal()" style="display:none"><span class="sidebar-item-icon">➕</span><span class="sidebar-item-text">Assign Work</span></div>
+    <div class="sidebar-section-label" id="team-label" style="display:none">Team</div>
+    <div class="sidebar-item" onclick="showView('staff')" id="nav-staff" style="display:none"><span class="sidebar-item-icon">👥</span><span class="sidebar-item-text">Staff Members</span></div>
+    <div class="sidebar-section-label">Apps</div>
+    <div class="sidebar-item" onclick="openApp('calculator')"><span class="sidebar-item-icon">🧮</span><span class="sidebar-item-text">Calculator</span></div>
+    <div class="sidebar-item" onclick="openApp('calendar')"><span class="sidebar-item-icon">📅</span><span class="sidebar-item-text">Calendar</span></div>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn btn-ghost w-full" style="justify-content:flex-start;gap:10px;font-size:.85rem" onclick="handleLogout()">🚪 Sign Out</button>
+  </div>
+</aside>
 
-  <!-- ====== SIDEBAR ====== -->
-  <aside class="sidebar" id="sidebar">
-    <nav class="sidebar-nav">
-
-      <div class="sidebar-section-label">Main</div>
-
-      <div class="sidebar-item active" onclick="showView('home')" id="nav-home">
-        <span class="sidebar-item-icon">🏠</span>
-        <span class="sidebar-item-text">Dashboard</span>
-      </div>
-
-      <div class="sidebar-item" onclick="showView('tasks')" id="nav-tasks">
-        <span class="sidebar-item-icon">📋</span>
-        <span class="sidebar-item-text">My Tasks</span>
-        <span class="sidebar-item-badge hidden" id="tasks-badge">0</span>
-      </div>
-
-      <div class="sidebar-item" id="nav-assign" onclick="openAssignModal()" style="display:none">
-        <span class="sidebar-item-icon">➕</span>
-        <span class="sidebar-item-text">Assign Work</span>
-      </div>
-
-      <div class="sidebar-section-label">Team</div>
-
-      <div class="sidebar-item" onclick="showView('staff')" id="nav-staff" style="display:none">
-        <span class="sidebar-item-icon">👥</span>
-        <span class="sidebar-item-text">Staff Members</span>
-      </div>
-
-      <div class="sidebar-item" onclick="openCreateStaffModal()" id="nav-create-staff" style="display:none">
-        <span class="sidebar-item-icon">➕</span>
-        <span class="sidebar-item-text">Add Staff</span>
-      </div>
-
-      <div class="sidebar-section-label">Settings</div>
-
-      <div class="sidebar-item" onclick="togglePanel('profile')">
-        <span class="sidebar-item-icon">👤</span>
-        <span class="sidebar-item-text">Profile</span>
-      </div>
-
-    </nav>
-
-    <div class="sidebar-footer">
-      <button class="btn btn-ghost w-full" style="justify-content:flex-start;gap:10px" onclick="handleLogout()">
-        <span>🚪</span> Sign Out
-      </button>
+<main class="main-content">
+  <!-- HOME -->
+  <div id="view-home">
+    <div class="page-header">
+      <div><div class="page-title" id="home-greeting">Good morning 👋</div><div class="page-subtitle" id="home-subtitle">Your workspace</div></div>
+      <button class="btn btn-primary btn-sm" id="assign-btn-top" onclick="openAssignModal()" style="display:none">➕ Assign</button>
     </div>
-  </aside>
-
-  <!-- ====== MAIN CONTENT ====== -->
-  <main class="main-content" id="main-content">
-
-    <!-- === HOME VIEW === -->
-    <div id="view-home">
-      <div class="page-header">
-        <div>
-          <div class="page-title" id="home-greeting">Good morning 👋</div>
-          <div class="page-subtitle" id="home-subtitle">Here's what's happening at your company today</div>
-        </div>
-        <div style="display:flex;gap:10px">
-          <button class="btn btn-ghost btn-sm" onclick="refreshDashboard()">🔄 Refresh</button>
-          <button class="btn btn-primary btn-sm" id="assign-btn-top" onclick="openAssignModal()" style="display:none">
-            ➕ Assign Work
-          </button>
-        </div>
-      </div>
-
-      <!-- Stats Row -->
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-card-header">
-            <div class="stat-card-icon stat-icon-primary">👥</div>
-            <span class="stat-card-label">Staff</span>
-          </div>
-          <div class="stat-card-value" id="stat-staff">—</div>
-          <div class="stat-card-desc">Team members</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-header">
-            <div class="stat-card-icon stat-icon-warning">📋</div>
-            <span class="stat-card-label">Tasks</span>
-          </div>
-          <div class="stat-card-value" id="stat-tasks-pending">—</div>
-          <div class="stat-card-desc">Pending tasks</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-header">
-            <div class="stat-card-icon stat-icon-secondary">✅</div>
-            <span class="stat-card-label">Done</span>
-          </div>
-          <div class="stat-card-value" id="stat-tasks-done">—</div>
-          <div class="stat-card-desc">Completed tasks</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-header">
-            <div class="stat-card-icon stat-icon-danger">🔔</div>
-            <span class="stat-card-label">Alerts</span>
-          </div>
-          <div class="stat-card-value" id="stat-notifs">—</div>
-          <div class="stat-card-desc">Unread notifications</div>
-        </div>
-      </div>
-
-      <!-- Charts Row -->
-      <div class="charts-row">
-        <div class="chart-card">
-          <div class="chart-header">
-            <div>
-              <div class="chart-title">Task Activity</div>
-              <div class="chart-subtitle">Last 7 days</div>
-            </div>
-            <div class="chart-legend">
-              <div class="chart-legend-item">
-                <div class="legend-dot" style="background:var(--primary)"></div> Assigned
-              </div>
-              <div class="chart-legend-item">
-                <div class="legend-dot" style="background:var(--secondary)"></div> Done
-              </div>
-            </div>
-          </div>
-          <canvas id="task-chart" height="120"></canvas>
-        </div>
-
-        <div class="chart-card">
-          <div class="chart-header">
-            <div>
-              <div class="chart-title">Task Status</div>
-              <div class="chart-subtitle">Distribution</div>
-            </div>
-          </div>
-          <canvas id="status-chart" height="160"></canvas>
-        </div>
-      </div>
-
-      <!-- Bottom Row: Tasks + Apps -->
-      <div class="bottom-row">
-        <!-- Recent Tasks -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <div>
-              <div class="chart-title">Recent Tasks</div>
-              <div class="chart-subtitle" id="recent-tasks-sub">Your pending work</div>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="showView('tasks')">View All</button>
-          </div>
-          <div id="recent-tasks-list">
-            <div class="empty-state">
-              <div class="empty-state-icon">📭</div>
-              <div class="empty-state-title">No tasks yet</div>
-              <div class="empty-state-desc">Tasks assigned to you will appear here</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mini Apps -->
-        <div class="apps-section">
-          <div class="chart-header">
-            <div>
-              <div class="chart-title">My Apps</div>
-              <div class="chart-subtitle">Quick access</div>
-            </div>
-          </div>
-          <div class="apps-grid" id="apps-grid">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-      </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-card-header"><div class="stat-card-icon" id="s1-icon" style="background:var(--primary-light);color:var(--primary)">👥</div><span class="stat-card-label" id="s1-label">Staff</span></div><div class="stat-card-value" id="s1-val">—</div><div class="stat-card-desc" id="s1-desc">Team members</div></div>
+      <div class="stat-card"><div class="stat-card-header"><div class="stat-card-icon stat-icon-warning">📋</div><span class="stat-card-label" id="s2-label">Pending</span></div><div class="stat-card-value" id="s2-val">—</div><div class="stat-card-desc" id="s2-desc">Pending tasks</div></div>
+      <div class="stat-card"><div class="stat-card-header"><div class="stat-card-icon" id="s3-icon" style="background:var(--secondary-light);color:var(--secondary)">✅</div><span class="stat-card-label" id="s3-label">Done</span></div><div class="stat-card-value" id="s3-val">—</div><div class="stat-card-desc" id="s3-desc">Completed</div></div>
+      <div class="stat-card"><div class="stat-card-header"><div class="stat-card-icon stat-icon-danger">🔔</div><span class="stat-card-label">Alerts</span></div><div class="stat-card-value" id="s4-val">—</div><div class="stat-card-desc">Unread notifications</div></div>
     </div>
-
-    <!-- === TASKS VIEW === -->
-    <div id="view-tasks" class="hidden">
-      <div class="page-header">
-        <div>
-          <div class="page-title">My Tasks</div>
-          <div class="page-subtitle">All tasks assigned to you</div>
+    <div class="team-card hidden" id="team-card">
+      <div class="team-card-header"><div class="team-card-title">👥 Your Team</div><button class="btn btn-ghost btn-sm" onclick="showView('staff')">View All →</button></div>
+      <div class="team-avatars" id="team-avatars"></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Task Activity</div><div class="chart-subtitle">Last 7 days — real data</div></div>
+          <div class="chart-legend">
+            <div class="chart-legend-item"><div class="legend-dot" style="background:var(--primary)"></div>Assigned</div>
+            <div class="chart-legend-item"><div class="legend-dot" style="background:var(--secondary)"></div>Done</div>
+          </div>
         </div>
-        <div style="display:flex;gap:8px">
-          <select id="task-filter" class="assign-select" style="width:140px;font-size:0.85rem" onchange="filterTasks()">
-            <option value="all">All Tasks</option>
-            <option value="pending">Pending</option>
-            <option value="done">Done</option>
-            <option value="declined">Declined</option>
-          </select>
-        </div>
+        <canvas id="task-chart" height="130"></canvas>
       </div>
       <div class="chart-card">
-        <div id="all-tasks-list" class="tasks-list">
-          <div class="empty-state">
-            <div class="empty-state-icon">📭</div>
-            <div class="empty-state-title">No tasks yet</div>
-            <div class="empty-state-desc">When tasks are assigned to you, they'll appear here</div>
-          </div>
-        </div>
+        <div class="chart-header"><div><div class="chart-title">Task Status</div><div class="chart-subtitle">Your task distribution</div></div></div>
+        <canvas id="status-chart" height="160"></canvas>
+        <div id="status-labels" style="display:flex;justify-content:center;gap:12px;margin-top:8px;flex-wrap:wrap"></div>
       </div>
     </div>
-
-    <!-- === STAFF VIEW === -->
-    <div id="view-staff" class="hidden">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Staff Members</div>
-          <div class="page-subtitle" id="staff-count-label">Your team</div>
-        </div>
-        <button class="btn btn-primary" onclick="openCreateStaffModal()">➕ Add Staff</button>
-      </div>
+    <div class="bottom-row">
       <div class="chart-card">
-        <div class="staff-list" id="staff-list-container">
-          <div class="empty-state">
-            <div class="empty-state-icon">👥</div>
-            <div class="empty-state-title">No staff yet</div>
-            <div class="empty-state-desc">Add your first team member</div>
-          </div>
-        </div>
+        <div class="chart-header"><div><div class="chart-title">Recent Tasks</div><div class="chart-subtitle">Pending work</div></div><button class="btn btn-ghost btn-sm" onclick="showView('tasks')">All →</button></div>
+        <div class="tasks-list" id="recent-tasks-list"><div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">No tasks yet</div></div></div>
+      </div>
+      <div class="apps-section">
+        <div class="chart-header"><div><div class="chart-title">My Apps</div><div class="chart-subtitle">Quick access</div></div></div>
+        <div class="apps-grid" id="apps-grid"></div>
       </div>
     </div>
+  </div>
 
-  </main>
+  <!-- TASKS -->
+  <div id="view-tasks" class="hidden">
+    <div class="page-header">
+      <div><div class="page-title">Tasks</div><div class="page-subtitle">Manage all your work</div></div>
+      <button class="btn btn-primary btn-sm" id="assign-btn-tasks" onclick="openAssignModal()" style="display:none">➕ Assign</button>
+    </div>
+    <div class="task-filter-tabs">
+      <button class="task-filter-tab active" onclick="setFilter('all')">All</button>
+      <button class="task-filter-tab" onclick="setFilter('pending')">⏳ Pending</button>
+      <button class="task-filter-tab" onclick="setFilter('done')">✅ Done</button>
+      <button class="task-filter-tab" onclick="setFilter('declined')">❌ Declined</button>
+    </div>
+    <div id="assigned-by-section" class="hidden" style="margin-bottom:14px">
+      <div class="chart-card">
+        <div class="chart-header" style="margin-bottom:12px"><div><div class="chart-title">Assigned by Me</div><div class="chart-subtitle">Tasks I gave to others</div></div></div>
+        <div class="tasks-list" id="assigned-by-list"></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header" style="margin-bottom:12px"><div><div class="chart-title">My Tasks</div></div></div>
+      <div class="tasks-list" id="all-tasks-list"><div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">No tasks</div></div></div>
+    </div>
+  </div>
+
+  <!-- STAFF -->
+  <div id="view-staff" class="hidden">
+    <div class="page-header">
+      <div><div class="page-title">Staff Members</div><div class="page-subtitle" id="staff-count-label">Your team</div></div>
+      <button class="btn btn-primary btn-sm" onclick="openCreateStaffModal()">➕ Add Staff</button>
+    </div>
+    <div class="chart-card">
+      <input class="form-input" id="staff-search-main" type="text" placeholder="🔍 Search staff..." oninput="filterStaffMain()" style="margin-bottom:14px">
+      <div class="staff-list" id="staff-list-main"><div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-title">No staff yet</div></div></div>
+    </div>
+  </div>
+</main>
 </div>
 
-<!-- ============================================================
-     NOTIFICATION PANEL
-============================================================ -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-item active" onclick="showView('home')" id="bn-home"><span class="nav-icon">🏠</span><span>Home</span></div>
+  <div class="bottom-nav-item" onclick="showView('tasks')" id="bn-tasks"><span class="nav-icon">📋</span><span>Tasks</span><span class="bottom-nav-badge hidden" id="bn-badge">0</span></div>
+  <div class="bottom-nav-item" onclick="openAssignModal()" id="bn-assign" style="display:none">
+    <span class="nav-icon" style="background:var(--primary);color:#fff;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;box-shadow:0 4px 14px rgba(79,70,229,.4);margin-bottom:-4px">➕</span><span>Assign</span>
+  </div>
+  <div class="bottom-nav-item" onclick="togglePanel('notif')" id="bn-notif"><span class="nav-icon">🔔</span><span>Alerts</span><span class="bottom-nav-badge hidden" id="bn-notif-badge">0</span></div>
+  <div class="bottom-nav-item" onclick="togglePanel('profile')" id="bn-profile"><span class="nav-icon">👤</span><span>Profile</span></div>
+</nav>
+
+<!-- NOTIFICATION PANEL -->
 <div class="side-panel" id="notif-panel">
   <div class="side-panel-header">
-    <div class="side-panel-title">Notifications</div>
+    <div class="side-panel-title">🔔 Notifications</div>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="mark-all-read" onclick="markAllNotifRead()">Mark all read</button>
       <button class="modal-close" onclick="closeAllPanels()">✕</button>
     </div>
   </div>
-  <div class="side-panel-body" id="notif-panel-body">
-    <div class="notif-empty">
-      <div class="notif-empty-icon">🔔</div>
-      <p>No notifications yet</p>
-    </div>
-  </div>
+  <div class="side-panel-body" id="notif-body"><div class="notif-empty"><div class="notif-empty-icon">🔔</div><p>No notifications yet</p></div></div>
 </div>
 
-<!-- ============================================================
-     PROFILE PANEL
-============================================================ -->
+<!-- PROFILE PANEL -->
 <div class="side-panel" id="profile-panel">
-  <div class="side-panel-header">
-    <div class="side-panel-title">My Profile</div>
-    <button class="modal-close" onclick="closeAllPanels()">✕</button>
-  </div>
-
-  <div class="profile-panel-header">
-    <div class="profile-avatar-wrapper">
-      <div class="profile-avatar-large" id="profile-avatar-large">U</div>
-      <div class="profile-avatar-edit" onclick="triggerAvatarUpload()" title="Change photo">✏</div>
-      <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="handleAvatarChange(event)">
-    </div>
-    <div class="profile-name" id="profile-display-name">Name</div>
-    <div class="profile-company" id="profile-display-company">Company</div>
-    <span class="badge" id="profile-role-badge">Owner</span>
-  </div>
-
-  <div class="profile-fields">
-    <!-- Name -->
-    <div class="profile-field">
-      <div class="profile-field-left">
-        <div class="profile-field-label">Full Name</div>
-        <div class="profile-field-value" id="pf-name">—</div>
+  <div class="side-panel-header"><div class="side-panel-title">My Profile</div><button class="modal-close" onclick="closeAllPanels()">✕</button></div>
+  <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
+    <div class="profile-panel-header">
+      <div class="profile-avatar-wrapper">
+        <div class="profile-avatar-large" id="prof-av"></div>
+        <div class="profile-avatar-edit" onclick="document.getElementById('av-input').click()">✏</div>
+        <input type="file" id="av-input" accept="image/*" style="display:none" onchange="changeAvatar(event)">
       </div>
-      <button class="profile-edit-btn" onclick="openEditField('name')" title="Edit">✏</button>
+      <div class="profile-name" id="prof-name">Name</div>
+      <div class="profile-company" id="prof-company">Company</div>
+      <span class="badge" id="prof-badge">Owner</span>
     </div>
-    <!-- Email -->
-    <div class="profile-field">
-      <div class="profile-field-left">
-        <div class="profile-field-label">Email</div>
-        <div class="profile-field-value" id="pf-email">—</div>
-      </div>
-      <button class="profile-edit-btn" onclick="openEditField('email')" title="Edit">✏</button>
+    <div class="profile-fields">
+      <div class="profile-field"><div class="profile-field-left"><div class="profile-field-label">Full Name</div><div class="profile-field-value" id="pf-name">—</div></div><button class="profile-edit-btn" onclick="openEdit('name')">✏</button></div>
+      <div class="profile-field"><div class="profile-field-left"><div class="profile-field-label">Email</div><div class="profile-field-value" id="pf-email">—</div></div><button class="profile-edit-btn" onclick="openEdit('email')">✏</button></div>
+      <div class="profile-field"><div class="profile-field-left"><div class="profile-field-label">Unique Code</div><div class="profile-field-code" id="pf-code">—</div></div><button class="profile-edit-btn" onclick="copyCode()">⎘</button></div>
+      <div class="profile-field"><div class="profile-field-left"><div class="profile-field-label">Designation</div><div class="profile-field-value" id="pf-role">—</div></div></div>
     </div>
-    <!-- Unique ID / Company Code -->
-    <div class="profile-field">
-      <div class="profile-field-left">
-        <div class="profile-field-label">Unique Code</div>
-        <div class="profile-field-code" id="pf-code" style="margin-top:4px">—</div>
+    <div class="staff-section hidden" id="prof-staff-section">
+      <div class="staff-section-header">
+        <div class="staff-section-title">👥 Staff <span id="prof-staff-count" style="color:var(--text-muted);font-size:.8rem;font-weight:400"></span></div>
+        <button class="btn btn-primary btn-sm" onclick="openCreateStaffModal()">+ Add</button>
       </div>
-      <button class="profile-edit-btn" onclick="copyCode()" title="Copy">⎘</button>
-    </div>
-    <!-- Designation -->
-    <div class="profile-field">
-      <div class="profile-field-left">
-        <div class="profile-field-label">Designation</div>
-        <div class="profile-field-value" id="pf-designation">—</div>
-      </div>
+      <div class="staff-search"><span class="staff-search-icon">🔍</span><input type="text" id="prof-staff-search" placeholder="Search staff..." oninput="filterProfileStaff()"></div>
+      <div class="staff-mini-list" id="prof-staff-list"><div class="empty-state" style="padding:16px"><div class="empty-state-title">No staff yet</div></div></div>
     </div>
   </div>
-
-  <div class="profile-panel-footer">
-    <button class="btn btn-ghost w-full" onclick="handleLogout()" style="justify-content:center;gap:8px">
-      🚪 Sign Out
-    </button>
-  </div>
+  <div class="profile-panel-footer"><button class="btn btn-ghost w-full" onclick="handleLogout()" style="justify-content:center;gap:8px">🚪 Sign Out</button></div>
 </div>
 
-<!-- ============================================================
-     MODAL: ASSIGN WORK
-============================================================ -->
+<!-- ASSIGN MODAL -->
 <div class="modal-overlay hidden" id="assign-modal">
-  <div class="modal assign-modal">
-    <div class="modal-header">
-      <div class="modal-title">📋 Assign Work</div>
-      <button class="modal-close" onclick="closeModal('assign-modal')">✕</button>
-    </div>
-    <div class="auth-form" style="gap:16px">
-      <div class="form-group">
-        <label class="form-label">Assign To</label>
-        <select class="assign-select" id="assign-to-select">
-          <option value="">Select team member...</option>
-        </select>
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header"><div class="modal-title">📋 Assign Work</div><button class="modal-close" onclick="closeModal('assign-modal')">✕</button></div>
+    <div class="auth-form">
+      <div class="form-group"><label class="form-label">Assign To</label><select class="assign-select" id="assign-to"><option value="">Select team member...</option></select></div>
+      <div class="form-group"><label class="form-label">Task Title</label><input class="form-input" id="task-title" type="text" placeholder="e.g. Prepare weekly report" maxlength="80"></div>
+      <div class="form-group"><label class="form-label">Description <span style="color:var(--text-muted);font-weight:400">(optional)</span></label><textarea class="assign-textarea" id="task-desc" placeholder="Add details..."></textarea></div>
+      <div class="auth-form-row">
+        <div class="form-group"><label class="form-label">Due Date <span style="color:var(--text-muted);font-weight:400">(optional)</span></label><input class="form-input" id="task-date" type="date"></div>
+        <div class="form-group"><label class="form-label">Due Time</label><input class="form-input" id="task-time" type="time"></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Task Title</label>
-        <input class="form-input" id="task-title-input" type="text" placeholder="e.g. Prepare weekly report" maxlength="80">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Description <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
-        <textarea class="assign-textarea" id="task-desc-input" placeholder="Add details about this task..."></textarea>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:4px">
-        <button class="btn btn-ghost flex-1" onclick="closeModal('assign-modal')">Cancel</button>
-        <button class="btn btn-primary flex-1" id="assign-submit-btn" onclick="handleAssignTask()">Assign Task →</button>
-      </div>
+      <div id="deadline-note" class="hidden" style="background:var(--primary-light);border-radius:var(--radius);padding:10px 12px;font-size:.8rem;color:var(--primary)">📅 Task will appear in assignee's calendar automatically.</div>
+      <div style="display:flex;gap:10px"><button class="btn btn-ghost flex-1" onclick="closeModal('assign-modal')">Cancel</button><button class="btn btn-primary flex-1" id="assign-btn" onclick="submitAssign()">Assign →</button></div>
     </div>
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL: CREATE STAFF
-============================================================ -->
+<!-- CREATE STAFF MODAL -->
 <div class="modal-overlay hidden" id="create-staff-modal">
   <div class="modal" style="max-width:520px">
-    <div class="modal-header">
-      <div class="modal-title">👤 Add Staff Member</div>
-      <button class="modal-close" onclick="closeModal('create-staff-modal')">✕</button>
+    <div class="modal-header"><div class="modal-title">👤 Add Staff Member</div><button class="modal-close" onclick="closeModal('create-staff-modal')">✕</button></div>
+    <div class="role-toggle" style="margin-bottom:14px">
+      <button class="role-toggle-btn active" id="role-mgr" onclick="setStaffRole('manager')">🎯 Manager</button>
+      <button class="role-toggle-btn" id="role-stf" onclick="setStaffRole('staff')">💼 Staff</button>
     </div>
-
-    <!-- Sub-tabs -->
-    <div class="role-toggle" style="margin-bottom:20px">
-      <button class="role-toggle-btn active" id="staff-tab-manager" onclick="switchStaffRole('manager')">🎯 Manager</button>
-      <button class="role-toggle-btn" id="staff-tab-staff" onclick="switchStaffRole('staff')">💼 Staff</button>
-    </div>
-
-    <div class="auth-form" style="gap:16px">
+    <div class="auth-form">
       <div class="auth-form-row">
-        <div class="form-group">
-          <label class="form-label">Full Name</label>
-          <input class="form-input" id="new-staff-name" type="text" placeholder="Jane Doe" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Email</label>
-          <input class="form-input" id="new-staff-email" type="email" placeholder="jane@email.com" required>
-        </div>
+        <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="ns-name" type="text" placeholder="Jane Doe"></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="ns-email" type="email" placeholder="jane@email.com"></div>
       </div>
-
-      <div class="form-group">
-        <label class="form-label">Designation <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
-        <input class="form-input" id="new-staff-designation" type="text" placeholder="e.g. Senior Developer">
-        <div class="form-hint">Leave blank to use default role name</div>
-      </div>
-
-      <div style="background:var(--primary-light);border-radius:var(--radius);padding:12px 14px;font-size:0.82rem;color:var(--primary)">
-        ℹ️ Staff will login using their <strong>email</strong> and the <strong>Unique ID</strong> on their card as password.
-      </div>
-
-      <div style="display:flex;gap:10px;margin-top:4px">
-        <button class="btn btn-ghost flex-1" onclick="closeModal('create-staff-modal')">Cancel</button>
-        <button class="btn btn-primary flex-1" id="create-staff-btn" onclick="handleCreateStaff()">Create & Generate Card →</button>
-      </div>
+      <div class="form-group"><label class="form-label">Designation <span style="color:var(--text-muted);font-weight:400">(optional)</span></label><input class="form-input" id="ns-desig" type="text" placeholder="e.g. Senior Developer"></div>
+      <div style="background:var(--primary-light);border-radius:var(--radius);padding:10px 14px;font-size:.8rem;color:var(--primary)">ℹ️ Staff login: <b>email</b> + <b>Unique ID</b> as password (shown on card)</div>
+      <div style="display:flex;gap:10px"><button class="btn btn-ghost flex-1" onclick="closeModal('create-staff-modal')">Cancel</button><button class="btn btn-primary flex-1" id="create-btn" onclick="submitCreateStaff()">Create & Get Card →</button></div>
     </div>
-
-    <!-- Generated card appears here -->
-    <div id="new-staff-card-section" class="hidden" style="margin-top:24px;border-top:1px solid var(--border);padding-top:24px">
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:1.5rem;margin-bottom:8px">🎉</div>
-        <div style="font-family:var(--font-display);font-weight:700;font-size:1rem">Staff card generated!</div>
-        <div style="font-size:0.82rem;color:var(--text-muted);margin-top:4px">Share this card with the staff member</div>
-      </div>
-      <div id="new-staff-card-container" style="display:flex;justify-content:center;margin-bottom:16px"></div>
-      <div id="new-staff-uid-info" style="background:var(--secondary-light);border-radius:var(--radius);padding:12px;text-align:center;margin-bottom:16px;font-size:0.85rem">
+    <div id="staff-card-section" class="hidden" style="margin-top:20px;border-top:1px solid var(--border);padding-top:20px;text-align:center">
+      <div style="font-size:1.4rem;margin-bottom:8px">🎉</div>
+      <div style="font-family:var(--font-display);font-weight:700;font-size:1rem;margin-bottom:4px">Card Generated!</div>
+      <div id="staff-card-canvas-wrap" style="display:flex;justify-content:center;margin:14px 0"></div>
+      <div id="staff-cred-box" style="background:var(--secondary-light);border-radius:var(--radius);padding:12px;margin-bottom:14px;font-size:.82rem">
         <div style="font-weight:700;color:var(--secondary);margin-bottom:4px">Login Credentials</div>
-        <div style="color:var(--text-secondary)">Email: <span id="new-staff-uid-email" style="font-weight:600"></span></div>
-        <div style="color:var(--text-secondary)">Unique ID (Password): <span id="new-staff-uid-code" style="font-family:var(--font-mono);font-weight:700;color:var(--secondary)"></span></div>
+        <div>Email: <b id="sc-email"></b></div>
+        <div>Password (Unique ID): <b id="sc-uid" style="font-family:var(--font-mono);color:var(--secondary)"></b></div>
       </div>
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-ghost flex-1" onclick="handleDownloadStaffCard()">⬇️ Download</button>
-        <button class="btn btn-whatsapp flex-1" onclick="handleShareStaffCard()">📱 WhatsApp</button>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="btn btn-ghost btn-sm" onclick="dlStaffCard()">⬇️ Download</button>
+        <button class="btn btn-whatsapp btn-sm" onclick="waStaffCard()">📱 WhatsApp</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL: EDIT PROFILE FIELD
-============================================================ -->
-<div class="modal-overlay hidden" id="edit-field-modal">
+<!-- EDIT FIELD MODAL -->
+<div class="modal-overlay hidden" id="edit-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><div class="modal-title" id="edit-title">Edit</div><button class="modal-close" onclick="closeModal('edit-modal')">✕</button></div>
+    <div class="auth-form">
+      <div class="form-group"><label class="form-label" id="edit-label">Value</label><input class="form-input" id="edit-input" type="text"></div>
+      <div style="display:flex;gap:10px"><button class="btn btn-ghost flex-1" onclick="closeModal('edit-modal')">Cancel</button><button class="btn btn-primary flex-1" onclick="saveEdit()">Save</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP LIBRARY -->
+<div class="modal-overlay hidden" id="app-lib-modal">
   <div class="modal" style="max-width:420px">
-    <div class="modal-header">
-      <div class="modal-title" id="edit-modal-title">Edit Name</div>
-      <button class="modal-close" onclick="closeModal('edit-field-modal')">✕</button>
-    </div>
-    <div class="auth-form" style="gap:16px">
-      <div class="form-group">
-        <label class="form-label" id="edit-field-label">Name</label>
-        <input class="form-input" id="edit-field-input" type="text">
-      </div>
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-ghost flex-1" onclick="closeModal('edit-field-modal')">Cancel</button>
-        <button class="btn btn-primary flex-1" onclick="handleSaveField()">Save Changes</button>
-      </div>
-    </div>
+    <div class="modal-header"><div class="modal-title">⊞ App Library</div><button class="modal-close" onclick="closeModal('app-lib-modal')">✕</button></div>
+    <div class="app-lib-grid" id="app-lib-grid"></div>
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL: APP LIBRARY
-============================================================ -->
-<div class="modal-overlay hidden" id="app-library-modal">
-  <div class="modal" style="max-width:460px">
-    <div class="modal-header">
-      <div class="modal-title">⊞ App Library</div>
-      <button class="modal-close" onclick="closeModal('app-library-modal')">✕</button>
-    </div>
-    <div class="app-lib-grid" id="app-lib-grid"></div>
+<!-- DELETE CONFIRM -->
+<div class="modal-overlay hidden" id="del-modal">
+  <div class="modal" style="max-width:360px;text-align:center">
+    <div style="font-size:2rem;margin-bottom:10px">⚠️</div>
+    <div style="font-family:var(--font-display);font-weight:800;font-size:1.05rem;margin-bottom:8px">Remove Staff Member?</div>
+    <div style="font-size:.86rem;color:var(--text-secondary);margin-bottom:22px" id="del-name">This cannot be undone.</div>
+    <div style="display:flex;gap:10px"><button class="btn btn-ghost flex-1" onclick="closeModal('del-modal')">Cancel</button><button class="btn btn-danger flex-1" id="del-confirm-btn" onclick="doDeleteStaff()">Remove</button></div>
   </div>
 </div>
 
 <div id="toast-container"></div>
 
-<!-- ============================================================
-     SCRIPT
-============================================================ -->
 <script type="module">
-  import { auth, db } from './firebase-config.js';
-  import { requireAuth, logout, getCurrentUser } from './auth.js';
-  import { listenNotifications, renderNotifications, updateBadge, markAllRead, markNotificationRead } from './notifications.js';
-  import { listenMyTasks, listenAssignedByMe, listenCompanyTasks, assignTask, markTaskDone, markTaskDeclined, renderTaskItem } from './tasks.js';
-  import { listenCompanyStaff, getAssignableStaff, createStaff, updateUserProfile, renderStaffItem } from './staff.js';
-  import { getInstalledApps, listenInstalledApps, installApp, renderAppsGrid, renderAppLibrary, APP_REGISTRY } from './apps.js';
-  import { renderCardToElement, downloadCard, shareCardWhatsApp, drawStaffCard } from './card-generator.js';
-  import { showToast, setButtonLoading, getInitials, avatarColor, formatRole, roleBadgeClass, copyToClipboard, saveSession } from './utils.js';
-  import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { auth, db } from './firebase-config.js';
+import { requireAuth, logout, getCurrentUser } from './auth.js';
+import { listenNotifications, renderNotifications, updateBadge, markAllRead, markNotificationRead } from './notifications.js';
+import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined, renderTaskItem } from './tasks.js';
+import { listenCompanyStaff, getAssignableStaff, createStaff, updateUserProfile } from './staff.js';
+import { getInstalledApps, listenInstalledApps, installApp, renderAppsGrid, renderAppLibrary, APP_REGISTRY } from './apps.js';
+import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
+import { showToast, setButtonLoading, getInitials, avatarColor, formatRole, roleBadgeClass, copyToClipboard, saveSession } from './utils.js';
+import { doc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  // ---- State ----
-  let currentUser = null;
-  let allMyTasks  = [];
-  let allStaff    = [];
-  let newStaffCanvas = null;
-  let newStaffData   = null;
-  let newStaffRole   = 'manager';
-  let editingField   = null;
-  let unsubscribers  = [];
+let U = null, myTasks = [], byMeTasks = [], allStaff = [];
+let staffCanvas = null, staffData = null, staffRole = 'manager';
+let editField = null, delUid = null, filter = 'all';
+let unsubs = [], chart1, chart2;
 
-  // ---- Init ----
-  async function init() {
-    await requireAuth('../login.html');
-    currentUser = await getCurrentUser();
-    if (!currentUser) { window.location.href = 'login.html'; return; }
+async function init() {
+  await requireAuth('login.html');
+  U = await getCurrentUser();
+  if (!U) return (window.location.href = 'login.html');
+  saveSession(U);
+  fillUI();
+  roleUI();
+  subscribe();
+  initCharts();
+  fade(document.getElementById('loading-overlay'));
+}
 
-    saveSession(currentUser);
-    populateUI();
-    setupRoleBasedUI();
-    subscribeToData();
-    setupCharts();
-    hideLoading();
-  }
+function fade(el) {
+  el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(()=>el.remove(),400);
+}
 
-  function hideLoading() {
-    const overlay = document.getElementById('loading-overlay');
-    overlay.style.opacity = '0';
-    overlay.style.transition = 'opacity 0.4s ease';
-    setTimeout(() => overlay.remove(), 400);
-  }
-
-  // ---- Populate static UI with user info ----
-  function populateUI() {
-    const { name, email, role, designation, uniqueId, companyId } = currentUser;
-    const initials = getInitials(name);
-    const color    = avatarColor(name);
-
-    // Topbar
-    document.getElementById('topbar-name').textContent = name.split(' ')[0];
-    document.getElementById('topbar-company').textContent = 'Loading...';
-    const av = document.getElementById('topbar-avatar');
-    av.textContent = initials;
-    av.style.background = color + '20';
-    av.style.color = color;
-
-    // Profile panel
-    document.getElementById('profile-avatar-large').textContent = initials;
-    document.getElementById('profile-avatar-large').style.background = color + '20';
-    document.getElementById('profile-avatar-large').style.color = color;
-    document.getElementById('profile-display-name').textContent = name;
-    document.getElementById('pf-name').textContent = name;
-    document.getElementById('pf-email').textContent = email;
-    document.getElementById('pf-code').textContent = uniqueId;
-    document.getElementById('pf-designation').textContent = designation || formatRole(role);
-    const badge = document.getElementById('profile-role-badge');
-    badge.textContent = designation || formatRole(role);
-    badge.className = 'badge ' + roleBadgeClass(role);
-
-    // Greeting
-    const hour = new Date().getHours();
-    const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    document.getElementById('home-greeting').textContent = `${greet}, ${name.split(' ')[0]} 👋`;
-
-    // Load company name
-    getDoc(doc(db, 'companies', currentUser.companyId)).then(snap => {
-      if (snap.exists()) {
-        const cname = snap.data().name;
-        document.getElementById('topbar-company').textContent = cname;
-        document.getElementById('profile-display-company').textContent = cname;
-      }
-    });
-  }
-
-  // ---- Setup role-based UI ----
-  function setupRoleBasedUI() {
-    const role = currentUser.role;
-    const canAssign = role === 'owner' || role === 'manager';
-    const canManageStaff = role === 'owner';
-
-    if (canAssign) {
-      document.getElementById('nav-assign').style.display = 'flex';
-      document.getElementById('assign-btn-top').style.display = 'flex';
-    }
-    if (canManageStaff) {
-      document.getElementById('nav-staff').style.display = 'flex';
-      document.getElementById('nav-create-staff').style.display = 'flex';
-    }
-
-    // Update subtitle
-    const subtitles = {
-      owner:   "Here's your company overview",
-      manager: "Here's your team activity",
-      staff:   "Here are your assigned tasks"
-    };
-    document.getElementById('home-subtitle').textContent = subtitles[role] || '';
-  }
-
-  // ---- Subscribe to real-time data ----
-  function subscribeToData() {
-    const uid = currentUser.uid;
-    const companyId = currentUser.companyId;
-    const role = currentUser.role;
-
-    // Notifications
-    const unsubNotif = listenNotifications(uid, (items, unread) => {
-      renderNotifications(items, document.getElementById('notif-panel-body'));
-      updateBadge(unread);
-      document.getElementById('stat-notifs').textContent = unread;
-    });
-    unsubscribers.push(unsubNotif);
-
-    // My tasks
-    const unsubTasks = listenMyTasks(uid, (tasks) => {
-      allMyTasks = tasks;
-      updateTaskStats(tasks);
-      renderRecentTasks(tasks.slice(0, 4));
-      renderAllTasks(tasks);
-      updateTasksBadge(tasks.filter(t => t.status === 'pending').length);
-      updateCharts(tasks);
-    });
-    unsubscribers.push(unsubTasks);
-
-    // Staff list (owner only)
-    if (role === 'owner') {
-      const unsubStaff = listenCompanyStaff(companyId, (staff) => {
-        allStaff = staff;
-        document.getElementById('stat-staff').textContent = staff.filter(s => s.role !== 'owner').length;
-        renderStaffList(staff);
-        document.getElementById('staff-count-label').textContent = `${staff.length} total members`;
-        populateAssignSelect(staff);
-      });
-      unsubscribers.push(unsubStaff);
-    } else if (role === 'manager') {
-      // Managers can assign but can't see full staff management
-      getAssignableStaff(companyId, uid).then(staff => {
-        allStaff = staff;
-        populateAssignSelect(staff);
-      });
-      document.getElementById('stat-staff').textContent = '—';
-    }
-
-    // Installed apps
-    const unsubApps = listenInstalledApps(uid, (appIds) => {
-      renderAppsGrid(appIds, document.getElementById('apps-grid'), openApp, openAppLibrary);
-    });
-    unsubscribers.push(unsubApps);
-  }
-
-  // ---- Update task stats ----
-  function updateTaskStats(tasks) {
-    const pending  = tasks.filter(t => t.status === 'pending').length;
-    const done     = tasks.filter(t => t.status === 'done').length;
-    document.getElementById('stat-tasks-pending').textContent = pending;
-    document.getElementById('stat-tasks-done').textContent    = done;
-  }
-
-  function updateTasksBadge(count) {
-    const badge = document.getElementById('tasks-badge');
-    if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
-    else { badge.classList.add('hidden'); }
-  }
-
-  // ---- Render recent tasks ----
-  function renderRecentTasks(tasks) {
-    const container = document.getElementById('recent-tasks-list');
-    if (!tasks.length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">No tasks yet</div><div class="empty-state-desc">Tasks assigned to you will appear here</div></div>`;
-      return;
-    }
-    const canRespond = currentUser.role !== 'owner';
-    container.innerHTML = `<div class="tasks-list">${tasks.map(t => renderTaskItem(t, currentUser.uid, canRespond)).join('')}</div>`;
-  }
-
-  function renderAllTasks(tasks) {
-    const filter = document.getElementById('task-filter')?.value || 'all';
-    const filtered = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
-    const container = document.getElementById('all-tasks-list');
-    if (!filtered.length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">No ${filter === 'all' ? '' : filter + ' '}tasks</div></div>`;
-      return;
-    }
-    const canRespond = currentUser.role !== 'owner';
-    container.innerHTML = filtered.map(t => renderTaskItem(t, currentUser.uid, canRespond)).join('');
-  }
-
-  window.filterTasks = function() { renderAllTasks(allMyTasks); };
-
-  // ---- Render staff list ----
-  function renderStaffList(staff) {
-    const container = document.getElementById('staff-list-container');
-    if (!staff.length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-title">No staff yet</div></div>`;
-      return;
-    }
-    container.innerHTML = staff.map(m => renderStaffItem(m, currentUser.role)).join('');
-  }
-
-  // ---- Populate assign select ----
-  function populateAssignSelect(staff) {
-    const select = document.getElementById('assign-to-select');
-    const assignable = staff.filter(s => s.role !== 'owner');
-    select.innerHTML = '<option value="">Select team member...</option>' +
-      assignable.map(s => `<option value="${s.uid}">${s.name} (${s.designation || s.role})</option>`).join('');
-  }
-
-  // ---- Charts ----
-  let taskChart, statusChart;
-
-  function setupCharts() {
-    const taskCtx   = document.getElementById('task-chart').getContext('2d');
-    const statusCtx = document.getElementById('status-chart').getContext('2d');
-
-    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    const randData = () => days.map(() => Math.floor(Math.random() * 8));
-
-    taskChart = new Chart(taskCtx, {
-      type: 'bar',
-      data: {
-        labels: days,
-        datasets: [
-          { label: 'Assigned', data: randData(), backgroundColor: 'rgba(79,70,229,0.7)', borderRadius: 6, borderSkipped: false },
-          { label: 'Done',     data: randData(), backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 6, borderSkipped: false }
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 11 } } },
-          y: { beginAtZero: true, grid: { color: '#F4F4F5' }, ticks: { font: { family: 'DM Sans', size: 11 }, stepSize: 2 } }
-        }
-      }
-    });
-
-    statusChart = new Chart(statusCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Pending', 'Done', 'Declined'],
-        datasets: [{
-          data: [1, 1, 0],
-          backgroundColor: ['#F59E0B', '#10B981', '#EF4444'],
-          borderWidth: 0,
-          hoverOffset: 6
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: true,
-        plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 11 }, padding: 16 } } },
-        cutout: '65%'
-      }
-    });
-  }
-
-  function updateCharts(tasks) {
-    if (!statusChart) return;
-    const pending  = tasks.filter(t => t.status === 'pending').length;
-    const done     = tasks.filter(t => t.status === 'done').length;
-    const declined = tasks.filter(t => t.status === 'declined').length;
-    statusChart.data.datasets[0].data = [pending || 0, done || 0, declined || 0];
-    statusChart.update();
-  }
-
-  // ---- View switching ----
-  window.showView = function(view) {
-    ['home','tasks','staff'].forEach(v => {
-      document.getElementById('view-' + v)?.classList.add('hidden');
-      document.getElementById('nav-' + v)?.classList.remove('active');
-    });
-    document.getElementById('view-' + view)?.classList.remove('hidden');
-    document.getElementById('nav-' + view)?.classList.add('active');
-    closeSidebar();
-  };
-
-  // ---- Panel management ----
-  window.togglePanel = function(type) {
-    const notifPanel   = document.getElementById('notif-panel');
-    const profilePanel = document.getElementById('profile-panel');
-    const overlay      = document.getElementById('panel-overlay');
-
-    if (type === 'notif') {
-      const isOpen = notifPanel.classList.contains('open');
-      profilePanel.classList.remove('open');
-      notifPanel.classList.toggle('open', !isOpen);
-      overlay.classList.toggle('visible', !isOpen);
-    } else {
-      const isOpen = profilePanel.classList.contains('open');
-      notifPanel.classList.remove('open');
-      profilePanel.classList.toggle('open', !isOpen);
-      overlay.classList.toggle('visible', !isOpen);
-    }
-  };
-
-  window.closeAllPanels = function() {
-    document.getElementById('notif-panel').classList.remove('open');
-    document.getElementById('profile-panel').classList.remove('open');
-    document.getElementById('panel-overlay').classList.remove('visible');
-  };
-
-  // ---- Notifications: mark all read ----
-  window.markAllNotifRead = async function() {
-    await markAllRead(currentUser.uid);
-    showToast('All notifications marked as read', 'success');
-  };
-
-  // ---- Notification item click ----
-  document.getElementById('notif-panel-body').addEventListener('click', async (e) => {
-    const item = e.target.closest('.notif-item');
-    if (item && !item.querySelector('.unread') === false) {
-      await markNotificationRead(currentUser.uid, item.dataset.id);
+function fillUI() {
+  const ini = getInitials(U.name), col = avatarColor(U.name);
+  document.getElementById('topbar-name').textContent = U.name.split(' ')[0];
+  const av = document.getElementById('topbar-avatar');
+  av.textContent = ini; av.style.background = col+'20'; av.style.color = col;
+  const pa = document.getElementById('prof-av');
+  pa.textContent = ini; pa.style.background = col+'20'; pa.style.color = col;
+  document.getElementById('prof-name').textContent = U.name;
+  document.getElementById('pf-name').textContent = U.name;
+  document.getElementById('pf-email').textContent = U.email;
+  document.getElementById('pf-code').textContent = U.uniqueId;
+  document.getElementById('pf-role').textContent = U.designation || formatRole(U.role);
+  const b = document.getElementById('prof-badge');
+  b.textContent = U.designation || formatRole(U.role);
+  b.className = 'badge ' + roleBadgeClass(U.role);
+  const h = new Date().getHours();
+  const g = h<12?'☀️ Good morning':h<17?'🌤 Good afternoon':'🌙 Good evening';
+  document.getElementById('home-greeting').textContent = g+', '+U.name.split(' ')[0];
+  getDoc(doc(db,'companies',U.companyId)).then(s => {
+    if (s.exists()) {
+      const cn = s.data().name;
+      document.getElementById('topbar-company').textContent = cn;
+      document.getElementById('prof-company').textContent = cn;
     }
   });
+}
 
-  // ---- Modal management ----
-  window.closeModal = function(id) {
-    document.getElementById(id).classList.add('hidden');
-  };
+function roleUI() {
+  const r = U.role, isOwner = r==='owner', canAssign = r==='owner'||r==='manager';
+  if (canAssign) ['nav-assign','assign-btn-top','assign-btn-tasks','bn-assign'].forEach(id => { const e=document.getElementById(id); if(e) e.style.display='flex'; });
+  if (isOwner) {
+    ['nav-staff','team-label'].forEach(id => { const e=document.getElementById(id); if(e) e.style.display='flex'; });
+    document.getElementById('team-card').classList.remove('hidden');
+    document.getElementById('prof-staff-section').classList.remove('hidden');
+    document.getElementById('topbar-stats').style.display = 'flex';
+    document.getElementById('assigned-by-section').classList.remove('hidden');
+  }
+  // stat labels per role
+  if (r === 'staff') {
+    document.getElementById('s1-icon').textContent='⏳'; document.getElementById('s1-icon').style.cssText='background:var(--warning-light);color:var(--warning)';
+    document.getElementById('s1-label').textContent='Pending'; document.getElementById('s1-desc').textContent='My pending tasks';
+    document.getElementById('s3-icon').textContent='❌'; document.getElementById('s3-icon').style.cssText='background:var(--danger-light);color:var(--danger)';
+    document.getElementById('s3-label').textContent='Declined'; document.getElementById('s3-desc').textContent='Declined tasks';
+  }
+  if (r === 'manager') {
+    document.getElementById('s1-icon').textContent='📊'; document.getElementById('s1-label').textContent='Assigned'; document.getElementById('s1-desc').textContent='Tasks I assigned';
+  }
+  const subs = { owner:"Your company overview", manager:"Your team's activity", staff:"Your assigned tasks" };
+  document.getElementById('home-subtitle').textContent = subs[r]||'';
+}
 
-  // ---- Assign task ----
-  window.openAssignModal = async function() {
-    // Refresh assignable staff
-    if (currentUser.role === 'owner') {
-      populateAssignSelect(allStaff);
-    } else {
-      const staff = await getAssignableStaff(currentUser.companyId, currentUser.uid);
-      populateAssignSelect(staff);
-    }
-    document.getElementById('task-title-input').value = '';
-    document.getElementById('task-desc-input').value  = '';
-    document.getElementById('assign-modal').classList.remove('hidden');
-  };
+function subscribe() {
+  const {uid,companyId,role} = U;
+  unsubs.push(listenNotifications(uid,(items,unread)=>{
+    renderNotifications(items,document.getElementById('notif-body'));
+    updateBadge(unread);
+    document.getElementById('s4-val').textContent = unread;
+    document.getElementById('pill-unread').textContent = unread;
+    ['bn-notif-badge','notif-badge'].forEach(id=>{ const e=document.getElementById(id); if(e){e.textContent=unread;e.classList.toggle('hidden',unread===0);} });
+  }));
 
-  window.handleAssignTask = async function() {
-    const assignedTo = document.getElementById('assign-to-select').value;
-    const title      = document.getElementById('task-title-input').value.trim();
-    const desc       = document.getElementById('task-desc-input').value.trim();
+  unsubs.push(listenMyTasks(uid, tasks => {
+    myTasks = tasks;
+    const p=tasks.filter(t=>t.status==='pending').length, d=tasks.filter(t=>t.status==='done').length, x=tasks.filter(t=>t.status==='declined').length;
+    if (role==='staff') { document.getElementById('s1-val').textContent=p; document.getElementById('s2-val').textContent=d; document.getElementById('s3-val').textContent=x; }
+    else if (role==='manager') { document.getElementById('s2-val').textContent=p; document.getElementById('s3-val').textContent=d; }
+    else { document.getElementById('s2-val').textContent=p; document.getElementById('s3-val').textContent=d; document.getElementById('pill-pending').textContent=p; document.getElementById('pill-done').textContent=d; }
+    ['tasks-badge','bn-badge'].forEach(id=>{ const e=document.getElementById(id); if(e){e.textContent=p;e.classList.toggle('hidden',p===0);} });
+    drawRecentTasks(tasks);
+    drawAllTasks(tasks,filter);
+    updateDonut(tasks);
+    updateBar(tasks,byMeTasks);
+  }));
 
-    if (!assignedTo)  { showToast('Select a team member.', 'error'); return; }
-    if (!title)       { showToast('Enter a task title.', 'error'); return; }
-
-    const btn = document.getElementById('assign-submit-btn');
-    setButtonLoading(btn, true);
-
-    try {
-      const assignee = allStaff.find(s => s.uid === assignedTo);
-      await assignTask({
-        title,
-        description:     desc,
-        assignedTo,
-        assignedToName:  assignee?.name || 'Team Member',
-        assignedBy:      currentUser.uid,
-        assignedByName:  currentUser.name,
-        companyId:       currentUser.companyId
-      });
-      closeModal('assign-modal');
-      showToast('Task assigned to ' + (assignee?.name || 'team member') + '!', 'success');
-    } catch (err) {
-      showToast('Failed: ' + err.message, 'error');
-    } finally {
-      setButtonLoading(btn, false, 'Assign Task →');
-    }
-  };
-
-  // ---- Task actions (global) ----
-  window.handleTaskDone = async function(taskId) {
-    try {
-      await markTaskDone(taskId);
-      showToast('Task marked as done! ✅', 'success');
-    } catch (err) {
-      showToast('Error: ' + err.message, 'error');
-    }
-  };
-
-  window.handleTaskDeclined = async function(taskId) {
-    try {
-      await markTaskDeclined(taskId);
-      showToast('Task declined.', 'info');
-    } catch (err) {
-      showToast('Error: ' + err.message, 'error');
-    }
-  };
-
-  // ---- Create staff ----
-  window.switchStaffRole = function(role) {
-    newStaffRole = role;
-    document.getElementById('staff-tab-manager').classList.toggle('active', role === 'manager');
-    document.getElementById('staff-tab-staff').classList.toggle('active', role === 'staff');
-  };
-
-  window.openCreateStaffModal = function() {
-    document.getElementById('new-staff-name').value = '';
-    document.getElementById('new-staff-email').value = '';
-    document.getElementById('new-staff-designation').value = '';
-    document.getElementById('new-staff-card-section').classList.add('hidden');
-    document.getElementById('create-staff-modal').classList.remove('hidden');
-    newStaffCanvas = null;
-    newStaffData   = null;
-  };
-
-  window.handleCreateStaff = async function() {
-    const name  = document.getElementById('new-staff-name').value.trim();
-    const email = document.getElementById('new-staff-email').value.trim();
-    const desig = document.getElementById('new-staff-designation').value.trim();
-
-    if (!name || !email) { showToast('Fill in name and email.', 'error'); return; }
-
-    const btn = document.getElementById('create-staff-btn');
-    setButtonLoading(btn, true);
-
-    try {
-      // Get company name
-      const compSnap = await getDoc(doc(db, 'companies', currentUser.companyId));
-      const companyName = compSnap.exists() ? compSnap.data().name : 'Your Company';
-
-      const result = await createStaff({
-        name, email,
-        role:        newStaffRole,
-        companyId:   currentUser.companyId,
-        companyName,
-        createdBy:   currentUser.uid
-      });
-
-      newStaffData = { ...result, designation: desig || result.role, companyName };
-
-      // Render card
-      document.getElementById('new-staff-card-section').classList.remove('hidden');
-      document.getElementById('new-staff-uid-email').textContent = email;
-      document.getElementById('new-staff-uid-code').textContent  = result.uniqueId;
-
-      newStaffCanvas = renderCardToElement('new-staff-card-container', 'staff', {
-        name:        result.name,
-        email:       result.email,
-        role:        newStaffRole,
-        designation: desig || formatRole(newStaffRole),
-        companyName,
-        uniqueId:    result.uniqueId,
-        companyCode: currentUser.uniqueId
-      });
-
-      showToast(`${name} added as ${newStaffRole}! 🎉`, 'success');
-      setButtonLoading(btn, false, 'Create & Generate Card →');
-      btn.disabled = true;
-
-    } catch (err) {
-      showToast('Error: ' + err.message, 'error');
-      setButtonLoading(btn, false, 'Create & Generate Card →');
-    }
-  };
-
-  window.handleDownloadStaffCard = function() {
-    if (newStaffCanvas && newStaffData) {
-      downloadCard(newStaffCanvas, `${newStaffData.name}-zenda-card.png`);
-      showToast('Card downloaded!', 'success');
-    }
-  };
-
-  window.handleShareStaffCard = function() {
-    if (newStaffCanvas && newStaffData) {
-      shareCardWhatsApp(newStaffCanvas, newStaffData.name + '-zenda-card');
-    }
-  };
-
-  // ---- Profile editing ----
-  window.openEditField = function(field) {
-    editingField = field;
-    const titles = { name: 'Edit Name', email: 'Edit Email' };
-    const values = { name: currentUser.name, email: currentUser.email };
-    document.getElementById('edit-modal-title').textContent  = titles[field];
-    document.getElementById('edit-field-label').textContent  = field === 'name' ? 'Full Name' : 'Email Address';
-    document.getElementById('edit-field-input').value        = values[field];
-    document.getElementById('edit-field-input').type         = field === 'email' ? 'email' : 'text';
-    document.getElementById('edit-field-modal').classList.remove('hidden');
-  };
-
-  window.handleSaveField = async function() {
-    const val = document.getElementById('edit-field-input').value.trim();
-    if (!val) { showToast('Field cannot be empty.', 'error'); return; }
-
-    try {
-      await updateUserProfile(currentUser.uid, { [editingField]: val });
-      currentUser[editingField] = val;
-
-      if (editingField === 'name') {
-        document.getElementById('pf-name').textContent          = val;
-        document.getElementById('profile-display-name').textContent = val;
-        document.getElementById('topbar-name').textContent      = val.split(' ')[0];
-      } else {
-        document.getElementById('pf-email').textContent = val;
-      }
-
-      closeModal('edit-field-modal');
-      showToast('Profile updated!', 'success');
-    } catch (err) {
-      showToast('Error: ' + err.message, 'error');
-    }
-  };
-
-  window.copyCode = function() {
-    copyToClipboard(currentUser.uniqueId);
-  };
-
-  // ---- Avatar upload ----
-  window.triggerAvatarUpload = function() {
-    document.getElementById('avatar-input').click();
-  };
-
-  window.handleAvatarChange = function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const src = ev.target.result;
-      const el  = document.getElementById('profile-avatar-large');
-      el.style.background = 'none';
-      el.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-      // Also update topbar avatar
-      const av = document.getElementById('topbar-avatar');
-      av.style.background = 'none';
-      av.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-      showToast('Profile photo updated!', 'success');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ---- Apps ----
-  window.openApp = function(appId) {
-    const app = APP_REGISTRY[appId];
-    if (!app) return;
-    window.open(app.path + '?uid=' + currentUser.uid, '_blank');
-  };
-
-  window.openAppLibrary = function() {
-    getInstalledApps(currentUser.uid).then(installed => {
-      renderAppLibrary(installed, document.getElementById('app-lib-grid'));
-      document.getElementById('app-library-modal').classList.remove('hidden');
-    });
-  };
-
-  window.installAppById = async function(appId) {
-    await installApp(currentUser.uid, appId);
-    showToast(APP_REGISTRY[appId]?.name + ' installed!', 'success');
-    // Refresh library
-    const installed = await getInstalledApps(currentUser.uid);
-    renderAppLibrary(installed, document.getElementById('app-lib-grid'));
-  };
-
-  // ---- Sidebar toggle (mobile) ----
-  window.toggleSidebar = function() {
-    document.getElementById('sidebar').classList.toggle('open');
-  };
-  function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
+  if (role==='owner'||role==='manager') {
+    unsubs.push(listenAssignedByMe(uid, tasks => {
+      byMeTasks = tasks;
+      if (role==='manager') document.getElementById('s1-val').textContent=tasks.length;
+      drawByMe(tasks,filter);
+      updateBar(myTasks,tasks);
+    }));
   }
 
-  // ---- Refresh ----
-  window.refreshDashboard = function() {
-    showToast('Dashboard refreshed!', 'success');
-  };
+  if (role==='owner') {
+    unsubs.push(listenCompanyStaff(companyId, staff => {
+      allStaff = staff;
+      const cnt = staff.filter(s=>s.role!=='owner').length;
+      document.getElementById('s1-val').textContent = cnt;
+      document.getElementById('pill-staff').textContent = cnt;
+      document.getElementById('staff-count-label').textContent = `${staff.length} total members`;
+      document.getElementById('prof-staff-count').textContent = `(${cnt})`;
+      drawStaffList(staff,'');
+      drawProfileStaff(staff,'');
+      drawTeamAvatars(staff);
+      fillAssignSelect(staff);
+    }));
+  } else if (role==='manager') {
+    getAssignableStaff(companyId,uid).then(s=>{allStaff=s;fillAssignSelect(s);});
+  }
 
-  // ---- Logout ----
-  window.handleLogout = async function() {
-    unsubscribers.forEach(fn => fn?.());
-    await logout();
-  };
+  unsubs.push(listenInstalledApps(uid, ids => renderAppsGrid(ids,document.getElementById('apps-grid'))));
+}
 
-  // ---- Close modals on overlay click ----
-  document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.classList.add('hidden');
-    });
+function drawTeamAvatars(staff) {
+  const c = document.getElementById('team-avatars'); if(!c) return;
+  const members = staff.filter(s=>s.role!=='owner').slice(0,5);
+  const extra = Math.max(0,staff.filter(s=>s.role!=='owner').length-5);
+  const cols = ['#4F46E5','#10B981','#F59E0B','#EF4444','#7C3AED'];
+  c.innerHTML = members.map((m,i)=>`<div class="team-avatar-item" style="background:${cols[i%5]}20;color:${cols[i%5]}">
+    ${getInitials(m.name)}<div class="tooltip">${esc(m.name)}</div></div>`).join('')
+    + (extra>0?`<div class="team-more">+${extra}</div>`:'');
+}
+
+// --- Charts ---
+function initCharts() {
+  const c1 = document.getElementById('task-chart')?.getContext('2d');
+  const c2 = document.getElementById('status-chart')?.getContext('2d');
+  if (!c1||!c2) return;
+  const days = last7();
+  chart1 = new Chart(c1,{
+    type:'bar',
+    data:{ labels:days, datasets:[
+      {label:'Assigned',data:new Array(7).fill(0),backgroundColor:'rgba(79,70,229,.8)',borderRadius:5,borderSkipped:false},
+      {label:'Done',    data:new Array(7).fill(0),backgroundColor:'rgba(16,185,129,.8)',borderRadius:5,borderSkipped:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1F2937',cornerRadius:8,padding:10,titleFont:{family:'Outfit',size:12,weight:'700'},bodyFont:{family:'DM Sans',size:11}}},
+      scales:{x:{grid:{display:false},ticks:{font:{family:'DM Sans',size:11},color:'#9CA3AF'}},y:{beginAtZero:true,grid:{color:'#F4F4F5'},ticks:{font:{family:'DM Sans',size:11},color:'#9CA3AF',stepSize:1}}}}
   });
+  chart2 = new Chart(c2,{
+    type:'doughnut',
+    data:{labels:['Pending','Done','Declined'],datasets:[{data:[1,1,0],backgroundColor:['#F59E0B','#10B981','#EF4444'],borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:true,cutout:'68%',
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1F2937',cornerRadius:8,padding:10,titleFont:{family:'Outfit',size:12,weight:'700'},bodyFont:{family:'DM Sans',size:11}}}}
+  });
+}
 
-  // ---- Start ----
-  init().catch(console.error);
+function last7() {
+  const d=[]; for(let i=6;i>=0;i--){const x=new Date();x.setDate(x.getDate()-i);d.push(x.toLocaleDateString('en',{weekday:'short'}));} return d;
+}
+function dk(iso){return iso?iso.substring(0,10):'';}
+
+function updateBar(myT,byT) {
+  if (!chart1) return;
+  const all = [...new Map([...myT,...byT].map(t=>[t.id,t])).values()];
+  const a=new Array(7).fill(0), d=new Array(7).fill(0);
+  for (let i=0;i<7;i++){
+    const x=new Date();x.setDate(x.getDate()-(6-i));const key=x.toISOString().substring(0,10);
+    a[i]=all.filter(t=>dk(t.createdAt)===key).length;
+    d[i]=all.filter(t=>t.status==='done'&&dk(t.completedAt)===key).length;
+  }
+  chart1.data.datasets[0].data=a; chart1.data.datasets[1].data=d; chart1.update('active');
+}
+
+function updateDonut(tasks) {
+  if (!chart2) return;
+  const p=tasks.filter(t=>t.status==='pending').length, d=tasks.filter(t=>t.status==='done').length, x=tasks.filter(t=>t.status==='declined').length;
+  chart2.data.datasets[0].data=[p||0,d||0,x||0]; chart2.update('active');
+  const el=document.getElementById('status-labels');
+  if(el) el.innerHTML=`
+    <span style="display:flex;align-items:center;gap:4px;font-size:.73rem;font-weight:600;color:#F59E0B"><span style="width:9px;height:9px;background:#F59E0B;border-radius:2px;display:inline-block"></span>${p} Pending</span>
+    <span style="display:flex;align-items:center;gap:4px;font-size:.73rem;font-weight:600;color:#10B981"><span style="width:9px;height:9px;background:#10B981;border-radius:2px;display:inline-block"></span>${d} Done</span>
+    <span style="display:flex;align-items:center;gap:4px;font-size:.73rem;font-weight:600;color:#EF4444"><span style="width:9px;height:9px;background:#EF4444;border-radius:2px;display:inline-block"></span>${x} Declined</span>`;
+}
+
+// --- Render tasks ---
+function drawRecentTasks(tasks) {
+  const c=document.getElementById('recent-tasks-list');
+  const pending=tasks.filter(t=>t.status==='pending').slice(0,5);
+  c.innerHTML=pending.length?pending.map(t=>renderTaskItem(t,U.uid,U.role!=='owner')).join('')
+    :`<div class="empty-state"><div class="empty-state-icon">🎉</div><div class="empty-state-title">All clear!</div></div>`;
+}
+function drawAllTasks(tasks,f){
+  const c=document.getElementById('all-tasks-list');
+  const filtered=f==='all'?tasks:tasks.filter(t=>t.status===f);
+  c.innerHTML=filtered.length?filtered.map(t=>renderTaskItem(t,U.uid,U.role!=='owner')).join('')
+    :`<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">No ${f==='all'?'':f} tasks</div></div>`;
+}
+function drawByMe(tasks,f){
+  const c=document.getElementById('assigned-by-list'); if(!c) return;
+  const filtered=f==='all'?tasks:tasks.filter(t=>t.status===f);
+  c.innerHTML=filtered.length?filtered.map(t=>renderTaskItem(t,U.uid,false)).join('')
+    :`<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">No tasks assigned</div></div>`;
+}
+
+// --- Staff ---
+function drawStaffList(staff,q) {
+  const c=document.getElementById('staff-list-main'); if(!c) return;
+  const f=q?staff.filter(s=>s.name.toLowerCase().includes(q.toLowerCase())||s.email.toLowerCase().includes(q.toLowerCase())):staff;
+  c.innerHTML=f.length?f.map(m=>`<div class="staff-list-item">
+    <div class="avatar avatar-md" style="background:${avatarColor(m.name)}20;color:${avatarColor(m.name)};font-weight:700;font-size:.8rem">${getInitials(m.name)}</div>
+    <div class="staff-item-info"><div class="staff-item-name">${esc(m.name)}</div><div class="staff-item-email">${esc(m.email)}</div></div>
+    <span class="badge ${roleBadgeClass(m.role)}" style="flex-shrink:0">${m.designation||formatRole(m.role)}</span>
+    ${m.role!=='owner'?`<button class="staff-delete-btn" onclick="askDelete('${m.uid}','${esc(m.name)}')">🗑</button>`:''}
+  </div>`).join('')
+    :`<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-title">No staff found</div></div>`;
+}
+function drawProfileStaff(staff,q) {
+  const c=document.getElementById('prof-staff-list'); if(!c) return;
+  const nonO=staff.filter(s=>s.role!=='owner');
+  const f=q?nonO.filter(s=>s.name.toLowerCase().includes(q.toLowerCase())):nonO;
+  c.innerHTML=f.length?f.map(m=>`<div class="staff-mini-item">
+    <div class="avatar avatar-sm" style="background:${avatarColor(m.name)}20;color:${avatarColor(m.name)};font-weight:700;font-size:.68rem">${getInitials(m.name)}</div>
+    <div class="staff-mini-info"><div class="staff-mini-name">${esc(m.name)}</div><div class="staff-mini-role">${m.designation||formatRole(m.role)}</div></div>
+    <span class="badge ${roleBadgeClass(m.role)}" style="font-size:.62rem;flex-shrink:0">${formatRole(m.role)}</span>
+    <button class="staff-delete-btn" onclick="askDelete('${m.uid}','${esc(m.name)}')">🗑</button>
+  </div>`).join('')
+    :`<div class="empty-state" style="padding:14px"><div class="empty-state-title">No staff found</div></div>`;
+}
+window.filterStaffMain=()=>{drawStaffList(allStaff,document.getElementById('staff-search-main')?.value||'');};
+window.filterProfileStaff=()=>{drawProfileStaff(allStaff,document.getElementById('prof-staff-search')?.value||'');};
+
+function fillAssignSelect(staff) {
+  const s=document.getElementById('assign-to');
+  s.innerHTML='<option value="">Select team member...</option>'+staff.filter(x=>x.role!=='owner').map(m=>`<option value="${m.uid}">${esc(m.name)} (${m.designation||formatRole(m.role)})</option>`).join('');
+}
+
+// --- Views ---
+window.showView=function(v){
+  ['home','tasks','staff'].forEach(x=>{document.getElementById('view-'+x)?.classList.add('hidden');document.getElementById('nav-'+x)?.classList.remove('active');document.getElementById('bn-'+x)?.classList.remove('active');});
+  document.getElementById('view-'+v)?.classList.remove('hidden');
+  document.getElementById('nav-'+v)?.classList.add('active');
+  document.getElementById('bn-'+v)?.classList.add('active');
+  closeSidebar();
+};
+window.setFilter=function(f){
+  filter=f;
+  document.querySelectorAll('.task-filter-tab').forEach((t,i)=>t.classList.toggle('active',['all','pending','done','declined'][i]===f));
+  drawAllTasks(myTasks,f); drawByMe(byMeTasks,f); showView('tasks');
+};
+
+// --- Panels ---
+window.togglePanel=function(t){
+  const np=document.getElementById('notif-panel'),pp=document.getElementById('profile-panel'),ov=document.getElementById('panel-overlay');
+  if(t==='notif'){const o=np.classList.contains('open');pp.classList.remove('open');np.classList.toggle('open',!o);ov.classList.toggle('visible',!o);}
+  else{const o=pp.classList.contains('open');np.classList.remove('open');pp.classList.toggle('open',!o);ov.classList.toggle('visible',!o);}
+};
+window.closeAllPanels=()=>{['notif-panel','profile-panel'].forEach(id=>document.getElementById(id).classList.remove('open'));document.getElementById('panel-overlay').classList.remove('visible');};
+document.getElementById('notif-body').addEventListener('click',async e=>{const i=e.target.closest('.notif-item.unread');if(i?.dataset.id) await markNotificationRead(U.uid,i.dataset.id);});
+window.markAllNotifRead=async()=>{await markAllRead(U.uid);showToast('All marked as read','success');};
+
+// --- Modals ---
+window.closeModal=id=>document.getElementById(id).classList.add('hidden');
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.add('hidden');}));
+
+// --- Assign ---
+window.openAssignModal=async function(){
+  if(U.role!=='owner'){const s=await getAssignableStaff(U.companyId,U.uid);allStaff=s;fillAssignSelect(s);}
+  ['task-title','task-desc'].forEach(id=>document.getElementById(id).value='');
+  ['task-date','task-time'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('deadline-note').classList.add('hidden');
+  document.getElementById('assign-modal').classList.remove('hidden');
+};
+document.getElementById('task-date').addEventListener('change',e=>document.getElementById('deadline-note').classList.toggle('hidden',!e.target.value));
+window.submitAssign=async function(){
+  const to=document.getElementById('assign-to').value, title=document.getElementById('task-title').value.trim();
+  const desc=document.getElementById('task-desc').value.trim(), date=document.getElementById('task-date').value, time=document.getElementById('task-time').value;
+  if(!to){showToast('Select a team member.','error');return;}
+  if(!title){showToast('Enter a task title.','error');return;}
+  const btn=document.getElementById('assign-btn'); setButtonLoading(btn,true);
+  try{
+    const assignee=allStaff.find(s=>s.uid===to);
+    await assignTask({title,description:desc,assignedTo:to,assignedToName:assignee?.name||'Member',assignedBy:U.uid,assignedByName:U.name,companyId:U.companyId,deadline:date||null,deadlineTime:time||null});
+    closeModal('assign-modal');showToast(`Assigned to ${assignee?.name}!`,'success');
+  }catch(e){showToast('Error: '+e.message,'error');}
+  finally{setButtonLoading(btn,false,'Assign →');}
+};
+
+// --- Task actions ---
+window.handleTaskDone=async id=>{try{await markTaskDone(id);showToast('Task done! ✅','success');}catch(e){showToast(e.message,'error');}};
+window.handleTaskDeclined=async id=>{try{await markTaskDeclined(id);showToast('Task declined.','info');}catch(e){showToast(e.message,'error');}};
+
+// --- Staff ---
+window.setStaffRole=r=>{staffRole=r;document.getElementById('role-mgr').classList.toggle('active',r==='manager');document.getElementById('role-stf').classList.toggle('active',r==='staff');};
+window.openCreateStaffModal=function(){
+  ['ns-name','ns-email','ns-desig'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('staff-card-section').classList.add('hidden');
+  const btn=document.getElementById('create-btn');btn.disabled=false;btn.textContent='Create & Get Card →';
+  staffCanvas=null;staffData=null;
+  document.getElementById('create-staff-modal').classList.remove('hidden');
+};
+window.submitCreateStaff=async function(){
+  const name=document.getElementById('ns-name').value.trim(),email=document.getElementById('ns-email').value.trim(),desig=document.getElementById('ns-desig').value.trim();
+  if(!name||!email){showToast('Fill name and email.','error');return;}
+  const btn=document.getElementById('create-btn');setButtonLoading(btn,true);
+  try{
+    const cs=await getDoc(doc(db,'companies',U.companyId));const cname=cs.exists()?cs.data().name:'Company';
+    const result=await createStaff({name,email,role:staffRole,companyId:U.companyId,companyName:cname,createdBy:U.uid});
+    staffData={...result,designation:desig||staffRole,companyName:cname};
+    document.getElementById('staff-card-section').classList.remove('hidden');
+    document.getElementById('sc-email').textContent=email;document.getElementById('sc-uid').textContent=result.uniqueId;
+    staffCanvas=renderCardToElement('staff-card-canvas-wrap','staff',{name,email,role:staffRole,designation:desig||formatRole(staffRole),companyName:cname,uniqueId:result.uniqueId});
+    showToast(`${name} added!`,'success');btn.disabled=true;btn.textContent='✓ Created';
+  }catch(e){showToast('Error: '+e.message,'error');setButtonLoading(btn,false,'Create & Get Card →');}
+};
+window.dlStaffCard=()=>{if(staffCanvas&&staffData){downloadCard(staffCanvas,`${staffData.name}-zenda-card.png`);showToast('Downloaded!','success');}};
+window.waStaffCard=()=>{if(staffCanvas&&staffData)shareCardWhatsApp(staffCanvas,staffData.name+'-zenda-card');};
+
+// --- Delete Staff ---
+window.askDelete=(uid,name)=>{delUid=uid;document.getElementById('del-name').textContent=`Remove "${name}" from your company?`;document.getElementById('del-modal').classList.remove('hidden');};
+window.doDeleteStaff=async function(){
+  if(!delUid)return;const btn=document.getElementById('del-confirm-btn');setButtonLoading(btn,true);
+  try{await deleteDoc(doc(db,'users',delUid));closeModal('del-modal');showToast('Staff removed.','success');}
+  catch(e){showToast('Error: '+e.message,'error');}finally{setButtonLoading(btn,false,'Remove');}
+};
+
+// --- Profile ---
+window.openEdit=f=>{editField=f;document.getElementById('edit-title').textContent=f==='name'?'Edit Name':'Edit Email';document.getElementById('edit-label').textContent=f==='name'?'Full Name':'Email';document.getElementById('edit-input').type=f==='email'?'email':'text';document.getElementById('edit-input').value=U[f];document.getElementById('edit-modal').classList.remove('hidden');};
+window.saveEdit=async function(){
+  const val=document.getElementById('edit-input').value.trim();if(!val){showToast('Cannot be empty.','error');return;}
+  try{await updateUserProfile(U.uid,{[editField]:val});U[editField]=val;if(editField==='name'){document.getElementById('pf-name').textContent=val;document.getElementById('prof-name').textContent=val;document.getElementById('topbar-name').textContent=val.split(' ')[0];}else document.getElementById('pf-email').textContent=val;closeModal('edit-modal');showToast('Updated!','success');}
+  catch(e){showToast('Error: '+e.message,'error');}
+};
+window.copyCode=()=>copyToClipboard(U.uniqueId);
+window.changeAvatar=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const s=ev.target.result;['prof-av','topbar-avatar'].forEach(id=>{const el=document.getElementById(id);el.style.background='none';el.innerHTML=`<img src="${s}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;});showToast('Photo updated!','success');};r.readAsDataURL(f);};
+
+// --- Apps ---
+window.openApp=id=>{const a=APP_REGISTRY[id];if(a)window.open(`${a.path}?uid=${U.uid}&companyId=${U.companyId}&role=${U.role}`,'_blank');};
+window.openAppLibrary=()=>{getInstalledApps(U.uid).then(ids=>{renderAppLibrary(ids,document.getElementById('app-lib-grid'));document.getElementById('app-lib-modal').classList.remove('hidden');});};
+window.installAppById=async id=>{await installApp(U.uid,id);showToast(APP_REGISTRY[id]?.name+' installed!','success');const ids=await getInstalledApps(U.uid);renderAppLibrary(ids,document.getElementById('app-lib-grid'));};
+
+// --- Sidebar ---
+window.toggleSidebar=()=>{const s=document.getElementById('sidebar'),o=document.getElementById('sidebar-overlay');s.classList.toggle('open');o.classList.toggle('visible',s.classList.contains('open'));};
+window.closeSidebar=()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('visible');};
+
+// --- Logout ---
+window.handleLogout=async()=>{unsubs.forEach(f=>f?.());await logout();};
+
+function esc(s=''){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+init().catch(console.error);
 </script>
-
 </body>
 </html>
