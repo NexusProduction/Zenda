@@ -3,11 +3,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   doc, setDoc, getDoc, collection, query,
-  where, getDocs, onSnapshot, updateDoc
+  where, getDocs, onSnapshot, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { generateStaffId } from './utils.js';
 
-// Secondary Firebase app — prevents owner being signed out when creating staff
 let _secondaryApp = null;
 function getSecondaryAuth() {
   if (!_secondaryApp) {
@@ -16,21 +15,20 @@ function getSecondaryAuth() {
   return getAuth(_secondaryApp);
 }
 
-export async function createStaff({ name, email, role, companyId, companyName, createdBy }) {
+export async function createStaff({ name, email, password, role, companyId, companyName, createdBy, designation }) {
+  // Use provided password or fall back to uniqueId
   const uniqueId = generateStaffId(role);
-  const staffPassword = uniqueId;
+  const staffPassword = password || uniqueId;
 
   try {
     const secondaryAuth = getSecondaryAuth();
     const cred = await createUserWithEmailAndPassword(secondaryAuth, email, staffPassword);
     const uid = cred.user.uid;
-
-    // Sign out from secondary immediately
     await secondaryAuth.signOut();
 
     await setDoc(doc(db, 'users', uid), {
       name, email, role, companyId, uniqueId,
-      designation: role.charAt(0).toUpperCase() + role.slice(1),
+      designation: designation || role.charAt(0).toUpperCase() + role.slice(1),
       createdBy,
       createdAt: new Date().toISOString()
     });
@@ -43,7 +41,7 @@ export async function createStaff({ name, email, role, companyId, companyName, c
 
     await setDoc(doc(db, 'installedApps', uid), { apps: ['calculator'] });
 
-    return { uid, name, email, role, uniqueId, companyId, companyName };
+    return { uid, name, email, role, uniqueId, companyId, companyName, designation: designation || role };
 
   } catch (err) {
     if (err.code === 'auth/email-already-in-use') {
@@ -53,10 +51,13 @@ export async function createStaff({ name, email, role, companyId, companyName, c
   }
 }
 
-export async function getCompanyStaff(companyId) {
-  const q = query(collection(db, 'users'), where('companyId', '==', companyId));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+export async function deleteStaffMember(uid) {
+  // Delete all user data
+  await deleteDoc(doc(db, 'users', uid));
+  // Clean up related data
+  try { await deleteDoc(doc(db, 'installedApps', uid)); } catch(e) {}
+  try { await deleteDoc(doc(db, 'appData', uid, 'apps', 'calculator')); } catch(e) {}
+  try { await deleteDoc(doc(db, 'appData', uid, 'apps', 'calendar')); } catch(e) {}
 }
 
 export function listenCompanyStaff(companyId, onUpdate) {
@@ -79,22 +80,4 @@ export async function getAssignableStaff(companyId, currentUserId) {
 
 export async function updateUserProfile(uid, updates) {
   await updateDoc(doc(db, 'users', uid), updates);
-}
-
-export function renderStaffItem(member) {
-  const roleColors = { owner: 'badge-owner', manager: 'badge-manager', staff: 'badge-staff' };
-  const initials = member.name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('');
-  return `
-    <div class="staff-list-item" data-uid="${member.uid}">
-      <div class="avatar avatar-md" style="background:#EEF2FF;color:#4F46E5;font-weight:700;font-size:.85rem">${initials}</div>
-      <div>
-        <div style="font-size:.88rem;font-weight:600">${esc(member.name)}</div>
-        <div style="font-size:.76rem;color:#9CA3AF">${esc(member.email)}</div>
-      </div>
-      <span class="badge ${roleColors[member.role] || 'badge-info'}">${member.designation || member.role}</span>
-    </div>`;
-}
-
-function esc(s = '') {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
