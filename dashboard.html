@@ -360,16 +360,19 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Full Name *</label>
-            <input class="form-input" id="cs-name" type="text" placeholder="Jane Doe" maxlength="50">
+            <input class="form-input" id="cs-name" type="text" placeholder="Jane Doe" maxlength="50" oninput="clearCSErr('cs-name')">
+            <div class="form-error hidden" id="err-cs-name"></div>
           </div>
           <div class="form-group">
             <label class="form-label">Email Address *</label>
-            <input class="form-input" id="cs-email" type="email" placeholder="jane@email.com">
+            <input class="form-input" id="cs-email" type="email" placeholder="jane@email.com" oninput="clearCSErr('cs-email')">
+            <div class="form-error hidden" id="err-cs-email"></div>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">Designation / Job Title *</label>
-          <input class="form-input" id="cs-designation" type="text" placeholder="e.g. Senior Developer, Marketing Lead">
+          <input class="form-input" id="cs-designation" type="text" placeholder="e.g. Senior Developer, Marketing Lead" oninput="clearCSErr('cs-designation')">
+        <div class="form-error hidden" id="err-cs-designation"></div>
         </div>
       </div>
     </div>
@@ -387,17 +390,18 @@
           <div class="form-hint" style="margin-top:5px">This is shown on their ID card and used as their login password.</div>
         </div>
         <div class="form-group">
-          <label class="form-label">Custom Password <span style="color:#9CA3AF;font-weight:400">(optional — leave blank to use Unique ID)</span></label>
+          <label class="form-label">Password <span style="color:#EF4444;font-weight:600">*</span> <span style="color:#9CA3AF;font-weight:400">(staff uses this to login)</span></label>
           <div class="pwd-wrap">
-            <input class="form-input" id="cs-password" type="password" placeholder="Leave blank to use Unique ID above">
+            <input class="form-input" id="cs-password" type="password" placeholder="Min. 6 characters" oninput="clearCSErr('cs-password')">
             <button type="button" class="pwd-toggle" onclick="togglePwd('cs-password',this)">👁</button>
           </div>
+          <div class="form-error hidden" id="err-cs-password"></div>
         </div>
       </div>
     </div>
 
     <div style="background:#DBEAFE;border-radius:12px;padding:12px 15px;font-size:.8rem;color:#1D4ED8;margin-bottom:14px;line-height:1.6">
-      ℹ️ Staff will login using their <strong>email</strong> + <strong>Unique ID</strong> (or custom password if set).<br>
+      ℹ️ Staff will login using <strong>email + password</strong> you set here, then verify with OTP sent to their email.<br>
       Their ID card will show the Unique ID.
     </div>
 
@@ -878,15 +882,46 @@ window.togglePwd=function(id,btn){
   btn.textContent=inp.type==='password'?'👁':'🙈';
 };
 
+// ── CS field error helpers ──
+window.clearCSErr=function(id){
+  document.getElementById(id)?.classList.remove('form-input-err');
+  const e=document.getElementById('err-'+id);
+  if(e){e.textContent='';e.classList.add('hidden');}
+};
+function setCSErr(id, msg){
+  const inp=document.getElementById(id);
+  if(inp){inp.classList.add('form-input-err');inp.style.borderColor='#EF4444';inp.style.background='#FFF5F5';}
+  const e=document.getElementById('err-'+id);
+  if(e){e.textContent=msg;e.classList.remove('hidden');e.style.color='#EF4444';}
+}
+function clearAllCSErrs(){
+  ['cs-name','cs-email','cs-designation','cs-password'].forEach(id=>{
+    const inp=document.getElementById(id);
+    if(inp){inp.style.borderColor='';inp.style.background='';}
+    const e=document.getElementById('err-'+id);
+    if(e){e.textContent='';e.classList.add('hidden');}
+  });
+}
+
 window.handleCreateStaff=async function(){
   const name=document.getElementById('cs-name').value.trim();
   const email=document.getElementById('cs-email').value.trim();
   const desig=document.getElementById('cs-designation').value.trim();
-  const customPwd=document.getElementById('cs-password').value;
+  const customPwd=document.getElementById('cs-password').value.trim();
 
-  if(!name){showToast('Enter full name.','error');return;}
-  if(!email){showToast('Enter email address.','error');return;}
-  if(!desig){showToast('Enter designation/job title.','error');return;}
+  clearAllCSErrs();
+  let hasErr=false;
+  if(!name){setCSErr('cs-name','Full name is required.');hasErr=true;}
+  if(!email){setCSErr('cs-email','Email address is required.');hasErr=true;}
+  else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setCSErr('cs-email','Enter a valid email address.');hasErr=true;}
+  if(!desig){setCSErr('cs-designation','Designation/job title is required.');hasErr=true;}
+  if(!customPwd){setCSErr('cs-password','Password is required — staff will use this to login.');hasErr=true;}
+  else if(customPwd.length<6){setCSErr('cs-password','Password must be at least 6 characters.');hasErr=true;}
+  if(hasErr){
+    // Scroll to first error
+    document.querySelector('.form-input-err')?.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
 
   const btn=document.getElementById('create-staff-submit-btn');
   setButtonLoading(btn,true);
@@ -895,7 +930,7 @@ window.handleCreateStaff=async function(){
     const companyName=cSnap.exists()?cSnap.data().name:'Company';
     const result=await createStaff({
       name, email,
-      password: customPwd||null,
+      password: customPwd,
       role: newRole,
       companyId: CU.companyId,
       companyName,
@@ -912,7 +947,7 @@ window.handleCreateStaff=async function(){
       <div class="cred-row"><span class="cred-label">Name</span><span class="cred-val">${esc(name)}</span></div>
       <div class="cred-row"><span class="cred-label">Email</span><span class="cred-val">${esc(email)}</span></div>
       <div class="cred-row"><span class="cred-label">Unique ID</span><span class="cred-val">${result.uniqueId}</span></div>
-      <div class="cred-row"><span class="cred-label">Password</span><span class="cred-val">${customPwd?'(custom set)':result.uniqueId}</span></div>
+      <div class="cred-row"><span class="cred-label">Password</span><span class="cred-val">${esc(customPwd)}</span></div>
       <div class="cred-row"><span class="cred-label">Role</span><span class="cred-val">${esc(newRole)}</span></div>`;
     newCanvas=renderCardToElement('new-card-container','staff',{
       name:result.name,email:result.email,role:newRole,
