@@ -138,7 +138,7 @@ async function logLoginNotification(uid, userData) {
 // =============================================
 export async function logout() {
   await signOut(auth);
-  window.location.href = '../login.html';
+  window.location.href = 'login.html';
 }
 
 // =============================================
@@ -169,7 +169,7 @@ export async function getCurrentUser() {
 // =============================================
 //  AUTH GUARD — redirect if not logged in
 // =============================================
-export function requireAuth(redirectTo = '../login.html') {
+export function requireAuth(redirectTo = 'login.html') {
   return new Promise((resolve) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       unsubscribe();
