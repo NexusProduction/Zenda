@@ -1,308 +1,233 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calendar — Zenda Apps</title>
-  <link rel="stylesheet" href="global.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2310B981'/><text y='24' x='5' font-size='20'>📅</text></svg>">
-  <style>
-    body { background: #F0FFF8; min-height: 100vh; display: flex; flex-direction: column; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calendar — Zenda</title>
+<link rel="stylesheet" href="global.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2310B981'/><text y='24' x='5' font-size='20'>📅</text></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font-family:'DM Sans',sans-serif}
 
-    .app-header {
-      background: white;
-      border-bottom: 1px solid var(--border);
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .app-header-left { display: flex; align-items: center; gap: 10px; }
-    .app-header-icon {
-      width: 34px; height: 34px;
-      background: #ECFDF5;
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1rem;
-    }
-    .app-header-title { font-family: var(--font-display); font-weight: 700; font-size: 1rem; }
+/* ── Header ── */
+.cal-appbar{background:white;border-bottom:1px solid #E5E7EB;padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.cal-appbar-left{display:flex;align-items:center;gap:10px}
+.cal-back{background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:.95rem;padding:6px 8px;border-radius:8px;transition:all .18s}
+.cal-back:hover{background:#F4F4F5;color:#111827}
+.cal-appbar-title{display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;font-weight:700;font-size:.95rem}
+.cal-appbar-icon{width:30px;height:30px;background:#ECFDF5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.cal-sync{font-size:.72rem;color:#9CA3AF;font-family:'Outfit',sans-serif}
 
-    .cal-wrapper {
-      flex: 1;
-      display: flex;
-      gap: 24px;
-      padding: 28px 28px;
-      max-width: 1100px;
-      margin: 0 auto;
-      width: 100%;
-    }
+/* ── Layout ── */
+.cal-layout{flex:1;display:flex;flex-direction:column;gap:0;max-width:1200px;margin:0 auto;width:100%;padding:16px;gap:14px}
+@media(min-width:900px){.cal-layout{flex-direction:row;align-items:flex-start;padding:24px}}
 
-    /* Calendar card */
-    .cal-main {
-      flex: 1;
-      background: white;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      box-shadow: 0 4px 20px rgba(16,185,129,0.08);
-      overflow: hidden;
-    }
+/* ── Calendar Panel ── */
+.cal-panel{background:white;border-radius:20px;border:1px solid #E5E7EB;overflow:hidden;box-shadow:0 4px 20px rgba(16,185,129,0.07);flex:1}
+.cal-head{background:linear-gradient(135deg,#064E3B,#059669,#10B981);padding:18px 20px;display:flex;align-items:center;justify-content:space-between}
+.cal-nav{width:34px;height:34px;background:rgba(255,255,255,0.15);border:none;color:white;border-radius:10px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:background .18s;flex-shrink:0}
+.cal-nav:hover{background:rgba(255,255,255,0.25)}
+.cal-head-center{text-align:center}
+.cal-month{font-family:'Outfit',sans-serif;font-weight:800;font-size:1.15rem;color:white;letter-spacing:-.01em}
+.cal-year{font-size:.75rem;color:rgba(255,255,255,.6);margin-top:1px}
+.today-btn{background:rgba(255,255,255,.15);border:none;color:rgba(255,255,255,.9);padding:5px 12px;border-radius:20px;font-family:'Outfit',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:background .18s;letter-spacing:.02em}
+.today-btn:hover{background:rgba(255,255,255,.25)}
 
-    .cal-header {
-      background: linear-gradient(135deg, #064E3B, #10B981);
-      padding: 20px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      color: white;
-    }
-    .cal-nav-btn {
-      background: rgba(255,255,255,0.15);
-      border: none;
-      color: white;
-      width: 34px; height: 34px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 1rem;
-      display: flex; align-items: center; justify-content: center;
-      transition: background var(--transition);
-    }
-    .cal-nav-btn:hover { background: rgba(255,255,255,0.25); }
-    .cal-month-title {
-      font-family: var(--font-display);
-      font-weight: 800;
-      font-size: 1.2rem;
-    }
+/* Day names */
+.cal-daynames{display:grid;grid-template-columns:repeat(7,1fr);padding:10px 12px 4px;border-bottom:1px solid #F3F4F6}
+.cal-dayname{text-align:center;font-family:'Outfit',sans-serif;font-size:.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;padding:3px}
 
-    /* Day headers */
-    .cal-day-headers {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      padding: 12px 16px 4px;
-    }
-    .cal-day-header {
-      text-align: center;
-      font-family: var(--font-display);
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      padding: 4px;
-    }
+/* Grid */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:6px 8px 10px;gap:2px}
+.cal-day{min-height:52px;border-radius:10px;cursor:pointer;transition:all .15s;padding:6px 6px 4px;position:relative;display:flex;flex-direction:column;gap:2px}
+.cal-day:hover:not(.empty){background:#F0FDF4}
+.cal-day.empty{cursor:default;pointer-events:none}
+.cal-day.other-month .cal-date{color:#D1D5DB}
+.cal-day .cal-date{font-family:'Outfit',sans-serif;font-size:.8rem;font-weight:600;color:#374151;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
+.cal-day.today .cal-date{background:linear-gradient(135deg,#059669,#10B981);color:white;font-weight:800}
+.cal-day.selected{background:#F0FDF4;outline:2px solid #10B981}
+.cal-day.selected .cal-date{background:#10B981;color:white}
+.cal-day.today.selected .cal-date{background:linear-gradient(135deg,#065F46,#059669)}
 
-    /* Days grid */
-    .cal-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      padding: 4px 16px 16px;
-      gap: 3px;
-    }
-    .cal-day {
-      aspect-ratio: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all var(--transition);
-      font-family: var(--font-display);
-      font-size: 0.88rem;
-      font-weight: 500;
-      color: var(--text-primary);
-      position: relative;
-      gap: 2px;
-    }
-    .cal-day:hover { background: var(--secondary-light); }
-    .cal-day.empty { cursor: default; }
-    .cal-day.empty:hover { background: transparent; }
-    .cal-day.today {
-      background: linear-gradient(135deg, #065F46, #10B981);
-      color: white;
-      font-weight: 800;
-    }
-    .cal-day.selected {
-      background: var(--secondary-light);
-      border: 2px solid var(--secondary);
-      font-weight: 700;
-    }
-    .cal-day.has-event::after {
-      content: '';
-      width: 5px; height: 5px;
-      background: var(--secondary);
-      border-radius: 50%;
-      position: absolute;
-      bottom: 4px;
-    }
-    .cal-day.today.has-event::after { background: white; }
-    .cal-day.other-month { color: var(--text-muted); opacity: 0.4; }
+/* Event pills on calendar */
+.cal-event-pill{border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:600;font-family:'Outfit',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;max-width:100%}
+.cal-more-events{font-size:.58rem;color:#6B7280;padding:1px 4px;font-family:'Outfit',sans-serif;font-weight:600}
 
-    /* Events panel */
-    .events-panel {
-      width: 280px;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
+/* ── Right Panel ── */
+.cal-right{display:flex;flex-direction:column;gap:12px;width:100%}
+@media(min-width:900px){.cal-right{width:300px;flex-shrink:0}}
 
-    .events-card {
-      background: white;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      overflow: hidden;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
-    }
+/* Day events card */
+.day-events-card{background:white;border-radius:18px;border:1px solid #E5E7EB;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,0.05)}
+.day-events-head{padding:14px 16px 10px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between}
+.day-events-date{font-family:'Outfit',sans-serif;font-weight:700;font-size:.88rem;color:#111827}
+.day-events-count{font-family:'Outfit',sans-serif;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#ECFDF5;color:#10B981}
+.day-events-list{padding:10px;max-height:240px;overflow-y:auto}
 
-    .events-card-header {
-      padding: 16px 18px 12px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .events-date-title {
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 0.9rem;
-    }
+/* Event items in panel */
+.event-item{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;transition:all .15s;cursor:default}
+.event-item:hover{filter:brightness(.97)}
+.event-item.high{border-color:#EF4444;background:#FEF2F2}
+.event-item.med{border-color:#F59E0B;background:#FFFBEB}
+.event-item.low{border-color:#10B981;background:#F0FDF4}
+.event-item.task{border-color:#6366F1;background:#EEF2FF}
+.event-content{flex:1;min-width:0}
+.event-title{font-size:.82rem;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event-time{font-size:.7rem;color:#9CA3AF;margin-top:2px;font-family:'DM Mono',monospace}
+.event-visibility{font-size:.62rem;font-weight:700;color:#6B7280;margin-top:2px}
+.event-del{background:none;border:none;cursor:pointer;color:#D1D5DB;font-size:.78rem;padding:3px;border-radius:5px;transition:all .15s;flex-shrink:0;opacity:0;align-self:flex-start;margin-top:2px}
+.event-item:hover .event-del{opacity:1}
+.event-del:hover{color:#EF4444;background:#FEE2E2}
+.no-events{text-align:center;padding:24px 16px;color:#9CA3AF;font-size:.78rem}
 
-    .events-list {
-      padding: 10px;
-      max-height: 260px;
-      overflow-y: auto;
-    }
+/* Add event card */
+.add-event-card{background:white;border-radius:18px;border:1px solid #E5E7EB;padding:16px;box-shadow:0 3px 12px rgba(0,0,0,0.05)}
+.add-event-head{font-family:'Outfit',sans-serif;font-weight:700;font-size:.88rem;color:#111827;margin-bottom:13px;display:flex;align-items:center;gap:6px}
+.ae-form{display:flex;flex-direction:column;gap:9px}
+.ae-input{width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;transition:all .18s;background:white;color:#111827}
+.ae-input:focus{border-color:#10B981;box-shadow:0 0 0 3px rgba(16,185,129,.1)}
+.ae-input::placeholder{color:#9CA3AF}
+.ae-select{width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;transition:all .18s;background:white;color:#111827;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.ae-select:focus{border-color:#10B981;box-shadow:0 0 0 3px rgba(16,185,129,.1)}
+.ae-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ae-label{font-family:'Outfit',sans-serif;font-size:.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;display:block}
 
-    .event-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: var(--radius);
-      margin-bottom: 6px;
-      border-left: 3px solid var(--secondary);
-      background: var(--secondary-light);
-    }
-    .event-item.priority-high  { border-color: var(--danger); background: var(--danger-light); }
-    .event-item.priority-med   { border-color: var(--warning); background: var(--warning-light); }
-    .event-item.priority-low   { border-color: var(--secondary); background: var(--secondary-light); }
+/* Priority colors */
+.ae-priority{display:flex;gap:6px;align-items:center}
+.prio-btn{flex:1;padding:7px 4px;border:1.5px solid #E5E7EB;border-radius:8px;font-family:'Outfit',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;background:white}
+.prio-btn.selected-high{background:#FEE2E2;border-color:#EF4444;color:#EF4444}
+.prio-btn.selected-med{background:#FEF3C7;border-color:#F59E0B;color:#D97706}
+.prio-btn.selected-low{background:#ECFDF5;border-color:#10B981;color:#059669}
+.prio-btn:not([class*="selected"]):hover{background:#F9FAFB}
 
-    .event-title { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
-    .event-time  { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px; }
-    .event-delete {
-      margin-left: auto;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--text-muted);
-      font-size: 0.8rem;
-      padding: 2px;
-      opacity: 0;
-      transition: opacity var(--transition);
-    }
-    .event-item:hover .event-delete { opacity: 1; }
+.add-btn{width:100%;padding:11px;background:linear-gradient(135deg,#059669,#10B981);color:white;border:none;border-radius:10px;font-family:'Outfit',sans-serif;font-weight:700;font-size:.88rem;cursor:pointer;transition:all .18s;margin-top:2px}
+.add-btn:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.add-btn:active{transform:scale(.97)}
+.add-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
 
-    .events-empty {
-      text-align: center;
-      padding: 24px;
-      color: var(--text-muted);
-      font-size: 0.82rem;
-    }
+/* Toast */
+#toast-container{position:fixed;bottom:20px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{display:flex;align-items:center;gap:10px;padding:11px 15px;background:#1F2937;color:#fff;border-radius:12px;font-size:.82rem;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,0.2);animation:tIn .3s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px}
+.toast-success{background:#065F46}
+.toast-error{background:#991B1B}
+@keyframes tIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 
-    /* Add event form */
-    .add-event-card {
-      background: white;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      padding: 18px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
-    }
-    .add-event-title {
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 0.9rem;
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .add-event-form { display: flex; flex-direction: column; gap: 10px; }
-    .add-event-form .form-input { padding: 9px 12px; font-size: 0.88rem; }
-    .add-event-form select { 
-      padding: 9px 12px;
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 0.88rem;
-      font-family: var(--font-body);
-      background: var(--surface);
-      outline: none;
-      cursor: pointer;
-      transition: border-color var(--transition);
-    }
-    .add-event-form select:focus { border-color: var(--secondary); }
+/* Pill colors */
+.pill-high{background:#FEE2E2;color:#EF4444}
+.pill-med{background:#FEF3C7;color:#D97706}
+.pill-low{background:#ECFDF5;color:#059669}
+.pill-task{background:#EEF2FF;color:#6366F1}
 
-    @media (max-width: 768px) {
-      .cal-wrapper { flex-direction: column; padding: 16px; }
-      .events-panel { width: 100%; }
-    }
-  </style>
+@media(max-width:500px){
+  .cal-day{min-height:40px;padding:4px 3px 2px}
+  .cal-event-pill{display:none}
+  .cal-day.has-events::after{content:'';width:4px;height:4px;background:#10B981;border-radius:50%;position:absolute;bottom:3px;left:50%;transform:translateX(-50%)}
+}
+</style>
 </head>
 <body>
 
-<div class="app-header">
-  <div class="app-header-left">
-    <button onclick="window.close()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:4px 8px">←</button>
-    <div class="app-header-icon">📅</div>
-    <div class="app-header-title">Calendar</div>
+<div class="cal-appbar">
+  <div class="cal-appbar-left">
+    <button class="cal-back" onclick="window.close()">←</button>
+    <div class="cal-appbar-title"><div class="cal-appbar-icon">📅</div>Calendar</div>
   </div>
-  <div style="font-size:0.78rem;color:var(--text-muted)" id="sync-status">Syncing...</div>
+  <div class="cal-sync" id="sync-status">Syncing...</div>
 </div>
 
-<div class="cal-wrapper">
-  <!-- Main Calendar -->
-  <div class="cal-main">
-    <div class="cal-header">
-      <button class="cal-nav-btn" onclick="prevMonth()">‹</button>
-      <div class="cal-month-title" id="cal-month-title">Month Year</div>
-      <button class="cal-nav-btn" onclick="nextMonth()">›</button>
+<div class="cal-layout">
+  <!-- Calendar panel -->
+  <div class="cal-panel">
+    <div class="cal-head">
+      <button class="cal-nav" onclick="nav(-1)">‹</button>
+      <div class="cal-head-center">
+        <div class="cal-month" id="cal-month">Month Year</div>
+        <div class="cal-year" id="cal-year"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="today-btn" onclick="goToday()">Today</button>
+        <button class="cal-nav" onclick="nav(1)">›</button>
+      </div>
     </div>
-    <div class="cal-day-headers">
-      <div class="cal-day-header">Su</div>
-      <div class="cal-day-header">Mo</div>
-      <div class="cal-day-header">Tu</div>
-      <div class="cal-day-header">We</div>
-      <div class="cal-day-header">Th</div>
-      <div class="cal-day-header">Fr</div>
-      <div class="cal-day-header">Sa</div>
+    <div class="cal-daynames">
+      <div class="cal-dayname">Sun</div><div class="cal-dayname">Mon</div>
+      <div class="cal-dayname">Tue</div><div class="cal-dayname">Wed</div>
+      <div class="cal-dayname">Thu</div><div class="cal-dayname">Fri</div>
+      <div class="cal-dayname">Sat</div>
     </div>
     <div class="cal-grid" id="cal-grid"></div>
   </div>
 
-  <!-- Events Panel -->
-  <div class="events-panel">
-    <!-- Selected day events -->
-    <div class="events-card">
-      <div class="events-card-header">
-        <div class="events-date-title" id="events-date-title">Today's Events</div>
-        <span class="badge badge-success" id="events-count" style="display:none">0</span>
+  <!-- Right panel -->
+  <div class="cal-right">
+    <!-- Day events -->
+    <div class="day-events-card">
+      <div class="day-events-head">
+        <div class="day-events-date" id="day-events-title">Today</div>
+        <span class="day-events-count" id="day-events-count" style="display:none">0 events</span>
       </div>
-      <div class="events-list" id="events-list">
-        <div class="events-empty">No events for this day</div>
+      <div class="day-events-list" id="day-events-list">
+        <div class="no-events">Select a day to see events</div>
       </div>
     </div>
 
     <!-- Add event -->
     <div class="add-event-card">
-      <div class="add-event-title">➕ Add Event</div>
-      <div class="add-event-form">
-        <input class="form-input" id="event-title-input" type="text" placeholder="Event title" maxlength="50">
-        <input class="form-input" id="event-time-input" type="time">
-        <select id="event-priority">
-          <option value="low">🟢 Low Priority</option>
-          <option value="med" selected>🟡 Medium Priority</option>
-          <option value="high">🔴 High Priority</option>
-        </select>
-        <button class="btn btn-secondary w-full" onclick="addEvent()" id="add-event-btn">Add Event</button>
+      <div class="add-event-head">➕ Add Event</div>
+      <div class="ae-form">
+        <div>
+          <span class="ae-label">Event Title</span>
+          <input class="ae-input" id="ae-title" type="text" placeholder="Team meeting, deadline..." maxlength="60">
+        </div>
+        <div class="ae-row">
+          <div>
+            <span class="ae-label">Date</span>
+            <input class="ae-input" id="ae-date" type="date">
+          </div>
+          <div>
+            <span class="ae-label">Time (optional)</span>
+            <select class="ae-select" id="ae-time">
+              <option value="">No time</option>
+              <option value="06:00">6:00 AM</option><option value="06:30">6:30 AM</option>
+              <option value="07:00">7:00 AM</option><option value="07:30">7:30 AM</option>
+              <option value="08:00">8:00 AM</option><option value="08:30">8:30 AM</option>
+              <option value="09:00">9:00 AM</option><option value="09:30">9:30 AM</option>
+              <option value="10:00">10:00 AM</option><option value="10:30">10:30 AM</option>
+              <option value="11:00">11:00 AM</option><option value="11:30">11:30 AM</option>
+              <option value="12:00">12:00 PM</option><option value="12:30">12:30 PM</option>
+              <option value="13:00">1:00 PM</option><option value="13:30">1:30 PM</option>
+              <option value="14:00">2:00 PM</option><option value="14:30">2:30 PM</option>
+              <option value="15:00">3:00 PM</option><option value="15:30">3:30 PM</option>
+              <option value="16:00">4:00 PM</option><option value="16:30">4:30 PM</option>
+              <option value="17:00">5:00 PM</option><option value="17:30">5:30 PM</option>
+              <option value="18:00">6:00 PM</option><option value="18:30">6:30 PM</option>
+              <option value="19:00">7:00 PM</option><option value="19:30">7:30 PM</option>
+              <option value="20:00">8:00 PM</option><option value="20:30">8:30 PM</option>
+              <option value="21:00">9:00 PM</option><option value="21:30">9:30 PM</option>
+              <option value="22:00">10:00 PM</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <span class="ae-label">Priority</span>
+          <div class="ae-priority">
+            <button class="prio-btn selected-high" id="prio-high" onclick="setPrio('high')">🔴 High</button>
+            <button class="prio-btn" id="prio-med" onclick="setPrio('med')">🟡 Medium</button>
+            <button class="prio-btn" id="prio-low" onclick="setPrio('low')">🟢 Low</button>
+          </div>
+        </div>
+        <div id="visibility-section">
+          <span class="ae-label">Visible To (Company)</span>
+          <select class="ae-select" id="ae-visibility">
+            <option value="self">👤 Only me</option>
+            <option value="all">🌐 Everyone in company</option>
+            <option value="owner">👑 Owner only</option>
+            <option value="manager">🎯 Managers & Owner</option>
+            <option value="staff">💼 Staff only</option>
+          </select>
+        </div>
+        <button class="add-btn" id="add-event-btn" onclick="addEvent()">Add Event</button>
       </div>
     </div>
   </div>
@@ -311,199 +236,251 @@
 <div id="toast-container"></div>
 
 <script type="module">
-  import { loadCalendarEvents, addCalendarEvent, deleteCalendarEvent } from './apps.js';
-  import { showToast } from './utils.js';
+import { loadCalendarEvents, addCalendarEvent, deleteCalendarEvent, loadCompanyEvents } from './apps.js';
 
-  const params = new URLSearchParams(window.location.search);
-  const uid    = params.get('uid');
-  const syncEl = document.getElementById('sync-status');
+const params = new URLSearchParams(location.search);
+const uid = params.get('uid');
+const syncEl = document.getElementById('sync-status');
 
-  let events      = [];
-  let currentDate = new Date();
-  let selectedDay = new Date();
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+let events = [];
+let companyEvents = [];
+let curDate = new Date();
+let selectedDay = new Date();
+let selectedPrio = 'high';
+let userRole = 'staff';
+let companyId = null;
 
-  // ---- Load events ----
-  async function loadEvents() {
-    if (!uid) { syncEl.textContent = 'Not synced'; return; }
-    try {
-      events = await loadCalendarEvents(uid);
-      renderCalendar();
-      renderDayEvents(selectedDay);
-      syncEl.textContent = 'Synced ✓';
-    } catch {
-      syncEl.textContent = 'Offline';
-    }
+// Set today's date as default
+document.getElementById('ae-date').value = dateKey(new Date());
+
+// Load user role from session
+try {
+  const sess = sessionStorage.getItem('zenda_user');
+  if (sess) {
+    const u = JSON.parse(sess);
+    userRole = u.role || 'staff';
+    companyId = u.companyId || null;
   }
+} catch(e){}
 
-  // ---- Date helpers ----
-  function dateKey(d) {
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  }
+// ── Priority selector ──
+window.setPrio = function(p) {
+  selectedPrio = p;
+  ['high','med','low'].forEach(x=>{
+    const btn=document.getElementById('prio-'+x);
+    btn.className = 'prio-btn';
+    if(x===p) btn.classList.add('selected-'+x);
+  });
+};
 
-  function isToday(d) {
-    const now = new Date();
-    return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }
+// ── Date helpers ──
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function isToday(d) {
+  const n=new Date(); return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();
+}
+function isSameDay(a,b) {
+  return a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
+}
+function format12hr(t) {
+  if(!t) return '';
+  const [h,m]=t.split(':').map(Number);
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+}
 
-  function isSameDay(a, b) {
-    return a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
-  }
-
-  // ---- Render calendar grid ----
-  function renderCalendar() {
-    const year  = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    document.getElementById('cal-month-title').textContent = `${MONTHS[month]} ${year}`;
-
-    const firstDay  = new Date(year, month, 1).getDay();
-    const daysCount = new Date(year, month + 1, 0).getDate();
-    const prevDays  = new Date(year, month, 0).getDate();
-
-    const grid = document.getElementById('cal-grid');
-    grid.innerHTML = '';
-
-    // Previous month's days
-    for (let i = firstDay - 1; i >= 0; i--) {
-      const d = document.createElement('div');
-      d.className = 'cal-day other-month';
-      d.textContent = prevDays - i;
-      grid.appendChild(d);
-    }
-
-    // Current month's days
-    for (let day = 1; day <= daysCount; day++) {
-      const d = new Date(year, month, day);
-      const key = dateKey(d);
-      const dayEvents = events.filter(e => e.date === key);
-
-      const el = document.createElement('div');
-      el.className = 'cal-day';
-      if (isToday(d)) el.classList.add('today');
-      if (isSameDay(d, selectedDay)) el.classList.add('selected');
-      if (dayEvents.length) el.classList.add('has-event');
-      el.textContent = day;
-      el.onclick = () => selectDay(d);
-      grid.appendChild(el);
-    }
-
-    // Next month's days
-    const totalCells = 42; // 6 rows × 7
-    const remaining  = totalCells - (firstDay + daysCount);
-    for (let day = 1; day <= remaining; day++) {
-      const d = document.createElement('div');
-      d.className = 'cal-day other-month';
-      d.textContent = day;
-      grid.appendChild(d);
-    }
-  }
-
-  // ---- Select a day ----
-  function selectDay(d) {
-    selectedDay = d;
+// ── Load events ──
+async function loadAll() {
+  if (!uid) { syncEl.textContent = 'Not synced'; renderCalendar(); showDayEvents(selectedDay); return; }
+  try {
+    events = await loadCalendarEvents(uid);
+    if (companyId) companyEvents = await loadCompanyEvents(companyId, userRole);
+    syncEl.textContent = '✓ Synced';
     renderCalendar();
-    renderDayEvents(d);
+    showDayEvents(selectedDay);
+  } catch(e) { syncEl.textContent = 'Offline'; console.error(e); }
+}
+
+function getAllEvents() {
+  // Merge personal + company events, deduplicate by id
+  const seen = new Set();
+  const all = [...events, ...companyEvents].filter(e=>{
+    if(seen.has(e.id)) return false;
+    seen.add(e.id); return true;
+  });
+  return all;
+}
+
+// ── Render calendar ──
+function renderCalendar() {
+  const y=curDate.getFullYear(), m=curDate.getMonth();
+  document.getElementById('cal-month').textContent = MONTHS[m];
+  document.getElementById('cal-year').textContent = y;
+
+  const firstDay = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const prevDays = new Date(y,m,0).getDate();
+  const allEvs = getAllEvents();
+
+  const grid = document.getElementById('cal-grid');
+  let html = '';
+
+  // Prev month days
+  for(let i=firstDay-1;i>=0;i--) {
+    html += `<div class="cal-day empty other-month"><div class="cal-date">${prevDays-i}</div></div>`;
   }
 
-  // ---- Render day events ----
-  function renderDayEvents(d) {
+  // Current month
+  for(let day=1;day<=daysInMonth;day++) {
+    const d = new Date(y,m,day);
     const key = dateKey(d);
-    const dayEvents = events.filter(e => e.date === key).sort((a,b) => (a.time||'').localeCompare(b.time||''));
-    const title = isToday(d) ? "Today's Events" : `Events — ${d.getDate()} ${MONTHS[d.getMonth()]}`;
-    document.getElementById('events-date-title').textContent = title;
+    const dayEvs = allEvs.filter(e=>e.date===key).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    const todayCls = isToday(d) ? ' today' : '';
+    const selCls = isSameDay(d,selectedDay) ? ' selected' : '';
+    const hasCls = dayEvs.length ? ' has-events' : '';
 
-    const countEl = document.getElementById('events-count');
-    if (dayEvents.length) {
-      countEl.textContent = dayEvents.length;
-      countEl.style.display = 'inline-flex';
-    } else {
-      countEl.style.display = 'none';
-    }
+    // Show up to 2 event pills
+    const pills = dayEvs.slice(0,2).map(ev=>{
+      const pillCls = `pill-${ev.type==='task'?'task':ev.priority||'low'}`;
+      const label = ev.time ? format12hr(ev.time)+' '+ev.title : ev.title;
+      return `<div class="cal-event-pill ${pillCls}">${escHtml(label)}</div>`;
+    }).join('');
+    const more = dayEvs.length>2 ? `<div class="cal-more-events">+${dayEvs.length-2}</div>` : '';
 
-    const list = document.getElementById('events-list');
-    if (!dayEvents.length) {
-      list.innerHTML = '<div class="events-empty">No events for this day</div>';
-      return;
-    }
-    list.innerHTML = dayEvents.map(ev => `
-      <div class="event-item priority-${ev.priority || 'low'}">
-        <div style="flex:1">
-          <div class="event-title">${escapeHtml(ev.title)}</div>
-          ${ev.time ? `<div class="event-time">⏰ ${ev.time}</div>` : ''}
-        </div>
-        <button class="event-delete" onclick="deleteEvent('${ev.id}')" title="Delete">✕</button>
+    html += `<div class="cal-day${todayCls}${selCls}${hasCls}" onclick="selectDay(${y},${m},${day})">
+      <div class="cal-date">${day}</div>
+      ${pills}${more}
+    </div>`;
+  }
+
+  // Next month filler
+  const total = firstDay + daysInMonth;
+  const rows = Math.ceil(total/7);
+  const cells = rows*7;
+  for(let i=1;i<=cells-total;i++) {
+    html += `<div class="cal-day empty other-month"><div class="cal-date">${i}</div></div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+// ── Select day ──
+window.selectDay = function(y,m,day) {
+  selectedDay = new Date(y,m,day);
+  document.getElementById('ae-date').value = dateKey(selectedDay);
+  renderCalendar();
+  showDayEvents(selectedDay);
+};
+
+window.goToday = function() {
+  curDate = new Date(); selectedDay = new Date();
+  document.getElementById('ae-date').value = dateKey(selectedDay);
+  renderCalendar(); showDayEvents(selectedDay);
+};
+
+window.nav = function(dir) {
+  curDate = new Date(curDate.getFullYear(), curDate.getMonth()+dir, 1);
+  renderCalendar();
+};
+
+// ── Show day events ──
+function showDayEvents(d) {
+  const key = dateKey(d);
+  const allEvs = getAllEvents();
+  const dayEvs = allEvs.filter(e=>e.date===key).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const isTod = isToday(d);
+  document.getElementById('day-events-title').textContent =
+    isTod ? `Today, ${d.getDate()} ${months[d.getMonth()]}` : `${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+
+  const countEl = document.getElementById('day-events-count');
+  if(dayEvs.length){ countEl.textContent=dayEvs.length+' event'+(dayEvs.length>1?'s':''); countEl.style.display=''; }
+  else { countEl.style.display='none'; }
+
+  const list = document.getElementById('day-events-list');
+  if(!dayEvs.length){ list.innerHTML='<div class="no-events">✨ No events — enjoy your day!</div>'; return; }
+
+  list.innerHTML = dayEvs.map(ev=>{
+    const cls = ev.type==='task'?'task':(ev.priority||'low');
+    const vis = ev.visibility && ev.visibility!=='self' ? visLabel(ev.visibility) : '';
+    const isOwn = ev.createdBy===uid || (!ev.companyEvent);
+    return `<div class="event-item ${cls}">
+      <div class="event-content">
+        <div class="event-title">${escHtml(ev.title)}</div>
+        ${ev.time?`<div class="event-time">⏰ ${format12hr(ev.time)}</div>`:''}
+        ${vis?`<div class="event-visibility">👁 ${vis}</div>`:''}
+        ${ev.type==='task'?`<div class="event-visibility" style="color:#6366F1">📋 Task</div>`:''}
       </div>
-    `).join('');
-  }
+      ${isOwn?`<button class="event-del" onclick="delEvent('${ev.id}')" title="Delete">✕</button>`:''}
+    </div>`;
+  }).join('');
+}
 
-  // ---- Add event ----
-  window.addEvent = async function() {
-    const title    = document.getElementById('event-title-input').value.trim();
-    const time     = document.getElementById('event-time-input').value;
-    const priority = document.getElementById('event-priority').value;
+function visLabel(v){const m={all:'Everyone',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'};return m[v]||''}
 
-    if (!title) { showToast('Enter an event title.', 'error'); return; }
+// ── Add event ──
+window.addEvent = async function() {
+  const title = document.getElementById('ae-title').value.trim();
+  const date  = document.getElementById('ae-date').value;
+  const time  = document.getElementById('ae-time').value;
+  const vis   = document.getElementById('ae-visibility').value;
 
-    const btn = document.getElementById('add-event-btn');
-    btn.disabled = true;
+  if(!title){ toast('Enter an event title.','error'); return; }
+  if(!date)  { toast('Pick a date.','error'); return; }
 
-    try {
-      const newEvent = {
-        title,
-        time,
-        priority,
-        date: dateKey(selectedDay)
-      };
+  const btn = document.getElementById('add-event-btn');
+  btn.disabled=true; btn.textContent='Adding...';
 
-      if (uid) {
-        events = await addCalendarEvent(uid, newEvent);
-        syncEl.textContent = 'Synced ✓';
-      } else {
-        newEvent.id = Date.now().toString();
-        events.push(newEvent);
-      }
-
-      document.getElementById('event-title-input').value = '';
-      document.getElementById('event-time-input').value  = '';
-      renderCalendar();
-      renderDayEvents(selectedDay);
-      showToast('Event added!', 'success');
-    } catch {
-      showToast('Failed to save event.', 'error');
-    } finally {
-      btn.disabled = false;
-    }
-  };
-
-  // ---- Delete event ----
-  window.deleteEvent = async function(id) {
-    if (uid) {
-      events = await deleteCalendarEvent(uid, id);
-      syncEl.textContent = 'Synced ✓';
+  try {
+    const newEv = { title, date, time, priority:selectedPrio, visibility:vis, type:'event', companyId };
+    if(uid) {
+      events = await addCalendarEvent(uid, newEv);
+      syncEl.textContent='✓ Synced';
     } else {
-      events = events.filter(e => e.id !== id);
+      newEv.id=Date.now().toString();
+      events.push(newEv);
     }
+    document.getElementById('ae-title').value='';
+    document.getElementById('ae-time').value='';
+    setPrio('high');
     renderCalendar();
-    renderDayEvents(selectedDay);
-    showToast('Event deleted.', 'info');
-  };
-
-  // ---- Navigation ----
-  window.prevMonth = function() {
-    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    // Select the new event's day
+    const [yyyy,mm,dd] = date.split('-').map(Number);
+    selectedDay = new Date(yyyy,mm-1,dd);
+    showDayEvents(selectedDay);
     renderCalendar();
-  };
-  window.nextMonth = function() {
-    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
-    renderCalendar();
-  };
+    toast('Event added! 📅','success');
+  } catch(e){ toast('Failed: '+e.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='Add Event'; }
+};
 
-  function escapeHtml(str = '') {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
+// ── Delete event ──
+window.delEvent = async function(id) {
+  try {
+    if(uid) { events=await deleteCalendarEvent(uid,id); syncEl.textContent='✓ Synced'; }
+    else events=events.filter(e=>e.id!==id);
+    renderCalendar(); showDayEvents(selectedDay);
+    toast('Event deleted.','info');
+  }catch(e){toast('Error: '+e.message,'error');}
+};
 
-  loadEvents();
+// ── Toast ──
+function toast(msg, type='info') {
+  let c=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className='toast toast-'+type;
+  t.innerHTML=`<span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+function escHtml(s=''){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+loadAll();
 </script>
 
 </body>
