@@ -17,6 +17,7 @@ const auth = getAuth(app);
 const db   = getFirestore(app);
 
 export { auth, db };
+export { firebaseConfig };
 
 export const EMAILJS_CONFIG = {
   publicKey:  "dg8t6B0d-DhPa3Tl6",
