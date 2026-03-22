@@ -1,260 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calculator — Zenda Apps</title>
-  <link rel="stylesheet" href="global.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366F1'/><text y='24' x='5' font-size='20'>🧮</text></svg>">
-  <style>
-    body { background: #F0F0FF; min-height: 100vh; display: flex; flex-direction: column; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calendar — Zenda</title>
+<link rel="stylesheet" href="global.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2310B981'/><text y='24' x='5' font-size='20'>📅</text></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font-family:'DM Sans',sans-serif}
 
-    .app-header {
-      background: white;
-      border-bottom: 1px solid var(--border);
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .app-header-left { display: flex; align-items: center; gap: 10px; }
-    .app-header-icon {
-      width: 34px; height: 34px;
-      background: #EEF2FF;
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1rem;
-    }
-    .app-header-title {
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 1rem;
-    }
+/* ── Header ── */
+.cal-appbar{background:white;border-bottom:1px solid #E5E7EB;padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.cal-appbar-left{display:flex;align-items:center;gap:10px}
+.cal-back{background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:.95rem;padding:6px 8px;border-radius:8px;transition:all .18s}
+.cal-back:hover{background:#F4F4F5;color:#111827}
+.cal-appbar-title{display:flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:.95rem}
+.cal-appbar-icon{width:30px;height:30px;background:#ECFDF5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.cal-sync{font-size:.72rem;color:#9CA3AF;font-family:'Inter',sans-serif}
 
-    .calc-wrapper {
-      flex: 1;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      gap: 24px;
-      padding: 32px 20px;
-    }
+/* ── Layout ── */
+.cal-layout{flex:1;display:flex;flex-direction:column;gap:0;max-width:1200px;margin:0 auto;width:100%;padding:16px;gap:14px}
+@media(min-width:900px){.cal-layout{flex-direction:row;align-items:flex-start;padding:24px}}
 
-    .calculator {
-      background: white;
-      border-radius: 24px;
-      border: 1px solid var(--border);
-      box-shadow: 0 8px 32px rgba(99,102,241,0.12);
-      overflow: hidden;
-      width: 320px;
-      flex-shrink: 0;
-    }
+/* ── Calendar Panel ── */
+.cal-panel{background:white;border-radius:20px;border:1px solid #E5E7EB;overflow:hidden;box-shadow:0 4px 20px rgba(16,185,129,0.07);flex:1}
+.cal-head{background:linear-gradient(135deg,#064E3B,#059669,#10B981);padding:18px 20px;display:flex;align-items:center;justify-content:space-between}
+.cal-nav{width:34px;height:34px;background:rgba(255,255,255,0.15);border:none;color:white;border-radius:10px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:background .18s;flex-shrink:0}
+.cal-nav:hover{background:rgba(255,255,255,0.25)}
+.cal-head-center{text-align:center}
+.cal-month{font-family:'Inter',sans-serif;font-weight:800;font-size:1.15rem;color:white;letter-spacing:-.01em}
+.cal-year{font-size:.75rem;color:rgba(255,255,255,.6);margin-top:1px}
+.today-btn{background:rgba(255,255,255,.15);border:none;color:rgba(255,255,255,.9);padding:5px 12px;border-radius:20px;font-family:'Inter',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:background .18s;letter-spacing:.02em}
+.today-btn:hover{background:rgba(255,255,255,.25)}
 
-    .calc-display {
-      background: linear-gradient(145deg, #1E1B4B, #4F46E5);
-      padding: 24px 20px 16px;
-      min-height: 120px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-    }
+/* Day names */
+.cal-daynames{display:grid;grid-template-columns:repeat(7,1fr);padding:10px 12px 4px;border-bottom:1px solid #F3F4F6}
+.cal-dayname{text-align:center;font-family:'Inter',sans-serif;font-size:.65rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;padding:3px}
 
-    .calc-expression {
-      font-family: var(--font-mono);
-      font-size: 0.82rem;
-      color: rgba(255,255,255,0.5);
-      text-align: right;
-      min-height: 20px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
+/* Grid */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:6px 8px 10px;gap:2px}
+.cal-day{min-height:52px;border-radius:10px;cursor:pointer;transition:all .15s;padding:6px 6px 4px;position:relative;display:flex;flex-direction:column;gap:2px}
+.cal-day:hover:not(.empty){background:#F0FDF4}
+.cal-day.empty{cursor:default;pointer-events:none}
+.cal-day.other-month .cal-date{color:#D1D5DB}
+.cal-day .cal-date{font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;color:#374151;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
+.cal-day.today .cal-date{background:linear-gradient(135deg,#059669,#10B981);color:white;font-weight:800}
+.cal-day.selected{background:#F0FDF4;outline:2px solid #10B981}
+.cal-day.selected .cal-date{background:#10B981;color:white}
+.cal-day.today.selected .cal-date{background:linear-gradient(135deg,#065F46,#059669)}
 
-    .calc-value {
-      font-family: var(--font-display);
-      font-size: 2.6rem;
-      font-weight: 800;
-      color: white;
-      text-align: right;
-      line-height: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      max-width: 100%;
-    }
+/* Event pills on calendar */
+.cal-event-pill{border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:600;font-family:'Inter',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;max-width:100%}
+.cal-more-events{font-size:.58rem;color:#6B7280;padding:1px 4px;font-family:'Inter',sans-serif;font-weight:600}
 
-    .calc-buttons {
-      padding: 12px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-    }
+/* ── Right Panel ── */
+.cal-right{display:flex;flex-direction:column;gap:12px;width:100%}
+@media(min-width:900px){.cal-right{width:300px;flex-shrink:0}}
 
-    .calc-btn {
-      height: 58px;
-      border: none;
-      border-radius: 14px;
-      font-family: var(--font-display);
-      font-size: 1.1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.12s ease;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .calc-btn:active { transform: scale(0.93); }
+/* Day events card */
+.day-events-card{background:white;border-radius:18px;border:1px solid #E5E7EB;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,0.05)}
+.day-events-head{padding:14px 16px 10px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between}
+.day-events-date{font-family:'Inter',sans-serif;font-weight:700;font-size:.88rem;color:#111827}
+.day-events-count{font-family:'Inter',sans-serif;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#ECFDF5;color:#10B981}
+.day-events-list{padding:10px;max-height:240px;overflow-y:auto}
 
-    .btn-num   { background: #F4F4F5; color: #111827; }
-    .btn-num:hover { background: #E4E4E7; }
+/* Event items in panel */
+.event-item{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;transition:all .15s;cursor:default}
+.event-item:hover{filter:brightness(.97)}
+.event-item.high{border-color:#EF4444;background:#FEF2F2}
+.event-item.med{border-color:#F59E0B;background:#FFFBEB}
+.event-item.low{border-color:#10B981;background:#F0FDF4}
+.event-item.task{border-color:#6366F1;background:#EEF2FF}
+.event-content{flex:1;min-width:0}
+.event-title{font-size:.82rem;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event-time{font-size:.7rem;color:#9CA3AF;margin-top:2px;font-family:'DM Mono',monospace}
+.event-visibility{font-size:.62rem;font-weight:700;color:#6B7280;margin-top:2px}
+.event-del{background:none;border:none;cursor:pointer;color:#D1D5DB;font-size:.78rem;padding:3px;border-radius:5px;transition:all .15s;flex-shrink:0;opacity:0;align-self:flex-start;margin-top:2px}
+.event-item:hover .event-del{opacity:1}
+.event-del:hover{color:#EF4444;background:#FEE2E2}
+.no-events{text-align:center;padding:24px 16px;color:#9CA3AF;font-size:.78rem}
 
-    .btn-op    { background: #EEF2FF; color: #4F46E5; }
-    .btn-op:hover { background: #E0E7FF; }
+/* Add event card */
+.add-event-card{background:white;border-radius:18px;border:1px solid #E5E7EB;padding:16px;box-shadow:0 3px 12px rgba(0,0,0,0.05)}
+.add-event-head{font-family:'Inter',sans-serif;font-weight:700;font-size:.88rem;color:#111827;margin-bottom:13px;display:flex;align-items:center;gap:6px}
+.ae-form{display:flex;flex-direction:column;gap:9px}
+.ae-input{width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;transition:all .18s;background:white;color:#111827}
+.ae-input:focus{border-color:#10B981;box-shadow:0 0 0 3px rgba(16,185,129,.1)}
+.ae-input::placeholder{color:#9CA3AF}
+.ae-select{width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:.84rem;outline:none;transition:all .18s;background:white;color:#111827;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.ae-select:focus{border-color:#10B981;box-shadow:0 0 0 3px rgba(16,185,129,.1)}
+.ae-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ae-label{font-family:'Inter',sans-serif;font-size:.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;display:block}
 
-    .btn-eq    { background: linear-gradient(135deg, #4F46E5, #7C3AED); color: white; }
-    .btn-eq:hover { filter: brightness(1.08); }
+/* Priority colors */
+.ae-priority{display:flex;gap:6px;align-items:center}
+.prio-btn{flex:1;padding:7px 4px;border:1.5px solid #E5E7EB;border-radius:8px;font-family:'Inter',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;background:white}
+.prio-btn.selected-high{background:#FEE2E2;border-color:#EF4444;color:#EF4444}
+.prio-btn.selected-med{background:#FEF3C7;border-color:#F59E0B;color:#D97706}
+.prio-btn.selected-low{background:#ECFDF5;border-color:#10B981;color:#059669}
+.prio-btn:not([class*="selected"]):hover{background:#F9FAFB}
 
-    .btn-clear { background: #FEE2E2; color: #DC2626; }
-    .btn-clear:hover { background: #FECACA; }
+.add-btn{width:100%;padding:11px;background:linear-gradient(135deg,#059669,#10B981);color:white;border:none;border-radius:10px;font-family:'Inter',sans-serif;font-weight:700;font-size:.88rem;cursor:pointer;transition:all .18s;margin-top:2px}
+.add-btn:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.add-btn:active{transform:scale(.97)}
+.add-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
 
-    .btn-zero  { grid-column: span 2; }
-    .btn-action { background: #F59E0B20; color: #B45309; }
-    .btn-action:hover { background: #F59E0B30; }
+/* Toast */
+#toast-container{position:fixed;bottom:20px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{display:flex;align-items:center;gap:10px;padding:11px 15px;background:#1F2937;color:#fff;border-radius:12px;font-size:.82rem;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,0.2);animation:tIn .3s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px}
+.toast-success{background:#065F46}
+.toast-error{background:#991B1B}
+@keyframes tIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 
-    /* History panel */
-    .history-panel {
-      background: white;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      width: 240px;
-      max-height: 480px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-    }
-    .history-header {
-      padding: 16px 18px 12px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
-    .history-title {
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 0.9rem;
-    }
-    .history-clear {
-      background: none;
-      border: none;
-      font-size: 0.75rem;
-      color: var(--danger);
-      cursor: pointer;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: var(--radius-sm);
-    }
-    .history-clear:hover { background: var(--danger-light); }
+/* Pill colors */
+.pill-high{background:#FEE2E2;color:#EF4444}
+.pill-med{background:#FEF3C7;color:#D97706}
+.pill-low{background:#ECFDF5;color:#059669}
+.pill-task{background:#EEF2FF;color:#6366F1}
 
-    .history-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-    }
-    .history-item {
-      padding: 10px 12px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      transition: background var(--transition);
-      border-bottom: 1px solid transparent;
-    }
-    .history-item:hover { background: var(--surface-2); }
-    .history-expr {
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      color: var(--text-muted);
-    }
-    .history-result {
-      font-family: var(--font-display);
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-    .history-empty {
-      text-align: center;
-      padding: 32px 16px;
-      color: var(--text-muted);
-      font-size: 0.82rem;
-    }
-
-    @media (max-width: 640px) {
-      .history-panel { display: none; }
-      .calc-wrapper { padding: 20px 12px; }
-    }
-  </style>
+@media(max-width:500px){
+  .cal-day{min-height:40px;padding:4px 3px 2px}
+  .cal-event-pill{display:none}
+  .cal-day.has-events::after{content:'';width:4px;height:4px;background:#10B981;border-radius:50%;position:absolute;bottom:3px;left:50%;transform:translateX(-50%)}
+}
+</style>
 </head>
 <body>
 
-<!-- App Header -->
-<div class="app-header">
-  <div class="app-header-left">
-    <button onclick="window.close()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:4px 8px">←</button>
-    <div class="app-header-icon">🧮</div>
-    <div class="app-header-title">Calculator</div>
+<div class="cal-appbar">
+  <div class="cal-appbar-left">
+    <button class="cal-back" onclick="window.close()">←</button>
+    <div class="cal-appbar-title"><div class="cal-appbar-icon">📅</div>Calendar</div>
   </div>
-  <div style="font-size:0.78rem;color:var(--text-muted)" id="sync-status">Syncing...</div>
+  <div class="cal-sync" id="sync-status">Syncing...</div>
 </div>
 
-<!-- Calculator -->
-<div class="calc-wrapper">
-  <div class="calculator">
-    <div class="calc-display">
-      <div class="calc-expression" id="calc-expr"></div>
-      <div class="calc-value" id="calc-display">0</div>
+<div class="cal-layout">
+  <!-- Calendar panel -->
+  <div class="cal-panel">
+    <div class="cal-head">
+      <button class="cal-nav" onclick="nav(-1)">‹</button>
+      <div class="cal-head-center">
+        <div class="cal-month" id="cal-month">Month Year</div>
+        <div class="cal-year" id="cal-year"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="today-btn" onclick="goToday()">Today</button>
+        <button class="cal-nav" onclick="nav(1)">›</button>
+      </div>
     </div>
-
-    <div class="calc-buttons">
-      <!-- Row 1 -->
-      <button class="calc-btn btn-clear" onclick="calcClear()">AC</button>
-      <button class="calc-btn btn-action" onclick="calcToggleSign()">+/−</button>
-      <button class="calc-btn btn-action" onclick="calcPercent()">%</button>
-      <button class="calc-btn btn-op" onclick="calcOp('÷')">÷</button>
-
-      <!-- Row 2 -->
-      <button class="calc-btn btn-num" onclick="calcNum('7')">7</button>
-      <button class="calc-btn btn-num" onclick="calcNum('8')">8</button>
-      <button class="calc-btn btn-num" onclick="calcNum('9')">9</button>
-      <button class="calc-btn btn-op" onclick="calcOp('×')">×</button>
-
-      <!-- Row 3 -->
-      <button class="calc-btn btn-num" onclick="calcNum('4')">4</button>
-      <button class="calc-btn btn-num" onclick="calcNum('5')">5</button>
-      <button class="calc-btn btn-num" onclick="calcNum('6')">6</button>
-      <button class="calc-btn btn-op" onclick="calcOp('−')">−</button>
-
-      <!-- Row 4 -->
-      <button class="calc-btn btn-num" onclick="calcNum('1')">1</button>
-      <button class="calc-btn btn-num" onclick="calcNum('2')">2</button>
-      <button class="calc-btn btn-num" onclick="calcNum('3')">3</button>
-      <button class="calc-btn btn-op" onclick="calcOp('+')">+</button>
-
-      <!-- Row 5 -->
-      <button class="calc-btn btn-num btn-zero" onclick="calcNum('0')">0</button>
-      <button class="calc-btn btn-num" onclick="calcDot()">.</button>
-      <button class="calc-btn btn-eq" onclick="calcEquals()">=</button>
+    <div class="cal-daynames">
+      <div class="cal-dayname">Sun</div><div class="cal-dayname">Mon</div>
+      <div class="cal-dayname">Tue</div><div class="cal-dayname">Wed</div>
+      <div class="cal-dayname">Thu</div><div class="cal-dayname">Fri</div>
+      <div class="cal-dayname">Sat</div>
     </div>
+    <div class="cal-grid" id="cal-grid"></div>
   </div>
 
-  <!-- History Panel -->
-  <div class="history-panel">
-    <div class="history-header">
-      <div class="history-title">History</div>
-      <button class="history-clear" onclick="clearHistory()">Clear all</button>
+  <!-- Right panel -->
+  <div class="cal-right">
+    <!-- Day events -->
+    <div class="day-events-card">
+      <div class="day-events-head">
+        <div class="day-events-date" id="day-events-title">Today</div>
+        <span class="day-events-count" id="day-events-count" style="display:none">0 events</span>
+      </div>
+      <div class="day-events-list" id="day-events-list">
+        <div class="no-events">Select a day to see events</div>
+      </div>
     </div>
-    <div class="history-list" id="history-list">
-      <div class="history-empty">No calculations yet</div>
+
+    <!-- Add event -->
+    <div class="add-event-card">
+      <div class="add-event-head">➕ Add Event</div>
+      <div class="ae-form">
+        <div>
+          <span class="ae-label">Event Title</span>
+          <input class="ae-input" id="ae-title" type="text" placeholder="Team meeting, deadline..." maxlength="60">
+        </div>
+        <div class="ae-row">
+          <div>
+            <span class="ae-label">Date</span>
+            <input class="ae-input" id="ae-date" type="date">
+          </div>
+          <div>
+            <span class="ae-label">Time (optional)</span>
+            <select class="ae-select" id="ae-time">
+              <option value="">No time</option>
+              <option value="06:00">6:00 AM</option><option value="06:30">6:30 AM</option>
+              <option value="07:00">7:00 AM</option><option value="07:30">7:30 AM</option>
+              <option value="08:00">8:00 AM</option><option value="08:30">8:30 AM</option>
+              <option value="09:00">9:00 AM</option><option value="09:30">9:30 AM</option>
+              <option value="10:00">10:00 AM</option><option value="10:30">10:30 AM</option>
+              <option value="11:00">11:00 AM</option><option value="11:30">11:30 AM</option>
+              <option value="12:00">12:00 PM</option><option value="12:30">12:30 PM</option>
+              <option value="13:00">1:00 PM</option><option value="13:30">1:30 PM</option>
+              <option value="14:00">2:00 PM</option><option value="14:30">2:30 PM</option>
+              <option value="15:00">3:00 PM</option><option value="15:30">3:30 PM</option>
+              <option value="16:00">4:00 PM</option><option value="16:30">4:30 PM</option>
+              <option value="17:00">5:00 PM</option><option value="17:30">5:30 PM</option>
+              <option value="18:00">6:00 PM</option><option value="18:30">6:30 PM</option>
+              <option value="19:00">7:00 PM</option><option value="19:30">7:30 PM</option>
+              <option value="20:00">8:00 PM</option><option value="20:30">8:30 PM</option>
+              <option value="21:00">9:00 PM</option><option value="21:30">9:30 PM</option>
+              <option value="22:00">10:00 PM</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <span class="ae-label">Priority</span>
+          <div class="ae-priority">
+            <button class="prio-btn selected-high" id="prio-high" onclick="setPrio('high')">🔴 High</button>
+            <button class="prio-btn" id="prio-med" onclick="setPrio('med')">🟡 Medium</button>
+            <button class="prio-btn" id="prio-low" onclick="setPrio('low')">🟢 Low</button>
+          </div>
+        </div>
+        <div id="visibility-section">
+          <span class="ae-label">Visible To (Company)</span>
+          <select class="ae-select" id="ae-visibility">
+            <option value="self">👤 Only me</option>
+            <option value="all">🌐 Everyone in company</option>
+            <option value="owner">👑 Owner only</option>
+            <option value="manager">🎯 Managers & Owner</option>
+            <option value="staff">💼 Staff only</option>
+          </select>
+        </div>
+        <button class="add-btn" id="add-event-btn" onclick="addEvent()">Add Event</button>
+      </div>
     </div>
   </div>
 </div>
@@ -262,160 +236,251 @@
 <div id="toast-container"></div>
 
 <script type="module">
-  import { saveCalcHistory, loadCalcHistory } from './apps.js';
-  import { showToast } from './utils.js';
+import { loadCalendarEvents, addCalendarEvent, deleteCalendarEvent, loadCompanyEvents } from './apps.js';
 
-  // Get UID from URL
-  const params = new URLSearchParams(window.location.search);
-  const uid    = params.get('uid');
+const params = new URLSearchParams(location.search);
+const uid = params.get('uid');
+const syncEl = document.getElementById('sync-status');
 
-  // Calculator state
-  let display  = '0';
-  let expr     = '';
-  let operator = null;
-  let prevVal  = null;
-  let newInput = false;
-  let history  = [];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-  const displayEl = document.getElementById('calc-display');
-  const exprEl    = document.getElementById('calc-expr');
-  const syncEl    = document.getElementById('sync-status');
+let events = [];
+let companyEvents = [];
+let curDate = new Date();
+let selectedDay = new Date();
+let selectedPrio = 'high';
+let userRole = 'staff';
+let companyId = null;
 
-  // ---- Load history from Firebase ----
-  async function loadHistory() {
-    if (!uid) { syncEl.textContent = 'Not synced'; return; }
-    try {
-      history = await loadCalcHistory(uid);
-      renderHistory();
-      syncEl.textContent = 'Synced ✓';
-    } catch {
-      syncEl.textContent = 'Offline';
-    }
+// Set today's date as default
+document.getElementById('ae-date').value = dateKey(new Date());
+
+// Load user role from session
+try {
+  const sess = sessionStorage.getItem('zenda_user');
+  if (sess) {
+    const u = JSON.parse(sess);
+    userRole = u.role || 'staff';
+    companyId = u.companyId || null;
   }
+} catch(e){}
 
-  // ---- Save history ----
-  async function saveHistory() {
-    if (!uid) return;
-    try {
-      await saveCalcHistory(uid, history);
-      syncEl.textContent = 'Synced ✓';
-    } catch {
-      syncEl.textContent = 'Sync failed';
-    }
-  }
-
-  // ---- Render history ----
-  function renderHistory() {
-    const list = document.getElementById('history-list');
-    if (!history.length) {
-      list.innerHTML = '<div class="history-empty">No calculations yet</div>';
-      return;
-    }
-    list.innerHTML = [...history].reverse().map((h, i) => `
-      <div class="history-item" onclick="restoreHistory(${history.length - 1 - i})">
-        <div class="history-expr">${h.expr}</div>
-        <div class="history-result">${h.result}</div>
-      </div>
-    `).join('');
-  }
-
-  window.restoreHistory = function(i) {
-    display  = history[i].result.toString();
-    newInput = true;
-    updateDisplay();
-  };
-
-  window.clearHistory = function() {
-    history = [];
-    renderHistory();
-    saveHistory();
-  };
-
-  // ---- Update display ----
-  function updateDisplay(val) {
-    if (val !== undefined) display = val;
-    let shown = display;
-    if (shown.length > 12) shown = parseFloat(shown).toExponential(4);
-    displayEl.textContent = shown;
-    exprEl.textContent    = expr;
-  }
-
-  // ---- Calculator logic ----
-  window.calcNum = function(n) {
-    if (newInput) { display = n; newInput = false; }
-    else { display = display === '0' ? n : display + n; }
-    if (display.length > 14) return;
-    updateDisplay();
-  };
-
-  window.calcDot = function() {
-    if (newInput) { display = '0.'; newInput = false; }
-    else if (!display.includes('.')) display += '.';
-    updateDisplay();
-  };
-
-  window.calcOp = function(op) {
-    prevVal  = parseFloat(display);
-    operator = op;
-    expr     = display + ' ' + op;
-    newInput = true;
-    updateDisplay();
-  };
-
-  window.calcEquals = function() {
-    if (operator === null || prevVal === null) return;
-    const curr = parseFloat(display);
-    const ops  = { '+': prevVal + curr, '−': prevVal - curr, '×': prevVal * curr, '÷': curr !== 0 ? prevVal / curr : 'Error' };
-    const result = ops[operator];
-    const fullExpr = `${prevVal} ${operator} ${curr}`;
-    const resultStr = typeof result === 'number' ? parseFloat(result.toFixed(10)).toString() : result;
-
-    expr = fullExpr + ' =';
-    display  = resultStr;
-    operator = null;
-    prevVal  = null;
-    newInput = true;
-    updateDisplay();
-
-    if (result !== 'Error') {
-      history.push({ expr: fullExpr, result: resultStr, time: new Date().toISOString() });
-      renderHistory();
-      saveHistory();
-    }
-  };
-
-  window.calcClear = function() {
-    display = '0'; expr = ''; operator = null; prevVal = null; newInput = false;
-    updateDisplay();
-  };
-
-  window.calcToggleSign = function() {
-    display = (parseFloat(display) * -1).toString();
-    updateDisplay();
-  };
-
-  window.calcPercent = function() {
-    display = (parseFloat(display) / 100).toString();
-    updateDisplay();
-  };
-
-  // Keyboard support
-  document.addEventListener('keydown', (e) => {
-    if (e.key >= '0' && e.key <= '9') calcNum(e.key);
-    else if (e.key === '.') calcDot();
-    else if (e.key === '+') calcOp('+');
-    else if (e.key === '-') calcOp('−');
-    else if (e.key === '*') calcOp('×');
-    else if (e.key === '/') { e.preventDefault(); calcOp('÷'); }
-    else if (e.key === 'Enter' || e.key === '=') calcEquals();
-    else if (e.key === 'Escape') calcClear();
-    else if (e.key === 'Backspace') {
-      display = display.length > 1 ? display.slice(0, -1) : '0';
-      updateDisplay();
-    }
+// ── Priority selector ──
+window.setPrio = function(p) {
+  selectedPrio = p;
+  ['high','med','low'].forEach(x=>{
+    const btn=document.getElementById('prio-'+x);
+    btn.className = 'prio-btn';
+    if(x===p) btn.classList.add('selected-'+x);
   });
+};
 
-  loadHistory().then(() => updateDisplay());
+// ── Date helpers ──
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function isToday(d) {
+  const n=new Date(); return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();
+}
+function isSameDay(a,b) {
+  return a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
+}
+function format12hr(t) {
+  if(!t) return '';
+  const [h,m]=t.split(':').map(Number);
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+}
+
+// ── Load events ──
+async function loadAll() {
+  if (!uid) { syncEl.textContent = 'Not synced'; renderCalendar(); showDayEvents(selectedDay); return; }
+  try {
+    events = await loadCalendarEvents(uid);
+    if (companyId) companyEvents = await loadCompanyEvents(companyId, userRole);
+    syncEl.textContent = '✓ Synced';
+    renderCalendar();
+    showDayEvents(selectedDay);
+  } catch(e) { syncEl.textContent = 'Offline'; console.error(e); }
+}
+
+function getAllEvents() {
+  // Merge personal + company events, deduplicate by id
+  const seen = new Set();
+  const all = [...events, ...companyEvents].filter(e=>{
+    if(seen.has(e.id)) return false;
+    seen.add(e.id); return true;
+  });
+  return all;
+}
+
+// ── Render calendar ──
+function renderCalendar() {
+  const y=curDate.getFullYear(), m=curDate.getMonth();
+  document.getElementById('cal-month').textContent = MONTHS[m];
+  document.getElementById('cal-year').textContent = y;
+
+  const firstDay = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const prevDays = new Date(y,m,0).getDate();
+  const allEvs = getAllEvents();
+
+  const grid = document.getElementById('cal-grid');
+  let html = '';
+
+  // Prev month days
+  for(let i=firstDay-1;i>=0;i--) {
+    html += `<div class="cal-day empty other-month"><div class="cal-date">${prevDays-i}</div></div>`;
+  }
+
+  // Current month
+  for(let day=1;day<=daysInMonth;day++) {
+    const d = new Date(y,m,day);
+    const key = dateKey(d);
+    const dayEvs = allEvs.filter(e=>e.date===key).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    const todayCls = isToday(d) ? ' today' : '';
+    const selCls = isSameDay(d,selectedDay) ? ' selected' : '';
+    const hasCls = dayEvs.length ? ' has-events' : '';
+
+    // Show up to 2 event pills
+    const pills = dayEvs.slice(0,2).map(ev=>{
+      const pillCls = `pill-${ev.type==='task'?'task':ev.priority||'low'}`;
+      const label = ev.time ? format12hr(ev.time)+' '+ev.title : ev.title;
+      return `<div class="cal-event-pill ${pillCls}">${escHtml(label)}</div>`;
+    }).join('');
+    const more = dayEvs.length>2 ? `<div class="cal-more-events">+${dayEvs.length-2}</div>` : '';
+
+    html += `<div class="cal-day${todayCls}${selCls}${hasCls}" onclick="selectDay(${y},${m},${day})">
+      <div class="cal-date">${day}</div>
+      ${pills}${more}
+    </div>`;
+  }
+
+  // Next month filler
+  const total = firstDay + daysInMonth;
+  const rows = Math.ceil(total/7);
+  const cells = rows*7;
+  for(let i=1;i<=cells-total;i++) {
+    html += `<div class="cal-day empty other-month"><div class="cal-date">${i}</div></div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+// ── Select day ──
+window.selectDay = function(y,m,day) {
+  selectedDay = new Date(y,m,day);
+  document.getElementById('ae-date').value = dateKey(selectedDay);
+  renderCalendar();
+  showDayEvents(selectedDay);
+};
+
+window.goToday = function() {
+  curDate = new Date(); selectedDay = new Date();
+  document.getElementById('ae-date').value = dateKey(selectedDay);
+  renderCalendar(); showDayEvents(selectedDay);
+};
+
+window.nav = function(dir) {
+  curDate = new Date(curDate.getFullYear(), curDate.getMonth()+dir, 1);
+  renderCalendar();
+};
+
+// ── Show day events ──
+function showDayEvents(d) {
+  const key = dateKey(d);
+  const allEvs = getAllEvents();
+  const dayEvs = allEvs.filter(e=>e.date===key).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const isTod = isToday(d);
+  document.getElementById('day-events-title').textContent =
+    isTod ? `Today, ${d.getDate()} ${months[d.getMonth()]}` : `${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+
+  const countEl = document.getElementById('day-events-count');
+  if(dayEvs.length){ countEl.textContent=dayEvs.length+' event'+(dayEvs.length>1?'s':''); countEl.style.display=''; }
+  else { countEl.style.display='none'; }
+
+  const list = document.getElementById('day-events-list');
+  if(!dayEvs.length){ list.innerHTML='<div class="no-events">✨ No events — enjoy your day!</div>'; return; }
+
+  list.innerHTML = dayEvs.map(ev=>{
+    const cls = ev.type==='task'?'task':(ev.priority||'low');
+    const vis = ev.visibility && ev.visibility!=='self' ? visLabel(ev.visibility) : '';
+    const isOwn = ev.createdBy===uid || (!ev.companyEvent);
+    return `<div class="event-item ${cls}">
+      <div class="event-content">
+        <div class="event-title">${escHtml(ev.title)}</div>
+        ${ev.time?`<div class="event-time">⏰ ${format12hr(ev.time)}</div>`:''}
+        ${vis?`<div class="event-visibility">👁 ${vis}</div>`:''}
+        ${ev.type==='task'?`<div class="event-visibility" style="color:#6366F1">📋 Task</div>`:''}
+      </div>
+      ${isOwn?`<button class="event-del" onclick="delEvent('${ev.id}')" title="Delete">✕</button>`:''}
+    </div>`;
+  }).join('');
+}
+
+function visLabel(v){const m={all:'Everyone',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'};return m[v]||''}
+
+// ── Add event ──
+window.addEvent = async function() {
+  const title = document.getElementById('ae-title').value.trim();
+  const date  = document.getElementById('ae-date').value;
+  const time  = document.getElementById('ae-time').value;
+  const vis   = document.getElementById('ae-visibility').value;
+
+  if(!title){ toast('Enter an event title.','error'); return; }
+  if(!date)  { toast('Pick a date.','error'); return; }
+
+  const btn = document.getElementById('add-event-btn');
+  btn.disabled=true; btn.textContent='Adding...';
+
+  try {
+    const newEv = { title, date, time, priority:selectedPrio, visibility:vis, type:'event', companyId };
+    if(uid) {
+      events = await addCalendarEvent(uid, newEv);
+      syncEl.textContent='✓ Synced';
+    } else {
+      newEv.id=Date.now().toString();
+      events.push(newEv);
+    }
+    document.getElementById('ae-title').value='';
+    document.getElementById('ae-time').value='';
+    setPrio('high');
+    renderCalendar();
+    // Select the new event's day
+    const [yyyy,mm,dd] = date.split('-').map(Number);
+    selectedDay = new Date(yyyy,mm-1,dd);
+    showDayEvents(selectedDay);
+    renderCalendar();
+    toast('Event added! 📅','success');
+  } catch(e){ toast('Failed: '+e.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='Add Event'; }
+};
+
+// ── Delete event ──
+window.delEvent = async function(id) {
+  try {
+    if(uid) { events=await deleteCalendarEvent(uid,id); syncEl.textContent='✓ Synced'; }
+    else events=events.filter(e=>e.id!==id);
+    renderCalendar(); showDayEvents(selectedDay);
+    toast('Event deleted.','info');
+  }catch(e){toast('Error: '+e.message,'error');}
+};
+
+// ── Toast ──
+function toast(msg, type='info') {
+  let c=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className='toast toast-'+type;
+  t.innerHTML=`<span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+function escHtml(s=''){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+loadAll();
 </script>
 
 </body>
