@@ -592,12 +592,6 @@ textarea.form-input{min-height:70px;resize:vertical}
 
 <!-- Sidebar (desktop) -->
 <aside class="sidebar" id="sidebar">
-  <div style="padding:14px 12px 8px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px">
-    <div style="width:26px;height:26px;background:var(--ac);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-    </div>
-    <span style="font-size:14px;font-weight:600;letter-spacing:-0.02em;color:var(--tx-1)">Zenda</span>
-  </div>
   <nav class="sidebar-nav">
     <div class="sidebar-section-label">Main</div>
     <div class="sidebar-item active" id="nav-home" onclick="showView('home')">
@@ -696,8 +690,8 @@ textarea.form-input{min-height:70px;resize:vertical}
 
     <!-- Tab rows -->
     <div class="ftabs" id="task-tab-row">
-      <button class="ftab on" onclick="setTaskTab('assigned-to-me',this)" id="tab-to-me">Assigned to Me</button>
-      <button class="ftab" onclick="setTaskTab('assigned-by-me',this)" id="tab-by-me" class="hidden">I Assigned</button>
+      <button class="ftab on hidden" onclick="setTaskTab('assigned-to-me',this)" id="tab-to-me">Assigned to Me</button>
+      <button class="ftab hidden" onclick="setTaskTab('assigned-by-me',this)" id="tab-by-me">I Assigned</button>
       <button class="ftab" onclick="setTaskTab('pending',this)">Pending</button>
       <button class="ftab" onclick="setTaskTab('done',this)">Done</button>
       <button class="ftab" onclick="setTaskTab('declined',this)">Declined</button>
@@ -1105,6 +1099,16 @@ function setupUI() {
     document.getElementById('assign-top-btn').classList.remove('hidden');
     document.getElementById('assign-tasks-btn').classList.remove('hidden');
     document.getElementById('tab-by-me').classList.remove('hidden');
+  }
+  if (!isOwner) {
+    // Staff + manager see "Assigned to Me" tab
+    document.getElementById('tab-to-me').classList.remove('hidden');
+  } else {
+    // Owner: hide "Assigned to Me", default to "I Assigned"
+    document.getElementById('tab-to-me').classList.add('hidden');
+    const byMe = document.getElementById('tab-by-me');
+    if (byMe) byMe.classList.add('on');
+    taskTab = 'assigned-by-me';
   }
   if (canSeeStaff) {
     document.getElementById('nav-staff').classList.remove('hidden');
@@ -1825,29 +1829,7 @@ function buildProfile() {
         <div><div class="pf-lbl">Unique ID</div><div class="pf-code" id="pf-uid">${uniqueId}</div></div>
         <button class="pf-btn" onclick="copyToClipboard('${uniqueId}')" title="Copy">${svg('copy')}</button>
       </div>
-      <div class="pf">
-        <div>
-          <div class="pf-lbl">Login Password <span style="font-size:9px;color:var(--tx-3);font-weight:400">(verify with OTP to reveal)</span></div>
-          <div class="pf-dots" id="pf-pwd-dots"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-        </div>
-        <button class="pf-btn" id="pf-pwd-eye" onclick="revealPassword()" title="Reveal via OTP">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-      </div>
-      <!-- OTP reveal panel -->
-      <div class="pwd-reveal-otp" id="pwd-otp-panel">
-        <div style="font-size:11px;color:var(--tx-2);margin-bottom:8px">Enter OTP sent to <strong>${esc(email)}</strong></div>
-        <div class="otp-boxes" id="pwd-otp-boxes">
-          <input class="otp-box" maxlength="1" inputmode="numeric">
-          <input class="otp-box" maxlength="1" inputmode="numeric">
-          <input class="otp-box" maxlength="1" inputmode="numeric">
-          <input class="otp-box" maxlength="1" inputmode="numeric">
-          <input class="otp-box" maxlength="1" inputmode="numeric">
-          <input class="otp-box" maxlength="1" inputmode="numeric">
-        </div>
-        <button class="btn btn-primary btn-sm w-full" id="otp-verify-pwd-btn" onclick="verifyPwdOTP()" style="margin-top:8px">Verify &amp; Show</button>
-        <button class="btn btn-ghost btn-sm w-full" onclick="cancelPwdReveal()" style="margin-top:5px">Cancel</button>
-      </div>
+      ${role !== 'owner' ? `` : ''}
       <div class="pf">
         <div><div class="pf-lbl">Designation</div><div class="pf-val">${esc(designation || formatRole(role))}</div></div>
       </div>
