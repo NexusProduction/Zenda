@@ -321,6 +321,15 @@
   transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
 }
 .fullpage.open{transform:translateX(0)}
+/* On desktop profile is a right side panel, not full screen */
+.profile-side-panel{
+  position:fixed;top:var(--topbar-h,56px);right:0;bottom:0;
+  width:340px;background:var(--bg-base);border-left:1px solid var(--bd);
+  z-index:300;display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  box-shadow:var(--sh-4);overflow-y:auto;
+}
+.profile-side-panel.open{transform:translateX(0)}
 .fp-hdr{
   background:rgba(246,246,249,.92);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--bd);padding:12px 16px;
@@ -454,6 +463,35 @@ textarea.form-input{min-height:70px;resize:vertical}
 .del-confirm-input{width:100%;padding:9px 12px;border:1.5px solid var(--bd);border-radius:var(--r-md);background:var(--bg-base);font-family:var(--f-mono);font-weight:500;letter-spacing:.04em;font-size:13px;outline:none;transition:all .15s;color:var(--tx-1)}
 .del-confirm-input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(220,38,38,.1)}
 .del-confirm-input.match{border-color:var(--green);background:rgba(22,163,74,.04)}
+
+/* ══ APP STORE ══ */
+.store-featured{background:linear-gradient(135deg,var(--ac),var(--ac-h));border-radius:var(--r-lg);padding:20px;color:#fff;margin-bottom:16px;position:relative;overflow:hidden}
+.store-featured::before{content:'';position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}
+.store-feat-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;opacity:.75;margin-bottom:4px}
+.store-feat-name{font-size:20px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px}
+.store-feat-desc{font-size:12px;opacity:.75;margin-bottom:14px;line-height:1.5}
+.store-btn-install{background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.3);color:#fff;padding:7px 16px;border-radius:var(--r-sm);font-size:12px;font-weight:600;cursor:pointer;backdrop-filter:blur(8px);transition:all .15s}
+.store-btn-install:hover{background:rgba(255,255,255,.32)}
+.store-section-title{font-size:13px;font-weight:600;color:var(--tx-1);margin-bottom:12px;letter-spacing:-0.01em}
+.store-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+@media(min-width:600px){.store-grid{grid-template-columns:repeat(3,1fr)}}
+.store-card{background:var(--bg-raised);border:1px solid var(--bd);border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:10px;transition:all .18s}
+.store-card:hover{box-shadow:var(--sh-2);border-color:rgba(0,0,0,.13);transform:translateY(-2px)}
+.store-card-top{display:flex;align-items:center;gap:10px}
+.store-app-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1px solid var(--bd);box-shadow:var(--sh-1)}
+.store-app-name{font-size:13px;font-weight:600;color:var(--tx-1);letter-spacing:-0.01em}
+.store-app-cat{font-size:10px;color:var(--tx-3);margin-top:1px;text-transform:uppercase;letter-spacing:.04em}
+.store-app-desc{font-size:11px;color:var(--tx-2);line-height:1.55;flex:1}
+.store-app-footer{display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid var(--bd)}
+.store-rating{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--tx-3)}
+.store-btn{padding:5px 14px;border-radius:var(--r-sm);font-size:11px;font-weight:600;cursor:pointer;transition:all .14s;border:none}
+.store-btn-get{background:var(--ac-s);color:var(--ac);border:1px solid var(--ac-b)}
+.store-btn-get:hover{background:var(--ac);color:#fff}
+.store-btn-open{background:var(--bg-overlay);color:var(--tx-2);border:1px solid var(--bd)}
+.store-btn-open:hover{background:var(--bg-sunken);color:var(--tx-1)}
+.store-btn-uninstall{background:#fee2e2;color:var(--red);border:1px solid rgba(220,38,38,.2);font-size:10px;padding:4px 10px}
+.store-btn-uninstall:hover{background:var(--red);color:#fff}
+.store-installed-badge{font-size:10px;color:var(--green);font-weight:600;display:flex;align-items:center;gap:3px}
 
 /* ══ TOAST ══ */
 #toast-container{position:fixed;bottom:80px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:6px;pointer-events:none}
@@ -700,15 +738,30 @@ textarea.form-input{min-height:70px;resize:vertical}
 </div>
 
 <!-- ══ PROFILE FULL PAGE ══ -->
-<div class="fullpage" id="profile-page">
+<div id="profile-page"><!-- profile rendered dynamically into correct container --></div>
+
+<!-- Profile: side panel on desktop -->
+<div class="profile-side-panel" id="profile-side-panel">
+  <div class="sp-hdr">
+    <div class="sp-ttl">My Profile</div>
+    <button class="modal-close" onclick="closeProfile()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="sp-body" id="profile-body-desktop"></div>
+</div>
+
+<!-- Profile: full page on mobile -->
+<div class="fullpage" id="profile-page-mobile">
   <div class="fp-hdr">
-    <button class="fp-back" onclick="closeFullpage('profile-page')">
+    <button class="fp-back" onclick="closeProfile()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       Back
     </button>
     <div class="fp-ttl">My Profile</div>
   </div>
-  <div class="fp-body" id="profile-body"></div>
+  <div class="fp-body" id="profile-body-mobile"></div>
+</div>
 </div>
 
 <!-- ══ CREATE STAFF FULL PAGE ══ -->
@@ -910,17 +963,16 @@ textarea.form-input{min-height:70px;resize:vertical}
   </div>
 </div>
 
-<!-- ══ APP LIBRARY MODAL ══ -->
-<div class="modal-overlay hidden" id="app-lib-modal">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-hdr">
-      <div class="modal-ttl">App Library</div>
-      <button class="modal-close" onclick="closeModal('app-lib-modal')">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div id="app-lib-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+<!-- ══ APP STORE (full page) ══ -->
+<div class="fullpage" id="app-store-page">
+  <div class="fp-hdr">
+    <button class="fp-back" onclick="closeFullpage('app-store-page')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <div class="fp-ttl">App Store</div>
   </div>
+  <div class="fp-body" id="app-store-body" style="padding:16px"></div>
 </div>
 
 <div id="toast-container"></div>
@@ -1026,7 +1078,8 @@ function setupUI() {
     if (bnStaff) bnStaff.classList.remove('hidden');
   }
   // Owner sees NO charts
-  if (role !== 'owner') {
+  // Charts: ONLY staff and manager see task activity charts. Owner does NOT.
+  if (role === 'staff' || role === 'manager') {
     document.getElementById('charts-row').classList.remove('hidden');
     initCharts();
   }
@@ -1078,7 +1131,7 @@ function subscribeAll() {
     renderRecentTasks();
     renderTasksList();
     renderTaskSummaryStrip();
-    if (role !== 'owner') {
+    if (role === 'staff' || role === 'manager') {
       updateCharts(tasks);
       renderNonOwnerStats(tasks);
     }
@@ -1681,46 +1734,49 @@ function buildProfile() {
   const { name, email, role, designation, uniqueId } = CU;
   const col = avatarColor(name);
   const ini = getInitials(name);
-  const el = document.getElementById('profile-body');
-  el.innerHTML = `
+  const avatarSrc = CU.avatarData || null;
+
+  const html = `
     <!-- Avatar -->
-    <div style="text-align:center;padding:24px 20px;border-bottom:1px solid var(--bd);margin-bottom:16px">
-      <div style="position:relative;display:inline-block;margin-bottom:12px">
-        <div id="pf-avatar" class="av" style="width:72px;height:72px;font-size:1.6rem;font-weight:600;border-radius:16px;border:2px solid var(--bd);${CU.avatarData ? '' : `background:${col}22;color:${col}`}">${CU.avatarData ? `<img src="${CU.avatarData}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">` : ini}</div>
-        <label style="position:absolute;bottom:-4px;right:-4px;width:26px;height:26px;background:var(--ac);border:2px solid var(--bg-base);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--sh-2)" title="Change logo">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    <div style="text-align:center;padding:20px 16px 16px;border-bottom:1px solid var(--bd);margin-bottom:14px">
+      <div style="position:relative;display:inline-block;margin-bottom:10px">
+        <div id="pf-avatar" class="av" style="width:68px;height:68px;font-size:1.5rem;font-weight:600;border-radius:14px;border:2px solid var(--bd);${avatarSrc ? '' : `background:${col}22;color:${col}`}">${avatarSrc ? `<img src="${avatarSrc}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">` : ini}</div>
+        <label style="position:absolute;bottom:-4px;right:-4px;width:24px;height:24px;background:var(--ac);border:2px solid var(--bg-base);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--sh-2)" title="Change logo">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           <input type="file" id="avatar-inp" accept="image/*" style="display:none" onchange="handleAvatarChange(event)">
         </label>
       </div>
-      <div id="pf-name-display" style="font-size:16px;font-weight:600;letter-spacing:-0.02em">${esc(name)}</div>
-      <div id="pf-company-display" style="font-size:12px;color:var(--tx-3);margin-bottom:8px"></div>
+      <div id="pf-name-display" style="font-size:15px;font-weight:600;letter-spacing:-0.02em">${esc(name)}</div>
+      <div id="pf-company-display" style="font-size:11px;color:var(--tx-3);margin-bottom:8px"></div>
       <span class="badge badge-${role}">${esc(designation || formatRole(role))}</span>
     </div>
 
     <!-- Fields -->
-    <div style="padding:0 16px">
+    <div style="padding:0 12px">
       <div class="pf">
         <div><div class="pf-lbl">Full Name</div><div class="pf-val" id="pf-name">${esc(name)}</div></div>
-        <button class="pf-btn" onclick="openEditModal('name')" title="Edit">${svg('edit')}</button>
+        <button class="pf-btn" onclick="openEditModal('name')">${svg('edit')}</button>
       </div>
       <div class="pf">
         <div><div class="pf-lbl">Email</div><div class="pf-val" id="pf-email">${esc(email)}</div></div>
-        <button class="pf-btn" onclick="openEditModal('email')" title="Edit">${svg('edit')}</button>
+        <button class="pf-btn" onclick="openEditModal('email')">${svg('edit')}</button>
       </div>
       <div class="pf">
         <div><div class="pf-lbl">Unique ID</div><div class="pf-code" id="pf-uid">${uniqueId}</div></div>
         <button class="pf-btn" onclick="copyToClipboard('${uniqueId}')" title="Copy">${svg('copy')}</button>
       </div>
-      <!-- Password row with OTP reveal -->
       <div class="pf">
-        <div><div class="pf-lbl">Login Password</div><div class="pf-dots" id="pf-pwd-dots"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+        <div>
+          <div class="pf-lbl">Login Password</div>
+          <div class="pf-dots" id="pf-pwd-dots"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        </div>
         <button class="pf-btn" id="pf-pwd-eye" onclick="revealPassword()" title="Reveal via OTP">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
       <!-- OTP reveal panel -->
       <div class="pwd-reveal-otp" id="pwd-otp-panel">
-        <div style="font-size:12px;color:var(--tx-2);margin-bottom:8px">Enter OTP sent to <strong>${esc(email)}</strong></div>
+        <div style="font-size:11px;color:var(--tx-2);margin-bottom:8px">Enter OTP sent to <strong>${esc(email)}</strong></div>
         <div class="otp-boxes" id="pwd-otp-boxes">
           <input class="otp-box" maxlength="1" inputmode="numeric">
           <input class="otp-box" maxlength="1" inputmode="numeric">
@@ -1729,25 +1785,34 @@ function buildProfile() {
           <input class="otp-box" maxlength="1" inputmode="numeric">
           <input class="otp-box" maxlength="1" inputmode="numeric">
         </div>
-        <button class="btn btn-primary btn-sm w-full" id="otp-verify-pwd-btn" onclick="verifyPwdOTP()" style="margin-top:8px">Verify & Show Password</button>
-        <button class="btn btn-ghost btn-sm w-full" onclick="cancelPwdReveal()" style="margin-top:6px">Cancel</button>
+        <button class="btn btn-primary btn-sm w-full" id="otp-verify-pwd-btn" onclick="verifyPwdOTP()" style="margin-top:8px">Verify &amp; Show</button>
+        <button class="btn btn-ghost btn-sm w-full" onclick="cancelPwdReveal()" style="margin-top:5px">Cancel</button>
+      </div>
+      <div class="pf">
+        <div><div class="pf-lbl">Designation</div><div class="pf-val">${esc(designation || formatRole(role))}</div></div>
       </div>
     </div>
 
-    <div style="padding:14px 16px 20px;border-top:1px solid var(--bd);margin-top:12px">
+    <div style="padding:12px 12px 16px;border-top:1px solid var(--bd);margin-top:10px">
       <button class="btn btn-ghost w-full" onclick="handleLogout()" style="justify-content:center;gap:7px">
         ${svg('log-out')} Sign Out
       </button>
     </div>`;
 
+  // Render into both containers; active one will be visible
+  const desktopEl = document.getElementById('profile-body-desktop');
+  const mobileEl  = document.getElementById('profile-body-mobile');
+  if (desktopEl) desktopEl.innerHTML = html;
+  if (mobileEl)  mobileEl.innerHTML  = html;
+
   // Load company name
   getDoc(doc(db, 'companies', CU.companyId)).then(s => {
-    if (s.exists()) document.getElementById('pf-company-display').textContent = s.data().name;
+    if (s.exists()) document.querySelectorAll('#pf-company-display').forEach(el => el.textContent = s.data().name);
   });
 
-  // Setup OTP boxes
   setupOTPBoxes('#pwd-otp-boxes');
 }
+
 
 // Avatar change — saves to Firestore so it persists
 window.handleAvatarChange = async function(e) {
@@ -1816,38 +1881,33 @@ window.verifyPwdOTP = async function() {
   setButtonLoading(btn, true);
   try {
     const result = await verifyUserOTP(CU.email, otp);
-    if (!result.success) { showToast(result.message, 'error'); setButtonLoading(btn, false, 'Verify & Show Password'); return; }
-    // Replace dots with revealed password
-    const dotsEl = document.getElementById('pf-pwd-dots');
-    if (dotsEl) {
+    if (!result.success) { showToast(result.message, 'error'); setButtonLoading(btn, false, 'Verify & Show'); return; }
+
+    // Get the stored password hint from Firestore
+    const userSnap = await getDoc(doc(db, 'users', CU.uid));
+    // passwordHint is stored when staff is created; fallback to uniqueId
+    const pwd = userSnap.exists() ? (userSnap.data().passwordHint || CU.uniqueId) : CU.uniqueId;
+
+    // Replace dots in ALL profile containers (desktop + mobile)
+    document.querySelectorAll('#pf-pwd-dots').forEach(dotsEl => {
       const revealed = document.createElement('div');
       revealed.className = 'pf-revealed';
       revealed.id = 'pf-pwd-dots';
-      revealed.textContent = CU.uniqueId;
+      revealed.textContent = pwd;
       dotsEl.replaceWith(revealed);
-    }
-    document.getElementById('pwd-otp-panel').classList.remove('show');
-    // Change eye to eye-off
-    const eyeBtn = document.getElementById('pf-pwd-eye');
-    if (eyeBtn) {
+    });
+
+    document.querySelectorAll('#pwd-otp-panel').forEach(p => p.classList.remove('show'));
+
+    // Change eye to eye-off in both containers
+    document.querySelectorAll('#pf-pwd-eye').forEach(eyeBtn => {
       eyeBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-      eyeBtn.title = 'Password shown above';
-      eyeBtn.onclick = () => {
-        const rev = document.getElementById('pf-pwd-dots');
-        if (rev) {
-          const dots = document.createElement('div');
-          dots.className = 'pf-dots'; dots.id = 'pf-pwd-dots';
-          for (let i=0;i<12;i++) { const s=document.createElement('span'); dots.appendChild(s); }
-          rev.replaceWith(dots);
-        }
-        eyeBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-        eyeBtn.title = 'Reveal via OTP';
-        eyeBtn.onclick = revealPassword;
-      };
-    }
+      eyeBtn.title = 'Click to hide';
+      eyeBtn.onclick = () => { buildProfile(); }; // rebuilds with dots hidden
+    });
     showToast('Password revealed. Keep it safe!', 'success');
   } catch(e) { showToast(e.message, 'error'); }
-  setButtonLoading(btn, false, 'Verify & Show Password');
+  setButtonLoading(btn, false, 'Verify & Show');
 };
 
 function setupOTPBoxes(selector) {
@@ -1914,14 +1974,112 @@ function buildAppsGrid(ids) {
   el.innerHTML = html + `<div class="app-more" onclick="openAppLib()"><div class="app-more-img">${svg('grid')}</div><div class="app-lbl" style="color:var(--tx-3)">More</div></div>`;
 }
 window.openApp = id => { const a = APP_REGISTRY[id]; if (a) window.open(a.path + '?uid=' + CU.uid, '_blank'); };
-window.openAppLib = function() {
-  getInstalledApps(CU.uid).then(ids => { renderAppLibrary(ids, document.getElementById('app-lib-grid')); document.getElementById('app-lib-modal').classList.remove('hidden'); });
-};
-window.installAppById = async function(id) {
-  await installApp(CU.uid, id);
-  showToast(APP_REGISTRY[id]?.name + ' installed!', 'success');
+
+window.openAppLib = async function() {
   const ids = await getInstalledApps(CU.uid);
-  renderAppLibrary(ids, document.getElementById('app-lib-grid'));
+  renderAppStore(ids);
+  document.getElementById('app-store-page').classList.add('open');
+};
+
+function renderAppStore(installedIds) {
+  const el = document.getElementById('app-store-body');
+  const all = Object.values(APP_REGISTRY);
+  const featured = all[0];
+
+  // Extended app registry with richer metadata
+  const appMeta = {
+    calculator: { cat:'Productivity', rating:'4.8', reviews:'2.1k', color:'#4f46e5', bg:'#eef2ff' },
+    calendar:   { cat:'Organization', rating:'4.7', reviews:'1.4k', color:'#16a34a', bg:'#ecfdf5' },
+  };
+
+  const featInst = installedIds.includes(featured.id);
+
+  el.innerHTML = `
+    <!-- Featured App -->
+    <div class="store-featured">
+      <div class="store-feat-title">Featured App</div>
+      <div class="store-feat-name">${featured.name}</div>
+      <div class="store-feat-desc">${featured.desc}</div>
+      ${featInst
+        ? `<div style="display:flex;gap:8px">
+            <button class="store-btn-install" onclick="openApp('${featured.id}')">Open App</button>
+            ${!APP_REGISTRY[featured.id]?.default ? `<button class="store-btn-install" style="background:rgba(220,38,38,.3);border-color:rgba(220,38,38,.4)" onclick="doUninstallApp('${featured.id}')">Uninstall</button>` : ''}
+           </div>`
+        : `<button class="store-btn-install" onclick="doInstallApp('${featured.id}')">+ Get App</button>`}
+    </div>
+
+    <!-- All Apps Grid -->
+    <div class="store-section-title">All Apps</div>
+    <div class="store-grid">
+      ${all.map(app => {
+        const m = appMeta[app.id] || { cat:'Utility', rating:'4.5', reviews:'500', color:'#4f46e5', bg:'#eef2ff' };
+        const inst = installedIds.includes(app.id);
+        const isDefault = APP_REGISTRY[app.id]?.default;
+        return `<div class="store-card">
+          <div class="store-card-top">
+            <div class="store-app-icon" style="background:${m.bg};color:${m.color};font-size:1.5rem">${app.icon}</div>
+            <div>
+              <div class="store-app-name">${app.name}</div>
+              <div class="store-app-cat">${m.cat}</div>
+            </div>
+          </div>
+          <div class="store-app-desc">${app.desc}</div>
+          <div class="store-app-footer">
+            <div class="store-rating">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="${m.color}" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              ${m.rating} · ${m.reviews}
+            </div>
+            <div style="display:flex;gap:5px;align-items:center">
+              ${inst ? `
+                <button class="store-btn store-btn-open" onclick="openApp('${app.id}')">Open</button>
+                ${!isDefault ? `<button class="store-btn store-btn-uninstall" onclick="doUninstallApp('${app.id}')">Remove</button>` : '<span style="font-size:10px;color:var(--tx-3)">Built-in</span>'}
+              ` : `<button class="store-btn store-btn-get" onclick="doInstallApp('${app.id}')">+ Get</button>`}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- Coming Soon -->
+    <div class="store-section-title" style="color:var(--tx-3)">Coming Soon</div>
+    <div class="store-grid">
+      ${[
+        {name:'Time Tracker',icon:'⏱',cat:'Productivity',desc:'Track hours per task automatically'},
+        {name:'Expense Log',icon:'💳',cat:'Finance',desc:'Log and categorize team expenses'},
+        {name:'Announcements',icon:'📢',cat:'Communication',desc:'Broadcast messages to your team'},
+        {name:'Leave Manager',icon:'🏖',cat:'HR',desc:'Request and approve time off'},
+      ].map(app => `
+        <div class="store-card" style="opacity:.55">
+          <div class="store-card-top">
+            <div class="store-app-icon" style="background:var(--bg-sunken)">${app.icon}</div>
+            <div>
+              <div class="store-app-name">${app.name}</div>
+              <div class="store-app-cat">${app.cat}</div>
+            </div>
+          </div>
+          <div class="store-app-desc">${app.desc}</div>
+          <div class="store-app-footer">
+            <span style="font-size:10px;color:var(--tx-3)">Coming soon</span>
+            <span style="font-size:10px;background:var(--bg-sunken);padding:3px 8px;border-radius:20px;color:var(--tx-3)">Notify me</span>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+window.doInstallApp = async function(id) {
+  await installApp(CU.uid, id);
+  showToast((APP_REGISTRY[id]?.name || 'App') + ' installed!', 'success');
+  const ids = await getInstalledApps(CU.uid);
+  renderAppStore(ids);
+};
+
+window.doUninstallApp = async function(id) {
+  if (APP_REGISTRY[id]?.default) { showToast('Built-in apps cannot be removed.', ''); return; }
+  const { uninstallApp: uninstall } = await import('./apps.js');
+  await uninstall(CU.uid, id);
+  showToast((APP_REGISTRY[id]?.name || 'App') + ' removed.', '');
+  const ids = await getInstalledApps(CU.uid);
+  renderAppStore(ids);
 };
 
 // ──────────────────────────────────────────────
@@ -1952,11 +2110,24 @@ window.togglePanel = function(id) {
 
 window.closeAllPanels = function() {
   document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+  document.getElementById('profile-side-panel')?.classList.remove('open');
   document.getElementById('panel-overlay').classList.remove('visible');
 };
 
 window.openProfile = function() {
-  document.getElementById('profile-page').classList.add('open');
+  buildProfile(); // always rebuild to keep in sync
+  if (window.innerWidth >= 769) {
+    document.getElementById('profile-side-panel').classList.add('open');
+    document.getElementById('panel-overlay').classList.add('visible');
+  } else {
+    document.getElementById('profile-page-mobile').classList.add('open');
+  }
+};
+
+window.closeProfile = function() {
+  document.getElementById('profile-side-panel').classList.remove('open');
+  document.getElementById('profile-page-mobile').classList.remove('open');
+  document.getElementById('panel-overlay').classList.remove('visible');
 };
 
 window.closeFullpage = function(id) {
