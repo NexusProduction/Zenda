@@ -925,11 +925,17 @@ textarea.form-input{min-height:70px;resize:vertical}
 
 <div id="toast-container"></div>
 
+<!-- Safe stubs so oninput handlers don't crash before the module loads -->
+<script>
+window.searchStaff = function(v) {};
+window.clearCSErr  = function(el) {};
+</script>
+
 <script type="module">
 import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
 import { requireAuth, logout, getCurrentUser } from './auth.js';
 import { listenNotifications, markAllRead as markAllReadFn, markNotificationRead, addNotification } from './notifications.js';
-import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined, format12hr } from './tasks.js';
+import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined } from './tasks.js';
 import { listenCompanyStaff, getAssignableStaff, createStaff, updateUserProfile, deleteStaffMember } from './staff.js';
 import { getInstalledApps, listenInstalledApps, installApp, renderAppLibrary, APP_REGISTRY } from './apps.js';
 import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
@@ -2024,7 +2030,17 @@ function svg(name) {
   };
   return icons[name] || `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/></svg>`;
 }
-// showToast is imported from utils.js — do not redefine
+// format12hr — local copy so we don't depend on tasks.js export version
+function format12hr(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${((h % 12) || 12)}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+// Make oninput handlers safe before module fully loads
+window.searchStaff = window.searchStaff || function(){};
+window.clearCSErr  = window.clearCSErr  || function(){};
 
 init().catch(console.error);
 </script>
