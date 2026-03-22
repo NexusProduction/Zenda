@@ -91,7 +91,7 @@ body{font-family:var(--font-body);background:var(--w2);min-height:100vh;display:
 .code-lbl{font-size:.66rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-family:var(--font-display)}
 .code-val{font-family:var(--font-mono);font-size:1.6rem;color:var(--accent);letter-spacing:.12em}
 .code-hint{font-size:.7rem;color:var(--text3);margin-top:3px}
-.card-preview{margin:12px 0;border-radius:12px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.12)}
+.card-preview{box-shadow:0 8px 32px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.1);margin:12px 0;border-radius:12px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.12)}
 .card-actions{display:flex;gap:8px;margin-top:8px}
 .btn-dl{flex:1;padding:10px;background:var(--w1);border:1.5px solid var(--border);border-radius:var(--r);color:var(--text2);font-family:var(--font-display);font-weight:600;font-size:.8rem;cursor:pointer;transition:all .18s}
 .btn-dl:hover{border-color:var(--border2);color:var(--text);background:var(--w0)}
@@ -123,13 +123,14 @@ body{font-family:var(--font-body);background:var(--w2);min-height:100vh;display:
 .peye:hover{transform:scale(1.2)}
 .code-box{transition:background .18s,border-color .18s,transform .18s,box-shadow .18s}
 .code-box:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.08)}
-.card-preview{transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}
+.card-preview{box-shadow:0 8px 32px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.1);transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}
 .card-preview:hover{transform:scale(1.02) rotate(0.5deg);box-shadow:0 16px 48px rgba(0,0,0,.16)}
 .btn-dl,.btn-wa{transition:all .15s cubic-bezier(.22,1,.36,1)}
 .btn-dl:hover,.btn-wa:hover{transform:translateY(-2px)}
 .role-card-sel{transition:border-color .18s,background .18s,transform .18s,box-shadow .18s}
 .role-card-sel:hover{transform:translateY(-2px)}
 .pwd-bar-wrap{overflow:hidden;border-radius:3px}
+:focus-visible{outline:2px solid var(--accent,#4f46e5);outline-offset:2px;border-radius:6px}
 </style>
 </head>
 <body>
@@ -165,9 +166,9 @@ body{font-family:var(--font-body);background:var(--w2);min-height:100vh;display:
           <div class="fgrp"><label class="flbl">Company Name</label><input class="finp" id="comp-name" type="text" placeholder="Acme Corp" maxlength="50" oninput="clrErr('comp-name')"><div class="ferr" id="e-comp-name"></div></div>
           <div class="fgrp"><label class="flbl">Your Full Name</label><input class="finp" id="owner-name" type="text" placeholder="John Doe" maxlength="40" oninput="clrErr('owner-name')"><div class="ferr" id="e-owner-name"></div></div>
         </div>
-        <div class="fgrp"><label class="flbl">Email Address</label><input class="finp" id="reg-email" type="email" placeholder="you@company.com" oninput="clrErr('reg-email')"><div class="ferr" id="e-reg-email"></div></div>
-        <div class="fgrp"><label class="flbl">Password</label><div class="pwrap"><input class="finp" id="reg-pwd" type="password" placeholder="Min. 6 characters" oninput="clrErr('reg-pwd');updateStr(this.value)"><button class="peye" onclick="toggleEye('reg-pwd',this)">👁</button></div><div class="pwd-bar-wrap"><div class="pwd-bar" id="pwd-bar"></div></div><div class="ferr" id="e-reg-pwd"></div></div>
-        <div class="fgrp"><label class="flbl">Confirm Password</label><div class="pwrap"><input class="finp" id="reg-pwd2" type="password" placeholder="Re-enter password" oninput="clrErr('reg-pwd2')"><button class="peye" onclick="toggleEye('reg-pwd2',this)">👁</button></div><div class="ferr" id="e-reg-pwd2"></div></div>
+        <div class="fgrp"><label class="flbl">Email Address</label><input class="finp" id="reg-email" type="email" autocomplete="email" placeholder="you@company.com" oninput="clrErr('reg-email')"><div class="ferr" id="e-reg-email"></div></div>
+        <div class="fgrp"><label class="flbl">Password</label><div class="pwrap"><input class="finp" id="reg-pwd" type="password" autocomplete="current-password" placeholder="Min. 6 characters" oninput="clrErr('reg-pwd');updateStr(this.value)"><button class="peye" onclick="toggleEye('reg-pwd',this)">👁</button></div><div class="pwd-bar-wrap"><div class="pwd-bar" id="pwd-bar"></div></div><div class="ferr" id="e-reg-pwd"></div></div>
+        <div class="fgrp"><label class="flbl">Confirm Password</label><div class="pwrap"><input class="finp" id="reg-pwd2" type="password" autocomplete="current-password" placeholder="Re-enter password" oninput="clrErr('reg-pwd2')"><button class="peye" onclick="toggleEye('reg-pwd2',this)">👁</button></div><div class="ferr" id="e-reg-pwd2"></div></div>
         <button class="btnMain" id="btn-step1" onclick="handleStep1()">Send OTP to Email →</button>
         <p style="font-size:.7rem;color:var(--text3);text-align:center;line-height:1.6">By signing up you agree to our <a href="#" style="color:var(--accent);text-decoration:none">Terms</a> & <a href="#" style="color:var(--accent);text-decoration:none">Privacy Policy</a></p>
       </div>
@@ -210,11 +211,10 @@ body{font-family:var(--font-body);background:var(--w2);min-height:100vh;display:
 <div id="toasts"></div>
 <script type="module">
 import{auth,db,EMAILJS_CONFIG}from'./firebase-config.js';
-import{ownerSignUp,redirectIfLoggedIn}from'./auth.js';
+import{ownerSignUp}from'./auth.js';
 import{sendOTP,verifyUserOTP}from'./otp.js';
 import{renderCardToElement,downloadCard,shareCardWhatsApp}from'./card-generator.js';
 import{isValidEmail}from'./utils.js';
-redirectIfLoggedIn('dashboard.html');
 if(EMAILJS_CONFIG.publicKey&&EMAILJS_CONFIG.publicKey!=='YOUR_EMAILJS_PUBLIC_KEY'){try{emailjs.init(EMAILJS_CONFIG.publicKey);}catch(e){}}
 let createdCanvas=null,createdCode='',timerID=null;
 function showStep(n){[1,2,3].forEach(i=>{document.getElementById('v-step'+i).style.display=i===n?'block':'none';const s=document.getElementById('step'+i);s.className='step-item'+(i<n?' done':i===n?' active':'');s.querySelector('.step-dot').textContent=i<n?'✓':i;});}
