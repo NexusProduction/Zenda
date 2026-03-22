@@ -468,8 +468,13 @@ textarea.form-input{min-height:70px;resize:vertical}
 .del-confirm-input.match{border-color:var(--green);background:rgba(22,163,74,.04)}
 
 /* ══ APP STORE ══ */
-.store-featured{background:linear-gradient(135deg,var(--ac),var(--ac-h));border-radius:var(--r-lg);padding:20px;color:#fff;margin-bottom:16px;position:relative;overflow:hidden}
-.store-featured::before{content:'';position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}
+.store-featured-wrap{position:relative;margin-bottom:16px;overflow:hidden}
+.store-carousel{display:flex;gap:10px;transition:transform .35s cubic-bezier(.22,1,.36,1)}
+.store-featured{min-width:100%;border-radius:var(--r-lg);padding:20px;color:#fff;position:relative;overflow:hidden;cursor:default;user-select:none}
+.store-featured::before{content:'';position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none}
+.store-carousel-dots{display:flex;justify-content:center;gap:6px;margin-top:10px;margin-bottom:6px}
+.cdot{width:6px;height:6px;border-radius:50%;background:var(--bd);transition:all .2s;cursor:pointer}
+.cdot.on{background:var(--ac);width:16px;border-radius:4px}
 .store-feat-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;opacity:.75;margin-bottom:4px}
 .store-feat-name{font-size:20px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px}
 .store-feat-desc{font-size:12px;opacity:.75;margin-bottom:14px;line-height:1.5}
@@ -966,14 +971,14 @@ textarea.form-input{min-height:70px;resize:vertical}
   </div>
 </div>
 
-<!-- ══ APP STORE (full page) ══ -->
+<!-- ══ APP LIBRARY (full page) ══ -->
 <div class="fullpage" id="app-store-page">
   <div class="fp-hdr">
     <button class="fp-back" onclick="closeFullpage('app-store-page')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       Back
     </button>
-    <div class="fp-ttl">App Store</div>
+    <div class="fp-ttl">App Library</div>
   </div>
   <div class="fp-body" id="app-store-body" style="padding:16px"></div>
 </div>
@@ -1014,6 +1019,8 @@ async function init() {
   CU = await getCurrentUser();
   if (!CU) { window.location.href = 'login.html'; return; }
   saveSession(CU);
+  // Load notify list from Firestore
+  CU._notifyList = CU.notifyApps || [];
   setupUI();
   buildProfile();
   subscribeAll();
@@ -1417,8 +1424,15 @@ window.setTaskTab = function(tab, btn) {
   else {
     const map = { 'assigned-to-me':'tab-to-me', 'assigned-by-me':'tab-by-me' };
     if (map[tab]) document.getElementById(map[tab])?.classList.add('on');
+    else {
+      // match by text content for filter tabs
+      document.querySelectorAll('.ftab').forEach(b => {
+        if (b.textContent.trim().toLowerCase().includes(tab)) b.classList.add('on');
+      });
+    }
   }
   showView('tasks');
+  renderTaskSummaryStrip();
   renderTasksList();
 };
 
@@ -1770,7 +1784,7 @@ function buildProfile() {
       </div>
       <div class="pf">
         <div>
-          <div class="pf-lbl">Login Password</div>
+          <div class="pf-lbl">Login Password <span style="font-size:9px;color:var(--tx-3);font-weight:400">(verify with OTP to reveal)</span></div>
           <div class="pf-dots" id="pf-pwd-dots"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
         </div>
         <button class="pf-btn" id="pf-pwd-eye" onclick="revealPassword()" title="Reveal via OTP">
@@ -1978,7 +1992,7 @@ function buildAppsGrid(ids) {
 }
 window.openApp = id => { const a = APP_REGISTRY[id]; if (a) window.open(a.path + '?uid=' + CU.uid, '_blank'); };
 
-window.openAppLib = async function() {
+window.openAppLib = async function() { _carouselIdx = 0;
   const ids = await getInstalledApps(CU.uid);
   renderAppStore(ids);
   document.getElementById('app-store-page').classList.add('open');
@@ -1986,57 +2000,68 @@ window.openAppLib = async function() {
 
 function renderAppStore(installedIds) {
   const el = document.getElementById('app-store-body');
+  if (!el) return;
   const all = Object.values(APP_REGISTRY);
-  const featured = all[0];
-
-  // Extended app registry with richer metadata
   const appMeta = {
-    calculator: { cat:'Productivity', rating:'4.8', reviews:'2.1k', color:'#4f46e5', bg:'#eef2ff' },
-    calendar:   { cat:'Organization', rating:'4.7', reviews:'1.4k', color:'#16a34a', bg:'#ecfdf5' },
+    calculator: { cat:'Productivity', color:'#4f46e5', bg:'#eef2ff' },
+    calendar:   { cat:'Organization', color:'#16a34a', bg:'#ecfdf5' },
   };
-
-  const featInst = installedIds.includes(featured.id);
+  const featuredSlides = [
+    { id:'calculator', grad:'linear-gradient(135deg,#4f46e5,#7c3aed)', tagline:'Smart calculations with full history' },
+    { id:'calendar',   grad:'linear-gradient(135deg,#059669,#0891b2)', tagline:'Team events, tasks & reminders' },
+  ];
+  const comingSoon = [
+    { id:'stock',     name:'Stock Management',    icon:'📦', cat:'Inventory',     desc:'Track inventory, low stock alerts and reorder points for your business.' },
+    { id:'staffmgmt', name:'Staff Management',    icon:'🏢', cat:'HR',            desc:'Attendance, leave requests, payroll summary and shift scheduling.' },
+    { id:'announce',  name:'Announcements',       icon:'📢', cat:'Communication', desc:'Send broadcasts, polls and updates to the whole team or specific groups.' },
+    { id:'expenses',  name:'Expense Tracker',     icon:'💳', cat:'Finance',       desc:'Log team expenses, run approval workflows and view budget overview.' },
+    { id:'reports',   name:'Reports & Analytics', icon:'📊', cat:'Analytics',     desc:'Performance reports, team productivity charts and PDF export.' },
+    { id:'leave',     name:'Leave Manager',       icon:'🏖', cat:'HR',            desc:'Request and approve leave, view team calendar and remaining balances.' },
+  ];
+  const notifyList = CU._notifyList || [];
 
   el.innerHTML = `
-    <!-- Featured App -->
-    <div class="store-featured">
-      <div class="store-feat-title">Featured App</div>
-      <div class="store-feat-name">${featured.name}</div>
-      <div class="store-feat-desc">${featured.desc}</div>
-      ${featInst
-        ? `<div style="display:flex;gap:8px">
-            <button class="store-btn-install" onclick="openApp('${featured.id}')">Open App</button>
-            ${!APP_REGISTRY[featured.id]?.default ? `<button class="store-btn-install" style="background:rgba(220,38,38,.3);border-color:rgba(220,38,38,.4)" onclick="doUninstallApp('${featured.id}')">Uninstall</button>` : ''}
-           </div>`
-        : `<button class="store-btn-install" onclick="doInstallApp('${featured.id}')">+ Get App</button>`}
+    <!-- Swipeable Featured Carousel -->
+    <div class="store-featured-wrap">
+      <div class="store-carousel" id="store-carousel">
+        ${featuredSlides.map((f,i) => {
+          const app = APP_REGISTRY[f.id]; if (!app) return '';
+          const inst = installedIds.includes(f.id);
+          const isDef = app.default;
+          return `<div class="store-featured" style="background:${f.grad}">
+            <div class="store-feat-title" style="font-size:10px;font-weight:600;opacity:.7;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Featured</div>
+            <div class="store-feat-name" style="font-size:19px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px">${app.name}</div>
+            <div class="store-feat-desc" style="font-size:12px;opacity:.78;margin-bottom:14px;line-height:1.5">${f.tagline}</div>
+            <div style="display:flex;gap:8px">
+              ${inst ? `<button class="store-btn-install" onclick="openApp('${f.id}')">Open App</button>${!isDef?`<button class="store-btn-install" style="background:rgba(220,38,38,.28);border-color:rgba(255,255,255,.2)" onclick="doUninstallApp('${f.id}')">Remove</button>`:''}` : `<button class="store-btn-install" onclick="doInstallApp('${f.id}')">+ Install Free</button>`}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="store-carousel-dots" id="carousel-dots">
+        ${featuredSlides.map((_,i)=>`<div class="cdot${i===0?' on':''}" onclick="carouselGo(${i})"></div>`).join('')}
+      </div>
     </div>
 
-    <!-- All Apps Grid -->
-    <div class="store-section-title">All Apps</div>
-    <div class="store-grid">
+    <!-- My Apps -->
+    <div class="store-section-title">My Apps</div>
+    <div class="store-grid" style="margin-bottom:24px">
       ${all.map(app => {
-        const m = appMeta[app.id] || { cat:'Utility', rating:'4.5', reviews:'500', color:'#4f46e5', bg:'#eef2ff' };
+        const m = appMeta[app.id] || { cat:'Utility', color:'#4f46e5', bg:'#eef2ff' };
         const inst = installedIds.includes(app.id);
-        const isDefault = APP_REGISTRY[app.id]?.default;
+        const isDef = APP_REGISTRY[app.id]?.default;
         return `<div class="store-card">
           <div class="store-card-top">
-            <div class="store-app-icon" style="background:${m.bg};color:${m.color};font-size:1.5rem">${app.icon}</div>
-            <div>
-              <div class="store-app-name">${app.name}</div>
-              <div class="store-app-cat">${m.cat}</div>
-            </div>
+            <div class="store-app-icon" style="background:${m.bg};font-size:1.5rem">${app.icon}</div>
+            <div><div class="store-app-name">${app.name}</div><div class="store-app-cat">${m.cat}</div></div>
           </div>
           <div class="store-app-desc">${app.desc}</div>
           <div class="store-app-footer">
-            <div class="store-rating">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="${m.color}" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              ${m.rating} · ${m.reviews}
-            </div>
-            <div style="display:flex;gap:5px;align-items:center">
-              ${inst ? `
-                <button class="store-btn store-btn-open" onclick="openApp('${app.id}')">Open</button>
-                ${!isDefault ? `<button class="store-btn store-btn-uninstall" onclick="doUninstallApp('${app.id}')">Remove</button>` : '<span style="font-size:10px;color:var(--tx-3)">Built-in</span>'}
-              ` : `<button class="store-btn store-btn-get" onclick="doInstallApp('${app.id}')">+ Get</button>`}
+            <span style="font-size:10px;color:var(--tx-3)">${isDef?'Built-in':inst?'Installed':'Available'}</span>
+            <div style="display:flex;gap:5px">
+              ${inst
+                ? `<button class="store-btn store-btn-open" onclick="openApp('${app.id}')">Open</button>${!isDef?`<button class="store-btn store-btn-uninstall" onclick="doUninstallApp('${app.id}')">Remove</button>`:''}`
+                : `<button class="store-btn store-btn-get" onclick="doInstallApp('${app.id}')">+ Get</button>`}
             </div>
           </div>
         </div>`;
@@ -2044,43 +2069,86 @@ function renderAppStore(installedIds) {
     </div>
 
     <!-- Coming Soon -->
-    <div class="store-section-title" style="color:var(--tx-3)">Coming Soon</div>
+    <div class="store-section-title">Coming Soon</div>
+    <p style="font-size:11px;color:var(--tx-3);margin-bottom:14px;line-height:1.5">These features are in development. Tap <strong>Notify me</strong> — you'll get a notification the moment they launch.</p>
     <div class="store-grid">
-      ${[
-        {name:'Time Tracker',icon:'⏱',cat:'Productivity',desc:'Track hours per task automatically'},
-        {name:'Expense Log',icon:'💳',cat:'Finance',desc:'Log and categorize team expenses'},
-        {name:'Announcements',icon:'📢',cat:'Communication',desc:'Broadcast messages to your team'},
-        {name:'Leave Manager',icon:'🏖',cat:'HR',desc:'Request and approve time off'},
-      ].map(app => `
-        <div class="store-card" style="opacity:.55">
+      ${comingSoon.map(app => {
+        const noted = notifyList.includes(app.id);
+        return `<div class="store-card">
           <div class="store-card-top">
-            <div class="store-app-icon" style="background:var(--bg-sunken)">${app.icon}</div>
-            <div>
-              <div class="store-app-name">${app.name}</div>
-              <div class="store-app-cat">${app.cat}</div>
-            </div>
+            <div class="store-app-icon" style="background:var(--bg-sunken);font-size:1.4rem">${app.icon}</div>
+            <div><div class="store-app-name">${app.name}</div><div class="store-app-cat">${app.cat}</div></div>
           </div>
           <div class="store-app-desc">${app.desc}</div>
           <div class="store-app-footer">
             <span style="font-size:10px;color:var(--tx-3)">Coming soon</span>
-            <span style="font-size:10px;background:var(--bg-sunken);padding:3px 8px;border-radius:20px;color:var(--tx-3)">Notify me</span>
+            <button class="store-btn" id="notify-btn-${app.id}"
+              style="padding:4px 10px;font-size:11px;border-radius:var(--r-sm);cursor:pointer;transition:all .15s;${noted?'background:rgba(22,163,74,.1);color:var(--green);border:1px solid rgba(22,163,74,.25)':'background:var(--ac-s);color:var(--ac);border:1px solid var(--ac-b)'}"
+              onclick="toggleNotify('${app.id}','${app.name}',this)">
+              ${noted?'✓ Notified':'Notify me'}
+            </button>
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>`;
+
+  // Init swipe carousel
+  setTimeout(initCarousel, 60);
 }
+
+let _carouselIdx = 0;
+function initCarousel() {
+  const carousel = document.getElementById('store-carousel');
+  if (!carousel) return;
+  let sx = 0, dragging = false;
+  const go = diff => {
+    const n = carousel.children.length;
+    if (diff < -40 && _carouselIdx < n-1) carouselGo(_carouselIdx+1);
+    else if (diff > 40 && _carouselIdx > 0) carouselGo(_carouselIdx-1);
+  };
+  carousel.addEventListener('touchstart', e => { sx=e.touches[0].clientX; dragging=true; }, {passive:true});
+  carousel.addEventListener('touchend',   e => { if(dragging){dragging=false; go(e.changedTouches[0].clientX-sx);} });
+  carousel.addEventListener('mousedown',  e => { sx=e.clientX; dragging=true; });
+  carousel.addEventListener('mouseup',    e => { if(dragging){dragging=false; go(e.clientX-sx);} });
+  carousel.addEventListener('mouseleave', () => { dragging=false; });
+}
+window.carouselGo = function(idx) {
+  const carousel = document.getElementById('store-carousel');
+  if (!carousel) return;
+  _carouselIdx = idx;
+  carousel.style.transform = `translateX(calc(-${idx*100}% - ${idx*10}px))`;
+  document.querySelectorAll('.cdot').forEach((d,i) => d.classList.toggle('on', i===idx));
+};
+
+window.toggleNotify = async function(appId, appName, btn) {
+  if (!CU._notifyList) CU._notifyList = [];
+  const already = CU._notifyList.includes(appId);
+  if (already) {
+    CU._notifyList = CU._notifyList.filter(id=>id!==appId);
+    btn.textContent = 'Notify me';
+    btn.style.cssText = 'padding:4px 10px;font-size:11px;border-radius:var(--r-sm);cursor:pointer;transition:all .15s;background:var(--ac-s);color:var(--ac);border:1px solid var(--ac-b)';
+    showToast('Removed from notify list', '');
+  } else {
+    CU._notifyList.push(appId);
+    btn.textContent = '✓ Notified';
+    btn.style.cssText = 'padding:4px 10px;font-size:11px;border-radius:var(--r-sm);cursor:pointer;transition:all .15s;background:rgba(22,163,74,.1);color:var(--green);border:1px solid rgba(22,163,74,.25)';
+    showToast(`You'll be notified when ${appName} launches! 🔔`, 'success');
+  }
+  try { await updateDoc(doc(db,'users',CU.uid), { notifyApps: CU._notifyList }); } catch(_) {}
+};
 
 window.doInstallApp = async function(id) {
   await installApp(CU.uid, id);
-  showToast((APP_REGISTRY[id]?.name || 'App') + ' installed!', 'success');
+  showToast((APP_REGISTRY[id]?.name||'App') + ' installed!', 'success');
   const ids = await getInstalledApps(CU.uid);
   renderAppStore(ids);
 };
 
 window.doUninstallApp = async function(id) {
   if (APP_REGISTRY[id]?.default) { showToast('Built-in apps cannot be removed.', ''); return; }
-  const { uninstallApp: uninstall } = await import('./apps.js');
-  await uninstall(CU.uid, id);
-  showToast((APP_REGISTRY[id]?.name || 'App') + ' removed.', '');
+  const { uninstallApp: ua } = await import('./apps.js');
+  await ua(CU.uid, id);
+  showToast((APP_REGISTRY[id]?.name||'App') + ' removed.', '');
   const ids = await getInstalledApps(CU.uid);
   renderAppStore(ids);
 };
@@ -2099,6 +2167,8 @@ window.showView = function(v) {
   const bnMap = { home:'bn-home', tasks:'bn-tasks', staff:'bn-staff-btn' };
   if (bnMap[v]) document.getElementById(bnMap[v])?.classList.add('active');
   else document.getElementById('bn-home')?.classList.add('active');
+  // Re-render tasks list every time tasks view becomes visible
+  if (v === 'tasks') { renderTaskSummaryStrip(); renderTasksList(); }
 };
 
 window.togglePanel = function(id) {
