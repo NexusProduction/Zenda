@@ -40,6 +40,7 @@ export async function createStaff({ name, email, password, role, companyId, comp
     await setDoc(doc(db, 'users', uid), {
       name: name.trim(), email: email.trim(), role, companyId, uniqueId,
       designation: designation.trim(), createdBy,
+      passwordHint: password.trim(),
       createdAt: new Date().toISOString()
     });
 
