@@ -12,6 +12,12 @@
 <style>
 /* ── Inline styles that override dashboard.css ── */
 /* ── Global utility ── */
+/* U50: Consistent keyboard focus ring */
+:focus-visible {
+  outline: 2px solid var(--ac);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
 .hidden{display:none!important}
 
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -21,6 +27,8 @@
 @keyframes toastIn{from{opacity:0;transform:translateX(18px) scale(.95)}to{opacity:1;transform:translateX(0) scale(1)}}
 @keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateX(14px)}}
 @keyframes numFlip{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes logoHb{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes greetIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── Design token overrides to match index.html ── */
 :root{
@@ -127,9 +135,10 @@
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:3px;padding:6px 4px;cursor:pointer;border:none;background:none;
   color:var(--tx-3);transition:color .14s;position:relative;
-  font-size:10px;font-weight:500;letter-spacing:.01em;
+  font-size:11px;font-weight:500;letter-spacing:.01em;
 }
-.bn-item.active{color:var(--ac)}
+.bn-item.active{color:var(--ac);position:relative}
+.bn-item.active::after{content:'';position:absolute;top:0;left:25%;right:25%;height:2px;background:var(--ac);border-radius:0 0 2px 2px}
 .bn-item:active{transform:scale(.92)}
 .bn-item svg{transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
 .bn-item.active svg{transform:scale(1.1)}
@@ -160,8 +169,8 @@
 .ic-green{background:rgba(22,163,74,.1);color:var(--green)}
 .ic-red{background:rgba(220,38,38,.1);color:var(--red)}
 .ic-cyan{background:rgba(8,145,178,.1);color:var(--cyan)}
-.sc-val{font-size:26px;font-weight:700;letter-spacing:-0.04em;color:var(--tx-1);line-height:1;animation:numFlip .28s ease}
-.sc-lbl{font-size:11px;color:var(--tx-3);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+.sc-val{font-size:32px;font-weight:700;letter-spacing:-0.04em;color:var(--tx-1);line-height:1;animation:numFlip .28s ease}
+.sc-lbl{font-size:11px;color:var(--tx-2);letter-spacing:.01em;margin-top:3px;font-weight:400}
 .sc-sub{font-size:11px;color:var(--tx-3);margin-top:2px}
 /* Staff tooltip */
 .staff-tip{
@@ -184,7 +193,7 @@
 .chart-sub{font-size:11px;color:var(--tx-3);margin-top:1px}
 .chart-legend{display:flex;gap:10px;flex-wrap:wrap}
 .leg-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--tx-2);font-weight:400}
-.leg-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
 /* ══ CONTENT CARD ══ */
 .content-card{background:var(--bg-raised);border:1px solid var(--bd);border-radius:var(--r-lg);padding:16px;box-shadow:var(--sh-1)}
@@ -199,10 +208,10 @@
   transition:all .15s;position:relative;/* border-left color set per-card inline */
 }
 .task-card:hover{border-color:rgba(0,0,0,.14);background:var(--bg-overlay);transform:translateX(2px);box-shadow:var(--sh-1)}
-.task-status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.dot-pending{background:var(--amber)}
-.dot-done{background:var(--green)}
-.dot-declined{background:var(--red)}
+.task-status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px;box-shadow:0 0 0 2px transparent}
+.dot-pending{background:var(--amber);box-shadow:0 0 0 2px rgba(217,119,6,.15)}
+.dot-done{background:var(--green);box-shadow:0 0 0 2px rgba(22,163,74,.15)}
+.dot-declined{background:var(--red);box-shadow:0 0 0 2px rgba(220,38,38,.15)}
 .task-body{flex:1;min-width:0}
 .task-title{font-size:13px;font-weight:500;color:var(--tx-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
 .task-meta{font-size:11px;color:var(--tx-3);line-height:1.5}
@@ -230,10 +239,10 @@
 }
 .ftabs::-webkit-scrollbar{display:none}
 .ftab{
-  padding:6px 12px;border:none;background:transparent;border-radius:calc(var(--r-md) - 3px);
+  padding:6px 12px;border:none;background:transparent;border-radius:var(--r-sm);
   font-size:12px;font-weight:500;color:var(--tx-3);cursor:pointer;transition:all .14s;white-space:nowrap;
 }
-.ftab.on{background:var(--bg-base);color:var(--ac);box-shadow:var(--sh-1);border:1px solid var(--bd)}
+.ftab.on{background:var(--bg-base);color:var(--ac);box-shadow:var(--sh-1);border:1px solid var(--bd);font-weight:500}
 
 /* ══ APPS ══ */
 .apps-wrap{background:var(--bg-raised);border:1px solid var(--bd);border-radius:var(--r-lg);padding:16px;box-shadow:var(--sh-1)}
@@ -241,7 +250,7 @@
 .app-icon{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:7px 4px;border-radius:var(--r-md);transition:all .15s;border:1px solid transparent}
 .app-icon:hover{background:var(--bg-overlay);border-color:var(--bd);transform:translateY(-2px)}
 .app-icon:active{transform:scale(.92)}
-.app-img{width:48px;height:48px;border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center;font-size:1.4rem;border:1px solid var(--bd)}
+.app-img{width:56px;height:56px;border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center;font-size:1.4rem;border:1px solid var(--bd)}
 .app-lbl{font-size:10px;font-weight:500;color:var(--tx-2);text-align:center}
 .app-more{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:7px 4px;border-radius:var(--r-md);transition:all .15s}
 .app-more:hover{background:var(--bg-overlay);transform:translateY(-2px)}
@@ -286,7 +295,7 @@
 }
 .side-panel.open{transform:translateX(0)}
 .sp-hdr{padding:14px 16px 12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.sp-ttl{font-size:14px;font-weight:600;color:var(--tx-1)}
+.sp-ttl{font-size:15px;font-weight:600;color:var(--tx-1)}
 .sp-body{flex:1;overflow-y:auto;padding:12px}
 
 /* ══ NOTIFICATIONS IN PANEL ══ */
@@ -295,7 +304,7 @@
   padding:11px 12px;margin-bottom:6px;cursor:pointer;transition:all .14s;
 }
 .ni-item:hover{border-color:rgba(0,0,0,.13);background:var(--bg-overlay)}
-.ni-item.unread{background:var(--ac-s);border-color:var(--ac-b)}
+.ni-item.unread{background:var(--ac-s);border-color:var(--ac-b);border-left-width:3px}
 .ni-top{display:flex;gap:9px;align-items:flex-start}
 .ni-ico{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ni-blue{background:rgba(79,70,229,.1);color:var(--ac)}
@@ -388,7 +397,7 @@
 .modal{background:var(--bg-base);border-radius:var(--r-xl);border:1px solid var(--bd);padding:22px;width:100%;max-width:480px;box-shadow:var(--sh-4);animation:modalIn .24s cubic-bezier(.34,1.56,.64,1);position:relative;max-height:92vh;overflow-y:auto}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .modal-ttl{font-size:15px;font-weight:600;letter-spacing:-0.01em}
-.modal-close{background:var(--bg-raised);border:1px solid var(--bd);cursor:pointer;color:var(--tx-2);border-radius:var(--r-sm);width:26px;height:26px;display:flex;align-items:center;justify-content:center;transition:all .14s}
+.modal-close{background:var(--bg-raised);border:1px solid var(--bd);cursor:pointer;color:var(--tx-2);border-radius:var(--r-sm);width:32px;height:32px;min-width:32px;min-height:32px;display:flex;align-items:center;justify-content:center;transition:all .14s}
 .modal-close:hover{background:#fee2e2;color:var(--red);border-color:rgba(220,38,38,.2)}
 
 /* ══ FORMS ══ */
@@ -414,7 +423,7 @@ textarea.form-input{min-height:70px;resize:vertical}
   transition:background .13s,box-shadow .13s,transform .1s,color .13s,border-color .13s;
   user-select:none;white-space:nowrap;text-decoration:none;
 }
-.btn:active{transform:scale(0.975)}
+.btn:active{transform:scale(0.96)}
 .btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
 .btn-primary{background:var(--ac);color:#fff;box-shadow:0 1px 2px rgba(79,70,229,.22)}
 .btn-primary:hover{background:var(--ac-h);box-shadow:0 2px 8px rgba(79,70,229,.28)}
@@ -447,7 +456,8 @@ textarea.form-input{min-height:70px;resize:vertical}
 .role-card-sel.sel-mgr.selected{border-color:var(--ac);background:var(--ac-s)}
 .role-card-sel.sel-stf.selected{border-color:var(--green);background:rgba(22,163,74,.06)}
 .form-section{background:var(--bg-raised);border-radius:var(--r-lg);border:1px solid var(--bd);padding:16px;margin-bottom:12px;box-shadow:var(--sh-1)}
-.form-section-title{font-size:10px;font-weight:600;color:var(--tx-2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--bd)}
+.form-section-title{font-size:11px;font-weight:600;color:var(--tx-2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:7px}
+.form-section-title::before{content:'';width:3px;height:14px;background:var(--ac);border-radius:2px;flex-shrink:0}
 .pwd-wrap{position:relative}
 .pwd-wrap .form-input{padding-right:38px}
 .pwd-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--tx-3);padding:3px;transition:color .14s;display:flex;align-items:center}
@@ -508,6 +518,10 @@ textarea.form-input{min-height:70px;resize:vertical}
 .toast-success{background:#14532d;color:#dcfce7}
 .toast-error{background:#7f1d1d;color:#fee2e2}
 
+/* ══ REDUCED MOTION — D08 ══ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
 /* ══ RESPONSIVE ══ */
 @media(min-width:769px){
   .sidebar{display:flex}
@@ -515,21 +529,31 @@ textarea.form-input{min-height:70px;resize:vertical}
   .topbar{padding:0 20px}
   .stats-grid{grid-template-columns:repeat(4,1fr)}
   .charts-row{grid-template-columns:3fr 2fr}
-  .content-row{grid-template-columns:3fr 2fr}
+  .content-row{grid-template-columns:2fr 1fr}
   #toast-container{bottom:24px;right:20px}
 }
 @media(max-width:768px){
   .profile-btn-name,.topbar-company{display:none}
   .bottom-nav{display:block}
 }
+/* B19 FIX: task summary on very small screens */
+@media(max-width:380px){
+  #task-summary-strip{grid-template-columns:1fr 1fr!important}
+  .store-grid{grid-template-columns:1fr!important}
+}
+/* B20 FIX: store grid responsive */
+@media(max-width:480px){
+  .store-grid{grid-template-columns:1fr 1fr}
+  .store-card{min-width:0}
+}
 </style>
 </head>
 <body>
 
 <!-- Loading -->
-<div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg-base,#f6f6f9);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+<div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg-base,#f6f6f9);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s">
   <div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:600;letter-spacing:-0.02em;color:var(--tx-1,#0c0c14)">
-    <div id="loading-logo-icon" style="width:30px;height:30px;background:#4f46e5;border-radius:6px;display:flex;align-items:center;justify-content:center">
+    <div id="loading-logo-icon" style="width:30px;height:30px;background:#4f46e5;border-radius:6px;display:flex;align-items:center;justify-content:center;animation:logoHb 1.2s ease-in-out infinite">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
     </div>
     Zenda
@@ -568,6 +592,12 @@ textarea.form-input{min-height:70px;resize:vertical}
 
 <!-- Sidebar (desktop) -->
 <aside class="sidebar" id="sidebar">
+  <div style="padding:14px 12px 8px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px">
+    <div style="width:26px;height:26px;background:var(--ac);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    </div>
+    <span style="font-size:14px;font-weight:600;letter-spacing:-0.02em;color:var(--tx-1)">Zenda</span>
+  </div>
   <nav class="sidebar-nav">
     <div class="sidebar-section-label">Main</div>
     <div class="sidebar-item active" id="nav-home" onclick="showView('home')">
@@ -604,7 +634,7 @@ textarea.form-input{min-height:70px;resize:vertical}
   <div id="view-home">
     <div class="page-hdr">
       <div>
-        <div class="page-ttl" id="home-greeting">Welcome</div>
+        <div class="page-ttl" id="home-greeting" style="animation:greetIn .5s cubic-bezier(.22,1,.36,1) both">Welcome</div>
         <div class="page-sub" id="home-sub"></div>
       </div>
       <button class="btn btn-primary btn-sm hidden" id="assign-top-btn" onclick="openAssignModal()">
@@ -662,12 +692,12 @@ textarea.form-input{min-height:70px;resize:vertical}
     </div>
 
     <!-- Summary strip for tasks page -->
-    <div id="task-summary-strip" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
+    <div id="task-summary-strip" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;min-width:0"></div>
 
     <!-- Tab rows -->
     <div class="ftabs" id="task-tab-row">
       <button class="ftab on" onclick="setTaskTab('assigned-to-me',this)" id="tab-to-me">Assigned to Me</button>
-      <button class="ftab" onclick="setTaskTab('assigned-by-me',this)" id="tab-by-me" style="display:none">I Assigned</button>
+      <button class="ftab" onclick="setTaskTab('assigned-by-me',this)" id="tab-by-me" class="hidden">I Assigned</button>
       <button class="ftab" onclick="setTaskTab('pending',this)">Pending</button>
       <button class="ftab" onclick="setTaskTab('done',this)">Done</button>
       <button class="ftab" onclick="setTaskTab('declined',this)">Declined</button>
@@ -729,7 +759,7 @@ textarea.form-input{min-height:70px;resize:vertical}
   <div class="sp-hdr">
     <div class="sp-ttl">Notifications <span id="notif-count-badge" style="font-size:10px;font-weight:500;color:var(--tx-3);font-family:var(--f-mono)"></span></div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:500;cursor:pointer" onclick="markAllRead()">Mark all read</button>
+      <button class="btn btn-ghost btn-sm" onclick="markAllRead()" style="font-size:11px;gap:4px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>All read</button>
       <button class="modal-close" onclick="closeAllPanels()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
@@ -782,12 +812,12 @@ textarea.form-input{min-height:70px;resize:vertical}
   <div class="fp-body">
     <div class="role-cards">
       <div class="role-card-sel sel-mgr selected" id="rc-manager" onclick="selectRole('manager')">
-        <div style="font-size:1.4rem;margin-bottom:5px">🎯</div>
+        <div style="margin-bottom:8px;width:32px;height:32px;border-radius:8px;background:var(--ac-s);display:flex;align-items:center;justify-content:center;margin-left:auto;margin-right:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
         <div style="font-size:13px;font-weight:600;color:var(--tx-1)">Manager</div>
         <div style="font-size:11px;color:var(--tx-3);margin-top:2px">Can assign tasks</div>
       </div>
       <div class="role-card-sel sel-stf" id="rc-staff" onclick="selectRole('staff')">
-        <div style="font-size:1.4rem;margin-bottom:5px">💼</div>
+        <div style="margin-bottom:8px;width:32px;height:32px;border-radius:8px;background:rgba(22,163,74,.1);display:flex;align-items:center;justify-content:center;margin-left:auto;margin-right:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
         <div style="font-size:13px;font-weight:600;color:var(--tx-1)">Staff</div>
         <div style="font-size:11px;color:var(--tx-3);margin-top:2px">Receives tasks</div>
       </div>
@@ -995,13 +1025,15 @@ import { requireAuth, logout, getCurrentUser } from './auth.js';
 import { listenNotifications, markAllRead as markAllReadFn, markNotificationRead, addNotification } from './notifications.js';
 import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined } from './tasks.js';
 import { listenCompanyStaff, getAssignableStaff, createStaff, updateUserProfile, deleteStaffMember } from './staff.js';
-import { getInstalledApps, listenInstalledApps, installApp, renderAppLibrary, APP_REGISTRY } from './apps.js';
+import { getInstalledApps, listenInstalledApps, installApp, uninstallApp, renderAppLibrary, APP_REGISTRY } from './apps.js';
 import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
 import { showToast, setButtonLoading, getInitials, avatarColor, formatRole, roleBadgeClass, copyToClipboard, saveSession } from './utils.js';
+window.copyToClipboard = copyToClipboard; // B17 FIX: expose to inline onclick
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { sendOTP, verifyUserOTP } from './otp.js';
 
 let CU = null, myTasks = [], assignedByMeTasks = [], allStaff = [];
+let _profileBuilt = false;
 let newRole = 'manager', newCanvas = null, newStaffData = null;
 let editField = null, taskTab = 'assigned-to-me', staffSearchVal = '';
 let deleteTargetUid = null, deleteTargetEmail = '', deleteTargetPwd = '', deleteConfirmStr = '';
@@ -1072,7 +1104,7 @@ function setupUI() {
     document.getElementById('bn-assign').classList.remove('hidden');
     document.getElementById('assign-top-btn').classList.remove('hidden');
     document.getElementById('assign-tasks-btn').classList.remove('hidden');
-    document.getElementById('tab-by-me').style.display = '';
+    document.getElementById('tab-by-me').classList.remove('hidden');
   }
   if (canSeeStaff) {
     document.getElementById('nav-staff').classList.remove('hidden');
@@ -1080,9 +1112,10 @@ function setupUI() {
   }
   if (isOwner) {
     document.getElementById('add-staff-btn').style.display = 'flex';
-    // Add Staff nav button in bottom nav for owner
-    const bnStaff = document.getElementById('bn-staff-btn');
-    if (bnStaff) bnStaff.classList.remove('hidden');
+  }
+  if (canSeeStaff) {
+    // B04 FIX: Both owner AND manager see Staff in mobile nav
+    document.getElementById('bn-staff-btn')?.classList.remove('hidden');
   }
   // Owner sees NO charts
   // Charts: ONLY staff and manager see task activity charts. Owner does NOT.
@@ -1125,7 +1158,7 @@ function subscribeAll() {
   unsubs.push(listenNotifications(uid, (items, unread) => {
     renderNotifPanel(items);
     setBadge('notif-badge', unread);
-    setDot('bn-notif-dot', unread > 0);
+    // B01 FIX: bn-notif removed from bottom nav; notif icon in topbar handles its own badge
   }));
 
   // MY tasks (assigned to me)
@@ -1179,11 +1212,13 @@ function renderOwnerStats() {
   const staff = allStaff.filter(s => s.role !== 'owner');
   const pending = assignedByMeTasks.filter(t => t.status === 'pending').length;
   const done = assignedByMeTasks.filter(t => t.status === 'done').length;
-  const alerts = parseInt(document.getElementById('notif-badge').textContent) || 0;
+  // B16 FIX: read from data attribute, not hidden badge text
+  const nb = document.getElementById('notif-badge');
+  const alerts = nb ? (parseInt(nb.dataset.count || nb.textContent) || 0) : 0;
   const names = staff.slice(0, 5).map(s => `<div class="tip-row"><div class="tip-dot"></div>${esc(s.name)}</div>`).join('');
   const more = staff.length > 5 ? `<div class="tip-more">+${staff.length - 5} more</div>` : '';
   document.getElementById('stats-grid').innerHTML = `
-    <div class="stat-card" onclick="showView('staff')">
+    <div class="stat-card" onclick="showView('staff');document.getElementById('nav-staff')?.classList.add('active')">
       <div class="sc-ico ic-blue">${svg('users')}</div>
       <div class="sc-val">${staff.length}</div>
       <div class="sc-lbl">Staff Members</div>
@@ -1214,7 +1249,9 @@ function renderNonOwnerStats(tasks) {
   const pending = tasks.filter(t => t.status === 'pending').length;
   const done = tasks.filter(t => t.status === 'done').length;
   const declined = tasks.filter(t => t.status === 'declined').length;
-  const alerts = parseInt(document.getElementById('notif-badge').textContent) || 0;
+  // B16 FIX: read from data attribute, not hidden badge text
+  const nb = document.getElementById('notif-badge');
+  const alerts = nb ? (parseInt(nb.dataset.count || nb.textContent) || 0) : 0;
   const isManager = CU.role === 'manager';
   document.getElementById('stats-grid').innerHTML = isManager ? `
     <div class="stat-card" onclick="setTaskTab('assigned-to-me',null);showView('tasks')">
@@ -1587,11 +1624,20 @@ function renderStaffCards(staff) {
   }).join('');
 }
 
-window.searchStaff = function(v) { staffSearchVal = v.toLowerCase(); renderStaffCards(allStaff); };
+window.searchStaff = function(v) {
+  staffSearchVal = v.toLowerCase();
+  if (!allStaff.length) {
+    const el = document.getElementById('staff-cards-list');
+    if (el) el.innerHTML = `<div class="empty"><div class="empty-ico">${svg('users')}</div><div class="empty-ttl">Loading...</div></div>`;
+    return;
+  }
+  renderStaffCards(allStaff);
+};
 
 function buildAssignSelect(staff) {
   const sel = document.getElementById('assign-to');
-  const list = staff.filter(s => s.role !== 'owner' && s.uid !== CU.uid);
+  // B06 FIX: allow assigning to anyone except self (owner/manager assigns others)
+  const list = staff.filter(s => s.uid !== CU.uid);
   sel.innerHTML = '<option value="">Select team member…</option>' + list.map(s => `<option value="${s.uid}">${esc(s.name)} (${esc(s.designation || formatRole(s.role))})</option>`).join('');
 }
 
@@ -1715,6 +1761,7 @@ window.waCard = () => { if (newCanvas && newStaffData) shareCardWhatsApp(newCanv
 // ──────────────────────────────────────────────
 window.openAssignModal = async function() {
   buildAssignSelect(allStaff);
+  document.getElementById('assign-to').value = '';  // B06 FIX: reset selection
   ['task-title','task-desc'].forEach(id => document.getElementById(id).value = '');
   ['task-date','task-time'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('assign-modal').classList.remove('hidden');
@@ -1754,7 +1801,7 @@ function buildProfile() {
     <div style="text-align:center;padding:20px 16px 16px;border-bottom:1px solid var(--bd);margin-bottom:14px">
       <div style="position:relative;display:inline-block;margin-bottom:10px">
         <div id="pf-avatar" class="av" style="width:68px;height:68px;font-size:1.5rem;font-weight:600;border-radius:14px;border:2px solid var(--bd);${avatarSrc ? '' : `background:${col}22;color:${col}`}">${avatarSrc ? `<img src="${avatarSrc}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">` : ini}</div>
-        <label style="position:absolute;bottom:-4px;right:-4px;width:24px;height:24px;background:var(--ac);border:2px solid var(--bg-base);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--sh-2)" title="Change logo">
+        <label style="position:absolute;bottom:-4px;right:-4px;width:30px;height:30px;background:var(--ac);border:2px solid var(--bg-base);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--sh-2)" title="Change logo">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           <input type="file" id="avatar-inp" accept="image/*" style="display:none" onchange="handleAvatarChange(event)">
         </label>
@@ -1828,9 +1875,12 @@ function buildProfile() {
 
 
 // Avatar change — saves to Firestore so it persists
+let _avatarChanging = false;
 window.handleAvatarChange = async function(e) {
+  if (_avatarChanging) return; // B12 FIX: prevent race condition
+  _avatarChanging = true;
   const file = e.target.files[0];
-  if (!file) return;
+  if (!file) { _avatarChanging = false; return; }
   const canvas = document.createElement('canvas');
   const img = new Image();
   img.onload = async () => {
@@ -1853,6 +1903,7 @@ window.handleAvatarChange = async function(e) {
     if (pf) pf.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">`;
     setAvatar('topbar-avatar', '', '', 26, dataUrl);
     setAvatar('bn-avatar', '', '', 22, dataUrl);
+    _avatarChanging = false;
     showToast('Logo updated!', 'success');
   };
   const reader2 = new FileReader();
@@ -1944,7 +1995,15 @@ function setupOTPBoxes(selector) {
 }
 
 function getOTPValue(selector) {
-  return Array.from(document.querySelectorAll(selector + ' .otp-box')).map(b => b.value).join('');
+  // B09 FIX: only read from the VISIBLE panel
+  const panels = document.querySelectorAll(selector.replace(' .otp-box',''));
+  for (const panel of panels) {
+    if (panel.offsetParent !== null) { // visible
+      return Array.from(panel.querySelectorAll('.otp-box')).map(b => b.value).join('');
+    }
+  }
+  // fallback: first 6 boxes
+  return Array.from(document.querySelectorAll(selector + ' .otp-box')).slice(0,6).map(b=>b.value).join('');
 }
 
 // Edit profile
@@ -1985,7 +2044,7 @@ function buildAppsGrid(ids) {
     const a = APP_REGISTRY[id];
     return `<div class="app-icon" onclick="openApp('${a.id}')"><div class="app-img" style="background:${a.bgColor}">${a.icon}</div><div class="app-lbl">${a.name}</div></div>`;
   }).join('');
-  el.innerHTML = html + `<div class="app-more" onclick="openAppLib()"><div class="app-more-img">${svg('grid')}</div><div class="app-lbl" style="color:var(--tx-3)">More</div></div>`;
+  el.innerHTML = html + `<div class="app-more" onclick="openAppLib()"><div class="app-more-img" style="background:var(--bg-overlay);border:none">${svg('grid')}</div><div class="app-lbl" style="color:var(--tx-3)">More</div></div>`;
 }
 window.openApp = id => { const a = APP_REGISTRY[id]; if (a) window.open(a.path + '?uid=' + CU.uid, '_blank'); };
 
@@ -2152,8 +2211,7 @@ window.doInstallApp = async function(id) {
 
 window.doUninstallApp = async function(id) {
   if (APP_REGISTRY[id]?.default) { showToast('Built-in apps cannot be removed.', ''); return; }
-  const { uninstallApp: ua } = await import('./apps.js');
-  await ua(CU.uid, id);
+  await uninstallApp(CU.uid, id); // B23 FIX: use named import
   showToast((APP_REGISTRY[id]?.name||'App') + ' removed.', '');
   const ids = await getInstalledApps(CU.uid);
   renderAppStore(ids);
@@ -2189,12 +2247,14 @@ window.togglePanel = function(id) {
 
 window.closeAllPanels = function() {
   document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+  // B14 FIX: profile side panel also closes on overlay click
   document.getElementById('profile-side-panel')?.classList.remove('open');
+  document.getElementById('profile-page-mobile')?.classList.remove('open');
   document.getElementById('panel-overlay').classList.remove('visible');
 };
 
 window.openProfile = function() {
-  buildProfile(); // always rebuild to keep in sync
+  if (!_profileBuilt) { buildProfile(); _profileBuilt = true; }
   if (window.innerWidth >= 769) {
     document.getElementById('profile-side-panel').classList.add('open');
     document.getElementById('panel-overlay').classList.add('visible');
@@ -2219,10 +2279,19 @@ window.openCreateStaffPage = function() {
   document.getElementById('create-staff-page').classList.add('open');
 };
 
-window.closeModal = id => document.getElementById(id).classList.add('hidden');
+window.closeModal = function(id) {
+  document.getElementById(id).classList.add('hidden');
+  // B07 FIX: reset delete modal state
+  if (id === 'delete-modal') {
+    const inp = document.getElementById('del-confirm-input');
+    const btn = document.getElementById('del-confirm-btn');
+    if (inp) { inp.value = ''; inp.classList.remove('match'); }
+    if (btn) { btn.disabled = true; btn.style.opacity = '.4'; btn.style.cursor = 'not-allowed'; }
+  }
+};
 document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.add('hidden'); }));
 
-window.handleLogout = async function() { unsubs.forEach(f => f?.()); await logout(); };
+window.handleLogout = async function() { unsubs.forEach(f => f?.()); _profileBuilt = false; await logout(); };
 
 // ──────────────────────────────────────────────
 // HELPERS
