@@ -375,12 +375,20 @@ body{background:#F8F8FB;min-height:100vh;display:flex;flex-direction:column;font
 
 <script type="module">
 import{initializeApp,getApps}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import{getAuth,signInAnonymously,EmailAuthProvider,reauthenticateWithCredential}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import{getAuth,onAuthStateChanged,EmailAuthProvider,reauthenticateWithCredential}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,deleteDoc,collection,query,where,getDocs,onSnapshot,serverTimestamp,orderBy,writeBatch}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const SWF={apiKey:"AIzaSyB0eMJQLfsBEkFaoxDMIscSfJ-VlK5Rrk4",authDomain:"store-management-nexus.firebaseapp.com",projectId:"store-management-nexus",storageBucket:"store-management-nexus.firebasestorage.app",messagingSenderId:"263693510395",appId:"1:263693510395:web:47a0485221405dbb6fb25e"};
-const swApp=getApps().find(a=>a.name==='inv')||initializeApp(SWF,'inv');
-const auth=getAuth(swApp),db=getFirestore(swApp);
+// Use Zenda's Firebase — user is already authenticated here (same origin)
+const ZENDA_CFG={
+  apiKey:"AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",
+  authDomain:"zenda-app-fe1c2.firebaseapp.com",
+  projectId:"zenda-app-fe1c2",
+  storageBucket:"zenda-app-fe1c2.appspot.com",
+  messagingSenderId:"764717910838",
+  appId:"1:764717910838:web:18a9ac7772ba91f4928197"
+};
+const zApp=getApps().find(a=>a.name==='[DEFAULT]')||getApps()[0]||initializeApp(ZENDA_CFG);
+const auth=getAuth(zApp),db=getFirestore(zApp);
 const uid=new URLSearchParams(location.search).get('uid');
 const syncEl=document.getElementById('syncStatus');
 
@@ -388,10 +396,15 @@ let CU=null,WHs=[],prods=[],curWH=null,curProd=null,eType='IN',delWH=null;
 
 async function init(){
   if(!uid){syncEl.textContent='No user';return;}
-  // FIX: Sign in anonymously to satisfy Firestore auth rules
-  try{
-    if(!auth.currentUser) await signInAnonymously(auth);
-  }catch(e){ console.warn('Anon sign-in failed, trying anyway:', e.message); }
+  // Wait for Zenda auth state (user already signed in on this origin)
+  await new Promise(resolve=>{
+    const unsub=onAuthStateChanged(auth,user=>{
+      unsub();
+      resolve(user);
+    });
+    // Timeout fallback after 3s
+    setTimeout(()=>resolve(null),3000);
+  });
   try{
     const u=await getDoc(doc(db,'users',uid));
     CU=u.exists()?{uid,...u.data()}:{uid,role:'owner',companyId:uid,name:'Owner'};
