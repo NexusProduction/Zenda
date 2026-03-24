@@ -358,7 +358,7 @@ body{background:#F8F8FB;min-height:100vh;display:flex;flex-direction:column;font
 </div>
 
 <!-- DELETE WAREHOUSE MODAL -->
-<div class="modal-overlay" id="delWhModal">
+<div class="modal-overlay" id="delWhModal" style="display:none">
   <div class="modal-box" style="max-width:380px">
     <div class="mhandle"></div>
     <div class="mhd"><div><div class="mttl" style="color:#EF4444">Delete Warehouse</div><div class="msub" id="delWhSub">—</div></div><button class="mclose" onclick="closeModal('delWhModal')">✕</button></div>
@@ -378,7 +378,7 @@ import{initializeApp,getApps}from"https://www.gstatic.com/firebasejs/10.12.0/fir
 import{getAuth,onAuthStateChanged,EmailAuthProvider,reauthenticateWithCredential}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,deleteDoc,collection,query,where,getDocs,onSnapshot,serverTimestamp,orderBy,writeBatch}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// Use Zenda's Firebase — user is already authenticated here (same origin)
+// Use Zenda's Firebase — persisted auth session picked up automatically
 const ZENDA_CFG={
   apiKey:"AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",
   authDomain:"zenda-app-fe1c2.firebaseapp.com",
@@ -387,7 +387,8 @@ const ZENDA_CFG={
   messagingSenderId:"764717910838",
   appId:"1:764717910838:web:18a9ac7772ba91f4928197"
 };
-const zApp=getApps().find(a=>a.name==='[DEFAULT]')||getApps()[0]||initializeApp(ZENDA_CFG);
+// Always init with a unique name so it doesn't conflict with other Firebase instances
+const zApp=getApps().find(a=>a.name==='zenda-inv')||initializeApp(ZENDA_CFG,'zenda-inv');
 const auth=getAuth(zApp),db=getFirestore(zApp);
 const uid=new URLSearchParams(location.search).get('uid');
 const syncEl=document.getElementById('syncStatus');
@@ -396,15 +397,20 @@ let CU=null,WHs=[],prods=[],curWH=null,curProd=null,eType='IN',delWH=null;
 
 async function init(){
   if(!uid){syncEl.textContent='No user';return;}
-  // Wait for Zenda auth state (user already signed in on this origin)
-  await new Promise(resolve=>{
+  // Wait for Zenda auth state — Firebase automatically restores session from storage
+  const authUser = await new Promise(resolve=>{
     const unsub=onAuthStateChanged(auth,user=>{
       unsub();
       resolve(user);
     });
-    // Timeout fallback after 3s
-    setTimeout(()=>resolve(null),3000);
+    setTimeout(()=>resolve(null),5000); // 5s timeout
   });
+  if(!authUser){
+    syncEl.textContent='Not signed in';
+    syncEl.style.color='#EF4444';
+    console.error('Inventory: No auth user found. Is the user signed into Zenda?');
+    return;
+  }
   try{
     const u=await getDoc(doc(db,'users',uid));
     CU=u.exists()?{uid,...u.data()}:{uid,role:'owner',companyId:uid,name:'Owner'};
@@ -635,8 +641,18 @@ function toggleCustomCat(val){
   if(wrap) wrap.classList.toggle('show', val==='other');
   if(val==='other') setTimeout(()=>document.getElementById('wcCustom')?.focus(), 80);
 }
-function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
-function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+function openModal(id){
+  const el=document.getElementById(id);
+  el.style.display='';  // Remove the initial display:none
+  requestAnimationFrame(()=>{ el.classList.add('open'); document.body.style.overflow='hidden'; });
+}
+function closeModal(id){
+  const el=document.getElementById(id);
+  el.classList.remove('open');
+  document.body.style.overflow='';
+  // Re-hide after transition so it can't flash
+  setTimeout(()=>{ if(!el.classList.contains('open')) el.style.display='none'; }, 250);
+}
 document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeModal(o.id);}));});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>closeModal(m.id));});
 function showToast(msg,type){const c=document.getElementById('toast-c');const t=document.createElement('div');t.className='toast'+(type==='success'?' success':type==='error'?' error':'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),220);},3000);}
