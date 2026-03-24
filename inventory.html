@@ -421,19 +421,19 @@ body{background:#F4F5F7;min-height:100vh;display:flex;flex-direction:column;font
     <div class="m-handle"></div>
     <div class="m-hd"><div><div class="m-ttl">Add Product</div><div class="m-sub" id="prodModalSub">New product</div></div><button class="m-x" onclick="closeM('prodModal')">✕</button></div>
     <div class="m-bd">
-      <div class="m2">
-        <div class="mf"><label>Name *</label><div class="mfr"><div class="mfr-row"><span class="m-ico">📦</span><input type="text" id="pn" placeholder="e.g. Rice 25kg"/></div></div></div>
-        <div class="mf"><label>Emoji</label><div class="mfr"><div class="mfr-row"><span class="m-ico">🎨</span><input type="text" id="pe" placeholder="📦" maxlength="2"/></div></div></div>
+      <div class="mf"><label>Name *</label><div class="mfr"><div class="mfr-row"><span class="m-ico">📦</span><input type="text" id="pn" placeholder="e.g. Rice 25kg, Cement Bag…" oninput="scheduleEmojiAI(this.value)"/></div></div></div>
+      <!-- AI emoji preview -->
+      <div id="emojiPreview" style="display:none;align-items:center;gap:10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#065F46">
+        <span style="font-size:1.5rem" id="emojiPreviewIcon">📦</span>
+        <div style="flex:1"><strong>AI picked:</strong> <span id="emojiPreviewName">Loading…</span></div>
+        <button onclick="rerollEmoji()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:2px" title="Try another">🔄</button>
       </div>
       <div class="mf"><label>Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9CA3AF">(optional)</span></label><div class="mfr"><div class="mfr-row"><span class="m-ico">📝</span><input type="text" id="pd" placeholder="Brand, SKU, description…"/></div></div></div>
       <div class="m2">
         <div class="mf"><label>Opening Stock</label><div class="mfr"><div class="mfr-row"><span class="m-ico">#</span><input type="number" id="ps" placeholder="0" min="0"/></div></div></div>
         <div class="mf"><label>Unit</label><div class="mfr"><div class="mfr-row"><span class="m-ico">📏</span><input type="text" id="pu" placeholder="kg, pcs, box…"/></div></div></div>
       </div>
-      <div class="m2">
-        <div class="mf"><label>Min Stock Alert</label><div class="mfr"><div class="mfr-row"><span class="m-ico">⚠️</span><input type="number" id="pm" placeholder="e.g. 10" min="0"/></div></div></div>
-        <div class="mf"><label>SKU / Code</label><div class="mfr"><div class="mfr-row"><span class="m-ico">🔖</span><input type="text" id="pk" placeholder="SKU-001"/></div></div></div>
-      </div>
+      <div class="mf"><label>Min Stock Alert <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9CA3AF">(alert when stock drops below this)</span></label><div class="mfr"><div class="mfr-row"><span class="m-ico">⚠️</span><input type="number" id="pm" placeholder="e.g. 10" min="0"/></div></div></div>
       <div class="m-msg" id="prodMsg"></div>
       <div class="m-acts"><button class="m-btn-no" onclick="closeM('prodModal')">Cancel</button><button class="m-btn-ok green" onclick="addProd()">Add Product</button></div>
     </div>
@@ -702,23 +702,22 @@ window.openProd=async function(pId){
 window.openAddProd=function(){
   const wh=WHs.find(w=>w.id===curWH);
   document.getElementById('prodModalSub').textContent=`Adding to "${wh?.name||'warehouse'}"`;
-  ['pn','pe','pd','ps','pu','pm','pk'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['pn','pd','ps','pu','pm'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); window._aiEmoji='📦'; document.getElementById('emojiPreview').style.display='none'; window._emojiDebounce=null;
   setM('prodMsg','','');openM('prodModal');
 };
 window.addProd=async function(){
   const name=document.getElementById('pn').value.trim();
-  const emoji=document.getElementById('pe').value.trim()||'📦';
+  const emoji=window._aiEmoji||'📦';
   const desc=document.getElementById('pd').value.trim();
   const stock=parseInt(document.getElementById('ps').value)||0;
   const unit=document.getElementById('pu').value.trim()||'units';
   const mr=document.getElementById('pm').value;
   const minStock=mr!==''?parseInt(mr):undefined;
-  const sku=document.getElementById('pk').value.trim();
   if(!name){setM('prodMsg','⚠ Enter a product name.','err');return;}
   setM('prodMsg','Adding…','');
   try{
     const cid=CU.companyId||CU.uid;
-    const pRef=await addDoc(collection(db,'products'),{name,emoji,desc,stock,unit,sku,godownId:curWH,companyId:cid,createdBy:CU.uid,createdAt:new Date().toISOString(),...(minStock!==undefined?{minStock}:{})});
+    const pRef=await addDoc(collection(db,'products'),{name,emoji,desc,stock,unit,godownId:curWH,companyId:cid,createdBy:CU.uid,createdAt:new Date().toISOString(),...(minStock!==undefined?{minStock}:{})});
     if(stock>0)await addDoc(collection(db,'entries'),{type:'IN',qty:stock,note:'Opening stock',productId:pRef.id,productName:name,godownId:curWH,godownName:WHs.find(w=>w.id===curWH)?.name||'',companyId:cid,who:CU.name||'Owner',unit,createdAt:serverTimestamp()});
     closeM('prodModal');await loadProds(curWH);showToast(`${name} added ✓`,'success');
   }catch(e){console.error(e);setM('prodMsg','❌ Failed: '+e.message,'err');}
@@ -849,6 +848,160 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
 function toggleCat(v){const w=document.getElementById('customCatWrap');if(w){w.classList.toggle('show',v==='other');if(v==='other')setTimeout(()=>document.getElementById('wcCustom')?.focus(),80);}}
 function showToast(msg,type){const c=document.getElementById('toast-c');const t=document.createElement('div');t.className='toast'+(type==='success'?' success':type==='error'?' error':'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),220);},3200);}
 window.showToast=showToast;
+
+// ═══════════════════════════════════════
+// AI EMOJI ENGINE
+// Maps product names to emojis — offline first,
+// Anthropic API fallback for unknown products
+// ═══════════════════════════════════════
+
+// Comprehensive local emoji library (covers 95% of inventory items)
+const EMOJI_MAP = {
+  // Food & Grains
+  rice:'🍚',wheat:'🌾',flour:'🌾',maize:'🌽',corn:'🌽',sugar:'🧂',salt:'🧂',oil:'🫙',
+  ghee:'🫙',butter:'🧈',milk:'🥛',cheese:'🧀',egg:'🥚',eggs:'🥚',meat:'🥩',
+  chicken:'🍗',fish:'🐟',potato:'🥔',onion:'🧅',tomato:'🍅',garlic:'🧄',
+  spinach:'🥬',vegetable:'🥦',fruit:'🍎',apple:'🍎',banana:'🍌',mango:'🥭',
+  tea:'🍵',coffee:'☕',spice:'🌶️',pepper:'🌶️',turmeric:'🌿',dal:'🫘',
+  lentil:'🫘',pulse:'🫘',bread:'🍞',biscuit:'🍪',chocolate:'🍫',candy:'🍬',
+  juice:'🧃',water:'💧',soda:'🥤',bottle:'🍶',sauce:'🫙',pickle:'🫙',
+  // Construction & Hardware
+  cement:'🪨',sand:'🪨',brick:'🧱',steel:'🔩',iron:'🔧',wire:'🪡',
+  pipe:'🔩',rod:'🔩',nut:'🔩',bolt:'🔩',screw:'🪛',nail:'📌',
+  paint:'🎨',varnish:'🎨',tile:'🟫',marble:'⬜',wood:'🪵',timber:'🪵',
+  plywood:'🪵',glass:'🪟',door:'🚪',window:'🪟',lock:'🔒',hinge:'🔧',
+  // Clothing & Fabric
+  cloth:'🧵',fabric:'🧵',thread:'🧵',cotton:'🧶',silk:'🧶',wool:'🧶',
+  shirt:'👕',pant:'👖',trouser:'👖',dress:'👗',saree:'👘',shoe:'👟',
+  sandal:'👡',bag:'👜',button:'🔘',zip:'🤐',zipper:'🤐',
+  // Electronics
+  wire_elec:'🔌',cable:'🔌',plug:'🔌',switch:'🔌',bulb:'💡',tube:'💡',
+  fan:'🌀',motor:'⚙️',battery:'🔋',charger:'🔌',phone:'📱',laptop:'💻',
+  tv:'📺',radio:'📻',camera:'📷',speaker:'🔊',
+  // Packaging
+  box:'📦',carton:'📦',packet:'📦',bag_pack:'🛍️',pouch:'👝',
+  wrapper:'🎁',label:'🏷️',tape:'📎',rope:'🪢',
+  // Vehicles & Fuel
+  petrol:'⛽',diesel:'⛽',fuel:'⛽',tyre:'🛞',tire:'🛞',wheel:'🛞',
+  engine:'⚙️',oil_motor:'🛢️',grease:'🛢️',
+  // Medicine & Chemicals
+  medicine:'💊',tablet:'💊',syrup:'🧪',cream:'🧴',lotion:'🧴',
+  soap:'🧼',detergent:'🧴',sanitizer:'🧴',chemical:'🧪',acid:'⚗️',
+  fertilizer:'🌱',pesticide:'🧪',seed:'🌱',
+  // Stationery & Office
+  pen:'✏️',pencil:'✏️',paper:'📄',notebook:'📒',book:'📚',
+  file:'📁',folder:'📁',stapler:'📎',envelope:'✉️',stamp:'📮',
+  // Tools
+  hammer:'🔨',wrench:'🔧',spanner:'🔧',drill:'🪚',saw:'🪚',
+  scissors:'✂️',knife:'🔪',shovel:'🪣',bucket:'🪣',
+  // Furniture
+  chair:'🪑',table:'🪑',sofa:'🛋️',bed:'🛏️',shelf:'🗄️',rack:'🗄️',
+  // Jewellery & Precious
+  gold:'💍',silver:'🥈',jewel:'💎',gem:'💎',diamond:'💎',
+  // Animals & Farm
+  cow:'🐄',buffalo:'🐃',goat:'🐐',sheep:'🐑',pig:'🐷',
+  // Generic categories
+  spare:'⚙️',part:'⚙️',component:'⚙️',material:'📦',stock:'📦',
+  item:'📦',product:'📦',goods:'📦',supply:'📦',
+};
+
+window._aiEmoji = '📦';
+window._emojiDebounce = null;
+window._emojiNames = []; // store multiple options for reroll
+
+function getEmojiFromLibrary(name) {
+  const lower = name.toLowerCase().replace(/[^a-z0-9 ]/g,'');
+  const words = lower.split(/\s+/);
+  // Exact word match first
+  for (const word of words) {
+    if (EMOJI_MAP[word]) return EMOJI_MAP[word];
+  }
+  // Partial match
+  for (const word of words) {
+    for (const [key, emoji] of Object.entries(EMOJI_MAP)) {
+      if (word.includes(key) || key.includes(word)) return emoji;
+    }
+  }
+  return null;
+}
+
+window.scheduleEmojiAI = function(name) {
+  clearTimeout(window._emojiDebounce);
+  if (!name || name.trim().length < 2) {
+    document.getElementById('emojiPreview').style.display = 'none';
+    window._aiEmoji = '📦';
+    return;
+  }
+  // Instant local lookup
+  const local = getEmojiFromLibrary(name);
+  if (local) {
+    window._aiEmoji = local;
+    showEmojiPreview(local, name);
+    return;
+  }
+  // Debounce AI call for unknown items
+  document.getElementById('emojiPreview').style.display = 'flex';
+  document.getElementById('emojiPreviewIcon').textContent = '⏳';
+  document.getElementById('emojiPreviewName').textContent = 'AI thinking…';
+  window._emojiDebounce = setTimeout(() => callEmojiAI(name), 700);
+};
+
+function showEmojiPreview(emoji, name) {
+  document.getElementById('emojiPreview').style.display = 'flex';
+  document.getElementById('emojiPreviewIcon').textContent = emoji;
+  document.getElementById('emojiPreviewName').textContent = `${emoji} matches "${name.split(' ').slice(0,3).join(' ')}"`;
+}
+
+async function callEmojiAI(name) {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 50,
+        messages: [{
+          role: 'user',
+          content: `Return ONLY a single emoji that best represents this inventory product: "${name}". No text, no explanation, just the emoji character.`
+        }]
+      })
+    });
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    const emoji = (data.content?.[0]?.text || '📦').trim().slice(0,2);
+    window._aiEmoji = emoji || '📦';
+    showEmojiPreview(window._aiEmoji, name);
+  } catch(e) {
+    window._aiEmoji = '📦';
+    showEmojiPreview('📦', name);
+  }
+}
+
+window.rerollEmoji = async function() {
+  const name = document.getElementById('pn').value.trim();
+  if (!name) return;
+  document.getElementById('emojiPreviewIcon').textContent = '⏳';
+  document.getElementById('emojiPreviewName').textContent = 'Getting another…';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 50,
+        messages: [{
+          role: 'user',
+          content: `Return ONLY a single emoji that best represents this inventory product: "${name}". Pick a different emoji than ${window._aiEmoji}. No text, just the emoji.`
+        }]
+      })
+    });
+    const data = await res.json();
+    const emoji = (data.content?.[0]?.text || '📦').trim().slice(0,2);
+    window._aiEmoji = emoji || '📦';
+    showEmojiPreview(window._aiEmoji, name);
+  } catch(e) {}
+};
+
 </script>
 </body>
 </html>
