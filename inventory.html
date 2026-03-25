@@ -1,519 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Inventory — Zenda</title>
-<link rel="stylesheet" href="global.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text y='24' x='5' font-size='20'>📦</text></svg>">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:#F4F5F7;min-height:100vh;display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}
-.hidden{display:none!important}
-/* TOPBAR */
-.appbar{background:#fff;border-bottom:1px solid #E5E7EB;padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(0,0,0,.05)}
-.ab-left{display:flex;align-items:center;gap:10px}
-.ab-back{background:none;border:none;cursor:pointer;color:#6B7280;font-size:14px;padding:6px 10px;border-radius:8px;transition:all .15s;font-family:inherit;display:flex;align-items:center;gap:5px}
-.ab-back:hover{background:#F3F4F6;color:#111827}
-.ab-title{display:flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:15px;color:#111827}
-.ab-icon{width:30px;height:30px;background:#EEF2FF;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px}
-.ab-right{display:flex;align-items:center;gap:10px}
-.sync-ok{font-size:12px;color:#059669;font-weight:600;font-family:'Inter',sans-serif}
-.sync-err{font-size:12px;color:#EF4444;font-weight:600;font-family:'Inter',sans-serif}
-.sync-loading{font-size:12px;color:#9CA3AF;font-family:'Inter',sans-serif}
-.cta-btn{display:flex;align-items:center;gap:5px;padding:8px 14px;background:#4F46E5;color:#fff;border:none;border-radius:9px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:all .15s;white-space:nowrap}
-.cta-btn:hover{background:#4338CA;transform:translateY(-1px)}
-.cta-btn:active{transform:scale(.97)}
-/* VIEWS */
-.view{display:none;flex:1;flex-direction:column}
-.view.active{display:flex}
-/* LAYOUT */
-.pg{max-width:1080px;margin:0 auto;width:100%;padding:24px 20px 80px}
-/* STAT ROW */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
-.sc{background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:16px;cursor:default;transition:all .15s}
-.sc:hover{box-shadow:0 4px 14px rgba(0,0,0,.07);transform:translateY(-1px)}
-.sc-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
-.i-i{background:#EEF2FF;color:#4F46E5}
-.i-g{background:#ECFDF5;color:#059669}
-.i-a{background:#FFFBEB;color:#D97706}
-.i-r{background:#FEF2F2;color:#DC2626}
-.sc-n{font-family:'Inter',sans-serif;font-weight:700;font-size:30px;letter-spacing:-0.04em;color:#111827;line-height:1}
-.sc-l{font-size:13px;color:#6B7280;margin-top:5px;font-weight:500}
-/* ALERT */
-.low-alert{display:none;align-items:center;gap:10px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:14px;color:#92400E;line-height:1.5}
-.low-alert.show{display:flex}
-/* SECTION HDR */
-.shdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.stitle{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:7px}
-.chip{background:#F3F4F6;border:1px solid #E5E7EB;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:600;color:#6B7280;font-family:'DM Mono',monospace}
-/* WAREHOUSE LIST */
-.wh-card{background:#fff;border:1px solid #E5E7EB;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.add-row{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;border-bottom:1px solid #F3F4F6;transition:background .13s}
-.add-row:hover{background:#F9FAFB}
-.add-ico{width:38px;height:38px;border-radius:10px;flex-shrink:0;border:1.5px dashed #D1D5DB;display:flex;align-items:center;justify-content:center;color:#9CA3AF;transition:all .13s}
-.add-row:hover .add-ico{border-color:#4F46E5;color:#4F46E5;background:#EEF2FF}
-.add-txt{font-size:14px;font-weight:500;color:#9CA3AF;transition:color .13s}
-.add-row:hover .add-txt{color:#111827}
-.whr{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #F3F4F6;cursor:pointer;position:relative;transition:background .13s}
-.whr:last-child{border-bottom:none}
-.whr::before{content:'';position:absolute;left:0;top:15%;bottom:15%;width:3px;background:#4F46E5;opacity:0;transition:opacity .13s;border-radius:0 3px 3px 0}
-.whr:hover{background:#F9FAFB}
-.whr:hover::before{opacity:1}
-.whr-ico{width:40px;height:40px;border-radius:11px;flex-shrink:0;background:#F3F4F6;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;color:#6B7280;transition:all .13s}
-.whr:hover .whr-ico{background:#EEF2FF;border-color:rgba(79,70,229,.25);color:#4F46E5}
-.whr-info{flex:1;min-width:0}
-.whr-name{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
-.whr-loc{font-size:13px;color:#6B7280;display:flex;align-items:center;gap:4px}
-.whr-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.wh-tag{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;background:#F3F4F6;color:#6B7280;border:1px solid #E5E7EB;white-space:nowrap}
-.wh-cnt{font-family:'DM Mono',monospace;font-size:11px;padding:3px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280;border:1px solid #E5E7EB;white-space:nowrap}
-.hdot{width:8px;height:8px;border-radius:50%}
-.hg{background:#10B981;box-shadow:0 0 6px rgba(16,185,129,.5)}
-.hw{background:#F59E0B;box-shadow:0 0 6px rgba(245,158,11,.5)}
-.hl{background:#EF4444;box-shadow:0 0 6px rgba(239,68,68,.5)}
-.del-btn-sm{width:30px;height:30px;border-radius:8px;background:#FEF2F2;border:1px solid #FCA5A5;color:#EF4444;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .13s;flex-shrink:0}
-.del-btn-sm:hover{background:#FEE2E2;border-color:#EF4444}
-.wh-arr{color:#D1D5DB;flex-shrink:0;transition:color .13s,transform .13s}
-.whr:hover .wh-arr{color:#4F46E5;transform:translateX(3px)}
-.empty-box{display:none;text-align:center;padding:48px 24px}
-.empty-box.show{display:block}
-.empty-ico{font-size:3rem;opacity:.07;margin-bottom:14px}
-.empty-ttl{font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:#4B5563;margin-bottom:8px}
-.empty-sub{font-size:14px;color:#9CA3AF;margin-bottom:20px;line-height:1.7;max-width:320px;margin-left:auto;margin-right:auto}
-/* WAREHOUSE DETAIL */
-.wh-detail{max-width:1080px;margin:0 auto;width:100%;padding:24px 20px 80px;flex:1;display:flex;flex-direction:column;gap:20px}
-.hero-card{background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:20px 24px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
-.hero-left{display:flex;align-items:center;gap:14px}
-.hero-big-ico{width:48px;height:48px;border-radius:13px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;color:#4F46E5;flex-shrink:0}
-.hero-name{font-family:'Inter',sans-serif;font-size:20px;font-weight:800;color:#111827;letter-spacing:-0.03em;margin-bottom:3px}
-.hero-loc{font-size:13px;color:#6B7280;display:flex;align-items:center;gap:4px}
-.strip{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #E5E7EB;border-radius:12px;overflow:hidden}
-.strip-cell{padding:12px 14px;text-align:center;border-right:1px solid #E5E7EB}
-.strip-cell:last-child{border-right:none}
-.strip-val{font-family:'DM Mono',monospace;font-weight:700;font-size:20px;color:#111827;display:block;margin-bottom:2px}
-.strip-lbl{font-size:11px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
-/* PRODUCT LIST */
-.prod-card{background:#fff;border:1px solid #E5E7EB;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.pc-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #F3F4F6}
-.pc-title{font-family:'Inter',sans-serif;font-size:15px;font-weight:700;color:#111827}
-.srch-bar{padding:12px 18px;border-bottom:1px solid #F3F4F6}
-.srch-inp{width:100%;padding:9px 14px 9px 36px;border:1.5px solid #E5E7EB;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:#111827;background:#F9FAFB;outline:none;transition:all .15s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center}
-.srch-inp:focus{border-color:#4F46E5;background:#fff;box-shadow:0 0 0 3px rgba(79,70,229,.08)}
-.prod-items{max-height:420px;overflow-y:auto}
-.prow{display:flex;align-items:center;gap:12px;padding:12px 18px;cursor:pointer;border-bottom:1px solid #F3F4F6;transition:background .12s}
-.prow:last-child{border-bottom:none}
-.prow:hover{background:#F9FAFB}
-.prow-ico{width:38px;height:38px;border-radius:10px;background:#F3F4F6;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
-.prow-info{flex:1;min-width:0}
-.prow-name{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
-.prow-meta{font-size:12px;color:#6B7280}
-.low-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;background:#FEF2F2;color:#DC2626;border:1px solid #FCA5A5;border-radius:5px;padding:1px 6px;margin-left:6px}
-.prow-stk{text-align:right;flex-shrink:0}
-.prow-num{font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:#111827;display:block}
-.prow-num.low{color:#EF4444}
-.prow-unit{font-size:11px;color:#9CA3AF;display:block;margin-top:1px}
-.prow-arr{color:#D1D5DB;flex-shrink:0;transition:color .13s,transform .13s}
-.prow:hover .prow-arr{color:#4F46E5;transform:translateX(2px)}
-/* PRODUCT DETAIL */
-.pd-layout{max-width:700px;margin:0 auto;width:100%;padding:20px 20px 80px;flex:1;display:flex;flex-direction:column;gap:16px}
-.pd-hero{background:#fff;border:1px solid #E5E7EB;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.pd-hero-top{background:linear-gradient(135deg,#EEF2FF 0%,#F5F3FF 100%);padding:28px 24px 20px;text-align:center;border-bottom:1px solid #E5E7EB}
-.pd-emoji{font-size:2.8rem;display:block;margin-bottom:10px;line-height:1}
-.pd-nm{font-family:'Inter',sans-serif;font-weight:800;font-size:20px;letter-spacing:-0.03em;color:#111827;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:8px}
-.pd-edit-nm{width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,.8);border:1px solid #E5E7EB;cursor:pointer;color:#6B7280;display:flex;align-items:center;justify-content:center;transition:all .13s;flex-shrink:0}
-.pd-edit-nm:hover{background:#EEF2FF;color:#4F46E5;border-color:rgba(79,70,229,.3)}
-.pd-desc{font-size:13px;color:#6B7280;margin-bottom:18px}
-.pd-big{font-family:'DM Mono',monospace;font-weight:700;font-size:52px;letter-spacing:-0.06em;line-height:1;display:block;color:#111827;margin-bottom:4px}
-.pd-big.low{color:#EF4444}
-.pd-unit{font-size:14px;font-weight:600;color:#6B7280;display:block;margin-bottom:14px}
-.pd-chips{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
-.pd-chip{font-family:'DM Mono',monospace;font-size:11px;background:rgba(255,255,255,.8);border:1px solid #E5E7EB;border-radius:6px;padding:3px 10px;color:#6B7280}
-.pd-acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 20px;border-bottom:1px solid #E5E7EB}
-.btn-in{height:50px;border-radius:12px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;font-size:15px;background:#4F46E5;color:#fff;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px}
-.btn-in:hover{background:#4338CA;transform:translateY(-1px)}
-.btn-in:active{transform:scale(.97)}
-.btn-out{height:50px;border-radius:12px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;font-size:15px;color:#EF4444;background:#FEF2F2;border:1.5px solid #FCA5A5;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px}
-.btn-out:hover{background:#FEE2E2;transform:translateY(-1px)}
-.pd-mini{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #E5E7EB}
-.pms{padding:14px 10px;text-align:center;border-right:1px solid #E5E7EB}
-.pms:last-child{border-right:none}
-.pms-v{font-family:'DM Mono',monospace;font-size:17px;font-weight:700;display:block;margin-bottom:3px}
-.pms-l{font-size:11px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
-/* CONVERSIONS */
-.conv-card{background:#fff;border:1px solid #E5E7EB;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.conv-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #F3F4F6}
-.conv-list{padding:0 18px}
-.conv-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F3F4F6;font-size:14px;color:#374151}
-.conv-item:last-child{border-bottom:none}
-.conv-eq{font-family:'DM Mono',monospace;font-size:13px;color:#4F46E5;font-weight:600}
-.conv-empty{padding:16px 18px;font-size:13px;color:#9CA3AF}
-/* ENTRY LIST */
-.entry-card{background:#fff;border:1px solid #E5E7EB;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.entry-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #F3F4F6}
-.entry-hdr-l{font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:#111827}
-.entry-cnt{font-size:12px;color:#9CA3AF;font-family:'DM Mono',monospace}
-.erow{display:flex;align-items:flex-start;gap:10px;padding:12px 18px;border-bottom:1px solid #F3F4F6;transition:background .12s}
-.erow:last-child{border-bottom:none}
-.erow.del-row{opacity:.45;background:#F9FAFB}
-.erow:hover:not(.del-row){background:#F9FAFB}
-.e-ind{width:32px;height:32px;min-width:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.e-in{background:#ECFDF5;border:1px solid #A7F3D0}
-.e-out{background:#FEF2F2;border:1px solid #FCA5A5}
-.e-del-ind{background:#F3F4F6;border:1px solid #E5E7EB}
-.e-body{flex:1;min-width:0}
-.e-who{font-size:14px;font-weight:600;color:#111827}
-.e-note{font-size:12px;color:#6B7280;margin-top:2px}
-.e-del-msg{font-size:12px;color:#9CA3AF;font-style:italic;margin-top:2px;cursor:pointer;text-decoration:underline dotted}
-.e-time{font-size:11px;color:#9CA3AF;margin-top:3px}
-.e-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.e-qty-wrap{text-align:right}
-.e-qty{font-family:'DM Mono',monospace;font-size:15px;font-weight:700;display:block;line-height:1}
-.e-qi{color:#059669}.e-qo{color:#EF4444}.e-qdel{color:#9CA3AF;text-decoration:line-through}
-.e-unit{font-size:11px;color:#9CA3AF;display:block;margin-top:2px}
-.e-del-btn{width:30px;height:30px;border-radius:8px;background:#FEF2F2;border:1px solid #FCA5A5;color:#EF4444;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .13s;flex-shrink:0}
-.e-del-btn:hover{background:#FEE2E2}
-.e-empty{text-align:center;padding:28px;color:#9CA3AF;font-size:13px}
-/* SHARED BUTTONS */
-.btn-p{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:#4F46E5;color:#fff;border:none;border-radius:9px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:all .15s;white-space:nowrap}
-.btn-p:hover{background:#4338CA;transform:translateY(-1px)}
-.btn-p:active{transform:scale(.97)}
-.btn-g{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#fff;color:#374151;border:1.5px solid #E5E7EB;border-radius:9px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:all .15s}
-.btn-g:hover{background:#F9FAFB;border-color:#D1D5DB}
-.btn-d{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#FEF2F2;color:#EF4444;border:1.5px solid #FCA5A5;border-radius:9px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:all .15s}
-.btn-d:hover{background:#FEE2E2}
-/* MODALS */
-.mo{position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);z-index:600;display:none;align-items:center;justify-content:center;padding:16px}
-.mo.open{display:flex}
-.mbox{background:#fff;border-radius:20px;border:1px solid #E5E7EB;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:mIn .22s cubic-bezier(.16,1,.3,1)}
-@keyframes mIn{from{opacity:0;transform:scale(.95) translateY(8px)}to{opacity:1;transform:none}}
-.mh{width:32px;height:3px;border-radius:99px;background:#E5E7EB;margin:.7rem auto}
-.mhd{padding:.4rem 1.3rem .8rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem}
-.mttl{font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:#111827}
-.msub{font-size:12px;color:#9CA3AF;margin-top:3px}
-.mx{width:28px;height:28px;border-radius:8px;background:#F3F4F6;border:1px solid #E5E7EB;cursor:pointer;color:#6B7280;display:flex;align-items:center;justify-content:center;transition:all .13s;flex-shrink:0;font-size:15px;line-height:1}
-.mx:hover{background:#FEF2F2;color:#EF4444;border-color:#FCA5A5}
-.mbd{padding:0 1.3rem 1.3rem}
-.mf{margin-bottom:14px}
-.mf label{display:block;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7280;margin-bottom:6px}
-.mfr{position:relative;display:flex;align-items:center}
-.mico{position:absolute;left:.8rem;font-size:.78rem;opacity:.28;pointer-events:none;z-index:1}
-.mf input,.mf select,.mf textarea{width:100%;padding:.72rem 1rem .72rem 2.2rem;border:1.5px solid #E5E7EB;border-radius:10px;background:#F9FAFB;color:#111827;font-size:14px;outline:none;transition:all .15s;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
-.mf textarea{padding:.72rem 1rem;min-height:80px;resize:vertical}
-.mf input::placeholder,.mf textarea::placeholder{color:#9CA3AF}
-.mf input:focus,.mf select:focus,.mf textarea:focus{border-color:#4F46E5;background:#fff;box-shadow:0 0 0 3px rgba(79,70,229,.08)}
-.mf select{cursor:pointer}
-.m2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.mmsg{font-size:13px;text-align:center;min-height:1em;margin-bottom:10px;color:#6B7280}
-.mmsg.err{color:#EF4444}
-.macts{display:flex;gap:8px}
-.mok{flex:1;height:44px;font-family:'Inter',sans-serif;font-weight:700;font-size:14px;color:#fff;background:#4F46E5;border:none;border-radius:10px;cursor:pointer;transition:all .13s}
-.mok:hover{background:#4338CA}
-.mok.green{background:#059669}.mok.green:hover{background:#047857}
-.mok.red{background:#EF4444}.mok.red:hover{background:#DC2626}
-.mno{height:44px;padding:0 16px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:14px;color:#6B7280;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;cursor:pointer;transition:all .13s}
-.mno:hover{background:#F9FAFB;color:#111827}
-/* Entry type tabs */
-.ett-tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-.ett{height:46px;border-radius:11px;border:1.5px solid #E5E7EB;background:#F9FAFB;color:#9CA3AF;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
-.ett.in.on{background:#ECFDF5;border-color:#6EE7B7;color:#059669}
-.ett.out.on{background:#FEF2F2;border-color:#FCA5A5;color:#EF4444}
-/* Unit selector for entry */
-.unit-sel{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
-.unit-opt{padding:6px 12px;border-radius:8px;border:1.5px solid #E5E7EB;background:#F9FAFB;color:#6B7280;font-size:13px;font-weight:600;cursor:pointer;transition:all .13s;font-family:'DM Sans',sans-serif}
-.unit-opt.sel{border-color:#4F46E5;background:#EEF2FF;color:#4F46E5}
-.unit-opt:hover:not(.sel){background:#F3F4F6;color:#374151}
-/* Delete warn */
-.del-warn{background:#FEF2F2;border:1px solid #FCA5A5;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#B91C1C;line-height:1.6}
-.word-count{font-size:11px;color:#9CA3AF;text-align:right;margin-top:4px}
-.word-count.ok{color:#059669}
-.word-count.warn{color:#EF4444}
-/* Conversion builder */
-.conv-builder{margin-top:10px}
-.conv-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:8px 12px}
-.conv-row input{flex:1;min-width:60px;padding:.5rem .7rem;border:1px solid #E5E7EB;border-radius:8px;font-size:13px;background:#fff;color:#111827;font-family:'DM Sans',sans-serif;outline:none}
-.conv-row input:focus{border-color:#4F46E5}
-.conv-row span{font-size:13px;color:#6B7280;white-space:nowrap;flex-shrink:0}
-.conv-rm{width:28px;height:28px;border-radius:7px;background:#FEF2F2;border:1px solid #FCA5A5;color:#EF4444;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
-.add-conv-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;background:#EEF2FF;color:#4F46E5;border:1px solid rgba(79,70,229,.2);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .13s}
-.add-conv-btn:hover{background:#E0E7FF}
-/* AI emoji preview */
-.ai-emoji-prev{display:none;align-items:center;gap:10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#065F46}
-.ai-emoji-prev.show{display:flex}
-/* Stock hint */
-.stock-hint{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#6B7280}
-/* Activity item in entry */
-.act-row{display:flex;align-items:flex-start;gap:10px;padding:10px 18px;border-bottom:1px solid #F3F4F6;background:#FAFAFA}
-.act-row:last-child{border-bottom:none}
-.act-body{flex:1;min-width:0}
-.act-msg{font-size:13px;color:#6B7280;font-style:italic;line-height:1.5}
-.act-time{font-size:11px;color:#9CA3AF;margin-top:3px}
-/* Delete reason modal */
-.del-reason-text{font-size:14px;color:#374151;line-height:1.7;padding:12px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;margin-bottom:12px}
-/* Category custom */
-.cat-custom{display:none;width:100%;margin-top:6px;padding:.72rem 1rem;border:1.5px solid #4F46E5;border-radius:10px;background:#fff;color:#111827;font-size:14px;outline:none;font-family:'DM Sans',sans-serif;box-shadow:0 0 0 3px rgba(79,70,229,.08)}
-.cat-custom::placeholder{color:#9CA3AF}
-.cat-custom.show{display:block}
-/* Toast */
-#tc{position:fixed;bottom:24px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.toast{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.12);animation:tI .28s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px;background:#1F2937;color:#fff}
-.toast.s{background:#064E3B;color:#A7F3D0}
-.toast.e{background:#7F1D1D;color:#FCA5A5}
-.toast.out{animation:tO .18s ease forwards}
-@keyframes tI{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
-@keyframes tO{from{opacity:1}to{opacity:0;transform:translateX(14px)}}
-@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}.m2{grid-template-columns:1fr}.pd-acts{padding:12px 14px}.wh-detail,.pd-layout{padding:14px 12px 80px}.pg{padding:14px 12px 80px}}
-@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-</style>
-</head>
-<body>
-
-<!-- TOPBAR -->
-<div class="appbar">
-  <div class="ab-left">
-    <button class="ab-back" id="backBtn" onclick="goBack()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-      <span id="backLbl">Back</span>
-    </button>
-    <div class="ab-title">
-      <div class="ab-icon">📦</div>
-      <span id="pgTitle">Inventory</span>
-    </div>
-  </div>
-  <div class="ab-right">
-    <span id="syncEl" class="sync-loading">Loading…</span>
-    <button class="cta-btn hidden" id="ctaBtn" onclick="ctaClick()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      <span id="ctaLbl">Add Warehouse</span>
-    </button>
-  </div>
-</div>
-
-<!-- VIEW: DASHBOARD -->
-<div class="view active" id="v-dash">
-  <div class="pg">
-    <div class="stats">
-      <div class="sc"><div class="sc-ico i-i"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div class="sc-n" id="sWH">0</div><div class="sc-l">Warehouses</div></div>
-      <div class="sc"><div class="sc-ico i-g"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="sc-n" id="sProds">0</div><div class="sc-l">Products</div></div>
-      <div class="sc"><div class="sc-ico i-a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/></svg></div><div class="sc-n" id="sEnt">0</div><div class="sc-l">Entries Today</div></div>
-      <div class="sc"><div class="sc-ico i-r"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="sc-n" id="sLow">0</div><div class="sc-l">Low Stock</div></div>
-    </div>
-    <div class="low-alert" id="lowAlert"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg><span id="lowTxt">Some products low.</span></div>
-    <div class="shdr"><div class="stitle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> Warehouses <span class="chip" id="whCnt">0</span></div></div>
-    <div class="wh-card">
-      <div class="add-row" id="addWhRow" onclick="openM('m-wh')"><div class="add-ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="add-txt">Add New Warehouse</div></div>
-      <div id="whList"></div>
-      <div class="empty-box" id="whEmpty"><div class="empty-ico">🏗️</div><div class="empty-ttl">No warehouses yet</div><div class="empty-sub">Create your first warehouse to start tracking inventory.</div><button class="btn-p" onclick="openM('m-wh')" style="margin:0 auto"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Create Warehouse</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- VIEW: WAREHOUSE -->
-<div class="view" id="v-wh">
-  <div class="wh-detail">
-    <div class="hero-card">
-      <div class="hero-top">
-        <div class="hero-left">
-          <div class="hero-big-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
-          <div><div class="hero-name" id="whName">Warehouse</div><div class="hero-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span id="whLoc">—</span></div></div>
-        </div>
-        <div style="display:flex;gap:8px;flex-shrink:0">
-          <button class="btn-d hidden" id="btnDelWH" onclick="openDelWH()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Delete</button>
-        </div>
-      </div>
-      <div class="strip">
-        <div class="strip-cell"><span class="strip-val" id="wssP">0</span><span class="strip-lbl">Products</span></div>
-        <div class="strip-cell"><span class="strip-val" id="wssI" style="color:#059669">0</span><span class="strip-lbl">Today IN</span></div>
-        <div class="strip-cell"><span class="strip-val" id="wssO" style="color:#EF4444">0</span><span class="strip-lbl">Today OUT</span></div>
-      </div>
-    </div>
-    <div class="prod-card">
-      <div class="pc-hdr"><div class="pc-title">Products</div><button class="btn-p hidden" id="btnAddProd" onclick="openAddProd()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Product</button></div>
-      <div class="srch-bar"><input class="srch-inp" type="text" id="pSrch" placeholder="Search products…" oninput="filterP(this.value)"></div>
-      <div class="prod-items" id="prodList"><div style="text-align:center;padding:28px;color:#9CA3AF;font-size:13px">Loading…</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- VIEW: PRODUCT -->
-<div class="view" id="v-prod">
-  <div class="pd-layout">
-    <div class="pd-hero">
-      <div class="pd-hero-top">
-        <span class="pd-emoji" id="pdEmoji">📦</span>
-        <div class="pd-nm"><span id="pdName">Product</span><button class="pd-edit-nm" onclick="openEditName()" title="Edit name"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
-        <div class="pd-desc" id="pdDesc"></div>
-        <span class="pd-big" id="pdStock">0</span>
-        <span class="pd-unit" id="pdUnit">units in stock</span>
-        <div class="pd-chips" id="pdChips"></div>
-      </div>
-      <div class="pd-acts">
-        <button class="btn-in" onclick="openEntry('IN')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg> Stock IN</button>
-        <button class="btn-out" onclick="openEntry('OUT')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg> Stock OUT</button>
-      </div>
-      <div class="pd-mini">
-        <div class="pms"><span class="pms-v" id="pdIn" style="color:#059669">0</span><span class="pms-l">Total IN</span></div>
-        <div class="pms"><span class="pms-v" id="pdOut" style="color:#EF4444">0</span><span class="pms-l">Total OUT</span></div>
-        <div class="pms"><span class="pms-v" id="pdMin" style="color:#9CA3AF">—</span><span class="pms-l">Min Stock</span></div>
-      </div>
-    </div>
-    <!-- Conversions card -->
-    <div class="conv-card">
-      <div class="conv-hdr">
-        <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:#111827">Unit Conversions</div>
-        <button class="btn-g" style="font-size:12px;padding:6px 10px" onclick="openEditConversions()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit</button>
-      </div>
-      <div id="convList"><div class="conv-empty">No conversions. Add them to record entries in different units.</div></div>
-    </div>
-    <!-- Entry history -->
-    <div class="entry-card">
-      <div class="entry-hdr"><div class="entry-hdr-l">Stock History</div><span class="entry-cnt" id="eCnt">0 entries</span></div>
-      <div id="eList"><div class="e-empty">Loading…</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: CREATE WAREHOUSE -->
-<div class="mo" id="m-wh">
-  <div class="mbox">
-    <div class="mh"></div>
-    <div class="mhd"><div><div class="mttl">New Warehouse</div><div class="msub">Add a storage location</div></div><button class="mx" onclick="closeM('m-wh')">✕</button></div>
-    <div class="mbd">
-      <div class="mf"><label>Name *</label><div class="mfr"><span class="mico">🏪</span><input type="text" id="wn" placeholder="e.g. Main Warehouse" autocomplete="off"/></div></div>
-      <div class="mf"><label>Location *</label><div class="mfr"><span class="mico">📍</span><input type="text" id="wl" placeholder="e.g. Delhi, Sector 12" autocomplete="off"/></div></div>
-      <div class="mf"><label>Category</label><div class="mfr"><span class="mico">🏷️</span><select id="wc" onchange="toggleCat(this.value)"><option value="general">General Storage</option><option value="cold">Cold Storage</option><option value="retail">Retail Store</option><option value="distribution">Distribution Centre</option><option value="raw">Raw Materials</option><option value="finished">Finished Goods</option><option value="other">Other…</option></select></div><input type="text" id="wcc" class="cat-custom" placeholder="Type category name…"/></div>
-      <div class="mmsg" id="whMsg"></div>
-      <div class="macts"><button class="mno" onclick="closeM('m-wh')">Cancel</button><button class="mok" onclick="createWH()">Create Warehouse</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: ADD PRODUCT -->
-<div class="mo" id="m-prod">
-  <div class="mbox">
-    <div class="mh"></div>
-    <div class="mhd"><div><div class="mttl">Add Product</div><div class="msub" id="prodModalSub">New product</div></div><button class="mx" onclick="closeM('m-prod')">✕</button></div>
-    <div class="mbd">
-      <div class="mf"><label>Name *</label><div class="mfr"><span class="mico">📦</span><input type="text" id="pn" placeholder="e.g. Rice 25kg, Cement Bag…" oninput="scheduleEmoji(this.value)" autocomplete="off"/></div></div>
-      <div class="ai-emoji-prev" id="aiPrev"><span style="font-size:1.5rem" id="aiPrevIco">📦</span><div style="flex:1"><strong>Auto emoji:</strong> <span id="aiPrevTxt">—</span></div><button onclick="rerollEmoji()" style="background:none;border:none;cursor:pointer;font-size:1.1rem" title="Try another">🔄</button></div>
-      <div class="mf"><label>Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9CA3AF">(optional)</span></label><div class="mfr"><span class="mico">📝</span><input type="text" id="pdesc" placeholder="Brand, supplier, description…"/></div></div>
-      <div class="m2">
-        <div class="mf"><label>Opening Stock</label><div class="mfr"><span class="mico">#</span><input type="number" id="ps" placeholder="0" min="0"/></div></div>
-        <div class="mf"><label>Unit</label><div class="mfr"><span class="mico">📏</span><input type="text" id="pu" placeholder="kg, pcs, box…"/></div></div>
-      </div>
-      <div class="mf"><label>Min Stock Alert <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9CA3AF">(optional)</span></label><div class="mfr"><span class="mico">⚠️</span><input type="number" id="pmin" placeholder="e.g. 10 — alert when stock drops below this" min="0"/></div></div>
-      <!-- Conversions toggle -->
-      <div style="margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;padding:10px 14px;cursor:pointer" onclick="toggleConvBuilder()">
-          <div><div style="font-size:14px;font-weight:600;color:#374151">Unit Conversions</div><div style="font-size:12px;color:#9CA3AF;margin-top:2px">Optional — e.g. 1 packet = 12 pcs</div></div>
-          <svg id="convArrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-        <div class="conv-builder" id="convBuilder" style="display:none">
-          <div id="convRows"></div>
-          <button class="add-conv-btn" onclick="addConvRow()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add conversion</button>
-        </div>
-      </div>
-      <div class="mmsg" id="prodMsg"></div>
-      <div class="macts"><button class="mno" onclick="closeM('m-prod')">Cancel</button><button class="mok green" onclick="addProduct()">Add Product</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: STOCK ENTRY -->
-<div class="mo" id="m-entry">
-  <div class="mbox" style="max-width:440px">
-    <div class="mh"></div>
-    <div class="mhd"><div><div class="mttl" id="entryTitle">Stock Entry</div><div class="msub" id="entrySub">—</div></div><button class="mx" onclick="closeM('m-entry')">✕</button></div>
-    <div class="mbd">
-      <div class="ett-tabs"><button class="ett in on" id="ettIn" onclick="setET('IN')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg> Stock IN</button><button class="ett out" id="ettOut" onclick="setET('OUT')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg> Stock OUT</button></div>
-      <div class="mf"><label>Select Unit</label><div class="unit-sel" id="unitSel"></div></div>
-      <div class="mf"><label>Quantity *</label><div class="mfr"><span class="mico">#</span><input type="number" id="eq" placeholder="Enter quantity" min="1" oninput="updateConvPreview()"/></div></div>
-      <div id="convPreview" style="display:none;background:#EEF2FF;border:1px solid rgba(79,70,229,.2);border-radius:9px;padding:9px 13px;margin-bottom:12px;font-size:13px;color:#4F46E5;font-weight:500"></div>
-      <div class="mf"><label>Note <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9CA3AF">(optional)</span></label><div class="mfr"><span class="mico">📝</span><input type="text" id="en" placeholder="e.g. Morning delivery, supplier name…"/></div></div>
-      <div class="stock-hint">Current stock: <strong id="eCurS" style="font-family:'DM Mono',monospace">0</strong> <span id="eCurU"></span></div>
-      <div class="mmsg" id="entryMsg"></div>
-      <div class="macts"><button class="mno" onclick="closeM('m-entry')">Cancel</button><button class="mok" id="entryBtn" onclick="submitEntry()">Add Entry</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: DELETE ENTRY -->
-<div class="mo" id="m-del-entry">
-  <div class="mbox" style="max-width:440px">
-    <div class="mh"></div>
-    <div class="mhd"><div><div class="mttl" style="color:#EF4444">Delete Entry</div><div class="msub" id="delEntSub">—</div></div><button class="mx" onclick="closeM('m-del-entry')">✕</button></div>
-    <div class="mbd">
-      <div class="del-warn">⚠️ This will mark the entry as deleted. The reason will be visible to all team members.</div>
-      <div class="mf">
-        <label>Reason for deletion * <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9CA3AF">(min 10 words)</span></label>
-        <textarea id="delReason" placeholder="Explain why this entry is being deleted. Be specific — e.g. 'This entry was made in error. Correct qty was 15kg not 50kg. Rechecked with supplier invoice #1042.'" oninput="checkWordCount(this)"></textarea>
-        <div class="word-count warn" id="wordCount">0 words (min 10)</div>
-      </div>
-      <div class="mmsg" id="delEntMsg"></div>
-      <div class="macts"><button class="mno" onclick="closeM('m-del-entry')">Cancel</button><button class="mok red" id="delEntBtn" onclick="confirmDelEntry()">Delete Entry</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: VIEW DELETE REASON -->
-<div class="mo" id="m-del-reason">
-  <div class="mbox" style="max-width:420px">
-    <div class="mh"></div>
-    <div class="mhd"><div><div class="mttl">Entry Deleted</div><div class="msub" id="delReasonSub">—</div></div><button class="mx" onclick="closeM('m-del-reason')">✕</button></div>
-    <div class="mbd">
-      <div class="mf"><label>Deleted by</label><div style="font-size:14px;color:#111827;font-weight:600;padding:8px 0" id="drDeletedBy">—</div></div>
-      <div class="mf"><label>Reason</label><div class="del-reason-text" id="drReason">—</div></div>
-      <div style="font-size:11px;color:#9CA3AF" id="drTime">—</div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: DELETE WAREHOUSE -->
-<div class="mo" id="m-del-wh">
-  <div class="mbox" style="max-width:400px">
-    <div class="mh"></div>
-    <div class="mhd"><div><div class="mttl" style="color:#EF4444">Delete Warehouse</div><div class="msub" id="delWhSub">—</div></div><button class="mx" onclick="closeM('m-del-wh')">✕</button></div>
-    <div class="mbd">
-      <div class="del-warn">⚠️ This <strong>cannot be undone</strong>. All products and stock history will be permanently deleted.</div>
-      <div class="mf"><label>Confirm with your password</label><div class="mfr"><span class="mico">🔒</span><input type="password" id="delWhPw" placeholder="Enter your password"/></div></div>
-      <div id="delWhErr" style="font-size:13px;color:#EF4444;min-height:1em;margin-bottom:10px"></div>
-      <div class="macts"><button class="mno" onclick="closeM('m-del-wh')">Cancel</button><button class="mok red" id="delWhBtn" onclick="confirmDelWH()">Delete Forever</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: EDIT PRODUCT NAME -->
-<div class="mo" id="m-edit-name">
-  <div class="mbox" style="max-width:380px">
-    <div class="mh"></div>
-    <div class="mhd"><div><div class="mttl">Edit Product Name</div><div class="msub">Change will be logged for all team members</div></div><button class="mx" onclick="closeM('m-edit-name')">✕</button></div>
-    <div class="mbd">
-      <div class="mf"><label>New Name *</label><div class="mfr"><span class="mico">📦</span><input type="text" id="editNameInp" placeholder="New product name"/></div></div>
-      <div class="mmsg" id="editNameMsg"></div>
-      <div class="macts"><button class="mno" onclick="closeM('m-edit-name')">Cancel</button><button class="mok" onclick="saveProductName()">Save</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: EDIT CONVERSIONS -->
-<div class="mo" id="m-edit-conv">
-  <div class="mbox">
-    <div class="mh"></div>
-    <div class="mhd"><div><div class="mttl">Edit Unit Conversions</div><div class="msub" id="editConvSub">—</div></div><button class="mx" onclick="closeM('m-edit-conv')">✕</button></div>
-    <div class="mbd">
-      <div style="font-size:13px;color:#6B7280;margin-bottom:12px;line-height:1.6">Define how different units relate. E.g. <strong>1 packet = 12 pcs</strong>. When making entries, staff can choose any unit.</div>
-      <div id="editConvRows"></div>
-      <button class="add-conv-btn" style="margin-bottom:14px" onclick="addEditConvRow()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add conversion</button>
-      <div class="mmsg" id="editConvMsg"></div>
-      <div class="macts"><button class="mno" onclick="closeM('m-edit-conv')">Cancel</button><button class="mok" onclick="saveConversions()">Save</button></div>
-    </div>
-  </div>
-</div>
-
-<div id="tc"></div>
-
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -524,7 +8,7 @@ const zA=getApps().find(a=>a.name==='[DEFAULT]')||initializeApp(ZCFG);
 const auth=getAuth(zA),db=getFirestore(zA);
 const syncEl=document.getElementById('syncEl');
 
-let CU=null,WHs=[],prods=[],curWH=null,curProd=null,eType='IN',entToDelete=null;
+let CU=null, WHs=[], prods=[], curWH=null, curProd=null, eType='IN', entToDelete=null;
 let selUnit=null;
 
 const ICONS=['<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 22V11L12 2l11 9v11"/><path d="M9 22v-4h6v4"/></svg>'];
@@ -542,35 +26,23 @@ async function init(){
   });
 
   const activeUid = urlUid || (sessionUser ? sessionUser.uid : null) || (authUser ? authUser.uid : null);
-
-  if(!activeUid){
-    syncEl.textContent='Not signed in'; syncEl.className='sync-err';
-    return;
-  }
+  if(!activeUid){ syncEl.textContent='Not signed in'; syncEl.className='sync-err'; return; }
 
   try {
     const uSnap=await getDoc(doc(db,'users',activeUid));
-    if(uSnap.exists()){
-      CU={uid:activeUid,...uSnap.data()};
-    } else if (sessionUser) {
-      CU = sessionUser;
-    } else {
-      CU={uid:activeUid,role:'owner',companyId:activeUid,name:authUser?.displayName||'Owner',email:authUser?.email};
-    }
-  } catch(e) {
-    CU = sessionUser || {uid:activeUid,role:'owner',companyId:activeUid,name:'Owner'};
-  }
+    if(uSnap.exists()){ CU={uid:activeUid,...uSnap.data()}; } 
+    else if (sessionUser) { CU = sessionUser; } 
+    else { CU={uid:activeUid,role:'owner',companyId:activeUid,name:authUser?.displayName||'Owner',email:authUser?.email}; }
+  } catch(e) { CU = sessionUser || {uid:activeUid,role:'owner',companyId:activeUid,name:'Owner'}; }
   
   if(!CU.companyId) CU.companyId = activeUid;
-
-  syncEl.textContent='✓ Connected';syncEl.className='sync-ok';
+  syncEl.textContent='✓ Connected'; syncEl.className='sync-ok';
+  
   const canM=CU.role==='owner'||CU.role==='manager';
   if(!canM) document.getElementById('addWhRow').style.display='none';
   document.getElementById('ctaBtn').classList.remove('hidden');
   
-  showView('dash');
-  loadWHs();
-  listenTodayEntries();
+  showView('dash'); loadWHs(); listenTodayEntries();
 }
 
 // ══ VIEWS ══
@@ -589,53 +61,41 @@ function setTopbar(title,cta,action){
 }
 window.goBack=function(){
   const active=document.querySelector('.view.active')?.id;
-  if(active==='v-prod'){showView('wh');}
-  else if(active==='v-wh'){showView('dash');}
-  else window.close();
+  if(active==='v-prod'){showView('wh');} else if(active==='v-wh'){showView('dash');} else window.close();
 };
 window.ctaClick=function(){
   const a=window._ctaAction;
-  if(a==='wh')openM('m-wh');
-  else if(a==='prod')openAddProd();
-  else openEntry('IN');
+  if(a==='wh') window.openM('m-wh'); else if(a==='prod') window.openAddProd(); else window.openEntry('IN');
 };
 
 // ══ LOAD WAREHOUSES ══
 function loadWHs(){
-  const cid=CU.companyId;
-  if(!cid) return;
-  const q=query(collection(db,'godowns'),where('companyId','==',cid));
+  if(!CU.companyId) return;
+  const q=query(collection(db,'godowns'),where('companyId','==',CU.companyId));
   onSnapshot(q,snap=>{
     WHs=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderWHs();
-    document.getElementById('sWH').textContent=WHs.length;
-    document.getElementById('whCnt').textContent=WHs.length;
+    renderWHs(); document.getElementById('sWH').textContent=WHs.length; document.getElementById('whCnt').textContent=WHs.length;
     loadDashStats();
-  },err=>{
-    console.error('godowns query error:',err.code,err.message);
-    syncEl.textContent='Sync Error';syncEl.className='sync-err';
-  });
+  }, err => { syncEl.textContent='Sync Error'; syncEl.className='sync-err'; });
 }
 
 function renderWHs(){
-  const list=document.getElementById('whList');
-  const empty=document.getElementById('whEmpty');
+  const list=document.getElementById('whList'); const empty=document.getElementById('whEmpty');
   list.innerHTML='';
   if(!WHs.length){empty.classList.add('show');return;}
   empty.classList.remove('show');
   const canM=CU.role==='owner'||CU.role==='manager';
   WHs.forEach((wh,i)=>{
-    const row=document.createElement('div');
-    row.className='whr';
+    const row=document.createElement('div'); row.className='whr';
     row.innerHTML=`<div class="whr-ico">${ICONS[i%ICONS.length]}</div>
     <div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div>
-    <div class="whr-meta"><span class="wh-tag">${esc(CATS[wh.category]||wh.category||'Warehouse')}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div>${canM?`<button class="del-btn-sm" onclick="event.stopPropagation();prepDelWH('${wh.id}','${esc(wh.name).replace(/'/g, "\\'")}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:''}</div>
+    <div class="whr-meta"><span class="wh-tag">${esc(CATS[wh.category]||wh.category||'Warehouse')}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div>
+    ${canM?`<button class="del-btn-sm" onclick="event.stopPropagation(); window.prepDelWH('${wh.id}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:''}</div>
     <div class="wh-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
-    row.onclick=()=>openWH(wh);
+    row.onclick=()=>window.openWH(wh);
     list.appendChild(row);
     getDocs(query(collection(db,'products'),where('godownId','==',wh.id))).then(ps=>{
-      const c=document.getElementById(`wc-${wh.id}`);
-      const h=document.getElementById(`hd-${wh.id}`);
+      const c=document.getElementById(`wc-${wh.id}`); const h=document.getElementById(`hd-${wh.id}`);
       if(c)c.textContent=ps.size+' items';
       const low=ps.docs.filter(d=>{const p=d.data();return p.minStock!=null?p.stock<=p.minStock:p.stock<=0;}).length;
       if(h)h.className=`hdot ${low>3?'hl':low>0?'hw':'hg'}`;
@@ -653,8 +113,7 @@ window.openWH=async function(wh){
   document.getElementById('btnAddProd').classList.toggle('hidden',!canM);
   document.getElementById('pSrch').value='';
   showView('wh');
-  await loadProds(wh.id);
-  loadWHStats(wh.id);
+  await loadProds(wh.id); loadWHStats(wh.id);
 };
 
 async function loadWHStats(whId){
@@ -678,9 +137,7 @@ async function loadProds(whId){
     prods=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name));
     document.getElementById('wssP').textContent=prods.length;
     renderProds(prods);
-  }catch(e){
-    document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:#EF4444;font-size:13px">Error loading products.</div>`;
-  }
+  }catch(e){ document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:#EF4444;font-size:13px">Error loading products.</div>`; }
 }
 
 function renderProds(list){
@@ -691,7 +148,7 @@ function renderProds(list){
   }
   el.innerHTML=list.map(p=>{
     const isLow=p.minStock!=null?p.stock<=p.minStock:p.stock<=0;
-    return `<div class="prow" onclick="openProd('${p.id}')">
+    return `<div class="prow" onclick="window.openProd('${p.id}')">
       <div class="prow-ico">${p.emoji||'📦'}</div>
       <div class="prow-info">
         <div class="prow-name">${esc(p.name)}${isLow?'<span class="low-badge">⚠ Low</span>':''}</div>
@@ -737,19 +194,27 @@ async function loadEntries(pId){
     const snap=await getDocs(query(collection(db,'entries'),where('productId','==',pId)));
     const entries=snap.docs.map(d=>({id:d.id,...d.data()}))
       .sort((a,b)=>new Date(b.createdAt?.toDate?b.createdAt.toDate():b.createdAt||0)-new Date(a.createdAt?.toDate?a.createdAt.toDate():a.createdAt||0));
+    
     const active=entries.filter(e=>!e.deleted);
-    const tIn=active.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
-    const tOut=active.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
-    document.getElementById('pdIn').textContent=tIn;
-    document.getElementById('pdOut').textContent=tOut;
+    document.getElementById('pdIn').textContent=active.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
+    document.getElementById('pdOut').textContent=active.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
     document.getElementById('eCnt').textContent=entries.length+' entries';
-    if(!entries.length){document.getElementById('eList').innerHTML='<div class="e-empty">No entries yet. Use Stock IN / OUT to record movements.</div>';return;}
+    
+    if(!entries.length){document.getElementById('eList').innerHTML='<div class="e-empty">No entries yet.</div>';return;}
+    
     document.getElementById('eList').innerHTML=entries.map(e=>{
-      const canDel=!e.deleted&&(CU.role==='owner'||(e.createdBy===CU.uid));
-      const delBtn=canDel?`<button class="e-del-btn" onclick="event.stopPropagation();prepDelEntry('${e.id}')" title="Delete entry"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`:'';
+      if (e.type === 'LOG' || e.isActivity) {
+         return `<div class="erow" style="background: #F9FAFB;">
+           <div class="e-ind" style="background:#EEF2FF;border-color:#C7D2FE;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+           <div class="e-body"><div class="e-note" style="color:#111827;font-weight:500;">${esc(e.note)}</div><div class="e-time">${ago(e.createdAt)}</div></div>
+         </div>`;
+      }
+      
+      const canDel=!e.deleted&&(CU.role==='owner'||CU.role==='manager'||e.createdBy===CU.uid);
+      const delBtn=canDel?`<button class="e-del-btn" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete entry"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`:'';
       
       if(e.deleted){
-        return `<div class="erow del-row" onclick="viewDelReason('${e.id}')">
+        return `<div class="erow del-row" onclick="window.viewDelReason('${e.id}')">
           <div class="e-ind e-del-ind"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/></svg></div>
           <div class="e-body">
             <div class="e-who">${esc(e.who||'Unknown')}</div>
@@ -760,10 +225,9 @@ async function loadEntries(pId){
         </div>`;
       }
       return `<div class="erow">
-        <div class="e-ind ${e.type==='IN'?'e-in': e.type==='OUT'?'e-out':'e-del-ind'}">
+        <div class="e-ind ${e.type==='IN'?'e-in': 'e-out'}">
           ${e.type==='IN'?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
-          : e.type==='OUT'?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'
-          : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'}
+          : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'}
         </div>
         <div class="e-body">
           <div class="e-who">${esc(e.who||'Unknown')}</div>
@@ -772,16 +236,14 @@ async function loadEntries(pId){
         </div>
         <div class="e-right">
           <div class="e-qty-wrap">
-            <span class="e-qty ${e.type==='IN'?'e-qi':e.type==='OUT'?'e-qo':''}">${e.type==='IN'?'+':e.type==='OUT'?'-':''}${e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty} ${e.entryUnit}`:e.qty}</span>
+            <span class="e-qty ${e.type==='IN'?'e-qi':'e-qo'}">${e.type==='IN'?'+':'-'}${e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty} ${e.entryUnit}`:e.qty}</span>
             <span class="e-unit">${esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units')}</span>
           </div>
           ${delBtn}
         </div>
       </div>`;
     }).join('');
-  }catch(e){
-    document.getElementById('eList').innerHTML=`<div class="e-empty" style="color:#EF4444">Error: ${e.message}</div>`;
-  }
+  }catch(e){ document.getElementById('eList').innerHTML=`<div class="e-empty" style="color:#EF4444">Error: ${e.message}</div>`; }
 }
 
 // ══ VIEW DELETE REASON ══
@@ -794,19 +256,17 @@ window.viewDelReason=async function(entId){
     document.getElementById('drReason').textContent=e.deleteReason||'No reason provided.';
     document.getElementById('drTime').textContent='Deleted: '+ago(e.deletedAt);
     document.getElementById('delReasonSub').textContent=`${e.type} entry of ${e.qty} ${e.unit||''} by ${e.who||'—'} — ${ago(e.createdAt)}`;
-    openM('m-del-reason');
-  }catch(err){showToast('Could not load reason.','e');}
+    window.openM('m-del-reason');
+  }catch(err){window.showToast('Could not load reason.','e');}
 };
 
 // ══ STOCK ENTRY ══
 window.openEntry=function(type){
   if(!curProd)return;
-  eType=type;
-  setET(type);
+  eType=type; window.setET(type);
   document.getElementById('entryTitle').textContent=`Stock ${type}`;
   document.getElementById('entrySub').textContent=curProd.name;
-  document.getElementById('eq').value='';
-  document.getElementById('en').value='';
+  document.getElementById('eq').value=''; document.getElementById('en').value='';
   document.getElementById('eCurS').textContent=curProd.stock||0;
   document.getElementById('eCurU').textContent=curProd.unit||'units';
   document.getElementById('entryMsg').textContent='';
@@ -815,7 +275,7 @@ window.openEntry=function(type){
   const btn=document.getElementById('entryBtn');
   btn.style.background=type==='IN'?'#059669':'#EF4444';
   btn.textContent=`Add ${type} Entry`;
-  openM('m-entry');
+  window.openM('m-entry');
 };
 
 function buildUnitSel(){
@@ -823,13 +283,13 @@ function buildUnitSel(){
   selUnit=curProd.unit||'units';
   const allUnits=[{name:curProd.unit||'units',ratio:1,isBase:true},...convs.map(c=>({name:c.name,ratio:c.ratio,isBase:false}))];
   const el=document.getElementById('unitSel');
-  el.innerHTML=allUnits.map(u=>`<button class="unit-opt${u.name===selUnit?' sel':''}" onclick="selectUnit('${u.name}',${u.ratio})" data-unit="${u.name}" data-ratio="${u.ratio}">${esc(u.name)}</button>`).join('');
+  el.innerHTML=allUnits.map(u=>`<button class="unit-opt${u.name===selUnit?' sel':''}" onclick="window.selectUnit('${u.name}',${u.ratio})" data-unit="${u.name}" data-ratio="${u.ratio}">${esc(u.name)}</button>`).join('');
 }
 
 window.selectUnit=function(name,ratio){
   selUnit=name;
   document.querySelectorAll('.unit-opt').forEach(b=>{b.classList.toggle('sel',b.dataset.unit===name);});
-  updateConvPreview();
+  window.updateConvPreview();
 };
 
 window.updateConvPreview=function(){
@@ -874,13 +334,12 @@ window.submitEntry=async function(){
       deleted:false,createdAt:serverTimestamp(),
     });
     curProd.stock=newStock;
-    closeM('m-entry');
+    window.closeM('m-entry');
     document.getElementById('pdStock').textContent=newStock;
     document.getElementById('pdStock').className='pd-big'+(curProd.minStock!=null&&newStock<=curProd.minStock?' low':'');
-    await loadEntries(curProd.id);
-    await loadProds(curWH);
-    showToast(`${eType==='IN'?'Added':'Removed'} ${qty} ${entryUnit} ✓`,eType==='IN'?'s':'');
-  }catch(e){console.error(e);setMM('entryMsg','❌ Failed: '+e.message,'err');}
+    await loadEntries(curProd.id); await loadProds(curWH);
+    window.showToast(`${eType==='IN'?'Added':'Removed'} ${qty} ${entryUnit} ✓`,eType==='IN'?'s':'');
+  }catch(e){setMM('entryMsg','❌ Failed: '+e.message,'err');}
   btn.disabled=false;btn.textContent=`Add ${eType} Entry`;
 };
 
@@ -891,7 +350,7 @@ window.prepDelEntry=function(entId){
   document.getElementById('wordCount').textContent='0 words (min 10)';
   document.getElementById('wordCount').className='word-count warn';
   document.getElementById('delEntMsg').textContent='';
-  openM('m-del-entry');
+  window.openM('m-del-entry');
 };
 
 window.checkWordCount=function(el){
@@ -912,30 +371,29 @@ window.confirmDelEntry=async function(){
   try{
     const snap=await getDoc(doc(db,'entries',entToDelete));
     const e=snap.data();
+    
     let msg;
-    const isOwn=e.createdBy===CU.uid;
+    const isOwn = (e.createdBy === CU.uid);
     const amt = `${e.qty} ${e.entryUnit || e.unit || ''}`.trim();
     const prod = e.productName || '';
-
+    
+    // Formatting exact deletion log text based on role/ownership
     if(isOwn){
-      msg=`${CU.name} deleted his own entry of ${amt} ${prod} ${e.type}`;
+      msg=`${CU.name} deleted their own entry of ${amt} ${prod} ${e.type}`;
     } else {
       const roleLabel = CU.role.charAt(0).toUpperCase() + CU.role.slice(1);
       msg=`${roleLabel} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${prod} ${e.type}`;
     }
 
     await updateDoc(doc(db,'entries',entToDelete),{
-      deleted:true,
-      deleteReason:reason,
-      deleteMessage:msg,
-      deletedBy:CU.uid,
-      deletedByName:CU.name||'Owner',
-      deletedAt:new Date().toISOString(),
+      deleted:true, deleteReason:reason, deleteMessage:msg,
+      deletedBy:CU.uid, deletedByName:CU.name||'Owner', deletedAt:new Date().toISOString(),
     });
-    closeM('m-del-entry');
+    
+    window.closeM('m-del-entry');
     await loadEntries(curProd.id);
     
-    // Recalculate stock accurately using base quantity
+    // Recalculate accurate stock
     const allSnap=await getDocs(query(collection(db,'entries'),where('productId','==',curProd.id)));
     const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted);
     const newStock=activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0);
@@ -944,8 +402,8 @@ window.confirmDelEntry=async function(){
     await updateDoc(doc(db,'products',curProd.id),{stock:corrected});
     curProd.stock=corrected;
     document.getElementById('pdStock').textContent=corrected;
-    showToast('Entry deleted.','');
-  }catch(e){console.error(e);setMM('delEntMsg','❌ Failed: '+e.message,'err');}
+    window.showToast('Entry deleted.','');
+  }catch(e){setMM('delEntMsg','❌ Failed: '+e.message,'err');}
   btn.disabled=false;btn.textContent='Delete Entry';
 };
 
@@ -958,9 +416,8 @@ window.openAddProd=function(){
   document.getElementById('convBuilder').style.display='none';
   document.getElementById('convArrow').style.transform='';
   document.getElementById('aiPrev').classList.remove('show');
-  window._aiEmoji='📦';
-  setMM('prodMsg','','');
-  openM('m-prod');
+  window._aiEmoji='📦'; setMM('prodMsg','','');
+  window.openM('m-prod');
 };
 
 window.addProduct=async function(){
@@ -999,10 +456,10 @@ window.addProduct=async function(){
         deleted:false,createdAt:serverTimestamp(),
       });
     }
-    closeM('m-prod');
+    window.closeM('m-prod');
     await loadProds(curWH);
-    showToast(`${name} added ✓`,'s');
-  }catch(e){console.error(e);setMM('prodMsg','❌ Failed: '+e.message,'err');}
+    window.showToast(`${name} added ✓`,'s');
+  }catch(e){setMM('prodMsg','❌ Failed: '+e.message,'err');}
 };
 
 // ══ EDIT PRODUCT NAME ══
@@ -1010,12 +467,12 @@ window.openEditName=function(){
   if(!curProd)return;
   document.getElementById('editNameInp').value=curProd.name;
   setMM('editNameMsg','','');
-  openM('m-edit-name');
+  window.openM('m-edit-name');
 };
 window.saveProductName=async function(){
   const newName=document.getElementById('editNameInp').value.trim();
   if(!newName){setMM('editNameMsg','⚠ Enter a name.','err');return;}
-  if(newName===curProd.name){closeM('m-edit-name');return;}
+  if(newName===curProd.name){window.closeM('m-edit-name');return;}
   try{
     const oldName=curProd.name;
     await updateDoc(doc(db,'products',curProd.id),{name:newName});
@@ -1031,9 +488,9 @@ window.saveProductName=async function(){
     document.getElementById('pdName').textContent=newName;
     const idx=prods.findIndex(p=>p.id===curProd.id);
     if(idx>-1)prods[idx].name=newName;
-    closeM('m-edit-name');
+    window.closeM('m-edit-name');
     await loadEntries(curProd.id);
-    showToast('Product name updated ✓','s');
+    window.showToast('Product name updated ✓','s');
   }catch(e){setMM('editNameMsg','❌ Failed: '+e.message,'err');}
 };
 
@@ -1047,25 +504,23 @@ window.openEditConversions=function(){
   convs.forEach(c=>appendEditConvRow(el,c.name,c.ratio));
   if(!convs.length)appendEditConvRow(el,'','');
   setMM('editConvMsg','','');
-  openM('m-edit-conv');
+  window.openM('m-edit-conv');
 };
 window.addEditConvRow=function(){appendEditConvRow(document.getElementById('editConvRows'),'','');};
 function appendEditConvRow(container,name,ratio){
-  const row=document.createElement('div');
-  row.className='conv-row';
-  row.innerHTML=`<span style="font-size:13px;color:#6B7280;white-space:nowrap">1</span><input placeholder="unit name (e.g. packet)" value="${esc(name)}" style="flex:1.5"/><span style="font-size:13px;color:#6B7280;white-space:nowrap">=</span><input type="number" placeholder="qty" value="${ratio||''}" min="0.001" step="any" style="flex:1"/><span style="font-size:13px;color:#6B7280;white-space:nowrap">${esc(curProd?.unit||'units')}</span><button class="conv-rm" onclick="this.parentElement.remove()">×</button>`;
+  const row=document.createElement('div'); row.className='conv-row';
+  row.innerHTML=`<span style="font-size:13px;color:#6B7280;white-space:nowrap">1</span><input placeholder="unit name" value="${esc(name)}" style="flex:1.5"/><span style="font-size:13px;color:#6B7280;white-space:nowrap">=</span><input type="number" placeholder="qty" value="${ratio||''}" min="0.001" step="any" style="flex:1"/><span style="font-size:13px;color:#6B7280;white-space:nowrap">${esc(curProd?.unit||'units')}</span><button class="conv-rm" onclick="this.parentElement.remove()">×</button>`;
   container.appendChild(row);
 }
 window.saveConversions=async function(){
   const convs=getConvRowData('editConvRows');
   if(convs===null){setMM('editConvMsg','⚠ Check values — ratio must be a positive number.','err');return;}
-  if(convs.length===0){setMM('editConvMsg','⚠ Add at least 1 conversion to save.','err');return;}
   try{
     await updateDoc(doc(db,'products',curProd.id),{conversions:convs});
     curProd.conversions=convs;
     renderConversions(curProd);
-    closeM('m-edit-conv');
-    showToast('Conversions saved ✓','s');
+    window.closeM('m-edit-conv');
+    window.showToast('Conversions saved ✓','s');
   }catch(e){setMM('editConvMsg','❌ Failed: '+e.message,'err');}
 };
 
@@ -1074,8 +529,7 @@ function getConvRowData(containerId){
   const convs=[];
   for(const row of rows){
     const inputs=row.querySelectorAll('input');
-    const name=inputs[0].value.trim();
-    const ratio=parseFloat(inputs[1].value);
+    const name=inputs[0].value.trim(); const ratio=parseFloat(inputs[1].value);
     if(!name&&!inputs[1].value)continue; 
     if(!name||isNaN(ratio)||ratio<=0)return null; 
     convs.push({name,ratio});
@@ -1085,18 +539,14 @@ function getConvRowData(containerId){
 
 // ══ CONV BUILDER ══
 window.toggleConvBuilder=function(){
-  const el=document.getElementById('convBuilder');
-  const arrow=document.getElementById('convArrow');
+  const el=document.getElementById('convBuilder'); const arrow=document.getElementById('convArrow');
   const open=el.style.display==='block';
-  el.style.display=open?'none':'block';
-  arrow.style.transform=open?'':'rotate(180deg)';
-  if(!open&&document.getElementById('convRows').children.length===0)addConvRow();
+  el.style.display=open?'none':'block'; arrow.style.transform=open?'':'rotate(180deg)';
+  if(!open&&document.getElementById('convRows').children.length===0) window.addConvRow();
 };
 window.addConvRow=function(){
-  const container=document.getElementById('convRows');
-  const baseUnit=document.getElementById('pu').value.trim()||'units';
-  const row=document.createElement('div');
-  row.className='conv-row';
+  const container=document.getElementById('convRows'); const baseUnit=document.getElementById('pu').value.trim()||'units';
+  const row=document.createElement('div'); row.className='conv-row';
   row.innerHTML=`<span style="font-size:13px;color:#6B7280;white-space:nowrap">1</span><input placeholder="unit name" style="flex:1.5"/><span style="font-size:13px;color:#6B7280;white-space:nowrap">=</span><input type="number" placeholder="qty" min="0.001" step="any" style="flex:1"/><span style="font-size:13px;color:#6B7280;white-space:nowrap" class="conv-base-unit">${esc(baseUnit)}</span><button class="conv-rm" onclick="this.parentElement.remove()">×</button>`;
   container.appendChild(row);
 };
@@ -1119,35 +569,26 @@ window.createWH=async function(){
       createdAt:new Date().toISOString(),productCount:0,
     });
     ['wn','wl'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('wc').value='general';
-    document.getElementById('wcc').value='';
-    document.getElementById('wcc').classList.remove('show');
-    closeM('m-wh');
-    showToast('Warehouse created ✓','s');
-  }catch(e){console.error(e);setMM('whMsg','❌ Failed: '+e.message,'err');}
+    document.getElementById('wc').value='general'; document.getElementById('wcc').value=''; document.getElementById('wcc').classList.remove('show');
+    window.closeM('m-wh');
+    window.showToast('Warehouse created ✓','s');
+  }catch(e){setMM('whMsg','❌ Failed: '+e.message,'err');}
 };
 
 // ══ DELETE WAREHOUSE ══
-window.prepDelWH=function(whId,whName){
-  if (CU.role !== 'owner' && CU.role !== 'manager') {
-     showToast('Only Owner/Manager can delete warehouses.', 'e');
-     return;
-  }
+window.prepDelWH=function(whId){
+  if (CU.role !== 'owner' && CU.role !== 'manager') { window.showToast('Only Owner/Manager can delete warehouses.', 'e'); return; }
+  const wh = WHs.find(w => w.id === whId);
   window._delWhId=whId;
-  document.getElementById('delWhSub').textContent=`Delete "${whName}"? All products and history will be lost forever.`;
-  document.getElementById('delWhPw').value='';
-  document.getElementById('delWhErr').textContent='';
-  openM('m-del-wh');
+  document.getElementById('delWhSub').textContent=`Delete "${wh?.name || 'this warehouse'}"? All products and history will be lost.`;
+  document.getElementById('delWhPw').value=''; document.getElementById('delWhErr').textContent='';
+  window.openM('m-del-wh');
 };
-window.openDelWH=function(){
-  const wh=WHs.find(w=>w.id===curWH);
-  prepDelWH(curWH,wh?.name||'this warehouse');
-};
+window.openDelWH=function(){ window.prepDelWH(curWH); };
 window.confirmDelWH=async function(){
   const whId=window._delWhId||curWH;
   const pw=document.getElementById('delWhPw').value.trim();
-  const errEl=document.getElementById('delWhErr');
-  const btn=document.getElementById('delWhBtn');
+  const errEl=document.getElementById('delWhErr'); const btn=document.getElementById('delWhBtn');
   if(!pw){errEl.textContent='Enter your password.';return;}
   btn.disabled=true;btn.textContent='Deleting…';
   try{
@@ -1160,42 +601,35 @@ window.confirmDelWH=async function(){
       getDocs(query(collection(db,'products'),where('godownId','==',whId))),
       getDocs(query(collection(db,'entries'),where('godownId','==',whId))),
     ]);
-    ps.forEach(d=>batch.delete(d.ref));
-    es.forEach(d=>batch.delete(d.ref));
+    ps.forEach(d=>batch.delete(d.ref)); es.forEach(d=>batch.delete(d.ref));
     batch.delete(doc(db,'godowns',whId));
     await batch.commit();
-    closeM('m-del-wh');
-    showView('dash');
-    curWH=null;
-    showToast('Warehouse deleted.','');
-  }catch(e){
-    errEl.textContent=(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')?'Incorrect password.':'Error: '+(e.message||'Failed.');
-  }
+    window.closeM('m-del-wh');
+    showView('dash'); curWH=null;
+    window.showToast('Warehouse deleted.','');
+  }catch(e){ errEl.textContent=(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')?'Incorrect password.':'Error: '+(e.message||'Failed.'); }
   btn.disabled=false;btn.textContent='Delete Forever';
 };
 
 // ══ STATS ══
 async function loadDashStats(){
-  const cid=CU.companyId;
-  if(!cid) return;
+  const cid=CU.companyId; if(!cid) return;
   try{
     const snap=await getDocs(query(collection(db,'products'),where('companyId','==',cid)));
     const prods=snap.docs.map(d=>d.data());
     document.getElementById('sProds').textContent=prods.length;
     const low=prods.filter(p=>p.minStock!=null?p.stock<=p.minStock:p.stock<=0);
     document.getElementById('sLow').textContent=low.length;
-    if(low.length){document.getElementById('lowAlert').classList.add('show');document.getElementById('lowTxt').textContent=`${low.length} product${low.length>1?'s':''} running low: ${low.slice(0,3).map(p=>p.name).join(', ')}${low.length>3?'…':''}`;}
+    if(low.length){document.getElementById('lowAlert').classList.add('show');document.getElementById('lowTxt').textContent=`${low.length} product${low.length>1?'s':''} running low.`;}
     else document.getElementById('lowAlert').classList.remove('show');
   }catch(e){}
 }
 function listenTodayEntries(){
-  const cid=CU.companyId;
-  if(!cid) return;
+  const cid=CU.companyId; if(!cid) return;
   const today=new Date();today.setHours(0,0,0,0);
   onSnapshot(query(collection(db,'entries'),where('companyId','==',cid)),snap=>{
     const count=snap.docs.filter(d=>{
-      const e=d.data();
-      if(e.deleted||e.isActivity)return false;
+      const e=d.data(); if(e.deleted||e.isActivity)return false;
       const ts=e.createdAt?.toDate?e.createdAt.toDate():new Date(e.createdAt||0);
       return ts>=today;
     }).length;
@@ -1210,5 +644,3 @@ function setMM(id,msg,type){const el=document.getElementById(id);if(!el)return;e
 
 init();
 </script>
-</body>
-</html>
