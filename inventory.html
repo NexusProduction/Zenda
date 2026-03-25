@@ -513,7 +513,48 @@ body{background:#F4F5F7;min-height:100vh;display:flex;flex-direction:column;font
 </div>
 
 <div id="tc"></div>
+<style>
+/* PC Split Layout */
+@media (min-width: 1024px) {
+  #v-prod { display: flex; align-items: flex-start; gap: 24px; padding: 20px; }
+  #v-prod .pd-main { flex: 0 0 calc(35% - 12px); position: sticky; top: 76px; overflow-y: auto; max-height: calc(100vh - 90px); }
+  #v-prod .pd-entries { flex: 1; margin-top: 0; }
+  .pd-stats { grid-template-columns: 1fr; gap: 12px; }
+  .pdtb { display: none !important; }
+  /* Show entries title only on desktop split */
+  #pdETitleDesktop { display: block !important; margin-bottom: 16px; font-size: 16px; font-weight: 700; color: #111827; }
+}
+#pdETitleDesktop { display: none; }
 
+/* Strict Number Inputs Styling */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+/* Merged Edit Modal Styles */
+.edit-prod-conts { display: flex; flex-direction: column; gap: 16px; }
+
+/* Unified Unit Row (Add Product Opening Stock / Conversion Formula) */
+.unit-inp-grp { display: flex; align-items: center; gap: 8px; border: 1px solid #D1D5DB; border-radius: 8px; padding: 4px; background: white; }
+.unit-inp-grp input { flex: 1; border: none !important; padding: 8px !important; margin: 0 !important; font-size: 14px; }
+.unit-inp-grp input:focus { ring: none !important; outline: none !important; }
+.unit-sel-sm { border: none !important; background: transparent; font-size: 13px; color: #4B5563; padding: 0 8px; cursor: pointer; outline: none; }
+.unit-sel-sm:focus { outline: none; ring: none; }
+
+/* Conversion Row Update (Base = X Alt) */
+.conv-row-fixed { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; padding: 8px; border-bottom: 1px solid #F3F4F6; }
+.conv-row-fixed .fixed-b-label { font-weight: 600; background: #EEF2FF; color: #4F46E5; padding: 2px 6px; border-radius: 4px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-row-fixed input[type=number] { width: 60px; text-align: center; border: 1px solid #D1D5DB; border-radius: 6px; padding: 4px; }
+.conv-row-fixed .unit-sel-sm { flex: 1; border: 1px solid #D1D5DB !important; border-radius: 6px; height: 32px; padding: 0 4px; }
+
+/* ON/OFF Toggle Switch */
+.tgl { position: relative; display: inline-block; width: 38px; height: 22px; }
+.tgl input { opacity: 0; width: 0; height: 0; }
+.tgl-sl { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #D1D5DB; transition: .3s; border-radius: 34px; }
+.tgl-sl:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; }
+input:checked + .tgl-sl { background-color: #4F46E5; }
+input:checked + .tgl-sl:before { transform: translateX(16px); }
+</style>
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -525,706 +566,389 @@ const auth=getAuth(zA),db=getFirestore(zA);
 const syncEl=document.getElementById('syncEl');
 
 let CU=null, WHs=[], prods=[], curWH=null, curProd=null, eType='IN', entToDelete=null;
-let selUnit=null;
+let selUnit=null, curAddStockUnit=null;
 
 const ICONS=['<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 22V11L12 2l11 9v11"/><path d="M9 22v-4h6v4"/></svg>'];
 const CATS={general:'General',cold:'Cold Storage',retail:'Retail',distribution:'Distribution',raw:'Raw Materials',finished:'Finished Goods'};
+const STD_UNITS = ['Piece', 'Gram', 'KG', 'Litre', 'Box', 'Packet', 'Set', 'Bundle', 'Feet', 'Metre'];
 
 // ══ 1. UI HELPERS & MODALS ══
-window.openM = function(id) {
-  document.getElementById(id).classList.add('open');
-  document.body.style.overflow = 'hidden';
-};
-window.closeM = function(id) {
-  document.getElementById(id).classList.remove('open');
-  document.body.style.overflow = '';
-};
-window.toggleCat = function(v) {
-  const el = document.getElementById('wcc');
-  el.classList.toggle('show', v === 'other');
-  if(v === 'other') setTimeout(() => el.focus(), 80);
-};
-window.showToast = function(msg, type) {
-  const c = document.getElementById('tc'); 
-  const t = document.createElement('div');
-  t.className = 'toast' + (type === 's' ? ' s' : type === 'e' ? ' e' : ''); 
-  t.textContent = msg;
-  c.appendChild(t); 
-  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 220); }, 3200);
-};
+window.openM = function(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; };
+window.closeM = function(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; };
+window.toggleCat = function(v) { const el = document.getElementById('wcc'); el.classList.toggle('show', v === 'other'); if(v === 'other') setTimeout(() => el.focus(), 80); };
+window.showToast = function(msg, type) { const c = document.getElementById('tc'); const t = document.createElement('div'); t.className = 'toast' + (type === 's' ? ' s' : type === 'e' ? ' e' : ''); t.textContent = msg; c.appendChild(t); setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 220); }, 3200); };
 
-// Modal Click-away and Escape Listeners
-function setupModalListeners() {
-  document.querySelectorAll('.mo').forEach(o => o.addEventListener('click', e => { if(e.target === o) window.closeM(o.id); }));
-  document.addEventListener('keydown', e => { if(e.key === 'Escape') document.querySelectorAll('.mo.open').forEach(m => window.closeM(m.id)); });
-}
-if(document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', setupModalListeners); } 
-else { setupModalListeners(); }
+function setupModalListeners() { document.querySelectorAll('.mo').forEach(o => o.addEventListener('click', e => { if(e.target === o) window.closeM(o.id); })); document.addEventListener('keydown', e => { if(e.key === 'Escape') document.querySelectorAll('.mo.open').forEach(m => window.closeM(m.id)); }); }
+if(document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', setupModalListeners); } else { setupModalListeners(); }
 
-// ══ 2. AI EMOJI ENGINE ══
-const EM={rice:'🍚',wheat:'🌾',flour:'🌾',maize:'🌽',corn:'🌽',sugar:'🧂',salt:'🧂',oil:'🫙',ghee:'🫙',butter:'🧈',milk:'🥛',cheese:'🧀',egg:'🥚',eggs:'🥚',meat:'🥩',chicken:'🍗',fish:'🐟',potato:'🥔',onion:'🧅',tomato:'🍅',garlic:'🧄',spinach:'🥬',vegetable:'🥦',fruit:'🍎',apple:'🍎',banana:'🍌',mango:'🥭',tea:'🍵',coffee:'☕',spice:'🌶️',pepper:'🌶️',turmeric:'🌿',dal:'🫘',lentil:'🫘',pulse:'🫘',bread:'🍞',biscuit:'🍪',chocolate:'🍫',candy:'🍬',juice:'🧃',water:'💧',soda:'🥤',sauce:'🫙',pickle:'🫙',cement:'🪨',sand:'🪨',brick:'🧱',steel:'🔩',iron:'🔧',wire:'🪡',pipe:'🔩',rod:'🔩',nut:'🔩',bolt:'🔩',screw:'🪛',nail:'📌',paint:'🎨',tile:'🟫',wood:'🪵',timber:'🪵',plywood:'🪵',glass:'🪟',door:'🚪',lock:'🔒',cloth:'🧵',fabric:'🧵',thread:'🧵',cotton:'🧶',silk:'🧶',wool:'🧶',shirt:'👕',pant:'👖',dress:'👗',shoe:'👟',bag:'👜',bulb:'💡',fan:'🌀',motor:'⚙️',battery:'🔋',charger:'🔌',phone:'📱',laptop:'💻',tv:'📺',box:'📦',carton:'📦',packet:'📦',tape:'📎',rope:'🪢',petrol:'⛽',diesel:'⛽',fuel:'⛽',tyre:'🛞',tire:'🛞',wheel:'🛞',engine:'⚙️',medicine:'💊',tablet:'💊',syrup:'🧪',cream:'🧴',soap:'🧼',detergent:'🧴',chemical:'🧪',fertilizer:'🌱',pesticide:'🧪',seed:'🌱',pen:'✏️',pencil:'✏️',paper:'📄',notebook:'📒',hammer:'🔨',wrench:'🔧',drill:'🪚',saw:'🪚',knife:'🔪',shovel:'🪣',bucket:'🪣',chair:'🪑',table:'🪑',bed:'🛏️',gold:'💍',silver:'🥈',diamond:'💎'};
-window._aiEmoji='📦';
-window._emojiTimer=null;
+// ══ 2. REBOST LOCAL EMOJI ENGINE & REROLL (FIXED) ══
+const EM_LIB = {
+  // Food & Ingredients
+  rice:'🍚',wheat:'🌾',flour:'🌾',maize:'🌽',corn:'🌽',sugar:'🧂',salt:'🧂',oil:'🫙',ghee:'🫙',butter:'🧈',milk:'🥛',cheese:'🧀',egg:'🥚',meat:'🥩',chicken:'🍗',fish:'🐟',vegetable:'🥦',tomato:'🍅',onion:'🧅',potato:'🥔',fruit:'🍎',tea:'🍵',coffee:'☕',spice:'🌶️',pepper:'🌶️',turmeric:'🌿',bread:'🍞',biscuit:'🍪',juice:'🧃',soda:'🥤',water:'💧',dal:'🫘',entil:'🫘',biscuit:'🍪',chocolate:'🍫',honey:'🍯',sauce:'🫙',
+  // Construction & Materials
+  cement:'🪨',sand:'🪨',brick:'🧱',steel:'🔩',iron:'🔧',wire:'🪡',pipe:'🔩',rod:'🔩',nail:'📌',screw:'🪛',nut:'🔩',tile:'🟫',wood:'🪵',paint:'🎨',glass:'🪟',door:'🚪',lock:'🔒',concrete:'🪨',plaster:'🪨',roofing:'🧱',
+  // Textiles & Apparel
+  cloth:'🧵',fabric:'🧵',thread:'🧵',cotton:'yarn🧶',silk:'🧶',shirt:'👕',pant:'👖',dress:'👗',shoe:'👟',bag:'👜',wool:'🧶',jacket:'🧥',hat:'🧢',
+  // Electricals & Tech
+  bulb:'💡',fan:'🌀',motor:'⚙️',battery:'🔋',charger:'🔌',phone:'📱',laptop:'💻',tv:'📺',cable:'🔌',wire:'🔌',switch:'🎛️',
+  // Automotive
+  fuel:'⛽',petrol:'⛽',diesel:'⛽',tyre:'🛞',tire:'🛞',wheel:'🛞',engine:'⚙️',parts:'⚙️',oil_auto:'🛢️',brake:'⚙️',battery_auto:'🔋',
+  // Retail & General
+  soap:'🧼',detergent:'🧴',cream:'🧴',shampoo:'🧴',toothpaste:'🧴',brush:'🪥',perfume:'🧴',paper:'📄',pen:'✏️',pencil:'✏️',notebook:'📒',gift:'🎁',toys:'🧸',carton:'📦',packet:'📦',box:'📦',tape:'📎',rope:'🪢',
+  // Industrial & Tools
+  chemical:'🧪',fertilizer:'🌱',seed:'🌱',pesticide:'🧪',cylinder:'🫙',barrel:'🛢️',tool:'🔨',hammer:'🔨',wrench:'🔧',drill:'⚙️',saw:'🪚',knife:'🔪',shovel:'🪣',bucket:'🪣',machinery:'⚙️',gold:'💍',silver:'🥈',diamond:'💎',chair:'🪑',table:'🪑',bed:'🛏️',
+};
+window._aiEmoji='📦'; window._curEMKeywords = [];
 
 window.scheduleEmoji=function(name){
-  clearTimeout(window._emojiTimer);
-  if(!name||name.length<2){document.getElementById('aiPrev').classList.remove('show');window._aiEmoji='📦';return;}
+  if(!name||name.length<2){document.getElementById('aiPrev').classList.remove('show');window._aiEmoji='📦';window._curEMKeywords=[];return;}
   const lower=name.toLowerCase().replace(/[^a-z0-9 ]/g,'');
   const words=lower.split(/\s+/);
+  window._curEMKeywords = words.filter(w => w.length > 1);
+  const found = findBestEmoji(words);
+  window._aiEmoji = found || '📦';
+  showEmojiPrev(window._aiEmoji, name);
+};
+
+function findBestEmoji(words) {
   let found=null;
-  for(const w of words){if(EM[w]){found=EM[w];break;}}
-  if(!found){for(const w of words){for(const[k,v]of Object.entries(EM)){if(w.includes(k)||k.includes(w)){found=v;break;}}if(found)break;}}
-  if(found){window._aiEmoji=found; showEmojiPrev(found,name); return;}
+  for(const w of words){if(EM_LIB[w]){found=EM_LIB[w];break;}} // Exact match first
+  if(!found){for(const w of words){for(const[k,v]of Object.entries(EM_LIB)){if(w.includes(k)||k.includes(w)){found=v;break;}}if(found)break;}} // Partial match
+  return found;
+}
+
+window.rerollEmoji=function(){
+  const prevIco = document.getElementById('aiPrevIco'); const prevTxt = document.getElementById('aiPrevTxt');
+  const nameInp = document.getElementById('pn'); if(!nameInp) return;
+  const name = nameInp.value.trim(); if(!name) return;
+  prevIco.textContent='⏳'; prevTxt.textContent='Thinking…';
   
-  document.getElementById('aiPrev').classList.add('show');
-  document.getElementById('aiPrevIco').textContent='⏳';
-  document.getElementById('aiPrevTxt').textContent='AI thinking…';
-  window._emojiTimer=setTimeout(()=>callEmojiAI(name),800);
+  // Instant pick new alternative locally - no API hang
+  const currentKeywords = window._curEMKeywords.length > 0 ? window._curEMKeywords : name.toLowerCase().replace(/[^a-z0-9 ]/g,'').split(/\s+/);
+  const matchedKeywords = currentKeywords.filter(w => EM_LIB[w] || Object.keys(EM_LIB).some(k => w.includes(k) || k.includes(w)));
+  
+  setTimeout(() => {
+    let newE = '📦';
+    if(matchedKeywords.length > 0) {
+        // Try to find a matched emoji different from current
+        const matchingEmojis = matchedKeywords.map(w => EM_LIB[w]).filter(Boolean);
+        if(matchingEmojis.length > 0) {
+            newE = matchingEmojis[Math.floor(Math.random()*matchingEmojis.length)];
+        }
+        if(newE === window._aiEmoji) {
+            // Pick any other relevant emoji randomly from the matching keywords list pool
+            const otherEmojis = Object.entries(EM_LIB).filter(([k,e]) => matchedKeywords.some(w => k.includes(w) || w.includes(k))).map(row => row[1]);
+            if(otherEmojis.length > 1) {
+                const uniqueOthers = [...new Set(otherEmojis)].filter(e => e !== window._aiEmoji);
+                if(uniqueOthers.length > 0) newE = uniqueOthers[Math.floor(Math.random()*uniqueOthers.length)];
+            }
+        }
+    } else {
+        // Just pick a random relevant category fallback
+        const fallbacks = ['📦','🔧','🧂','🍎','👕','⚙️'];
+        newE = fallbacks[Math.floor(Math.random()*fallbacks.length)];
+        if(newE === window._aiEmoji) newE = '📦';
+    }
+    window._aiEmoji = newE; showEmojiPrev(window._aiEmoji, name);
+  }, 250); // Small visual delay looks more active
 };
 
-function showEmojiPrev(emoji,name){
-  document.getElementById('aiPrev').classList.add('show');
-  document.getElementById('aiPrevIco').textContent=emoji;
-  document.getElementById('aiPrevTxt').textContent=`"${name.split(' ').slice(0,3).join(' ')}"`;
-}
+function showEmojiPrev(emoji,name){ document.getElementById('aiPrev').classList.add('show'); document.getElementById('aiPrevIco').textContent=emoji; document.getElementById('aiPrevTxt').textContent=`"${name.split(' ').slice(0,3).join(' ')}"`; }
 
-async function callEmojiAI(name){
-  try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:20,messages:[{role:'user',content:`Single emoji for inventory product: "${name}". Only emoji, nothing else.`}]})});
-    const d=await r.json();
-    const e=(d.content?.[0]?.text||'📦').trim().slice(0,2);
-    window._aiEmoji=e||'📦';
-    showEmojiPrev(window._aiEmoji,name);
-  }catch(e){window._aiEmoji='📦';showEmojiPrev('📦',name);}
-}
-
-window.rerollEmoji=async function(){
-  const name=document.getElementById('pn').value.trim();if(!name)return;
-  document.getElementById('aiPrevIco').textContent='⏳';
-  document.getElementById('aiPrevTxt').textContent='Getting another…';
-  try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:20,messages:[{role:'user',content:`Different emoji for: "${name}". Current: ${window._aiEmoji}. Only emoji.`}]})});
-    const d=await r.json();
-    const e=(d.content?.[0]?.text||'📦').trim().slice(0,2);
-    window._aiEmoji=e||'📦';showEmojiPrev(window._aiEmoji,name);
-  }catch(e){}
-};
-
-// ══ 3. CORE INIT ══
+// ══ 3. CORE INIT & STATS ══
 async function init(){
-  const urlUid = new URLSearchParams(location.search).get('uid');
-  const rawSession = sessionStorage.getItem('zenda_user');
+  const urlUid = new URLSearchParams(location.search).get('uid'); const rawSession = sessionStorage.getItem('zenda_user');
   const sessionUser = rawSession ? JSON.parse(rawSession) : null;
-
-  const authUser = await new Promise(r=>{
-    const unsub = onAuthStateChanged(auth, u=>{ unsub(); r(u); });
-    setTimeout(()=>r(null), 4000); 
-  });
-
+  const authUser = await new Promise(r=>{ const unsub = onAuthStateChanged(auth, u=>{ unsub(); r(u); }); setTimeout(()=>r(null), 3000); });
   const activeUid = urlUid || (sessionUser ? sessionUser.uid : null) || (authUser ? authUser.uid : null);
   if(!activeUid){ syncEl.textContent='Not signed in'; syncEl.className='sync-err'; return; }
-
   try {
     const uSnap=await getDoc(doc(db,'users',activeUid));
-    if(uSnap.exists()){ CU={uid:activeUid,...uSnap.data()}; } 
-    else if (sessionUser) { CU = sessionUser; } 
-    else { CU={uid:activeUid,role:'owner',companyId:activeUid,name:authUser?.displayName||'Owner',email:authUser?.email}; }
+    if(uSnap.exists()){ CU={uid:activeUid,...uSnap.data()}; } else if (sessionUser) { CU = sessionUser; } 
+    else { CU={uid:activeUid,role:'owner',companyId:activeUid,name:authUser?.displayName||'Owner'}; }
   } catch(e) { CU = sessionUser || {uid:activeUid,role:'owner',companyId:activeUid,name:'Owner'}; }
-  
-  if(!CU.companyId) CU.companyId = activeUid;
-  syncEl.textContent='✓ Connected'; syncEl.className='sync-ok';
+  if(!CU.companyId) CU.companyId = activeUid; syncEl.textContent='✓ Connected'; syncEl.className='sync-ok';
   
   const canM=CU.role==='owner'||CU.role==='manager';
-  if(!canM) document.getElementById('addWhRow').style.display='none';
+  if(!canM) { const ar = document.getElementById('addWhRow'); if(ar) ar.style.display='none'; }
   document.getElementById('ctaBtn').classList.remove('hidden');
   
-  showView('dash'); loadWHs(); listenTodayEntries();
+  showView('dash'); loadWHs(); listenTodayEntries(); setupUnitDropdowns();
 }
 
-// ══ 4. VIEWS ══
+// ══ Setup Dropdowns for Add Product Opening Stock ══
+function setupUnitDropdowns() {
+  // Opening Stock dropdown in m-prod
+  populateStdUnits('puSel', (val) => { document.getElementById('pu_fixed').value = val; curAddStockUnit = val; updateAddProdUnits(val); });
+}
+
+function updateAddProdUnits(pu) {
+    const fixedInputs = ['psBaseUnit', 'pminBaseUnit', 'openingStockUnitLabel'];
+    fixedInputs.forEach(id => { const el = document.getElementById(id); if(el) el.textContent = pu || 'units'; });
+}
+
+function populateStdUnits(dropdownId, onChangeCallback) {
+  const sel = document.getElementById(dropdownId); if(!sel) return; sel.innerHTML='';
+  STD_UNITS.forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; sel.appendChild(opt); });
+  sel.addEventListener('change', (e) => onChangeCallback(e.target.value));
+  // Set initial default
+  onChangeCallback(STD_UNITS[0]);
+}
+
+// ══ 4. VIEWS & PC LAYOUT ══
 function showView(v){
-  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
-  document.getElementById('v-'+v).classList.add('active');
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active')); document.getElementById('v-'+v).classList.add('active');
   if(v==='dash'){setTopbar('Inventory','Add Warehouse','wh');}
   else if(v==='wh'){setTopbar(document.getElementById('whName').textContent,'Add Product','prod');}
   else if(v==='prod'){setTopbar(document.getElementById('pdName').textContent,'Stock IN','entry');}
 }
-function setTopbar(title,cta,action){
-  document.getElementById('pgTitle').textContent=title;
-  document.getElementById('ctaLbl').textContent=cta;
-  document.getElementById('backLbl').textContent=action==='wh'?'Back':action==='prod'?'Warehouses':'Products';
-  window._ctaAction=action;
-}
-window.goBack=function(){
-  const active=document.querySelector('.view.active')?.id;
-  if(active==='v-prod'){showView('wh');} else if(active==='v-wh'){showView('dash');} else window.close();
-};
-window.ctaClick=function(){
-  const a=window._ctaAction;
-  if(a==='wh') window.openM('m-wh'); else if(a==='prod') window.openAddProd(); else window.openEntry('IN');
-};
+function setTopbar(title,cta,action){ document.getElementById('pgTitle').textContent=title; document.getElementById('ctaLbl').textContent=cta; document.getElementById('backLbl').textContent=action==='wh'?'Back':action==='prod'?'Warehouses':'Products'; window._ctaAction=action; }
+window.goBack=function(){ const active=document.querySelector('.view.active')?.id; if(active==='v-prod'){showView('wh');} else if(active==='v-wh'){showView('dash');} else window.close(); };
+window.ctaClick=function(){ const a=window._ctaAction; if(a==='wh') window.openM('m-wh'); else if(a==='prod') window.openAddProd(); else window.openEntry('IN'); };
 
-// ══ 5. LOAD WAREHOUSES ══
+// ══ 5. LOAD WAREHOUSES & STATS ══
 function loadWHs(){
-  if(!CU.companyId) return;
-  const q=query(collection(db,'godowns'),where('companyId','==',CU.companyId));
-  onSnapshot(q,snap=>{
-    WHs=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderWHs(); document.getElementById('sWH').textContent=WHs.length; document.getElementById('whCnt').textContent=WHs.length;
-    loadDashStats();
-  }, err => { syncEl.textContent='Sync Error'; syncEl.className='sync-err'; });
+  if(!CU.companyId) return; const q=query(collection(db,'godowns'),where('companyId','==',CU.companyId));
+  onSnapshot(q,snap=>{ WHs=snap.docs.map(d=>({id:d.id,...d.data()})); renderWHs(); document.getElementById('sWH').textContent=WHs.length; document.getElementById('whCnt').textContent=WHs.length; loadDashStats(); }, err => { syncEl.textContent='Sync Error'; syncEl.className='sync-err'; });
 }
-
 function renderWHs(){
-  const list=document.getElementById('whList'); const empty=document.getElementById('whEmpty');
-  list.innerHTML='';
-  if(!WHs.length){empty.classList.add('show');return;}
-  empty.classList.remove('show');
-  const canM=CU.role==='owner'||CU.role==='manager';
+  const list=document.getElementById('whList'); const empty=document.getElementById('whEmpty'); list.innerHTML='';
+  if(!WHs.length){empty.classList.add('show');return;} empty.classList.remove('show'); const canM=CU.role==='owner'||CU.role==='manager';
   WHs.forEach((wh,i)=>{
-    const row=document.createElement('div'); row.className='whr';
-    row.innerHTML=`<div class="whr-ico">${ICONS[i%ICONS.length]}</div>
-    <div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div>
-    <div class="whr-meta"><span class="wh-tag">${esc(CATS[wh.category]||wh.category||'Warehouse')}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div>
-    ${canM?`<button class="del-btn-sm" onclick="event.stopPropagation(); window.prepDelWH('${wh.id}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:''}</div>
-    <div class="wh-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
-    row.onclick=()=>window.openWH(wh);
-    list.appendChild(row);
-    getDocs(query(collection(db,'products'),where('godownId','==',wh.id))).then(ps=>{
-      const c=document.getElementById(`wc-${wh.id}`); const h=document.getElementById(`hd-${wh.id}`);
-      if(c)c.textContent=ps.size+' items';
-      const low=ps.docs.filter(d=>{const p=d.data();return p.minStock!=null?p.stock<=p.minStock:p.stock<=0;}).length;
-      if(h)h.className=`hdot ${low>3?'hl':low>0?'hw':'hg'}`;
-    }).catch(()=>{});
+    const row=document.createElement('div'); row.className='whr'; row.innerHTML=`<div class="whr-ico">${ICONS[i%ICONS.length]}</div><div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="whr-meta"><span class="wh-tag">${esc(CATS[wh.category]||wh.category||'Warehouse')}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div>${canM?`<button class="del-btn-sm" onclick="event.stopPropagation(); window.prepDelWH('${wh.id}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:''}</div><div class="wh-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
+    row.onclick=()=>window.openWH(wh); list.appendChild(row);
+    getDocs(query(collection(db,'products'),where('godownId','==',wh.id))).then(ps=>{ const c=document.getElementById(`wc-${wh.id}`); const h=document.getElementById(`hd-${wh.id}`); if(c)c.textContent=ps.size+' items'; const low=ps.docs.filter(d=>{const p=d.data();return p.minStock!=null?p.stock<=p.minStock:p.stock<=0;}).length; if(h)h.className=`hdot ${low>3?'hl':low>0?'hw':'hg'}`; }).catch(()=>{});
   });
 }
+window.openWH=async function(wh){ curWH=wh.id; document.getElementById('whName').textContent=wh.name; document.getElementById('whLoc').textContent=wh.location||'—'; const canM=CU.role==='owner'||CU.role==='manager'; document.getElementById('btnDelWH').classList.toggle('hidden',!canM); document.getElementById('btnAddProd').classList.toggle('hidden',!canM); document.getElementById('pSrch').value=''; showView('wh'); await loadProds(wh.id); loadWHStats(wh.id); };
 
-// ══ OPEN WAREHOUSE ══
-window.openWH=async function(wh){
-  curWH=wh.id;
-  document.getElementById('whName').textContent=wh.name;
-  document.getElementById('whLoc').textContent=wh.location||'—';
-  const canM=CU.role==='owner'||CU.role==='manager';
-  document.getElementById('btnDelWH').classList.toggle('hidden',!canM);
-  document.getElementById('btnAddProd').classList.toggle('hidden',!canM);
-  document.getElementById('pSrch').value='';
-  showView('wh');
-  await loadProds(wh.id); loadWHStats(wh.id);
-};
-
-async function loadWHStats(whId){
-  if(!whId) return;
-  const today=new Date();today.setHours(0,0,0,0);
-  try{
-    const snap=await getDocs(query(collection(db,'entries'),where('godownId','==',whId)));
-    const all=snap.docs.map(d=>d.data()).filter(e=>!e.deleted);
-    const todays=all.filter(e=>{const ts=e.createdAt?.toDate?e.createdAt.toDate():new Date(e.createdAt||0);return ts>=today;});
-    document.getElementById('wssI').textContent=todays.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
-    document.getElementById('wssO').textContent=todays.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
-  }catch(e){}
-}
-
-// ══ 6. PRODUCTS ══
-async function loadProds(whId){
-  if(!whId) return;
-  document.getElementById('prodList').innerHTML='<div style="text-align:center;padding:28px;color:#9CA3AF;font-size:13px">Loading…</div>';
-  try{
-    const snap=await getDocs(query(collection(db,'products'),where('godownId','==',whId)));
-    prods=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name));
-    document.getElementById('wssP').textContent=prods.length;
-    renderProds(prods);
-  }catch(e){ document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:#EF4444;font-size:13px">Error loading products.</div>`; }
-}
-
+// ══ 6. PRODUCTS, DETAIL & MERGED EDIT MODAL ══
+async function loadProds(whId){ if(!whId) return; document.getElementById('prodList').innerHTML='<div style="text-align:center;padding:28px;color:#9CA3AF;font-size:13px">Loading…</div>'; try{ const snap=await getDocs(query(collection(db,'products'),where('godownId','==',whId))); prods=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name)); renderProds(prods); }catch(e){ document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:#EF4444;font-size:13px">Error loading products.</div>`; } }
 function renderProds(list){
-  const el=document.getElementById('prodList');
-  if(!list.length){
-    el.innerHTML='<div style="text-align:center;padding:36px 20px"><div style="font-size:3rem;opacity:.07;margin-bottom:12px">📦</div><div style="font-size:14px;font-weight:600;color:#6B7280;margin-bottom:6px">No products yet</div><div style="font-size:13px;color:#9CA3AF">Add the first product to start tracking.</div></div>';
-    return;
-  }
+  const el=document.getElementById('prodList'); if(!list.length){ el.innerHTML='<div style="text-align:center;padding:36px 20px"><div style="font-size:3rem;opacity:.07;margin-bottom:12px">📦</div><div style="font-size:14px;font-weight:600;color:#6B7280;margin-bottom:6px">No products yet</div></div>'; return; }
   el.innerHTML=list.map(p=>{
     const isLow=p.minStock!=null?p.stock<=p.minStock:p.stock<=0;
-    return `<div class="prow" onclick="window.openProd('${p.id}')">
-      <div class="prow-ico">${p.emoji||'📦'}</div>
-      <div class="prow-info">
-        <div class="prow-name">${esc(p.name)}${isLow?'<span class="low-badge">⚠ Low</span>':''}</div>
-        <div class="prow-meta">${p.desc?esc(p.desc.slice(0,50)):'&nbsp;'}</div>
-      </div>
-      <div class="prow-stk"><span class="prow-num${isLow?' low':''}">${p.stock||0}</span><span class="prow-unit">${esc(p.unit||'units')}</span></div>
-      <div class="prow-arr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
-    </div>`;
+    return `<div class="prow" onclick="window.openProd('${p.id}')"><div class="prow-ico">${p.emoji||'📦'}</div><div class="prow-info"><div class="prow-name">${esc(p.name)}${isLow?'<span class="low-badge">⚠ Low</span>':''}</div><div class="prow-meta">${p.desc?esc(p.desc.slice(0,50)):'&nbsp;'}</div></div><div class="prow-stk"><span class="prow-num${isLow?' low':''}">${p.stock||0}</span><span class="prow-unit">${esc(p.unit||'units')}</span></div><div class="prow-arr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>`;
   }).join('');
 }
 window.filterP=function(q){renderProds(prods.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())));};
 
-// ══ PRODUCT DETAIL ══
 window.openProd=async function(pId){
-  curProd=prods.find(x=>x.id===pId);
-  if(!curProd)return;
-  const p=curProd;
-  const isLow=p.minStock!=null?p.stock<=p.minStock:p.stock<=0;
-  document.getElementById('pdEmoji').textContent=p.emoji||'📦';
-  document.getElementById('pdName').textContent=p.name;
-  document.getElementById('pdDesc').textContent=p.desc||'';
-  document.getElementById('pdStock').textContent=p.stock||0;
-  document.getElementById('pdStock').className='pd-big'+(isLow?' low':'');
-  document.getElementById('pdUnit').textContent=(p.unit||'units')+' in stock';
-  document.getElementById('pdMin').textContent=p.minStock!=null?p.minStock:'—';
-  document.getElementById('pdChips').innerHTML=[p.desc?null:`<span class="pd-chip">${p.unit||'units'}</span>`].filter(Boolean).join('');
-  showView('prod');
-  renderConversions(p);
-  await loadEntries(pId);
+  curProd=prods.find(x=>x.id===pId); if(!curProd)return; const p=curProd; const isLow=p.minStock!=null?p.stock<=p.minStock:p.stock<=0;
+  const canM=CU.role==='owner'||CU.role==='manager'; const pdMenu = document.getElementById('pdMenu'); if(pdMenu) pdMenu.style.display=canM?'flex':'none';
+  document.getElementById('pdEmoji').textContent=p.emoji||'📦'; document.getElementById('pdName').textContent=p.name; document.getElementById('pdDesc').textContent=p.desc||''; document.getElementById('pdStock').textContent=p.stock||0; document.getElementById('pdStock').className='pd-big'+(isLow?' low':''); document.getElementById('pdUnit').textContent=(p.unit||'units')+' in stock'; document.getElementById('pdMin').textContent=p.minStock!=null?p.minStock:'—';
+  document.getElementById('pdBaseLabelDesktop').textContent = p.unit||'units';
+  showView('prod'); renderConversionsDetail(p); await loadEntries(pId);
+};
+function renderConversionsDetail(p){ const convs=p.conversions||[]; const el=document.getElementById('convList'); if(!convs.length){el.innerHTML='<div class="conv-empty">No conversions defined.</div>';return;} el.innerHTML='<div class="conv-list">'+convs.map(c=>`<div class="conv-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span>1 ${esc(c.name)}</span><span>=</span><span class="conv-eq">${(1/c.ratio).toFixed(3).replace(/\.000$/,'')} ${esc(curProd.unit||'units')}</span></div>`).join('')+'</div>'; }
+
+// ══ MERGED EDIT PRODUCT MODAL (Name & Conversions) ══
+window.openMergedEdit=function(){
+  if(!curProd) return; setMM('editProdMsg','','');
+  document.getElementById('editProdSub').textContent=`Edit: ${curProd.name}`;
+  document.getElementById('editProdNameInp').value = curProd.name;
+  
+  // Strict number for Low Stock in edit
+  const minInp = document.getElementById('editProdMinInp'); if(minInp) { minInp.value = curProd.minStock !== undefined ? curProd.minStock : ''; minInp.type='number'; minInp.min='0'; minInp.step='any'; }
+  document.getElementById('editProdBaseLabel').textContent = curProd.unit || 'units';
+
+  // Toggle & Builder
+  const hasConvs = curProd.conversions && curProd.conversions.length > 0;
+  const tgl = document.getElementById('editConvTgl'); if(tgl) { tgl.checked = hasConvs; }
+  const bldr = document.getElementById('editConvBuilderContainer'); if(bldr) { bldr.style.display = hasConvs ? 'block' : 'none'; }
+  const rows = document.getElementById('editConvRows'); if(rows) rows.innerHTML = '';
+  if(hasConvs) { curProd.conversions.forEach(c => appendConvFormulaRow(rows, c.name, 1/c.ratio)); }
+  window.openM('m-edit-prod');
 };
 
-function renderConversions(p){
-  const convs=p.conversions||[];
-  const el=document.getElementById('convList');
-  if(!convs.length){el.innerHTML='<div class="conv-empty">No conversions defined. Click Edit to add.</div>';return;}
-  el.innerHTML='<div class="conv-list">'+convs.map(c=>`<div class="conv-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span>1 ${esc(c.name)}</span><span>=</span><span class="conv-eq">${c.ratio} ${esc(curProd.unit||'units')}</span></div>`).join('')+'</div>';
+window.toggleEditConvBuilder=function(el){ document.getElementById('editConvBuilderContainer').style.display=el.checked?'block':'none'; const rows=document.getElementById('editConvRows'); if(el.checked && rows && rows.children.length === 0) window.addEditConvFormulaRow(); };
+window.addEditConvFormulaRow=function(){ appendConvFormulaRow(document.getElementById('editConvRows'),'',''); };
+
+function appendConvFormulaRow(container, name, ratioMult){
+    const base = curProd?.unit || 'KG';
+    const row = document.createElement('div'); row.className = 'conv-row-fixed';
+    row.innerHTML = `<span style="flex:1">1 <span class="fixed-b-label">${esc(base)}</span></span><span>=</span>
+    <input type="number" step="any" min="0.0001" placeholder="Mult" value="${ratioMult||''}" class="mult-inp" required>
+    <select class="unit-sel-sm alt-unit-sel" required></select>
+    <button class="conv-rm" onclick="this.parentElement.remove()" style="margin-left:auto">×</button>`;
+    
+    container.appendChild(row);
+    const sel = row.querySelector('.alt-unit-sel'); populateAltUnits(sel, name); sel.addEventListener('change',()=>checkConvDuplicate(container)); row.querySelector('.mult-inp').addEventListener('input',()=>checkConvDuplicate(container));
 }
 
-// ══ 7. ENTRY HISTORY ══
+function populateAltUnits(sel, currentName){
+    STD_UNITS.filter(u => u !== curProd.unit).forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; if(u===currentName) opt.selected=true; sel.appendChild(opt); });
+    if(currentName && !STD_UNITS.includes(currentName)) { const opt = document.createElement('option'); opt.value=currentName; opt.textContent=currentName; opt.selected=true; sel.appendChild(opt); }
+}
+
+function checkConvDuplicate(cont){ const sels=cont.querySelectorAll('.alt-unit-sel'); const seen=new Set();sels.forEach(s=>s.style.borderColor='#D1D5DB');sels.forEach(s=>{if(seen.has(s.value))s.style.borderColor='#EF4444';else seen.add(s.value);});}
+
+window.saveMergedProd=async function(){
+    const newName = document.getElementById('editProdNameInp').value.trim(); if(!newName){setMM('editProdMsg','⚠ Enter product name.','err');return;}
+    const minInp = document.getElementById('editProdMinInp'); const minStock = minInp && minInp.value !== '' ? parseFloat(minInp.value) : null;
+    let convs = [];
+    if (document.getElementById('editConvTgl')?.checked) {
+        convs = getConvRowsFixedData('editConvRows');
+        if(convs === null){setMM('editProdMsg','⚠ Check conversion values: ratios must be positive numbers, Alt Units unique.','err');return;}
+    }
+
+    setMM('editProdMsg','Saving…',''); const canLog = CU.role === 'owner' || CU.role === 'manager';
+    try{
+        const updates = { name:newName, minStock:minStock, conversions:convs }; const logs = [];
+        if(newName !== curProd.name){ logs.push(`Prod name changed from "${curProd.name}" to "${newName}"`); }
+        if(JSON.stringify(convs) !== JSON.stringify(curProd.conversions||[])){ logs.push(`Product conversions updated.`); }
+
+        await updateDoc(doc(db,'products',curProd.id), updates);
+        
+        if(logs.length > 0) {
+            await addDoc(collection(db,'entries'),{
+              type:'LOG',qty:0,qtyBase:0,unit:'',entryUnit:'', note:`${canLog?`${CU.role.charAt(0).toUpperCase()}${CU.role.slice(1)} (${CU.name})`:CU.name} made changes: ${logs.join('. ')}`, productId:curProd.id, godownId:curWH, companyId:CU.companyId, who:CU.name||'Owner', createdBy:CU.uid, deleted:false, isActivity:true, createdAt:serverTimestamp(),
+            });
+        }
+        
+        curProd.name=newName; curProd.minStock=minStock; curProd.conversions=convs;
+        document.getElementById('pdName').textContent=newName; document.getElementById('pdMin').textContent=minStock!==null?minStock:'—';
+        const idx=prods.findIndex(p=>p.id===curProd.id); if(idx>-1)prods[idx].name=newName;
+        
+        renderConversionsDetail(curProd); window.closeM('m-edit-prod'); await loadEntries(curProd.id);
+        window.showToast('Product updated ✓','s');
+    }catch(e){setMM('editProdMsg','❌ Failed: '+e.message,'err');}
+};
+
+// Formula input: 1 Base = Mult Alt => ratio (1 Alt = ratio Base) = 1/Mult
+function getConvRowsFixedData(containerId){
+    const rows = document.querySelectorAll(`#${containerId} .conv-row-fixed`); const convs=[]; const altUnitsSeen = new Set();
+    for(const row of rows){
+        const mult = parseFloat(row.querySelector('.mult-inp').value);
+        const altUnitName = row.querySelector('.alt-unit-sel').value;
+        if(altUnitsSeen.has(altUnitName) || !mult || mult <= 0 || !altUnitName) return null; // Duplicate, zero, or missing
+        altUnitsSeen.add(altUnitName);
+        // User math: 1 Base = Mult Alt. Logic math needs: 1 Alt = (1/Mult) Base.
+        convs.push({ name:altUnitName, ratio: 1/mult });
+    }
+    return convs;
+}
+
+// ══ 7. ENTRY HISTORY & PC Layout listen Today ══
 async function loadEntries(pId){
   document.getElementById('eList').innerHTML='<div class="e-empty">Loading…</div>';
   try{
     const snap=await getDocs(query(collection(db,'entries'),where('productId','==',pId)));
-    const entries=snap.docs.map(d=>({id:d.id,...d.data()}))
-      .sort((a,b)=>new Date(b.createdAt?.toDate?b.createdAt.toDate():b.createdAt||0)-new Date(a.createdAt?.toDate?a.createdAt.toDate():a.createdAt||0));
-    
+    const entries=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>new Date(b.createdAt?.toDate?b.createdAt.toDate():b.createdAt||0)-new Date(a.createdAt?.toDate?a.createdAt.toDate():a.createdAt||0));
     const active=entries.filter(e=>!e.deleted);
-    document.getElementById('pdIn').textContent=active.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
-    document.getElementById('pdOut').textContent=active.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
-    document.getElementById('eCnt').textContent=entries.length+' entries';
+    document.getElementById('pdIn').textContent=active.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0); document.getElementById('pdOut').textContent=active.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0); document.getElementById('eCnt').textContent=entries.length+' entries';
     
     if(!entries.length){document.getElementById('eList').innerHTML='<div class="e-empty">No entries yet.</div>';return;}
-    
     document.getElementById('eList').innerHTML=entries.map(e=>{
-      if (e.type === 'LOG' || e.isActivity) {
-         return `<div class="erow" style="background: #F9FAFB;">
-           <div class="e-ind" style="background:#EEF2FF;border-color:#C7D2FE;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
-           <div class="e-body"><div class="e-note" style="color:#111827;font-weight:500;">${esc(e.note)}</div><div class="e-time">${ago(e.createdAt)}</div></div>
-         </div>`;
-      }
-      
+      if (e.type === 'LOG' || e.isActivity) { return `<div class="erow" style="background: #F9FAFB;"><div class="e-ind" style="background:#EEF2FF;border-color:#C7D2FE;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-note" style="color:#111827;font-weight:500;">${esc(e.note)}</div><div class="e-time">${ago(e.createdAt)}</div></div></div>`; }
       const canDel=!e.deleted&&(CU.role==='owner'||CU.role==='manager'||e.createdBy===CU.uid);
       const delBtn=canDel?`<button class="e-del-btn" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete entry"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`:'';
-      
-      if(e.deleted){
-        return `<div class="erow del-row" onclick="window.viewDelReason('${e.id}')">
-          <div class="e-ind e-del-ind"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/></svg></div>
-          <div class="e-body">
-            <div class="e-who">${esc(e.who||'Unknown')}</div>
-            <div class="e-del-msg">${esc(e.deleteMessage||'Entry deleted — click to see reason')}</div>
-            <div class="e-time">${ago(e.createdAt)} · Deleted ${ago(e.deletedAt)}</div>
-          </div>
-          <div class="e-right"><div class="e-qty-wrap"><span class="e-qty e-qdel">${e.type==='IN'?'+':'-'}${e.qty}</span><span class="e-unit">${esc(e.unit||curProd.unit||'units')}</span></div></div>
-        </div>`;
-      }
-      return `<div class="erow">
-        <div class="e-ind ${e.type==='IN'?'e-in': 'e-out'}">
-          ${e.type==='IN'?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
-          : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'}
-        </div>
-        <div class="e-body">
-          <div class="e-who">${esc(e.who||'Unknown')}</div>
-          ${e.note?`<div class="e-note">${esc(e.note)}</div>`:''}
-          <div class="e-time">${ago(e.createdAt)}</div>
-        </div>
-        <div class="e-right">
-          <div class="e-qty-wrap">
-            <span class="e-qty ${e.type==='IN'?'e-qi':'e-qo'}">${e.type==='IN'?'+':'-'}${e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty} ${e.entryUnit}`:e.qty}</span>
-            <span class="e-unit">${esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units')}</span>
-          </div>
-          ${delBtn}
-        </div>
-      </div>`;
+      if(e.deleted){ return `<div class="erow del-row" onclick="window.viewDelReason('${e.id}')"><div class="e-ind e-del-ind"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/></svg></div><div class="e-body"><div class="e-who">${esc(e.who||'Unknown')}</div><div class="e-del-msg">${esc(e.deleteMessage||'Entry deleted — click for reason')}</div><div class="e-time">${ago(e.createdAt)} · Deleted ${ago(e.deletedAt)}</div></div><div class="e-right"><div class="e-qty-wrap"><span class="e-qty e-qdel">${e.type==='IN'?'+':'-'}${e.qty}</span><span class="e-unit">${esc(e.entryUnit||e.unit||curProd.unit||'units')}</span></div></div></div>`; }
+      return `<div class="erow"><div class="e-ind ${e.type==='IN'?'e-in': 'e-out'}">${e.type==='IN'?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>':'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'}</div><div class="e-body"><div class="e-who">${esc(e.who||'Unknown')}</div>${e.note?`<div class="e-note">${esc(e.note)}</div>`:''}<div class="e-time">${ago(e.createdAt)}</div></div><div class="e-right"><div class="e-qty-wrap"><span class="e-qty ${e.type==='IN'?'e-qi':'e-qo'}">${e.type==='IN'?'+':'-'}${e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty} ${e.entryUnit}`:e.qty}</span><span class="e-unit">${esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units')}</span></div>${delBtn}</div></div>`;
     }).join('');
   }catch(e){ document.getElementById('eList').innerHTML=`<div class="e-empty" style="color:#EF4444">Error: ${e.message}</div>`; }
 }
+window.viewDelReason=async function(entId){ try{ const snap=await getDoc(doc(db,'entries',entId)); if(!snap.exists())return; const e=snap.data(); document.getElementById('drDeletedBy').textContent=e.deletedByName||'Unknown'; document.getElementById('drReason').textContent=e.deleteReason||'No reason provided.'; document.getElementById('drTime').textContent='Deleted: '+ago(e.deletedAt); document.getElementById('delReasonSub').textContent=`${e.type} entry of ${e.qty} ${e.entryUnit||''} by ${e.who||'—'} — ${ago(e.createdAt)}`; window.openM('m-del-reason'); }catch(err){window.showToast('Could not load reason.','e');} };
 
-window.viewDelReason=async function(entId){
-  try{
-    const snap=await getDoc(doc(db,'entries',entId));
-    if(!snap.exists())return;
-    const e=snap.data();
-    document.getElementById('drDeletedBy').textContent=e.deletedByName||'Unknown';
-    document.getElementById('drReason').textContent=e.deleteReason||'No reason provided.';
-    document.getElementById('drTime').textContent='Deleted: '+ago(e.deletedAt);
-    document.getElementById('delReasonSub').textContent=`${e.type} entry of ${e.qty} ${e.unit||''} by ${e.who||'—'} — ${ago(e.createdAt)}`;
-    window.openM('m-del-reason');
-  }catch(err){window.showToast('Could not load reason.','e');}
-};
-
-// ══ 8. STOCK ENTRY LOGIC ══
+// ══ 8. STOCK ENTRY LOGIC (Strict Numbers) ══
 window.openEntry=function(type){
-  if(!curProd)return;
-  eType=type; window.setET(type);
-  document.getElementById('entryTitle').textContent=`Stock ${type}`;
-  document.getElementById('entrySub').textContent=curProd.name;
-  document.getElementById('eq').value=''; document.getElementById('en').value='';
-  document.getElementById('eCurS').textContent=curProd.stock||0;
-  document.getElementById('eCurU').textContent=curProd.unit||'units';
-  document.getElementById('entryMsg').textContent='';
-  document.getElementById('convPreview').style.display='none';
-  buildUnitSel();
-  const btn=document.getElementById('entryBtn');
-  btn.style.background=type==='IN'?'#059669':'#EF4444';
-  btn.textContent=`Add ${type} Entry`;
-  window.openM('m-entry');
+  if(!curProd)return; eType=type; window.setET(type); document.getElementById('entryTitle').textContent=`Stock ${type}`; document.getElementById('entrySub').textContent=curProd.name;
+  const eq = document.getElementById('eq'); if(eq) { eq.value=''; eq.type='number'; eq.min='0.0001'; eq.step='any'; eq.required=true; }
+  document.getElementById('en').value=''; document.getElementById('eCurS').textContent=curProd.stock||0; document.getElementById('eCurU').textContent=curProd.unit||'units'; document.getElementById('entryMsg').textContent=''; document.getElementById('convPreview').style.display='none'; buildEntryUnitSel(); const btn=document.getElementById('entryBtn'); btn.style.background=type==='IN'?'#059669':'#EF4444'; btn.textContent=`Add ${type} Entry`; window.openM('m-entry');
+};
+function buildEntryUnitSel(){ const convs=curProd.conversions||[]; selUnit=curProd.unit||'units'; const allUnits=[{name:curProd.unit||'units',ratio:1,isBase:true},...convs.map(c=>({name:c.name,ratio:c.ratio,isBase:false}))]; const el=document.getElementById('unitSel'); el.innerHTML=allUnits.map(u=>`<button class="unit-opt${u.name===selUnit?' sel':''}" onclick="window.selectUnit('${u.name}',${u.ratio})" data-unit="${u.name}" data-ratio="${u.ratio}">${esc(u.name)}</button>`).join(''); }
+window.selectUnit=function(name,ratio){ selUnit=name; document.querySelectorAll('.unit-opt').forEach(b=>{b.classList.toggle('sel',b.dataset.unit===name);}); window.updateConvPreview(); };
+window.updateConvPreview=function(){ const qtyInp=document.getElementById('eq'); const qty=parseFloat(qtyInp.value)||0; if(!qty||!selUnit||selUnit===(curProd.unit||'units')){document.getElementById('convPreview').style.display='none';return;} const conv=curProd.conversions?.find(c=>c.name===selUnit); if(!conv){document.getElementById('convPreview').style.display='none';return;} const base=qty*conv.ratio; document.getElementById('convPreview').style.display='block'; document.getElementById('convPreview').textContent=`${qty} ${selUnit} = ${base} ${curProd.unit||'units'}`; };
+window.setET=function(t){ eType=t; document.getElementById('ettIn').className=`ett in${t==='IN'?' on':''}`; document.getElementById('ettOut').className=`ett out${t==='OUT'?' on':''}`; const b=document.getElementById('entryBtn'); if(b){b.style.background=t==='IN'?'#059669':'#EF4444';b.textContent=`Add ${t} Entry`;} };
+window.submitEntry=async function(){
+  const qtyInp=document.getElementById('eq'); const qty=parseFloat(qtyInp.value); const note=document.getElementById('en').value.trim(); const btn=document.getElementById('entryBtn'); if(!qty||qty<=0){setMM('entryMsg','⚠ Enter positive quantity.','err');return;} const conv=curProd.conversions?.find(c=>c.name===selUnit); const qtyBase=conv?qty*conv.ratio:qty; const entryUnit=selUnit||curProd.unit||'units'; if(eType==='OUT'&&qtyBase>(curProd.stock||0)){setMM('entryMsg',`⚠ Not enough stock (${qtyBase} needed, ${curProd.stock||0} available).`,'err');return;} btn.disabled=true;btn.textContent='Adding…';
+  try{ const cid=CU.companyId; const newStock=eType==='IN'?(curProd.stock||0)+qtyBase:(curProd.stock||0)-qtyBase; await updateDoc(doc(db,'products',curProd.id),{stock:newStock}); await addDoc(collection(db,'entries'),{type:eType,qty,qtyBase,unit:entryUnit,entryUnit,note, productId:curProd.id, godownId:curWH, companyId:cid, who:CU.name||'Owner', createdBy:CU.uid, deleted:false, createdAt:serverTimestamp(), }); curProd.stock=newStock; window.closeM('m-entry'); document.getElementById('pdStock').textContent=newStock; document.getElementById('pdStock').className='pd-big'+(curProd.minStock!=null&&newStock<=curProd.minStock?' low':''); await loadEntries(curProd.id); await loadProds(curWH); window.showToast(`${eType==='IN'?'Added':'Removed'} ${qty} ${entryUnit} ✓`,eType==='IN'?'s':''); }catch(e){setMM('entryMsg','❌ Failed: '+e.message,'err');} btn.disabled=false;btn.textContent=`Add ${eType} Entry`;
+};
+window.prepDelEntry=function(entId){ entToDelete=entId; document.getElementById('delReason').value=''; document.getElementById('wordCount').textContent='0 words (min 10)'; document.getElementById('wordCount').className='word-count warn'; document.getElementById('delEntMsg').textContent=''; window.openM('m-del-entry'); };
+window.checkWordCount=function(el){ const words=el.value.trim().split(/\s+/).filter(w=>w.length>0).length; const wc=document.getElementById('wordCount'); if(words<10){wc.textContent=`${words} words (min 10)`;wc.className='word-count warn';} else if(words>180){wc.textContent=`${words} words (max 180)`;wc.className='word-count warn';} else{wc.textContent=`${words} words ✓`;wc.className='word-count ok';} };
+window.confirmDelEntry=async function(){
+  const reason=document.getElementById('delReason').value.trim(); const words=reason.split(/\s+/).filter(w=>w.length>0).length; if(words<10){setMM('delEntMsg','⚠ Write at least 10 words.','err');return;} if(words>180){setMM('delEntMsg','⚠ Keep reason under 180 words.','err');return;} const btn=document.getElementById('delEntBtn'); btn.disabled=true;btn.textContent='Deleting…';
+  try{ const snap=await getDoc(doc(db,'entries',entToDelete)); const e=snap.data(); let msg; const isOwn = (e.createdBy === CU.uid); const amt = `${e.qty} ${e.entryUnit || e.unit || ''}`.trim(); if(isOwn){ msg=`${CU.name} deleted their own entry of ${amt} ${e.type}`; } else { msg=`${CU.role.charAt(0).toUpperCase()}${CU.role.slice(1)} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`; } await updateDoc(doc(db,'entries',entToDelete),{ deleted:true, deleteReason:reason, deleteMessage:msg, deletedBy:CU.uid, deletedByName:CU.name||'Owner', deletedAt:new Date().toISOString(), }); window.closeM('m-del-entry'); await loadEntries(curProd.id); const allSnap=await getDocs(query(collection(db,'entries'),where('productId','==',curProd.id))); const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted); const newStock=activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0); const corrected=Math.max(0,newStock); await updateDoc(doc(db,'products',curProd.id),{stock:corrected}); curProd.stock=corrected; document.getElementById('pdStock').textContent=corrected; window.showToast('Entry deleted.',''); }catch(e){setMM('delEntMsg','❌ Failed: '+e.message,'err');} btn.disabled=false;btn.textContent='Delete Entry';
 };
 
-function buildUnitSel(){
-  const convs=curProd.conversions||[];
-  selUnit=curProd.unit||'units';
-  const allUnits=[{name:curProd.unit||'units',ratio:1,isBase:true},...convs.map(c=>({name:c.name,ratio:c.ratio,isBase:false}))];
-  const el=document.getElementById('unitSel');
-  el.innerHTML=allUnits.map(u=>`<button class="unit-opt${u.name===selUnit?' sel':''}" onclick="window.selectUnit('${u.name}',${u.ratio})" data-unit="${u.name}" data-ratio="${u.ratio}">${esc(u.name)}</button>`).join('');
+// ══ 9. PRODUCT MANAGEMENT (Strict Numbers & Formula Conv) ══
+window.openAddProd=function(){
+  const wh=WHs.find(w=>w.id===curWH); document.getElementById('prodModalSub').textContent=`Adding to "${wh?.name||'warehouse'}"`;
+  ['pn','pdesc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['ps','pmin'].forEach(id=>{const e=document.getElementById(id);if(e) {e.value=''; e.type='number'; e.min='0'; e.step='any'; }});
+  document.getElementById('pu_fixed').value = STD_UNITS[0]; curAddStockUnit = STD_UNITS[0]; document.getElementById('puSel').value = STD_UNITS[0]; updateAddProdUnits(STD_UNITS[0]); // Reset unit selectors
+  document.getElementById('addProdConvRows').innerHTML=''; document.getElementById('addProdConvTgl').checked = false; document.getElementById('addProdConvBuilder').style.display='none'; document.getElementById('aiPrev').classList.remove('show'); window._aiEmoji='📦'; setMM('prodMsg','',''); window.openM('m-prod');
+};
+
+window.toggleAddProdConv=function(el){ document.getElementById('addProdConvBuilder').style.display=el.checked?'block':'none'; const rows=document.getElementById('addProdConvRows'); if(el.checked && rows && rows.children.length === 0) window.addProdConvFormulaRow(); };
+window.addProdConvFormulaRow=function(){ appendFixedBaseConvRow(document.getElementById('addProdConvRows'), document.getElementById('pu_fixed').value); };
+
+// Used specifically in Add Product (1 KG = X Packet) where KG is fixed based on input
+function appendFixedBaseConvRow(container, fixedBase) {
+    const row = document.createElement('div'); row.className = 'conv-row-fixed';
+    row.innerHTML = `<span>1 <span class="fixed-b-label fixed-b-dynamic">${esc(fixedBase)}</span></span><span>=</span>
+    <input type="number" step="any" min="0.0001" placeholder="Mult" class="mult-inp" required>
+    <select class="unit-sel-sm alt-unit-sel" required></select>
+    <button class="conv-rm" onclick="this.parentElement.remove()" style="margin-left:auto">×</button>`;
+    
+    container.appendChild(row);
+    const sel = row.querySelector('.alt-unit-sel'); populateAltUnitsGeneric(sel, fixedBase);
 }
 
-window.selectUnit=function(name,ratio){
-  selUnit=name;
-  document.querySelectorAll('.unit-opt').forEach(b=>{b.classList.toggle('sel',b.dataset.unit===name);});
-  window.updateConvPreview();
-};
-
-window.updateConvPreview=function(){
-  const qty=parseFloat(document.getElementById('eq').value)||0;
-  if(!qty||!selUnit||selUnit===(curProd.unit||'units')){document.getElementById('convPreview').style.display='none';return;}
-  const conv=curProd.conversions?.find(c=>c.name===selUnit);
-  if(!conv){document.getElementById('convPreview').style.display='none';return;}
-  const base=qty*conv.ratio;
-  document.getElementById('convPreview').style.display='block';
-  document.getElementById('convPreview').textContent=`${qty} ${selUnit} = ${base} ${curProd.unit||'units'}`;
-};
-
-window.setET=function(t){
-  eType=t;
-  document.getElementById('ettIn').className=`ett in${t==='IN'?' on':''}`;
-  document.getElementById('ettOut').className=`ett out${t==='OUT'?' on':''}`;
-  const b=document.getElementById('entryBtn');
-  if(b){b.style.background=t==='IN'?'#059669':'#EF4444';b.textContent=`Add ${t} Entry`;}
-};
-
-window.submitEntry=async function(){
-  const qty=parseFloat(document.getElementById('eq').value);
-  const note=document.getElementById('en').value.trim();
-  const btn=document.getElementById('entryBtn');
-  if(!qty||qty<=0){setMM('entryMsg','⚠ Enter a valid quantity.','err');return;}
-  
-  const conv=curProd.conversions?.find(c=>c.name===selUnit);
-  const qtyBase=conv?qty*conv.ratio:qty;
-  const entryUnit=selUnit||curProd.unit||'units';
-  
-  if(eType==='OUT'&&qtyBase>(curProd.stock||0)){setMM('entryMsg',`⚠ Cannot remove ${qtyBase} — only ${curProd.stock||0} ${curProd.unit||'units'} in stock.`,'err');return;}
-  btn.disabled=true;btn.textContent='Adding…';
-  try{
-    const cid=CU.companyId;
-    const newStock=eType==='IN'?(curProd.stock||0)+qtyBase:(curProd.stock||0)-qtyBase;
-    await updateDoc(doc(db,'products',curProd.id),{stock:newStock});
-    await addDoc(collection(db,'entries'),{
-      type:eType,qty,qtyBase,unit:entryUnit,entryUnit,note,
-      productId:curProd.id,productName:curProd.name,
-      godownId:curWH,godownName:WHs.find(w=>w.id===curWH)?.name||'',
-      companyId:cid,who:CU.name||'Owner',createdBy:CU.uid,
-      deleted:false,createdAt:serverTimestamp(),
-    });
-    curProd.stock=newStock;
-    window.closeM('m-entry');
-    document.getElementById('pdStock').textContent=newStock;
-    document.getElementById('pdStock').className='pd-big'+(curProd.minStock!=null&&newStock<=curProd.minStock?' low':'');
-    await loadEntries(curProd.id); await loadProds(curWH);
-    window.showToast(`${eType==='IN'?'Added':'Removed'} ${qty} ${entryUnit} ✓`,eType==='IN'?'s':'');
-  }catch(e){setMM('entryMsg','❌ Failed: '+e.message,'err');}
-  btn.disabled=false;btn.textContent=`Add ${eType} Entry`;
-};
-
-window.prepDelEntry=function(entId){
-  entToDelete=entId;
-  document.getElementById('delReason').value='';
-  document.getElementById('wordCount').textContent='0 words (min 10)';
-  document.getElementById('wordCount').className='word-count warn';
-  document.getElementById('delEntMsg').textContent='';
-  window.openM('m-del-entry');
-};
-
-window.checkWordCount=function(el){
-  const words=el.value.trim().split(/\s+/).filter(w=>w.length>0).length;
-  const wc=document.getElementById('wordCount');
-  if(words<10){wc.textContent=`${words} words (min 10)`;wc.className='word-count warn';}
-  else if(words>180){wc.textContent=`${words} words (max 180)`;wc.className='word-count warn';}
-  else{wc.textContent=`${words} words ✓`;wc.className='word-count ok';}
-};
-
-window.confirmDelEntry=async function(){
-  const reason=document.getElementById('delReason').value.trim();
-  const words=reason.split(/\s+/).filter(w=>w.length>0).length;
-  if(words<10){setMM('delEntMsg','⚠ Please write at least 10 words.','err');return;}
-  if(words>180){setMM('delEntMsg','⚠ Keep reason under 180 words.','err');return;}
-  const btn=document.getElementById('delEntBtn');
-  btn.disabled=true;btn.textContent='Deleting…';
-  try{
-    const snap=await getDoc(doc(db,'entries',entToDelete));
-    const e=snap.data();
-    let msg;
-    const isOwn = (e.createdBy === CU.uid);
-    const amt = `${e.qty} ${e.entryUnit || e.unit || ''}`.trim();
-    const prod = e.productName || '';
-    
-    if(isOwn){ msg=`${CU.name} deleted their own entry of ${amt} ${prod} ${e.type}`; } 
-    else { const roleLabel = CU.role.charAt(0).toUpperCase() + CU.role.slice(1); msg=`${roleLabel} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${prod} ${e.type}`; }
-
-    await updateDoc(doc(db,'entries',entToDelete),{
-      deleted:true, deleteReason:reason, deleteMessage:msg,
-      deletedBy:CU.uid, deletedByName:CU.name||'Owner', deletedAt:new Date().toISOString(),
-    });
-    
-    window.closeM('m-del-entry');
-    await loadEntries(curProd.id);
-    
-    // Recalculate accurate stock
-    const allSnap=await getDocs(query(collection(db,'entries'),where('productId','==',curProd.id)));
-    const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted);
-    const newStock=activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0);
-    const corrected=Math.max(0,newStock);
-    
-    await updateDoc(doc(db,'products',curProd.id),{stock:corrected});
-    curProd.stock=corrected;
-    document.getElementById('pdStock').textContent=corrected;
-    window.showToast('Entry deleted.','');
-  }catch(e){setMM('delEntMsg','❌ Failed: '+e.message,'err');}
-  btn.disabled=false;btn.textContent='Delete Entry';
-};
-
-// ══ 9. PRODUCT MANAGEMENT ══
-window.openAddProd=function(){
-  const wh=WHs.find(w=>w.id===curWH);
-  document.getElementById('prodModalSub').textContent=`Adding to "${wh?.name||'warehouse'}"`;
-  ['pn','pdesc','ps','pu','pmin'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  document.getElementById('convRows').innerHTML='';
-  document.getElementById('convBuilder').style.display='none';
-  document.getElementById('convArrow').style.transform='';
-  document.getElementById('aiPrev').classList.remove('show');
-  window._aiEmoji='📦'; setMM('prodMsg','','');
-  window.openM('m-prod');
-};
+function populateAltUnitsGeneric(sel, baseUnit) {
+    sel.innerHTML=''; STD_UNITS.filter(u => u !== baseUnit).forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; sel.appendChild(opt); });
+}
 
 window.addProduct=async function(){
-  const name=document.getElementById('pn').value.trim();
-  const emoji=window._aiEmoji||'📦';
-  const desc=document.getElementById('pdesc').value.trim();
-  const stock=parseFloat(document.getElementById('ps').value)||0;
-  const unit=document.getElementById('pu').value.trim()||'units';
-  const minRaw=document.getElementById('pmin').value;
-  const minStock=minRaw!==''?parseFloat(minRaw):undefined;
-  if(!name){setMM('prodMsg','⚠ Enter a product name.','err');return;}
+  const name=document.getElementById('pn').value.trim(); const emoji=window._aiEmoji||'📦'; const desc=document.getElementById('pdesc').value.trim(); const stock=parseFloat(document.getElementById('ps').value)||0; const unit=document.getElementById('pu_fixed').value.trim(); // Fixed base unit selected
+  const minRaw=document.getElementById('pmin').value; const minStock=minRaw!==''?parseFloat(minRaw):undefined; if(!name){setMM('prodMsg','⚠ Enter product name.','err');return;}
   
   let convs=[];
-  if (document.getElementById('convBuilder').style.display === 'block') {
-    convs=getConvRowData('convRows');
-    if(convs===null){setMM('prodMsg','⚠ Check conversion values — ratio must be a positive number.','err');return;}
-    if(convs.length===0){setMM('prodMsg','⚠ Add at least 1 conversion or close the conversions panel.','err');return;}
+  if (document.getElementById('addProdConvTgl')?.checked) {
+    convs = getConvRowsFixedDataFromAdd(); // Logic: Mult -> Ratio (1/Mult)
+    if(convs===null){setMM('prodMsg','⚠ Check conversion multiplier values and ensure Alt Units are unique.','err');return;}
   }
 
   setMM('prodMsg','Adding…','');
   try{
     const cid=CU.companyId;
-    const pRef=await addDoc(collection(db,'products'),{
-      name,emoji,desc,stock,unit,
-      ...(minStock!==undefined?{minStock}:{}),
-      ...(convs.length?{conversions:convs}:{}),
-      godownId:curWH,companyId:cid,createdBy:CU.uid,
-      createdAt:new Date().toISOString(),
-    });
-    if(stock>0){
-      await addDoc(collection(db,'entries'),{
-        type:'IN',qty:stock,qtyBase:stock,unit,entryUnit:unit,note:'Opening stock',
-        productId:pRef.id,productName:name,
-        godownId:curWH,godownName:WHs.find(w=>w.id===curWH)?.name||'',
-        companyId:cid,who:CU.name||'Owner',createdBy:CU.uid,
-        deleted:false,createdAt:serverTimestamp(),
-      });
-    }
-    window.closeM('m-prod');
-    await loadProds(curWH);
-    window.showToast(`${name} added ✓`,'s');
+    const pRef=await addDoc(collection(db,'products'),{ name,emoji,desc,stock,unit, ...(minStock!==undefined?{minStock}:{}), ...(convs.length?{conversions:convs}:{}), godownId:curWH,companyId:cid,createdBy:CU.uid, createdAt:new Date().toISOString(), });
+    if(stock>0){ await addDoc(collection(db,'entries'),{ type:'IN',qty:stock,qtyBase:stock,unit,entryUnit:unit,note:'Opening stock', productId:pRef.id, godownId:curWH, companyId:cid, who:CU.name||'Owner', createdBy:CU.uid, deleted:false, createdAt:serverTimestamp(), }); }
+    window.closeM('m-prod'); await loadProds(curWH); window.showToast(`${name} added ✓`,'s');
   }catch(e){setMM('prodMsg','❌ Failed: '+e.message,'err');}
 };
 
-window.openEditName=function(){
-  if(!curProd)return;
-  document.getElementById('editNameInp').value=curProd.name;
-  setMM('editNameMsg','','');
-  window.openM('m-edit-name');
-};
-
-window.saveProductName=async function(){
-  const newName=document.getElementById('editNameInp').value.trim();
-  if(!newName){setMM('editNameMsg','⚠ Enter a name.','err');return;}
-  if(newName===curProd.name){window.closeM('m-edit-name');return;}
-  try{
-    const oldName=curProd.name;
-    await updateDoc(doc(db,'products',curProd.id),{name:newName});
-    await addDoc(collection(db,'entries'),{
-      type:'LOG',qty:0,qtyBase:0,unit:'',entryUnit:'',
-      note:`${CU.name} changed product name from "${oldName}" to "${newName}"`,
-      productId:curProd.id,productName:newName,
-      godownId:curWH,godownName:WHs.find(w=>w.id===curWH)?.name||'',
-      companyId:CU.companyId,who:CU.name||'Owner',createdBy:CU.uid,
-      deleted:false,isActivity:true,createdAt:serverTimestamp(),
-    });
-    curProd.name=newName;
-    document.getElementById('pdName').textContent=newName;
-    const idx=prods.findIndex(p=>p.id===curProd.id);
-    if(idx>-1)prods[idx].name=newName;
-    window.closeM('m-edit-name');
-    await loadEntries(curProd.id);
-    window.showToast('Product name updated ✓','s');
-  }catch(e){setMM('editNameMsg','❌ Failed: '+e.message,'err');}
-};
-
-window.openEditConversions=function(){
-  if(!curProd)return;
-  document.getElementById('editConvSub').textContent=`Unit: ${curProd.unit||'units'}`;
-  const convs=curProd.conversions||[];
-  const el=document.getElementById('editConvRows'); el.innerHTML='';
-  convs.forEach(c=>appendEditConvRow(el,c.name,c.ratio));
-  if(!convs.length)appendEditConvRow(el,'','');
-  setMM('editConvMsg','','');
-  window.openM('m-edit-conv');
-};
-
-window.addEditConvRow=function(){appendEditConvRow(document.getElementById('editConvRows'),'','');};
-function appendEditConvRow(container,name,ratio){
-  const row=document.createElement('div'); row.className='conv-row';
-  row.innerHTML=`<span style="font-size:13px;color:#6B7280;white-space:nowrap">1</span><input placeholder="unit name" value="${esc(name)}" style="flex:1.5"/><span style="font-size:13px;color:#6B7280;white-space:nowrap">=</span><input type="number" placeholder="qty" value="${ratio||''}" min="0.001" step="any" style="flex:1"/><span style="font-size:13px;color:#6B7280;white-space:nowrap">${esc(curProd?.unit||'units')}</span><button class="conv-rm" onclick="this.parentElement.remove()">×</button>`;
-  container.appendChild(row);
-}
-window.saveConversions=async function(){
-  const convs=getConvRowData('editConvRows');
-  if(convs===null){setMM('editConvMsg','⚠ Check values — ratio must be a positive number.','err');return;}
-  try{
-    await updateDoc(doc(db,'products',curProd.id),{conversions:convs});
-    curProd.conversions=convs; renderConversions(curProd);
-    window.closeM('m-edit-conv'); window.showToast('Conversions saved ✓','s');
-  }catch(e){setMM('editConvMsg','❌ Failed: '+e.message,'err');}
-};
-
-function getConvRowData(containerId){
-  const rows=document.querySelectorAll(`#${containerId} .conv-row`);
-  const convs=[];
-  for(const row of rows){
-    const inputs=row.querySelectorAll('input');
-    const name=inputs[0].value.trim(); const ratio=parseFloat(inputs[1].value);
-    if(!name&&!inputs[1].value)continue; 
-    if(!name||isNaN(ratio)||ratio<=0)return null; 
-    convs.push({name,ratio});
-  }
-  return convs;
-}
-
-window.toggleConvBuilder=function(){
-  const el=document.getElementById('convBuilder'); const arrow=document.getElementById('convArrow');
-  const open=el.style.display==='block';
-  el.style.display=open?'none':'block'; arrow.style.transform=open?'':'rotate(180deg)';
-  if(!open&&document.getElementById('convRows').children.length===0) window.addConvRow();
-};
-window.addConvRow=function(){
-  const container=document.getElementById('convRows'); const baseUnit=document.getElementById('pu').value.trim()||'units';
-  const row=document.createElement('div'); row.className='conv-row';
-  row.innerHTML=`<span style="font-size:13px;color:#6B7280;white-space:nowrap">1</span><input placeholder="unit name" style="flex:1.5"/><span style="font-size:13px;color:#6B7280;white-space:nowrap">=</span><input type="number" placeholder="qty" min="0.001" step="any" style="flex:1"/><span style="font-size:13px;color:#6B7280;white-space:nowrap" class="conv-base-unit">${esc(baseUnit)}</span><button class="conv-rm" onclick="this.parentElement.remove()">×</button>`;
-  container.appendChild(row);
-};
-
-// ══ 10. WAREHOUSE MANAGEMENT ══
-window.createWH=async function(){
-  const name=document.getElementById('wn').value.trim();
-  const loc=document.getElementById('wl').value.trim();
-  const raw=document.getElementById('wc').value;
-  const cat=raw==='other'?(document.getElementById('wcc').value.trim()||'Other'):raw;
-  if(!name){setMM('whMsg','⚠ Enter a warehouse name.','err');return;}
-  if(!loc){setMM('whMsg','⚠ Enter a location.','err');return;}
-  setMM('whMsg','Creating…','');
-  try{
-    const cid=CU.companyId;
-    await addDoc(collection(db,'godowns'),{
-      name,location:loc,category:cat,companyId:cid,
-      staffAccess:{[CU.uid]:true},customStaff:false,
-      createdBy:CU.uid,createdByName:CU.name||'Owner',
-      createdAt:new Date().toISOString(),productCount:0,
-    });
-    ['wn','wl'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('wc').value='general'; document.getElementById('wcc').value=''; document.getElementById('wcc').classList.remove('show');
-    window.closeM('m-wh');
-    window.showToast('Warehouse created ✓','s');
-  }catch(e){setMM('whMsg','❌ Failed: '+e.message,'err');}
-};
-
-window.prepDelWH=function(whId){
-  if (CU.role !== 'owner' && CU.role !== 'manager') { window.showToast('Only Owner/Manager can delete warehouses.', 'e'); return; }
-  const wh = WHs.find(w => w.id === whId);
-  window._delWhId=whId;
-  document.getElementById('delWhSub').textContent=`Delete "${wh?.name || 'this warehouse'}"? All products and history will be lost.`;
-  document.getElementById('delWhPw').value=''; document.getElementById('delWhErr').textContent='';
-  window.openM('m-del-wh');
-};
-window.openDelWH=function(){ window.prepDelWH(curWH); };
-window.confirmDelWH=async function(){
-  const whId=window._delWhId||curWH;
-  const pw=document.getElementById('delWhPw').value.trim();
-  const errEl=document.getElementById('delWhErr'); const btn=document.getElementById('delWhBtn');
-  if(!pw){errEl.textContent='Enter your password.';return;}
-  btn.disabled=true;btn.textContent='Deleting…';
-  try{
-    if(auth.currentUser){
-      const c=EmailAuthProvider.credential(auth.currentUser.email,pw);
-      await reauthenticateWithCredential(auth.currentUser,c);
+function getConvRowsFixedDataFromAdd(){
+    const rows = document.querySelectorAll('#addProdConvRows .conv-row-fixed'); const convs=[]; const altUnitsSeen = new Set();
+    for(const row of rows){
+        const mult = parseFloat(row.querySelector('.mult-inp').value);
+        const altUnitName = row.querySelector('.alt-unit-sel').value;
+        if(altUnitsSeen.has(altUnitName) || !mult || mult <= 0 || !altUnitName) return null; // Duplicate, zero, or missing
+        altUnitsSeen.add(altUnitName);
+        // User math: 1 Base = Mult Alt. Logic math needs: 1 Alt = (1/Mult) Base.
+        convs.push({ name:altUnitName, ratio: 1/mult });
     }
-    const batch=writeBatch(db);
-    const[ps,es]=await Promise.all([
-      getDocs(query(collection(db,'products'),where('godownId','==',whId))),
-      getDocs(query(collection(db,'entries'),where('godownId','==',whId))),
-    ]);
-    ps.forEach(d=>batch.delete(d.ref)); es.forEach(d=>batch.delete(d.ref));
-    batch.delete(doc(db,'godowns',whId));
-    await batch.commit();
-    window.closeM('m-del-wh');
-    showView('dash'); curWH=null;
-    window.showToast('Warehouse deleted.','');
-  }catch(e){ errEl.textContent=(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')?'Incorrect password.':'Error: '+(e.message||'Failed.'); }
-  btn.disabled=false;btn.textContent='Delete Forever';
+    return convs;
+}
+
+// ══ 10. WAREHOUSE MANAGEMENT (Stats Listen Today) ══
+window.createWH=async function(){
+  const name=document.getElementById('wn').value.trim(); const loc=document.getElementById('wl').value.trim(); const raw=document.getElementById('wc').value; const cat=raw==='other'?(document.getElementById('wcc').value.trim()||'Other'):raw; if(!name||!loc){setMM('whMsg','⚠ Enter name and location.','err');return;} setMM('whMsg','Creating…','');
+  try{ const cid=CU.companyId; await addDoc(collection(db,'godowns'),{ name,location:loc,category:cat,companyId:cid,createdBy:CU.uid, createdAt:new Date().toISOString(), }); ['wn','wl'].forEach(id=>document.getElementById(id).value=''); document.getElementById('wc').value='general'; document.getElementById('wcc').value=''; document.getElementById('wcc').classList.remove('show'); window.closeM('m-wh'); window.showToast('Warehouse created ✓','s'); }catch(e){setMM('whMsg','❌ Failed: '+e.message,'err');}
+};
+window.prepDelWH=function(whId){ if (CU.role !== 'owner' && CU.role !== 'manager') { window.showToast('Manager/Owner only.', 'e'); return; } const wh = WHs.find(w => w.id === whId); window._delWhId=whId; document.getElementById('delWhSub').textContent=`Delete "${wh?.name || 'this warehouse'}"?`; document.getElementById('delWhPw').value=''; document.getElementById('delWhErr').textContent=''; window.openM('m-del-wh'); };
+window.confirmDelWH=async function(){
+  const whId=window._delWhId||curWH; const pw=document.getElementById('delWhPw').value.trim(); const errEl=document.getElementById('delWhErr'); const btn=document.getElementById('delWhBtn'); if(!pw){errEl.textContent='Enter password.';return;} btn.disabled=true;btn.textContent='Deleting…';
+  try{ if(auth.currentUser){ await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email,pw)); } const batch=writeBatch(db); const[ps,es]=await Promise.all([getDocs(query(collection(db,'products'),where('godownId','==',whId))),getDocs(query(collection(db,'entries'),where('godownId','==',whId)))]); ps.forEach(d=>batch.delete(d.ref)); es.forEach(d=>batch.delete(d.ref)); batch.delete(doc(db,'godowns',whId)); await batch.commit(); window.closeM('m-del-wh'); showView('dash'); curWH=null; window.showToast('Warehouse deleted.',''); }catch(e){ errEl.textContent=(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')?'Incorrect password.':'Failed.'; } btn.disabled=false;btn.textContent='Delete Forever';
 };
 
-// ══ STATS & UTILS ══
-async function loadDashStats(){
-  const cid=CU.companyId; if(!cid) return;
-  try{
-    const snap=await getDocs(query(collection(db,'products'),where('companyId','==',cid)));
-    const prods=snap.docs.map(d=>d.data());
-    document.getElementById('sProds').textContent=prods.length;
-    const low=prods.filter(p=>p.minStock!=null?p.stock<=p.minStock:p.stock<=0);
-    document.getElementById('sLow').textContent=low.length;
-    if(low.length){document.getElementById('lowAlert').classList.add('show');document.getElementById('lowTxt').textContent=`${low.length} product${low.length>1?'s':''} running low.`;}
-    else document.getElementById('lowAlert').classList.remove('show');
-  }catch(e){}
-}
-function listenTodayEntries(){
-  const cid=CU.companyId; if(!cid) return;
-  const today=new Date();today.setHours(0,0,0,0);
-  onSnapshot(query(collection(db,'entries'),where('companyId','==',cid)),snap=>{
-    const count=snap.docs.filter(d=>{
-      const e=d.data(); if(e.deleted||e.isActivity)return false;
-      const ts=e.createdAt?.toDate?e.createdAt.toDate():new Date(e.createdAt||0);
-      return ts>=today;
-    }).length;
-    document.getElementById('sEnt').textContent=count;
-  },()=>{});
-}
-
-function ago(iso){if(!iso)return'';const ts=iso?.toDate?iso.toDate():new Date(iso);const d=Date.now()-ts;if(d<60000)return'just now';if(d<3600000)return Math.floor(d/60000)+'m ago';if(d<86400000)return Math.floor(d/3600000)+'h ago';return ts.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}
+// ══ STATS (Listen Today Entries for PC view) ══
+async function loadDashStats(){ const cid=CU.companyId; if(!cid) return; try{ const snap=await getDocs(query(collection(db,'products'),where('companyId','==',cid))); const prds=snap.docs.map(d=>d.data()); document.getElementById('sProds').textContent=prds.length; const low=prds.filter(p=>p.minStock!=null?p.stock<=p.minStock:p.stock<=0); document.getElementById('sLow').textContent=low.length; if(low.length){document.getElementById('lowAlert').classList.add('show');document.getElementById('lowTxt').textContent=`${low.length} product${low.length>1?'s':''} low.`;} else document.getElementById('lowAlert').classList.remove('show'); }catch(e){} }
+function listenTodayEntries(){ const cid=CU.companyId; if(!cid) return; const today=new Date();today.setHours(0,0,0,0); onSnapshot(query(collection(db,'entries'),where('companyId','==',cid)),snap=>{ const count=snap.docs.filter(d=>{ const e=d.data(); if(e.deleted||e.isActivity)return false; const ts=e.createdAt?.toDate?e.createdAt.toDate():new Date(e.createdAt||0); return ts>=today; }).length; document.getElementById('sEnt').textContent=count; document.getElementById('pdECountDesktop').textContent = count; },()=>{}); }
+function ago(iso){if(!iso)return'';const ts=iso?.toDate?iso.toDate():new Date(iso);const d=Date.now()-ts;if(d<60000)return'just now';if(d<3600000)return Math.floor(d/60000)+'m';if(d<86400000)return Math.floor(d/3600000)+'h';return ts.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}
 function esc(s=''){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function setMM(id,msg,type){const el=document.getElementById(id);if(!el)return;el.textContent=msg;el.className='mmsg'+(type==='err'?' err':'');}
 
-// Start App
 init();
 </script>
 </body>
