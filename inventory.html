@@ -293,7 +293,7 @@ body{background:#F4F5F7;min-height:100vh;display:flex;flex-direction:column;font
 /* ══ PC SPLIT LAYOUT FIX ══ */
 @media (min-width: 1024px) {
   #v-prod .pd-layout { flex-direction: row; max-width: 1280px; align-items: flex-start; gap: 32px; }
-  .pd-main { flex: 0 0 380px; display:flex; flex-direction:column; gap:16px; }
+  .pd-main { flex: 0 0 380px; display:flex; flex-direction:column; gap:16px; position: sticky; top: 76px; }
   .pd-entries { flex: 1; min-width: 0; margin-top: 0; }
 }
 
@@ -421,6 +421,7 @@ input:checked + .tgl-sl:before { transform: translateX(16px); }
       <div class="conv-card">
         <div class="conv-hdr">
           <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:#111827">Unit Conversions</div>
+          <button class="btn-g" style="font-size:12px;padding:6px 10px" onclick="window.openMergedEdit()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit</button>
         </div>
         <div id="convList"><div class="conv-empty">No conversions. Edit product to define relationships.</div></div>
       </div>
@@ -730,7 +731,6 @@ function showView(v){
   else if(v==='prod'){setTopbar('prod');}
 }
 function setTopbar(viewType){ 
-  // Simply hide title to make UI extremely clean, leaving only Back btn & Sync Status
   document.getElementById('backLbl').textContent=viewType==='dash'?'Back':viewType==='wh'?'Warehouses':'Back'; 
 }
 window.goBack=function(){ const active=document.querySelector('.view.active')?.id; if(active==='v-prod'){showView('wh');} else if(active==='v-wh'){showView('dash');} else window.close(); };
@@ -742,14 +742,26 @@ function loadWHs(){
 }
 function renderWHs(){
   const list=document.getElementById('whList'); const empty=document.getElementById('whEmpty'); list.innerHTML='';
-  if(!WHs.length){empty.classList.add('show');return;} empty.classList.remove('show'); const canM=CU.role==='owner'||CU.role==='manager';
+  if(!WHs.length){empty.classList.add('show');return;} empty.classList.remove('show');
+  
   WHs.forEach((wh,i)=>{
-    const row=document.createElement('div'); row.className='whr'; row.innerHTML=`<div class="whr-ico">${ICONS[i%ICONS.length]}</div><div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="whr-meta"><span class="wh-tag">${esc(CATS[wh.category]||wh.category||'Warehouse')}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div>${canM?`<button class="del-btn-sm" onclick="event.stopPropagation(); window.prepDelWH('${wh.id}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:''}</div><div class="wh-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
+    const row=document.createElement('div'); row.className='whr'; row.innerHTML=`<div class="whr-ico">${ICONS[i%ICONS.length]}</div><div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="whr-meta"><span class="wh-tag">${esc(CATS[wh.category]||wh.category||'Warehouse')}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div></div><div class="wh-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
     row.onclick=()=>window.openWH(wh); list.appendChild(row);
     getDocs(query(collection(db,'products'),where('godownId','==',wh.id))).then(ps=>{ const c=document.getElementById(`wc-${wh.id}`); const h=document.getElementById(`hd-${wh.id}`); if(c)c.textContent=ps.size+' items'; const low=ps.docs.filter(d=>{const p=d.data();return p.minStock!=null?p.stock<=p.minStock:p.stock<=0;}).length; if(h)h.className=`hdot ${low>3?'hl':low>0?'hw':'hg'}`; }).catch(()=>{});
   });
 }
-window.openWH=async function(wh){ curWH=wh.id; document.getElementById('whName').textContent=wh.name; document.getElementById('whLoc').textContent=wh.location||'—'; const canM=CU.role==='owner'||CU.role==='manager'; document.getElementById('btnDelWH').classList.toggle('hidden',!canM); document.getElementById('btnAddProd').classList.toggle('hidden',!canM); document.getElementById('pSrch').value=''; showView('wh'); await loadProds(wh.id); loadWHStats(wh.id); };
+window.openWH=async function(wh){ 
+  curWH=wh.id; document.getElementById('whName').textContent=wh.name; document.getElementById('whLoc').textContent=wh.location||'—'; 
+  const isOwner = CU.role === 'owner';
+  const isManager = CU.role === 'manager';
+  
+  // ONLY Owner can delete a warehouse
+  document.getElementById('btnDelWH').classList.toggle('hidden', !isOwner);
+  // Owner and Manager can add products
+  document.getElementById('btnAddProd').classList.toggle('hidden', !(isOwner || isManager));
+  
+  document.getElementById('pSrch').value=''; showView('wh'); await loadProds(wh.id); loadWHStats(wh.id); 
+};
 
 // ══ 6. PRODUCTS, DETAIL & MERGED EDIT MODAL ══
 async function loadProds(whId){ if(!whId) return; document.getElementById('prodList').innerHTML='<div style="text-align:center;padding:28px;color:#9CA3AF;font-size:13px">Loading…</div>'; try{ const snap=await getDocs(query(collection(db,'products'),where('godownId','==',whId))); prods=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name)); renderProds(prods); }catch(e){ document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:#EF4444;font-size:13px">Error loading products.</div>`; } }
@@ -767,10 +779,20 @@ window.openProd=async function(pId){
   
   document.getElementById('pdEmoji').textContent=p.emoji||'📦'; document.getElementById('pdName').textContent=p.name; document.getElementById('pdDesc').textContent=p.desc||''; document.getElementById('pdStock').textContent=p.stock||0; document.getElementById('pdStock').className='pd-big'+(isLow?' low':''); document.getElementById('pdUnit').textContent=(p.unit||'units')+' in stock'; document.getElementById('pdMin').textContent=p.minStock!=null?p.minStock:'—';
   
+  // Hide Edit button if strictly staff
+  const canM = CU.role === 'owner' || CU.role === 'manager';
+  const topEditBtn = document.querySelector('.pd-edit-btn-top');
+  if (topEditBtn) topEditBtn.style.display = canM ? 'inline-flex' : 'none';
+
   showView('prod'); renderConversionsDetail(p); await loadEntries(pId);
 };
 
-function renderConversionsDetail(p){ const convs=p.conversions||[]; const el=document.getElementById('convList'); if(!convs.length){el.innerHTML='<div class="conv-empty">No conversions. Edit product to define relationships.</div>';return;} el.innerHTML='<div class="conv-list">'+convs.map(c=>`<div class="conv-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span>1 ${esc(c.name)}</span><span style="margin: 0 4px;">=</span><span class="conv-eq">${(1/c.ratio).toFixed(3).replace(/\.000$/,'')} ${esc(curProd.unit||'units')}</span></div>`).join('')+'</div>'; }
+function renderConversionsDetail(p){ 
+  const convs=p.conversions||[]; 
+  const el=document.getElementById('convList'); 
+  if(!convs.length){el.innerHTML='<div class="conv-empty">No conversions. Edit product to define relationships.</div>';return;} 
+  el.innerHTML='<div class="conv-list">'+convs.map(c=>`<div class="conv-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span>1 ${esc(curProd.unit||'units')}</span><span style="margin: 0 4px;">=</span><span class="conv-eq">${Number((1/c.ratio).toFixed(4)).toString()} ${esc(c.name)}</span></div>`).join('')+'</div>'; 
+}
 
 // ══ MERGED EDIT PRODUCT MODAL ══
 window.openMergedEdit=function(){
@@ -785,7 +807,7 @@ window.openMergedEdit=function(){
   const tgl = document.getElementById('editConvTgl'); if(tgl) { tgl.checked = hasConvs; }
   const bldr = document.getElementById('editConvBuilderContainer'); if(bldr) { bldr.style.display = hasConvs ? 'block' : 'none'; }
   const rows = document.getElementById('editConvRows'); if(rows) rows.innerHTML = '';
-  if(hasConvs) { curProd.conversions.forEach(c => appendConvFormulaRow(rows, c.name, 1/c.ratio)); }
+  if(hasConvs) { curProd.conversions.forEach(c => appendConvFormulaRow(rows, c.name, Number((1/c.ratio).toFixed(4)))); }
   window.openM('m-edit-prod');
 };
 
@@ -874,7 +896,9 @@ window.confirmDelProd = async function() {
         window.closeM('m-del-prod');
         showView('wh');
         await loadProds(curWH);
-        window.showToast('Product deleted.', '');
+        
+        const roleLabel = CU.role.charAt(0).toUpperCase() + CU.role.slice(1);
+        window.showToast(`${roleLabel} (${CU.name}) deleted product.`, '');
     } catch(e) {
         window.showToast('Failed to delete.', 'e');
     }
@@ -987,7 +1011,13 @@ window.createWH=async function(){
   const name=document.getElementById('wn').value.trim(); const loc=document.getElementById('wl').value.trim(); const raw=document.getElementById('wc').value; const cat=raw==='other'?(document.getElementById('wcc').value.trim()||'Other'):raw; if(!name||!loc){setMM('whMsg','⚠ Enter name and location.','err');return;} setMM('whMsg','Creating…','');
   try{ const cid=CU.companyId; await addDoc(collection(db,'godowns'),{ name,location:loc,category:cat,companyId:cid,createdBy:CU.uid, createdAt:new Date().toISOString(), }); ['wn','wl'].forEach(id=>document.getElementById(id).value=''); document.getElementById('wc').value='general'; document.getElementById('wcc').value=''; document.getElementById('wcc').classList.remove('show'); window.closeM('m-wh'); window.showToast('Warehouse created ✓','s'); }catch(e){setMM('whMsg','❌ Failed: '+e.message,'err');}
 };
-window.prepDelWH=function(whId){ if (CU.role !== 'owner' && CU.role !== 'manager') { window.showToast('Manager/Owner only.', 'e'); return; } const wh = WHs.find(w => w.id === whId); window._delWhId=whId; document.getElementById('delWhSub').textContent=`Delete "${wh?.name || 'this warehouse'}"?`; document.getElementById('delWhPw').value=''; document.getElementById('delWhErr').textContent=''; window.openM('m-del-wh'); };
+
+window.prepDelWH=function(whId){ 
+  if (CU.role !== 'owner') { window.showToast('Only Owner can delete warehouses.', 'e'); return; } 
+  const wh = WHs.find(w => w.id === whId); window._delWhId=whId; document.getElementById('delWhSub').textContent=`Delete "${wh?.name || 'this warehouse'}"?`; document.getElementById('delWhPw').value=''; document.getElementById('delWhErr').textContent=''; window.openM('m-del-wh'); 
+};
+window.openDelWH=function(){ window.prepDelWH(curWH); };
+
 window.confirmDelWH=async function(){
   const whId=window._delWhId||curWH; const pw=document.getElementById('delWhPw').value.trim(); const errEl=document.getElementById('delWhErr'); const btn=document.getElementById('delWhBtn'); if(!pw){errEl.textContent='Enter password.';return;} btn.disabled=true;btn.textContent='Deleting…';
   try{ if(auth.currentUser){ await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email,pw)); } const batch=writeBatch(db); const[ps,es]=await Promise.all([getDocs(query(collection(db,'products'),where('godownId','==',whId))),getDocs(query(collection(db,'entries'),where('godownId','==',whId)))]); ps.forEach(d=>batch.delete(d.ref)); es.forEach(d=>batch.delete(d.ref)); batch.delete(doc(db,'godowns',whId)); await batch.commit(); window.closeM('m-del-wh'); showView('dash'); curWH=null; window.showToast('Warehouse deleted.',''); }catch(e){ errEl.textContent=(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')?'Incorrect password.':'Failed.'; } btn.disabled=false;btn.textContent='Delete Forever';
@@ -1024,7 +1054,7 @@ function listenProductsLive(){
     const sProdsEl = document.getElementById('sProds');
     if (sProdsEl) sProdsEl.textContent=prds.length; 
     const low=prds.filter(p=>p.minStock!=null?p.stock<=p.minStock:p.stock<=0); 
-    lowStockGlobal = low; // store globally for modal
+    lowStockGlobal = low; 
     const sLowEl = document.getElementById('sLow');
     if (sLowEl) sLowEl.textContent=low.length; 
     const lowAlertEl = document.getElementById('lowAlert');
