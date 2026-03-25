@@ -530,7 +530,87 @@ let selUnit=null;
 const ICONS=['<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 22V11L12 2l11 9v11"/><path d="M9 22v-4h6v4"/></svg>'];
 const CATS={general:'General',cold:'Cold Storage',retail:'Retail',distribution:'Distribution',raw:'Raw Materials',finished:'Finished Goods'};
 
-// ══ INIT ══
+// ══ 1. UI HELPERS & MODALS ══
+window.openM = function(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+window.closeM = function(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+};
+window.toggleCat = function(v) {
+  const el = document.getElementById('wcc');
+  el.classList.toggle('show', v === 'other');
+  if(v === 'other') setTimeout(() => el.focus(), 80);
+};
+window.showToast = function(msg, type) {
+  const c = document.getElementById('tc'); 
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 's' ? ' s' : type === 'e' ? ' e' : ''); 
+  t.textContent = msg;
+  c.appendChild(t); 
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 220); }, 3200);
+};
+
+// Modal Click-away and Escape Listeners
+function setupModalListeners() {
+  document.querySelectorAll('.mo').forEach(o => o.addEventListener('click', e => { if(e.target === o) window.closeM(o.id); }));
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') document.querySelectorAll('.mo.open').forEach(m => window.closeM(m.id)); });
+}
+if(document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', setupModalListeners); } 
+else { setupModalListeners(); }
+
+// ══ 2. AI EMOJI ENGINE ══
+const EM={rice:'🍚',wheat:'🌾',flour:'🌾',maize:'🌽',corn:'🌽',sugar:'🧂',salt:'🧂',oil:'🫙',ghee:'🫙',butter:'🧈',milk:'🥛',cheese:'🧀',egg:'🥚',eggs:'🥚',meat:'🥩',chicken:'🍗',fish:'🐟',potato:'🥔',onion:'🧅',tomato:'🍅',garlic:'🧄',spinach:'🥬',vegetable:'🥦',fruit:'🍎',apple:'🍎',banana:'🍌',mango:'🥭',tea:'🍵',coffee:'☕',spice:'🌶️',pepper:'🌶️',turmeric:'🌿',dal:'🫘',lentil:'🫘',pulse:'🫘',bread:'🍞',biscuit:'🍪',chocolate:'🍫',candy:'🍬',juice:'🧃',water:'💧',soda:'🥤',sauce:'🫙',pickle:'🫙',cement:'🪨',sand:'🪨',brick:'🧱',steel:'🔩',iron:'🔧',wire:'🪡',pipe:'🔩',rod:'🔩',nut:'🔩',bolt:'🔩',screw:'🪛',nail:'📌',paint:'🎨',tile:'🟫',wood:'🪵',timber:'🪵',plywood:'🪵',glass:'🪟',door:'🚪',lock:'🔒',cloth:'🧵',fabric:'🧵',thread:'🧵',cotton:'🧶',silk:'🧶',wool:'🧶',shirt:'👕',pant:'👖',dress:'👗',shoe:'👟',bag:'👜',bulb:'💡',fan:'🌀',motor:'⚙️',battery:'🔋',charger:'🔌',phone:'📱',laptop:'💻',tv:'📺',box:'📦',carton:'📦',packet:'📦',tape:'📎',rope:'🪢',petrol:'⛽',diesel:'⛽',fuel:'⛽',tyre:'🛞',tire:'🛞',wheel:'🛞',engine:'⚙️',medicine:'💊',tablet:'💊',syrup:'🧪',cream:'🧴',soap:'🧼',detergent:'🧴',chemical:'🧪',fertilizer:'🌱',pesticide:'🧪',seed:'🌱',pen:'✏️',pencil:'✏️',paper:'📄',notebook:'📒',hammer:'🔨',wrench:'🔧',drill:'🪚',saw:'🪚',knife:'🔪',shovel:'🪣',bucket:'🪣',chair:'🪑',table:'🪑',bed:'🛏️',gold:'💍',silver:'🥈',diamond:'💎'};
+window._aiEmoji='📦';
+window._emojiTimer=null;
+
+window.scheduleEmoji=function(name){
+  clearTimeout(window._emojiTimer);
+  if(!name||name.length<2){document.getElementById('aiPrev').classList.remove('show');window._aiEmoji='📦';return;}
+  const lower=name.toLowerCase().replace(/[^a-z0-9 ]/g,'');
+  const words=lower.split(/\s+/);
+  let found=null;
+  for(const w of words){if(EM[w]){found=EM[w];break;}}
+  if(!found){for(const w of words){for(const[k,v]of Object.entries(EM)){if(w.includes(k)||k.includes(w)){found=v;break;}}if(found)break;}}
+  if(found){window._aiEmoji=found; showEmojiPrev(found,name); return;}
+  
+  document.getElementById('aiPrev').classList.add('show');
+  document.getElementById('aiPrevIco').textContent='⏳';
+  document.getElementById('aiPrevTxt').textContent='AI thinking…';
+  window._emojiTimer=setTimeout(()=>callEmojiAI(name),800);
+};
+
+function showEmojiPrev(emoji,name){
+  document.getElementById('aiPrev').classList.add('show');
+  document.getElementById('aiPrevIco').textContent=emoji;
+  document.getElementById('aiPrevTxt').textContent=`"${name.split(' ').slice(0,3).join(' ')}"`;
+}
+
+async function callEmojiAI(name){
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:20,messages:[{role:'user',content:`Single emoji for inventory product: "${name}". Only emoji, nothing else.`}]})});
+    const d=await r.json();
+    const e=(d.content?.[0]?.text||'📦').trim().slice(0,2);
+    window._aiEmoji=e||'📦';
+    showEmojiPrev(window._aiEmoji,name);
+  }catch(e){window._aiEmoji='📦';showEmojiPrev('📦',name);}
+}
+
+window.rerollEmoji=async function(){
+  const name=document.getElementById('pn').value.trim();if(!name)return;
+  document.getElementById('aiPrevIco').textContent='⏳';
+  document.getElementById('aiPrevTxt').textContent='Getting another…';
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:20,messages:[{role:'user',content:`Different emoji for: "${name}". Current: ${window._aiEmoji}. Only emoji.`}]})});
+    const d=await r.json();
+    const e=(d.content?.[0]?.text||'📦').trim().slice(0,2);
+    window._aiEmoji=e||'📦';showEmojiPrev(window._aiEmoji,name);
+  }catch(e){}
+};
+
+// ══ 3. CORE INIT ══
 async function init(){
   const urlUid = new URLSearchParams(location.search).get('uid');
   const rawSession = sessionStorage.getItem('zenda_user');
@@ -561,7 +641,7 @@ async function init(){
   showView('dash'); loadWHs(); listenTodayEntries();
 }
 
-// ══ VIEWS ══
+// ══ 4. VIEWS ══
 function showView(v){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('v-'+v).classList.add('active');
@@ -584,7 +664,7 @@ window.ctaClick=function(){
   if(a==='wh') window.openM('m-wh'); else if(a==='prod') window.openAddProd(); else window.openEntry('IN');
 };
 
-// ══ LOAD WAREHOUSES ══
+// ══ 5. LOAD WAREHOUSES ══
 function loadWHs(){
   if(!CU.companyId) return;
   const q=query(collection(db,'godowns'),where('companyId','==',CU.companyId));
@@ -644,7 +724,7 @@ async function loadWHStats(whId){
   }catch(e){}
 }
 
-// ══ PRODUCTS ══
+// ══ 6. PRODUCTS ══
 async function loadProds(whId){
   if(!whId) return;
   document.getElementById('prodList').innerHTML='<div style="text-align:center;padding:28px;color:#9CA3AF;font-size:13px">Loading…</div>';
@@ -703,7 +783,7 @@ function renderConversions(p){
   el.innerHTML='<div class="conv-list">'+convs.map(c=>`<div class="conv-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span>1 ${esc(c.name)}</span><span>=</span><span class="conv-eq">${c.ratio} ${esc(curProd.unit||'units')}</span></div>`).join('')+'</div>';
 }
 
-// ══ ENTRY HISTORY ══
+// ══ 7. ENTRY HISTORY ══
 async function loadEntries(pId){
   document.getElementById('eList').innerHTML='<div class="e-empty">Loading…</div>';
   try{
@@ -762,7 +842,6 @@ async function loadEntries(pId){
   }catch(e){ document.getElementById('eList').innerHTML=`<div class="e-empty" style="color:#EF4444">Error: ${e.message}</div>`; }
 }
 
-// ══ VIEW DELETE REASON ══
 window.viewDelReason=async function(entId){
   try{
     const snap=await getDoc(doc(db,'entries',entId));
@@ -776,7 +855,7 @@ window.viewDelReason=async function(entId){
   }catch(err){window.showToast('Could not load reason.','e');}
 };
 
-// ══ STOCK ENTRY ══
+// ══ 8. STOCK ENTRY LOGIC ══
 window.openEntry=function(type){
   if(!curProd)return;
   eType=type; window.setET(type);
@@ -859,7 +938,6 @@ window.submitEntry=async function(){
   btn.disabled=false;btn.textContent=`Add ${eType} Entry`;
 };
 
-// ══ DELETE ENTRY ══
 window.prepDelEntry=function(entId){
   entToDelete=entId;
   document.getElementById('delReason').value='';
@@ -887,19 +965,13 @@ window.confirmDelEntry=async function(){
   try{
     const snap=await getDoc(doc(db,'entries',entToDelete));
     const e=snap.data();
-    
     let msg;
     const isOwn = (e.createdBy === CU.uid);
     const amt = `${e.qty} ${e.entryUnit || e.unit || ''}`.trim();
     const prod = e.productName || '';
     
-    // Formatting exact deletion log text based on role/ownership
-    if(isOwn){
-      msg=`${CU.name} deleted their own entry of ${amt} ${prod} ${e.type}`;
-    } else {
-      const roleLabel = CU.role.charAt(0).toUpperCase() + CU.role.slice(1);
-      msg=`${roleLabel} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${prod} ${e.type}`;
-    }
+    if(isOwn){ msg=`${CU.name} deleted their own entry of ${amt} ${prod} ${e.type}`; } 
+    else { const roleLabel = CU.role.charAt(0).toUpperCase() + CU.role.slice(1); msg=`${roleLabel} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${prod} ${e.type}`; }
 
     await updateDoc(doc(db,'entries',entToDelete),{
       deleted:true, deleteReason:reason, deleteMessage:msg,
@@ -923,7 +995,7 @@ window.confirmDelEntry=async function(){
   btn.disabled=false;btn.textContent='Delete Entry';
 };
 
-// ══ ADD PRODUCT ══
+// ══ 9. PRODUCT MANAGEMENT ══
 window.openAddProd=function(){
   const wh=WHs.find(w=>w.id===curWH);
   document.getElementById('prodModalSub').textContent=`Adding to "${wh?.name||'warehouse'}"`;
@@ -978,13 +1050,13 @@ window.addProduct=async function(){
   }catch(e){setMM('prodMsg','❌ Failed: '+e.message,'err');}
 };
 
-// ══ EDIT PRODUCT NAME ══
 window.openEditName=function(){
   if(!curProd)return;
   document.getElementById('editNameInp').value=curProd.name;
   setMM('editNameMsg','','');
   window.openM('m-edit-name');
 };
+
 window.saveProductName=async function(){
   const newName=document.getElementById('editNameInp').value.trim();
   if(!newName){setMM('editNameMsg','⚠ Enter a name.','err');return;}
@@ -1010,18 +1082,17 @@ window.saveProductName=async function(){
   }catch(e){setMM('editNameMsg','❌ Failed: '+e.message,'err');}
 };
 
-// ══ EDIT CONVERSIONS ══
 window.openEditConversions=function(){
   if(!curProd)return;
   document.getElementById('editConvSub').textContent=`Unit: ${curProd.unit||'units'}`;
   const convs=curProd.conversions||[];
-  const el=document.getElementById('editConvRows');
-  el.innerHTML='';
+  const el=document.getElementById('editConvRows'); el.innerHTML='';
   convs.forEach(c=>appendEditConvRow(el,c.name,c.ratio));
   if(!convs.length)appendEditConvRow(el,'','');
   setMM('editConvMsg','','');
   window.openM('m-edit-conv');
 };
+
 window.addEditConvRow=function(){appendEditConvRow(document.getElementById('editConvRows'),'','');};
 function appendEditConvRow(container,name,ratio){
   const row=document.createElement('div'); row.className='conv-row';
@@ -1033,10 +1104,8 @@ window.saveConversions=async function(){
   if(convs===null){setMM('editConvMsg','⚠ Check values — ratio must be a positive number.','err');return;}
   try{
     await updateDoc(doc(db,'products',curProd.id),{conversions:convs});
-    curProd.conversions=convs;
-    renderConversions(curProd);
-    window.closeM('m-edit-conv');
-    window.showToast('Conversions saved ✓','s');
+    curProd.conversions=convs; renderConversions(curProd);
+    window.closeM('m-edit-conv'); window.showToast('Conversions saved ✓','s');
   }catch(e){setMM('editConvMsg','❌ Failed: '+e.message,'err');}
 };
 
@@ -1053,7 +1122,6 @@ function getConvRowData(containerId){
   return convs;
 }
 
-// ══ CONV BUILDER ══
 window.toggleConvBuilder=function(){
   const el=document.getElementById('convBuilder'); const arrow=document.getElementById('convArrow');
   const open=el.style.display==='block';
@@ -1067,7 +1135,7 @@ window.addConvRow=function(){
   container.appendChild(row);
 };
 
-// ══ CREATE WAREHOUSE ══
+// ══ 10. WAREHOUSE MANAGEMENT ══
 window.createWH=async function(){
   const name=document.getElementById('wn').value.trim();
   const loc=document.getElementById('wl').value.trim();
@@ -1091,7 +1159,6 @@ window.createWH=async function(){
   }catch(e){setMM('whMsg','❌ Failed: '+e.message,'err');}
 };
 
-// ══ DELETE WAREHOUSE ══
 window.prepDelWH=function(whId){
   if (CU.role !== 'owner' && CU.role !== 'manager') { window.showToast('Only Owner/Manager can delete warehouses.', 'e'); return; }
   const wh = WHs.find(w => w.id === whId);
@@ -1127,7 +1194,7 @@ window.confirmDelWH=async function(){
   btn.disabled=false;btn.textContent='Delete Forever';
 };
 
-// ══ STATS ══
+// ══ STATS & UTILS ══
 async function loadDashStats(){
   const cid=CU.companyId; if(!cid) return;
   try{
@@ -1153,11 +1220,11 @@ function listenTodayEntries(){
   },()=>{});
 }
 
-// ══ UTILS ══
 function ago(iso){if(!iso)return'';const ts=iso?.toDate?iso.toDate():new Date(iso);const d=Date.now()-ts;if(d<60000)return'just now';if(d<3600000)return Math.floor(d/60000)+'m ago';if(d<86400000)return Math.floor(d/3600000)+'h ago';return ts.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}
 function esc(s=''){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function setMM(id,msg,type){const el=document.getElementById(id);if(!el)return;el.textContent=msg;el.className='mmsg'+(type==='err'?' err':'');}
 
+// Start App
 init();
 </script>
 </body>
