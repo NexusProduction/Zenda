@@ -312,11 +312,11 @@ input[type=number] { -moz-appearance: textfield; }
 .unit-sel-sm { border: none !important; background: transparent; font-size: 13px; color: #4B5563; padding: 0 8px; cursor: pointer; outline: none; }
 .unit-sel-sm:focus { outline: none; ring: none; }
 
-/* Conversion Row Update (Base = X Alt) */
+/* Conversion Row Update (1 Alt = Qty Base) */
 .conv-row-fixed { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; padding: 8px; border-bottom: 1px solid #F3F4F6; }
-.conv-row-fixed .fixed-b-label { font-weight: 700; font-size:15px; background: #EEF2FF; color: #4F46E5; padding: 4px 8px; border-radius: 6px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.conv-row-fixed input[type=number] { flex: 1; text-align: left; border: 1px solid #D1D5DB; border-radius: 6px; padding: 6px 8px; }
-.conv-row-fixed .unit-sel-sm { max-width: 90px; border: 1px solid #D1D5DB !important; border-radius: 6px; height: 34px; padding: 0 4px; }
+.conv-row-fixed .fixed-b-label { font-weight: 700; font-size:14px; background: #EEF2FF; color: #4F46E5; padding: 4px 8px; border-radius: 6px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-row-fixed input[type=number] { flex: 1; text-align: center; border: 1px solid #D1D5DB; border-radius: 6px; padding: 6px 8px; }
+.conv-row-fixed .unit-sel-sm { max-width: 100px; border: 1px solid #D1D5DB !important; border-radius: 6px; height: 34px; padding: 0 4px; font-weight: 600;}
 
 /* ON/OFF Toggle Switch */
 .tgl { position: relative; display: inline-block; width: 38px; height: 22px; }
@@ -421,7 +421,7 @@ input:checked + .tgl-sl:before { transform: translateX(16px); }
       <div class="conv-card">
         <div class="conv-hdr">
           <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:#111827">Unit Conversions</div>
-          <button class="btn-g" style="font-size:12px;padding:6px 10px" onclick="window.openMergedEdit()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit</button>
+          <button class="btn-g" id="convEditBtn" style="font-size:12px;padding:6px 10px" onclick="window.openMergedEdit()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit</button>
         </div>
         <div id="convList"><div class="conv-empty">No conversions. Edit product to define relationships.</div></div>
       </div>
@@ -474,9 +474,10 @@ input:checked + .tgl-sl:before { transform: translateX(16px); }
         <div class="mf"><label>Unit</label><div class="mfr"><span class="mico">📏</span><select id="puSel" style="padding-left:2.2rem;"></select><input type="hidden" id="pu_fixed"/></div></div>
       </div>
       <div class="mf"><label>Min Stock Alert <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9CA3AF">(optional)</span></label><div class="mfr"><span class="mico">⚠️</span><input type="number" id="pmin" placeholder="e.g. 10" min="0"/></div></div>
+      
       <div style="margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;padding:10px 14px;">
-          <div><div style="font-size:14px;font-weight:600;color:#374151">Unit Conversions</div><div style="font-size:12px;color:#9CA3AF;margin-top:2px">Optional — e.g. 1 Base = 12 Alt</div></div>
+          <div><div style="font-size:14px;font-weight:600;color:#374151">Unit Conversions</div><div style="font-size:12px;color:#9CA3AF;margin-top:2px">e.g. 1 Box = 12 Pieces</div></div>
           <label class="tgl">
             <input type="checkbox" id="addProdConvTgl" onchange="window.toggleAddProdConv(this)">
             <span class="tgl-sl"></span>
@@ -518,7 +519,7 @@ input:checked + .tgl-sl:before { transform: translateX(16px); }
       </div>
       <div class="mmsg" id="editProdMsg"></div>
       <div class="macts">
-        <button class="mno" style="color:#EF4444; border-color:#FCA5A5;" onclick="window.prepDelProd()">Delete</button>
+        <button class="mno" style="color:#EF4444; border-color:#FCA5A5;" onclick="window.prepDelProd()">Delete Product</button>
         <button class="mno" onclick="window.closeM('m-edit-prod')">Cancel</button>
         <button class="mok" onclick="window.saveMergedProd()">Save</button>
       </div>
@@ -611,7 +612,7 @@ const syncEl=document.getElementById('syncEl');
 let CU=null, WHs=[], prods=[], curWH=null, curProd=null, eType='IN', entToDelete=null;
 let selUnit=null, curAddStockUnit=null;
 let prodsListener = null;
-let lowStockGlobal = []; // Used for the low stock modal
+let lowStockGlobal = [];
 
 const ICONS=['<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 22V11L12 2l11 9v11"/><path d="M9 22v-4h6v4"/></svg>'];
 const CATS={general:'General',cold:'Cold Storage',retail:'Retail',distribution:'Distribution',raw:'Raw Materials',finished:'Finished Goods'};
@@ -650,7 +651,7 @@ window.scheduleEmoji=function(name){
 
 function findBestEmoji(words) {
   let found=null;
-  for(const w of words){if(EM_LIB[w]){found=EM_LIB[w];break;}} // Exact match
+  for(const w of words){if(EM_LIB[w]){found=EM_LIB[w];break;}}
   if(!found){for(const w of words){for(const[k,v]of Object.entries(EM_LIB)){if(w.includes(k)||k.includes(w)){found=v;break;}}if(found)break;}}
   return found;
 }
@@ -762,6 +763,17 @@ window.openWH=async function(wh){
   
   document.getElementById('pSrch').value=''; showView('wh'); await loadProds(wh.id); loadWHStats(wh.id); 
 };
+async function loadWHStats(whId){
+  if(!whId) return;
+  const today=new Date();today.setHours(0,0,0,0);
+  try{
+    const snap=await getDocs(query(collection(db,'entries'),where('godownId','==',whId)));
+    const all=snap.docs.map(d=>d.data()).filter(e=>!e.deleted);
+    const todays=all.filter(e=>{const ts=e.createdAt?.toDate?e.createdAt.toDate():new Date(e.createdAt||0);return ts>=today;});
+    document.getElementById('wssI').textContent=todays.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
+    document.getElementById('wssO').textContent=todays.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
+  }catch(e){}
+}
 
 // ══ 6. PRODUCTS, DETAIL & MERGED EDIT MODAL ══
 async function loadProds(whId){ if(!whId) return; document.getElementById('prodList').innerHTML='<div style="text-align:center;padding:28px;color:#9CA3AF;font-size:13px">Loading…</div>'; try{ const snap=await getDocs(query(collection(db,'products'),where('godownId','==',whId))); prods=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name)); renderProds(prods); }catch(e){ document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:#EF4444;font-size:13px">Error loading products.</div>`; } }
@@ -779,10 +791,11 @@ window.openProd=async function(pId){
   
   document.getElementById('pdEmoji').textContent=p.emoji||'📦'; document.getElementById('pdName').textContent=p.name; document.getElementById('pdDesc').textContent=p.desc||''; document.getElementById('pdStock').textContent=p.stock||0; document.getElementById('pdStock').className='pd-big'+(isLow?' low':''); document.getElementById('pdUnit').textContent=(p.unit||'units')+' in stock'; document.getElementById('pdMin').textContent=p.minStock!=null?p.minStock:'—';
   
-  // Hide Edit button if strictly staff
   const canM = CU.role === 'owner' || CU.role === 'manager';
   const topEditBtn = document.querySelector('.pd-edit-btn-top');
   if (topEditBtn) topEditBtn.style.display = canM ? 'inline-flex' : 'none';
+  const convEditBtn = document.getElementById('convEditBtn');
+  if (convEditBtn) convEditBtn.style.display = canM ? 'inline-flex' : 'none';
 
   showView('prod'); renderConversionsDetail(p); await loadEntries(pId);
 };
@@ -791,7 +804,7 @@ function renderConversionsDetail(p){
   const convs=p.conversions||[]; 
   const el=document.getElementById('convList'); 
   if(!convs.length){el.innerHTML='<div class="conv-empty">No conversions. Edit product to define relationships.</div>';return;} 
-  el.innerHTML='<div class="conv-list">'+convs.map(c=>`<div class="conv-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span>1 ${esc(curProd.unit||'units')}</span><span style="margin: 0 4px;">=</span><span class="conv-eq">${Number((1/c.ratio).toFixed(4)).toString()} ${esc(c.name)}</span></div>`).join('')+'</div>'; 
+  el.innerHTML='<div class="conv-list">'+convs.map(c=>`<div class="conv-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span>1 ${esc(c.name)}</span><span style="margin: 0 4px;">=</span><span class="conv-eq">${Number((c.ratio).toFixed(4)).toString()} ${esc(curProd.unit||'units')}</span></div>`).join('')+'</div>'; 
 }
 
 // ══ MERGED EDIT PRODUCT MODAL ══
@@ -807,27 +820,29 @@ window.openMergedEdit=function(){
   const tgl = document.getElementById('editConvTgl'); if(tgl) { tgl.checked = hasConvs; }
   const bldr = document.getElementById('editConvBuilderContainer'); if(bldr) { bldr.style.display = hasConvs ? 'block' : 'none'; }
   const rows = document.getElementById('editConvRows'); if(rows) rows.innerHTML = '';
-  if(hasConvs) { curProd.conversions.forEach(c => appendConvFormulaRow(rows, c.name, Number((1/c.ratio).toFixed(4)))); }
+  if(hasConvs) { curProd.conversions.forEach(c => appendConvFormulaRow(rows, c.name, Number((c.ratio).toFixed(4)), curProd.unit)); }
   window.openM('m-edit-prod');
 };
 
 window.toggleEditConvBuilder=function(el){ document.getElementById('editConvBuilderContainer').style.display=el.checked?'block':'none'; const rows=document.getElementById('editConvRows'); if(el.checked && rows && rows.children.length === 0) window.addEditConvFormulaRow(); };
-window.addEditConvFormulaRow=function(){ appendConvFormulaRow(document.getElementById('editConvRows'),'',''); };
+window.addEditConvFormulaRow=function(){ appendConvFormulaRow(document.getElementById('editConvRows'),'', '', curProd.unit); };
 
-function appendConvFormulaRow(container, name, ratioMult){
-    const base = curProd?.unit || 'KG';
+function appendConvFormulaRow(container, name, ratioMult, baseUnit){
+    const base = baseUnit || 'KG';
     const row = document.createElement('div'); row.className = 'conv-row-fixed';
-    row.innerHTML = `<span>1 <span class="fixed-b-label">${esc(base)}</span></span><span style="margin: 0 4px;">=</span>
+    row.innerHTML = `<span>1 </span>
+    <select class="unit-sel-sm alt-unit-sel" style="max-width:100px; border: 1px solid #D1D5DB !important; border-radius: 6px; height: 34px; padding: 0 4px; font-weight:600;" required></select>
+    <span style="margin: 0 8px;">=</span>
     <input type="number" step="any" min="0.0001" placeholder="Qty" value="${ratioMult||''}" class="mult-inp" required>
-    <select class="unit-sel-sm alt-unit-sel" required></select>
+    <span class="fixed-b-label" style="font-weight: 700; font-size:14px; background: #EEF2FF; color: #4F46E5; padding: 4px 8px; border-radius: 6px;">${esc(base)}</span>
     <button class="conv-rm" onclick="this.parentElement.remove()" style="margin-left:auto">×</button>`;
     
     container.appendChild(row);
-    const sel = row.querySelector('.alt-unit-sel'); window.populateAltUnits(sel, name); sel.addEventListener('change',()=>checkConvDuplicate(container)); row.querySelector('.mult-inp').addEventListener('input',()=>checkConvDuplicate(container));
+    const sel = row.querySelector('.alt-unit-sel'); window.populateAltUnitsGeneric(sel, base, name); sel.addEventListener('change',()=>checkConvDuplicate(container)); row.querySelector('.mult-inp').addEventListener('input',()=>checkConvDuplicate(container));
 }
 
-window.populateAltUnits = function(sel, currentName){
-    STD_UNITS.filter(u => u !== (curProd?.unit || document.getElementById('pu_fixed').value)).forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; if(u===currentName) opt.selected=true; sel.appendChild(opt); });
+window.populateAltUnitsGeneric = function(sel, baseUnit, currentName) {
+    sel.innerHTML=''; STD_UNITS.filter(u => u !== baseUnit).forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; if(u===currentName) opt.selected=true; sel.appendChild(opt); });
     if(currentName && !STD_UNITS.includes(currentName)) { const opt = document.createElement('option'); opt.value=currentName; opt.textContent=currentName; opt.selected=true; sel.appendChild(opt); }
 }
 
@@ -839,7 +854,7 @@ window.saveMergedProd=async function(){
     let convs = [];
     if (document.getElementById('editConvTgl')?.checked) {
         convs = getConvRowsFixedData('editConvRows');
-        if(convs === null){setMM('editProdMsg','⚠ Check conversion values: ratios must be positive numbers, Alt Units unique.','err');return;}
+        if(convs === null){setMM('editProdMsg','⚠ Check conversion values: multipliers must be positive numbers, Alt Units unique.','err');return;}
     }
 
     setMM('editProdMsg','Saving…',''); const canLog = CU.role === 'owner' || CU.role === 'manager';
@@ -872,7 +887,7 @@ function getConvRowsFixedData(containerId){
         const altUnitName = row.querySelector('.alt-unit-sel').value;
         if(altUnitsSeen.has(altUnitName) || !mult || mult <= 0 || !altUnitName) return null; // Duplicate, zero, or missing
         altUnitsSeen.add(altUnitName);
-        convs.push({ name:altUnitName, ratio: 1/mult });
+        convs.push({ name:altUnitName, ratio: mult }); // DIRECT MULTIPLIER (e.g. 1 Box = 10 Pieces)
     }
     return convs;
 }
@@ -891,13 +906,23 @@ window.confirmDelProd = async function() {
         const batch = writeBatch(db);
         const snap = await getDocs(query(collection(db,'entries'), where('productId','==',curProd.id)));
         snap.docs.forEach(d => batch.delete(d.ref));
+        
+        // Log the product deletion so managers know who did it
+        const roleLabel = CU.role.charAt(0).toUpperCase() + CU.role.slice(1);
+        const logRef = doc(collection(db, 'entries'));
+        batch.set(logRef, {
+            type: 'LOG', qty: 0, qtyBase: 0, unit: '', entryUnit: '',
+            note: `${roleLabel} (${CU.name}) deleted product: "${curProd.name}"`,
+            productId: 'DELETED', godownId: curWH, companyId: CU.companyId,
+            who: CU.name || 'Owner', createdBy: CU.uid, deleted: false, 
+            isActivity: true, createdAt: serverTimestamp()
+        });
+
         batch.delete(doc(db,'products', curProd.id));
         await batch.commit();
         window.closeM('m-del-prod');
         showView('wh');
         await loadProds(curWH);
-        
-        const roleLabel = CU.role.charAt(0).toUpperCase() + CU.role.slice(1);
         window.showToast(`${roleLabel} (${CU.name}) deleted product.`, '');
     } catch(e) {
         window.showToast('Failed to delete.', 'e');
@@ -958,30 +983,15 @@ window.openAddProd=function(){
 };
 
 window.toggleAddProdConv=function(el){ document.getElementById('addProdConvBuilder').style.display=el.checked?'block':'none'; const rows=document.getElementById('addProdConvRows'); if(el.checked && rows && rows.children.length === 0) window.addProdConvFormulaRow(); };
-window.addProdConvFormulaRow=function(){ appendFixedBaseConvRow(document.getElementById('addProdConvRows'), document.getElementById('pu_fixed').value); };
-
-function appendFixedBaseConvRow(container, fixedBase) {
-    const row = document.createElement('div'); row.className = 'conv-row-fixed';
-    row.innerHTML = `<span>1 <span class="fixed-b-label fixed-b-dynamic">${esc(fixedBase)}</span></span><span style="margin: 0 4px;">=</span>
-    <input type="number" step="any" min="0.0001" placeholder="Qty" class="mult-inp" required>
-    <select class="unit-sel-sm alt-unit-sel" required></select>
-    <button class="conv-rm" onclick="this.parentElement.remove()" style="margin-left:auto">×</button>`;
-    
-    container.appendChild(row);
-    const sel = row.querySelector('.alt-unit-sel'); window.populateAltUnitsGeneric(sel, fixedBase);
-}
-
-window.populateAltUnitsGeneric = function(sel, baseUnit) {
-    sel.innerHTML=''; STD_UNITS.filter(u => u !== baseUnit).forEach(u => { const opt = document.createElement('option'); opt.value = u; opt.textContent = u; sel.appendChild(opt); });
-}
+window.addProdConvFormulaRow=function(){ appendConvFormulaRow(document.getElementById('addProdConvRows'),'', '', document.getElementById('pu_fixed').value); };
 
 window.addProduct=async function(){
-  const name=document.getElementById('pn').value.trim(); const emoji=window._aiEmoji||'📦'; const desc=document.getElementById('pdesc').value.trim(); const stock=parseFloat(document.getElementById('ps').value)||0; const unit=document.getElementById('pu_fixed').value.trim(); // Fixed base unit selected
+  const name=document.getElementById('pn').value.trim(); const emoji=window._aiEmoji||'📦'; const desc=document.getElementById('pdesc').value.trim(); const stock=parseFloat(document.getElementById('ps').value)||0; const unit=document.getElementById('pu_fixed').value.trim(); 
   const minRaw=document.getElementById('pmin').value; const minStock=minRaw!==''?parseFloat(minRaw):undefined; if(!name){setMM('prodMsg','⚠ Enter product name.','err');return;}
   
   let convs=[];
   if (document.getElementById('addProdConvTgl')?.checked) {
-    convs = getConvRowsFixedDataFromAdd();
+    convs = getConvRowsFixedData('addProdConvRows');
     if(convs===null){setMM('prodMsg','⚠ Check conversion multiplier values and ensure Alt Units are unique.','err');return;}
   }
 
@@ -993,18 +1003,6 @@ window.addProduct=async function(){
     window.closeM('m-prod'); await loadProds(curWH); window.showToast(`${name} added ✓`,'s');
   }catch(e){setMM('prodMsg','❌ Failed: '+e.message,'err');}
 };
-
-function getConvRowsFixedDataFromAdd(){
-    const rows = document.querySelectorAll('#addProdConvRows .conv-row-fixed'); const convs=[]; const altUnitsSeen = new Set();
-    for(const row of rows){
-        const mult = parseFloat(row.querySelector('.mult-inp').value);
-        const altUnitName = row.querySelector('.alt-unit-sel').value;
-        if(altUnitsSeen.has(altUnitName) || !mult || mult <= 0 || !altUnitName) return null;
-        altUnitsSeen.add(altUnitName);
-        convs.push({ name:altUnitName, ratio: 1/mult });
-    }
-    return convs;
-}
 
 // ══ 10. WAREHOUSE MANAGEMENT ══
 window.createWH=async function(){
