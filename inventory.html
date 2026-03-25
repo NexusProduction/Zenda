@@ -515,51 +515,59 @@ body{background:#F4F5F7;min-height:100vh;display:flex;flex-direction:column;font
 <div id="tc"></div>
 
 <script type="module">
-import{initializeApp,getApps}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import{getAuth,onAuthStateChanged,EmailAuthProvider,reauthenticateWithCredential}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,collection,query,where,getDocs,onSnapshot,serverTimestamp,writeBatch}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const ZCFG={apiKey:"AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",authDomain:"zenda-app-fe1c2.firebaseapp.com",projectId:"zenda-app-fe1c2",storageBucket:"zenda-app-fe1c2.appspot.com",messagingSenderId:"764717910838",appId:"1:764717910838:web:18a9ac7772ba91f4928197"};
 const zA=getApps().find(a=>a.name==='[DEFAULT]')||initializeApp(ZCFG);
 const auth=getAuth(zA),db=getFirestore(zA);
-const uid=new URLSearchParams(location.search).get('uid');
 const syncEl=document.getElementById('syncEl');
 
 let CU=null,WHs=[],prods=[],curWH=null,curProd=null,eType='IN',entToDelete=null;
-let selUnit=null; // currently selected entry unit
+let selUnit=null;
 
 const ICONS=['<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 22V11L12 2l11 9v11"/><path d="M9 22v-4h6v4"/></svg>'];
 const CATS={general:'General',cold:'Cold Storage',retail:'Retail',distribution:'Distribution',raw:'Raw Materials',finished:'Finished Goods'};
 
 // ══ INIT ══
 async function init(){
-  if(!uid){syncEl.textContent='No user';syncEl.className='sync-err';return;}
-  // Wait for existing Zenda auth session
-  const authUser=await new Promise(r=>{
-    const unsub=onAuthStateChanged(auth,u=>{unsub();r(u);});
-    setTimeout(()=>r(null),6000);
-  });
-  if(!authUser){syncEl.textContent='Not signed in — open from Zenda';syncEl.className='sync-err';return;}
+  const urlUid = new URLSearchParams(location.search).get('uid');
+  const rawSession = sessionStorage.getItem('zenda_user');
+  const sessionUser = rawSession ? JSON.parse(rawSession) : null;
 
-  // Load user doc — use uid from URL (the Zenda user)
-  try{
-    const uSnap=await getDoc(doc(db,'users',uid));
-    if(uSnap.exists()){
-      CU={uid,...uSnap.data()};
-    } else {
-      // Fallback: use auth user info
-      CU={uid,role:'owner',companyId:uid,name:authUser.displayName||authUser.email||'Owner',email:authUser.email};
-    }
-  }catch(e){
-    CU={uid,role:'owner',companyId:uid,name:authUser.displayName||'Owner',email:authUser.email};
+  const authUser = await new Promise(r=>{
+    const unsub = onAuthStateChanged(auth, u=>{ unsub(); r(u); });
+    setTimeout(()=>r(null), 4000); 
+  });
+
+  const activeUid = urlUid || (sessionUser ? sessionUser.uid : null) || (authUser ? authUser.uid : null);
+
+  if(!activeUid){
+    syncEl.textContent='Not signed in'; syncEl.className='sync-err';
+    return;
   }
-  // Ensure companyId is set
-  if(!CU.companyId) CU.companyId=uid;
+
+  try {
+    const uSnap=await getDoc(doc(db,'users',activeUid));
+    if(uSnap.exists()){
+      CU={uid:activeUid,...uSnap.data()};
+    } else if (sessionUser) {
+      CU = sessionUser;
+    } else {
+      CU={uid:activeUid,role:'owner',companyId:activeUid,name:authUser?.displayName||'Owner',email:authUser?.email};
+    }
+  } catch(e) {
+    CU = sessionUser || {uid:activeUid,role:'owner',companyId:activeUid,name:'Owner'};
+  }
+  
+  if(!CU.companyId) CU.companyId = activeUid;
 
   syncEl.textContent='✓ Connected';syncEl.className='sync-ok';
   const canM=CU.role==='owner'||CU.role==='manager';
   if(!canM) document.getElementById('addWhRow').style.display='none';
   document.getElementById('ctaBtn').classList.remove('hidden');
+  
   showView('dash');
   loadWHs();
   listenTodayEntries();
@@ -576,14 +584,13 @@ function showView(v){
 function setTopbar(title,cta,action){
   document.getElementById('pgTitle').textContent=title;
   document.getElementById('ctaLbl').textContent=cta;
-  document.getElementById('backLbl').textContent=v==='dash'?'Back':v==='wh'?'Warehouses':'Products';
+  document.getElementById('backLbl').textContent=action==='wh'?'Back':action==='prod'?'Warehouses':'Products';
   window._ctaAction=action;
 }
-// Fix setTopbar to use parameter properly
 window.goBack=function(){
   const active=document.querySelector('.view.active')?.id;
-  if(active==='v-prod'){showView('wh');document.getElementById('backLbl').textContent='Warehouses';}
-  else if(active==='v-wh'){showView('dash');document.getElementById('backLbl').textContent='Back';}
+  if(active==='v-prod'){showView('wh');}
+  else if(active==='v-wh'){showView('dash');}
   else window.close();
 };
 window.ctaClick=function(){
@@ -596,7 +603,7 @@ window.ctaClick=function(){
 // ══ LOAD WAREHOUSES ══
 function loadWHs(){
   const cid=CU.companyId;
-  // Simple query — just get by companyId
+  if(!cid) return;
   const q=query(collection(db,'godowns'),where('companyId','==',cid));
   onSnapshot(q,snap=>{
     WHs=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -606,7 +613,7 @@ function loadWHs(){
     loadDashStats();
   },err=>{
     console.error('godowns query error:',err.code,err.message);
-    syncEl.textContent='Rules error — update Firestore rules';syncEl.className='sync-err';
+    syncEl.textContent='Sync Error';syncEl.className='sync-err';
   });
 }
 
@@ -622,11 +629,10 @@ function renderWHs(){
     row.className='whr';
     row.innerHTML=`<div class="whr-ico">${ICONS[i%ICONS.length]}</div>
     <div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div>
-    <div class="whr-meta"><span class="wh-tag">${esc(CATS[wh.category]||wh.category||'Warehouse')}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div>${canM?`<button class="del-btn-sm" onclick="event.stopPropagation();prepDelWH('${wh.id}','${esc(wh.name)}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:''}</div>
+    <div class="whr-meta"><span class="wh-tag">${esc(CATS[wh.category]||wh.category||'Warehouse')}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div>${canM?`<button class="del-btn-sm" onclick="event.stopPropagation();prepDelWH('${wh.id}','${esc(wh.name).replace(/'/g, "\\'")}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:''}</div>
     <div class="wh-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
     row.onclick=()=>openWH(wh);
     list.appendChild(row);
-    // load product count + health dot
     getDocs(query(collection(db,'products'),where('godownId','==',wh.id))).then(ps=>{
       const c=document.getElementById(`wc-${wh.id}`);
       const h=document.getElementById(`hd-${wh.id}`);
@@ -647,13 +653,12 @@ window.openWH=async function(wh){
   document.getElementById('btnAddProd').classList.toggle('hidden',!canM);
   document.getElementById('pSrch').value='';
   showView('wh');
-  document.getElementById('pgTitle').textContent=wh.name;
-  document.getElementById('backLbl').textContent='Warehouses';
   await loadProds(wh.id);
   loadWHStats(wh.id);
 };
 
 async function loadWHStats(whId){
+  if(!whId) return;
   const today=new Date();today.setHours(0,0,0,0);
   try{
     const snap=await getDocs(query(collection(db,'entries'),where('godownId','==',whId)));
@@ -661,11 +666,12 @@ async function loadWHStats(whId){
     const todays=all.filter(e=>{const ts=e.createdAt?.toDate?e.createdAt.toDate():new Date(e.createdAt||0);return ts>=today;});
     document.getElementById('wssI').textContent=todays.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
     document.getElementById('wssO').textContent=todays.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
-  }catch(e){console.warn('WH stats:',e.message);}
+  }catch(e){}
 }
 
 // ══ PRODUCTS ══
 async function loadProds(whId){
+  if(!whId) return;
   document.getElementById('prodList').innerHTML='<div style="text-align:center;padding:28px;color:#9CA3AF;font-size:13px">Loading…</div>';
   try{
     const snap=await getDocs(query(collection(db,'products'),where('godownId','==',whId)));
@@ -673,8 +679,7 @@ async function loadProds(whId){
     document.getElementById('wssP').textContent=prods.length;
     renderProds(prods);
   }catch(e){
-    console.error('loadProds:',e.code,e.message);
-    document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:#EF4444;font-size:13px">Error loading products: ${e.message}</div>`;
+    document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:#EF4444;font-size:13px">Error loading products.</div>`;
   }
 }
 
@@ -713,8 +718,6 @@ window.openProd=async function(pId){
   document.getElementById('pdUnit').textContent=(p.unit||'units')+' in stock';
   document.getElementById('pdMin').textContent=p.minStock!=null?p.minStock:'—';
   document.getElementById('pdChips').innerHTML=[p.desc?null:`<span class="pd-chip">${p.unit||'units'}</span>`].filter(Boolean).join('');
-  document.getElementById('pgTitle').textContent=p.name;
-  document.getElementById('backLbl').textContent='Products';
   showView('prod');
   renderConversions(p);
   await loadEntries(pId);
@@ -744,7 +747,7 @@ async function loadEntries(pId){
     document.getElementById('eList').innerHTML=entries.map(e=>{
       const canDel=!e.deleted&&(CU.role==='owner'||(e.createdBy===CU.uid));
       const delBtn=canDel?`<button class="e-del-btn" onclick="event.stopPropagation();prepDelEntry('${e.id}')" title="Delete entry"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`:'';
-      const displayQty=e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty} ${e.entryUnit} (=${e.qtyBase||e.qty} ${curProd.unit||'units'})`:`${e.qty} ${e.unit||curProd.unit||'units'}`;
+      
       if(e.deleted){
         return `<div class="erow del-row" onclick="viewDelReason('${e.id}')">
           <div class="e-ind e-del-ind"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/></svg></div>
@@ -757,14 +760,21 @@ async function loadEntries(pId){
         </div>`;
       }
       return `<div class="erow">
-        <div class="e-ind ${e.type==='IN'?'e-in':'e-out'}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${e.type==='IN'?'#059669':'#EF4444'}" stroke-width="2.5" stroke-linecap="round">${e.type==='IN'?'<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>':'<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>'}</svg></div>
+        <div class="e-ind ${e.type==='IN'?'e-in': e.type==='OUT'?'e-out':'e-del-ind'}">
+          ${e.type==='IN'?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
+          : e.type==='OUT'?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'
+          : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'}
+        </div>
         <div class="e-body">
           <div class="e-who">${esc(e.who||'Unknown')}</div>
           ${e.note?`<div class="e-note">${esc(e.note)}</div>`:''}
           <div class="e-time">${ago(e.createdAt)}</div>
         </div>
         <div class="e-right">
-          <div class="e-qty-wrap"><span class="e-qty ${e.type==='IN'?'e-qi':'e-qo'}">${e.type==='IN'?'+':'-'}${e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty} ${e.entryUnit}`:e.qty}</span><span class="e-unit">${esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units')}</span></div>
+          <div class="e-qty-wrap">
+            <span class="e-qty ${e.type==='IN'?'e-qi':e.type==='OUT'?'e-qo':''}">${e.type==='IN'?'+':e.type==='OUT'?'-':''}${e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty} ${e.entryUnit}`:e.qty}</span>
+            <span class="e-unit">${esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units')}</span>
+          </div>
           ${delBtn}
         </div>
       </div>`;
@@ -776,7 +786,6 @@ async function loadEntries(pId){
 
 // ══ VIEW DELETE REASON ══
 window.viewDelReason=async function(entId){
-  // find in current entries — reload if needed
   try{
     const snap=await getDoc(doc(db,'entries',entId));
     if(!snap.exists())return;
@@ -784,7 +793,7 @@ window.viewDelReason=async function(entId){
     document.getElementById('drDeletedBy').textContent=e.deletedByName||'Unknown';
     document.getElementById('drReason').textContent=e.deleteReason||'No reason provided.';
     document.getElementById('drTime').textContent='Deleted: '+ago(e.deletedAt);
-    document.getElementById('delReasonSub').textContent=`${e.type==='IN'?'IN':'OUT'} entry of ${e.qty} ${e.unit||''} by ${e.who||'—'} — ${ago(e.createdAt)}`;
+    document.getElementById('delReasonSub').textContent=`${e.type} entry of ${e.qty} ${e.unit||''} by ${e.who||'—'} — ${ago(e.createdAt)}`;
     openM('m-del-reason');
   }catch(err){showToast('Could not load reason.','e');}
 };
@@ -802,7 +811,6 @@ window.openEntry=function(type){
   document.getElementById('eCurU').textContent=curProd.unit||'units';
   document.getElementById('entryMsg').textContent='';
   document.getElementById('convPreview').style.display='none';
-  // Build unit selector
   buildUnitSel();
   const btn=document.getElementById('entryBtn');
   btn.style.background=type==='IN'?'#059669':'#EF4444';
@@ -847,18 +855,17 @@ window.submitEntry=async function(){
   const note=document.getElementById('en').value.trim();
   const btn=document.getElementById('entryBtn');
   if(!qty||qty<=0){setMM('entryMsg','⚠ Enter a valid quantity.','err');return;}
-  // Calculate base quantity (in product's base unit)
+  
   const conv=curProd.conversions?.find(c=>c.name===selUnit);
   const qtyBase=conv?qty*conv.ratio:qty;
   const entryUnit=selUnit||curProd.unit||'units';
+  
   if(eType==='OUT'&&qtyBase>(curProd.stock||0)){setMM('entryMsg',`⚠ Cannot remove ${qtyBase} — only ${curProd.stock||0} ${curProd.unit||'units'} in stock.`,'err');return;}
   btn.disabled=true;btn.textContent='Adding…';
   try{
     const cid=CU.companyId;
     const newStock=eType==='IN'?(curProd.stock||0)+qtyBase:(curProd.stock||0)-qtyBase;
-    // Update product stock
     await updateDoc(doc(db,'products',curProd.id),{stock:newStock});
-    // Add entry
     await addDoc(collection(db,'entries'),{
       type:eType,qty,qtyBase,unit:entryUnit,entryUnit,note,
       productId:curProd.id,productName:curProd.name,
@@ -884,7 +891,6 @@ window.prepDelEntry=function(entId){
   document.getElementById('wordCount').textContent='0 words (min 10)';
   document.getElementById('wordCount').className='word-count warn';
   document.getElementById('delEntMsg').textContent='';
-  document.getElementById('delEntSub').textContent='This entry will be marked as deleted.';
   openM('m-del-entry');
 };
 
@@ -904,16 +910,20 @@ window.confirmDelEntry=async function(){
   const btn=document.getElementById('delEntBtn');
   btn.disabled=true;btn.textContent='Deleting…';
   try{
-    // Build delete message
     const snap=await getDoc(doc(db,'entries',entToDelete));
     const e=snap.data();
     let msg;
     const isOwn=e.createdBy===CU.uid;
+    const amt = `${e.qty} ${e.entryUnit || e.unit || ''}`.trim();
+    const prod = e.productName || '';
+
     if(isOwn){
-      msg=`${CU.name} deleted their own ${e.type} entry of ${e.qty} ${e.unit||''} ${e.productName||''}.`;
+      msg=`${CU.name} deleted his own entry of ${amt} ${prod} ${e.type}`;
     } else {
-      msg=`${CU.name} (${CU.role}) deleted ${e.who||'staff'}'s ${e.type} entry of ${e.qty} ${e.unit||''} ${e.productName||''}.`;
+      const roleLabel = CU.role.charAt(0).toUpperCase() + CU.role.slice(1);
+      msg=`${roleLabel} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${prod} ${e.type}`;
     }
+
     await updateDoc(doc(db,'entries',entToDelete),{
       deleted:true,
       deleteReason:reason,
@@ -924,11 +934,13 @@ window.confirmDelEntry=async function(){
     });
     closeM('m-del-entry');
     await loadEntries(curProd.id);
-    // Recalculate stock
+    
+    // Recalculate stock accurately using base quantity
     const allSnap=await getDocs(query(collection(db,'entries'),where('productId','==',curProd.id)));
     const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted);
     const newStock=activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0);
     const corrected=Math.max(0,newStock);
+    
     await updateDoc(doc(db,'products',curProd.id),{stock:corrected});
     curProd.stock=corrected;
     document.getElementById('pdStock').textContent=corrected;
@@ -960,9 +972,14 @@ window.addProduct=async function(){
   const minRaw=document.getElementById('pmin').value;
   const minStock=minRaw!==''?parseFloat(minRaw):undefined;
   if(!name){setMM('prodMsg','⚠ Enter a product name.','err');return;}
-  // Gather conversions
-  const convs=getConvRowData('convRows');
-  if(convs===null){setMM('prodMsg','⚠ Check conversion values — ratio must be a positive number.','err');return;}
+  
+  let convs=[];
+  if (document.getElementById('convBuilder').style.display === 'block') {
+    convs=getConvRowData('convRows');
+    if(convs===null){setMM('prodMsg','⚠ Check conversion values — ratio must be a positive number.','err');return;}
+    if(convs.length===0){setMM('prodMsg','⚠ Add at least 1 conversion or close the conversions panel.','err');return;}
+  }
+
   setMM('prodMsg','Adding…','');
   try{
     const cid=CU.companyId;
@@ -1002,7 +1019,6 @@ window.saveProductName=async function(){
   try{
     const oldName=curProd.name;
     await updateDoc(doc(db,'products',curProd.id),{name:newName});
-    // Log the change as an activity entry
     await addDoc(collection(db,'entries'),{
       type:'LOG',qty:0,qtyBase:0,unit:'',entryUnit:'',
       note:`${CU.name} changed product name from "${oldName}" to "${newName}"`,
@@ -1013,8 +1029,6 @@ window.saveProductName=async function(){
     });
     curProd.name=newName;
     document.getElementById('pdName').textContent=newName;
-    document.getElementById('pgTitle').textContent=newName;
-    // update in prods list
     const idx=prods.findIndex(p=>p.id===curProd.id);
     if(idx>-1)prods[idx].name=newName;
     closeM('m-edit-name');
@@ -1045,6 +1059,7 @@ function appendEditConvRow(container,name,ratio){
 window.saveConversions=async function(){
   const convs=getConvRowData('editConvRows');
   if(convs===null){setMM('editConvMsg','⚠ Check values — ratio must be a positive number.','err');return;}
+  if(convs.length===0){setMM('editConvMsg','⚠ Add at least 1 conversion to save.','err');return;}
   try{
     await updateDoc(doc(db,'products',curProd.id),{conversions:convs});
     curProd.conversions=convs;
@@ -1061,14 +1076,14 @@ function getConvRowData(containerId){
     const inputs=row.querySelectorAll('input');
     const name=inputs[0].value.trim();
     const ratio=parseFloat(inputs[1].value);
-    if(!name&&!inputs[1].value)continue; // empty row — skip
-    if(!name||isNaN(ratio)||ratio<=0)return null; // invalid
+    if(!name&&!inputs[1].value)continue; 
+    if(!name||isNaN(ratio)||ratio<=0)return null; 
     convs.push({name,ratio});
   }
   return convs;
 }
 
-// ══ CONV BUILDER (add product modal) ══
+// ══ CONV BUILDER ══
 window.toggleConvBuilder=function(){
   const el=document.getElementById('convBuilder');
   const arrow=document.getElementById('convArrow');
@@ -1114,6 +1129,10 @@ window.createWH=async function(){
 
 // ══ DELETE WAREHOUSE ══
 window.prepDelWH=function(whId,whName){
+  if (CU.role !== 'owner' && CU.role !== 'manager') {
+     showToast('Only Owner/Manager can delete warehouses.', 'e');
+     return;
+  }
   window._delWhId=whId;
   document.getElementById('delWhSub').textContent=`Delete "${whName}"? All products and history will be lost forever.`;
   document.getElementById('delWhPw').value='';
@@ -1158,6 +1177,7 @@ window.confirmDelWH=async function(){
 // ══ STATS ══
 async function loadDashStats(){
   const cid=CU.companyId;
+  if(!cid) return;
   try{
     const snap=await getDocs(query(collection(db,'products'),where('companyId','==',cid)));
     const prods=snap.docs.map(d=>d.data());
@@ -1166,10 +1186,11 @@ async function loadDashStats(){
     document.getElementById('sLow').textContent=low.length;
     if(low.length){document.getElementById('lowAlert').classList.add('show');document.getElementById('lowTxt').textContent=`${low.length} product${low.length>1?'s':''} running low: ${low.slice(0,3).map(p=>p.name).join(', ')}${low.length>3?'…':''}`;}
     else document.getElementById('lowAlert').classList.remove('show');
-  }catch(e){console.warn('dash stats:',e.message);}
+  }catch(e){}
 }
 function listenTodayEntries(){
   const cid=CU.companyId;
+  if(!cid) return;
   const today=new Date();today.setHours(0,0,0,0);
   onSnapshot(query(collection(db,'entries'),where('companyId','==',cid)),snap=>{
     const count=snap.docs.filter(d=>{
@@ -1188,77 +1209,6 @@ function esc(s=''){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').r
 function setMM(id,msg,type){const el=document.getElementById(id);if(!el)return;el.textContent=msg;el.className='mmsg'+(type==='err'?' err':'');}
 
 init();
-</script>
-
-<script>
-/* NON-MODULE HELPERS */
-function openM(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
-function closeM(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
-document.addEventListener('DOMContentLoaded',()=>{
-  document.querySelectorAll('.mo').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeM(o.id);}));
-});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.mo.open').forEach(m=>closeM(m.id));});
-
-function toggleCat(v){
-  const el=document.getElementById('wcc');
-  el.classList.toggle('show',v==='other');
-  if(v==='other')setTimeout(()=>el.focus(),80);
-}
-
-function showToast(msg,type){
-  const c=document.getElementById('tc');
-  const t=document.createElement('div');
-  t.className='toast'+(type==='s'?' s':type==='e'?' e':'');
-  t.textContent=msg;
-  c.appendChild(t);
-  setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),220);},3200);
-}
-window.showToast=showToast;
-
-/* AI EMOJI ENGINE */
-const EM={rice:'🍚',wheat:'🌾',flour:'🌾',maize:'🌽',corn:'🌽',sugar:'🧂',salt:'🧂',oil:'🫙',ghee:'🫙',butter:'🧈',milk:'🥛',cheese:'🧀',egg:'🥚',eggs:'🥚',meat:'🥩',chicken:'🍗',fish:'🐟',potato:'🥔',onion:'🧅',tomato:'🍅',garlic:'🧄',spinach:'🥬',vegetable:'🥦',fruit:'🍎',apple:'🍎',banana:'🍌',mango:'🥭',tea:'🍵',coffee:'☕',spice:'🌶️',pepper:'🌶️',turmeric:'🌿',dal:'🫘',lentil:'🫘',pulse:'🫘',bread:'🍞',biscuit:'🍪',chocolate:'🍫',candy:'🍬',juice:'🧃',water:'💧',soda:'🥤',sauce:'🫙',pickle:'🫙',cement:'🪨',sand:'🪨',brick:'🧱',steel:'🔩',iron:'🔧',wire:'🪡',pipe:'🔩',rod:'🔩',nut:'🔩',bolt:'🔩',screw:'🪛',nail:'📌',paint:'🎨',tile:'🟫',wood:'🪵',timber:'🪵',plywood:'🪵',glass:'🪟',door:'🚪',lock:'🔒',cloth:'🧵',fabric:'🧵',thread:'🧵',cotton:'🧶',silk:'🧶',wool:'🧶',shirt:'👕',pant:'👖',dress:'👗',shoe:'👟',bag:'👜',bulb:'💡',fan:'🌀',motor:'⚙️',battery:'🔋',charger:'🔌',phone:'📱',laptop:'💻',tv:'📺',box:'📦',carton:'📦',packet:'📦',tape:'📎',rope:'🪢',petrol:'⛽',diesel:'⛽',fuel:'⛽',tyre:'🛞',tire:'🛞',wheel:'🛞',engine:'⚙️',medicine:'💊',tablet:'💊',syrup:'🧪',cream:'🧴',soap:'🧼',detergent:'🧴',chemical:'🧪',fertilizer:'🌱',pesticide:'🧪',seed:'🌱',pen:'✏️',pencil:'✏️',paper:'📄',notebook:'📒',hammer:'🔨',wrench:'🔧',drill:'🪚',saw:'🪚',knife:'🔪',shovel:'🪣',bucket:'🪣',chair:'🪑',table:'🪑',bed:'🛏️',gold:'💍',silver:'🥈',diamond:'💎'};
-window._aiEmoji='📦';
-window._emojiTimer=null;
-
-window.scheduleEmoji=function(name){
-  clearTimeout(window._emojiTimer);
-  if(!name||name.length<2){document.getElementById('aiPrev').classList.remove('show');window._aiEmoji='📦';return;}
-  const lower=name.toLowerCase().replace(/[^a-z0-9 ]/g,'');
-  const words=lower.split(/\s+/);
-  let found=null;
-  for(const w of words){if(EM[w]){found=EM[w];break;}}
-  if(!found){for(const w of words){for(const[k,v]of Object.entries(EM)){if(w.includes(k)||k.includes(w)){found=v;break;}}if(found)break;}}
-  if(found){window._aiEmoji=found;showEmojiPrev(found,name);return;}
-  document.getElementById('aiPrev').classList.add('show');
-  document.getElementById('aiPrevIco').textContent='⏳';
-  document.getElementById('aiPrevTxt').textContent='AI thinking…';
-  window._emojiTimer=setTimeout(()=>callEmojiAI(name),800);
-};
-function showEmojiPrev(emoji,name){
-  document.getElementById('aiPrev').classList.add('show');
-  document.getElementById('aiPrevIco').textContent=emoji;
-  document.getElementById('aiPrevTxt').textContent=`"${name.split(' ').slice(0,3).join(' ')}"`;
-}
-async function callEmojiAI(name){
-  try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:20,messages:[{role:'user',content:`Single emoji for inventory product: "${name}". Only emoji, nothing else.`}]})});
-    const d=await r.json();
-    const e=(d.content?.[0]?.text||'📦').trim().slice(0,2);
-    window._aiEmoji=e||'📦';
-    showEmojiPrev(window._aiEmoji,name);
-  }catch(e){window._aiEmoji='📦';showEmojiPrev('📦',name);}
-}
-window.rerollEmoji=async function(){
-  const name=document.getElementById('pn').value.trim();if(!name)return;
-  document.getElementById('aiPrevIco').textContent='⏳';
-  document.getElementById('aiPrevTxt').textContent='Getting another…';
-  try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:20,messages:[{role:'user',content:`Different emoji for: "${name}". Current: ${window._aiEmoji}. Only emoji.`}]})});
-    const d=await r.json();
-    const e=(d.content?.[0]?.text||'📦').trim().slice(0,2);
-    window._aiEmoji=e||'📦';showEmojiPrev(window._aiEmoji,name);
-  }catch(e){}
-};
 </script>
 </body>
 </html>
