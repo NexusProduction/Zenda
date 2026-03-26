@@ -538,7 +538,7 @@ function setupUI() {
     document.getElementById('tab-to-me').classList.add('hidden');
     const byMe = document.getElementById('tab-by-me');
     if (byMe) byMe.classList.add('on');
-    taskTab = 'assigned-by-me';
+    taskTab = 'pending';
   }
   if (canSeeStaff) {
     document.getElementById('nav-staff').classList.remove('hidden');
@@ -553,7 +553,7 @@ function setupUI() {
     document.getElementById('charts-row').classList.remove('hidden');
     initCharts();
   }
-  document.getElementById('recent-ttl').textContent = canAssign ? 'Recently Assigned' : 'My Tasks';
+  document.getElementById('recent-ttl').textContent = canAssign ? 'Recent Tasks' : 'My Tasks';
 }
 
 function setAvatar(id, initials, color, size, dataUrl) {
@@ -584,7 +584,6 @@ function subscribeAll() {
     setBadge('notif-badge', unread);
   }));
 
-  // Fetch directly from tasks.js (No index needed if we handle it properly or if we have built it)
   unsubs.push(listenMyTasks(uid, tasks => {
     myTasks = tasks;
     const pending = tasks.filter(t => t.status === 'pending').length;
@@ -597,12 +596,14 @@ function subscribeAll() {
       updateCharts(tasks);
       renderNonOwnerStats(tasks);
     }
+    if (role === 'owner') renderOwnerStats();
   }));
 
   if (canAssign) {
     unsubs.push(listenAssignedByMe(uid, tasks => {
       assignedByMeTasks = tasks;
       if (role === 'owner') renderOwnerStats();
+      renderRecentTasks();
       renderTasksList();
     }));
   }
@@ -628,8 +629,12 @@ function subscribeAll() {
 // ──────────────────────────────────────────────
 function renderOwnerStats() {
   const staff = allStaff.filter(s => s.role !== 'owner');
-  const pending = assignedByMeTasks.filter(t => t.status === 'pending').length;
-  const done = assignedByMeTasks.filter(t => t.status === 'done').length;
+  
+  // Combine logic to get perfect calculation for Owner Dashboard
+  const allUniqueTasks = [...myTasks, ...assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+  const pending = allUniqueTasks.filter(t => t.status === 'pending').length;
+  const done = allUniqueTasks.filter(t => t.status === 'done').length;
+  
   const nb = document.getElementById('notif-badge');
   const alerts = nb ? (parseInt(nb.dataset.count || nb.textContent) || 0) : 0;
   const names = staff.slice(0, 5).map(s => `<div class="tip-row"><div class="tip-dot"></div>${esc(s.name)}</div>`).join('');
@@ -642,7 +647,7 @@ function renderOwnerStats() {
       <div class="sc-sub">Click to manage</div>
       <div class="staff-tip">${names}${more}${!staff.length ? '<div style="opacity:.4;font-size:10px">No staff yet</div>' : ''}</div>
     </div>
-    <div class="stat-card" onclick="setTaskTab('assigned-by-me',null);showView('tasks')">
+    <div class="stat-card" onclick="setTaskTab('pending',null);showView('tasks')">
       <div class="sc-ico ic-amber">${svg('clock')}</div>
       <div class="sc-val">${pending}</div>
       <div class="sc-lbl">Pending Tasks</div>
@@ -766,7 +771,12 @@ function updateCharts(tasks) {
 // ──────────────────────────────────────────────
 function renderRecentTasks() {
   const el = document.getElementById('recent-tasks');
-  const tasks = (CU.role === 'owner' ? assignedByMeTasks : myTasks).slice(0, 5);
+  // Combine logic exactly matching counters to display exactly 3 recent tasks flawlessly
+  const allUniqueTasks = [...myTasks, ...assignedByMeTasks]
+    .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+  const tasks = allUniqueTasks.slice(0, 3); // Limited to 3
   if (!tasks.length) { el.innerHTML = emptyState('No tasks yet', 'Tasks will appear here'); return; }
   el.innerHTML = tasks.map(t => renderTaskCard(t, false)).join('');
 }
@@ -800,9 +810,9 @@ function renderTasksList() {
   let tasks = [];
   if (taskTab === 'assigned-to-me') tasks = myTasks;
   else if (taskTab === 'assigned-by-me') tasks = assignedByMeTasks;
-  else if (taskTab === 'pending')  tasks = myTasks.filter(t => t.status === 'pending');
+  else if (taskTab === 'pending')  tasks = [...myTasks, ...assignedByMeTasks].filter(t => t.status === 'pending');
   else if (taskTab === 'done')     tasks = [...myTasks, ...assignedByMeTasks].filter(t => t.status === 'done');
-  else if (taskTab === 'declined') tasks = myTasks.filter(t => t.status === 'declined');
+  else if (taskTab === 'declined') tasks = [...myTasks, ...assignedByMeTasks].filter(t => t.status === 'declined');
 
   const seen = new Set();
   tasks = tasks.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
