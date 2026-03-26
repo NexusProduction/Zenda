@@ -469,7 +469,7 @@ import { sendOTP, verifyUserOTP } from './otp.js';
 let CU = null, myTasks = [], assignedByMeTasks = [], allStaff = [];
 let _profileBuilt = false;
 let newRole = 'manager', newCanvas = null, newStaffData = null;
-let editField = null, taskTab = 'assigned-to-me', staffSearchVal = '';
+let editField = null, taskTab = 'pending', staffSearchVal = '';
 let deleteTargetUid = null, deleteTargetEmail = '', deleteTargetPwd = '', deleteConfirmStr = '';
 let pendingDeclineId = null, pendingDeclineTitle = '';
 let barChart = null, donutChart = null;
@@ -1009,15 +1009,24 @@ window.markAllRead = async function() { await markAllReadFn(CU.uid); showToast('
 // ──────────────────────────────────────────────
 // STAFF MANAGEMENT
 // ──────────────────────────────────────────────
+
+// BUG FIX: Strictly define strings so it never outputs 'undefined'
 function renderStaffCards(staff) {
   const el = document.getElementById('staff-cards-list');
-  const nonOwner = staffSearchVal
-    ? staff.filter(s => s.role !== 'owner' && (s.name + s.email + s.designation).toLowerCase().includes(staffSearchVal))
+  if (!el) return;
+  const searchQ = (staffSearchVal || '').trim().toLowerCase();
+  
+  const nonOwner = searchQ
+    ? staff.filter(s => s.role !== 'owner' && (s.name + s.email + (s.designation||'')).toLowerCase().includes(searchQ))
     : staff.filter(s => s.role !== 'owner');
+    
   if (!nonOwner.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-ico">${svg('users')}</div><div class="empty-ttl">${staffSearchVal ? 'No results' : 'No staff yet'}</div><div class="empty-sub">${staffSearchVal ? 'Try another search' : 'Add your first team member'}</div></div>`;
+    const title = searchQ ? 'No results' : 'No staff yet';
+    const sub = searchQ ? 'Try another search' : 'Add your first team member';
+    el.innerHTML = `<div class="empty"><div class="empty-ico">${svg('users')}</div><div class="empty-ttl">${title}</div><div class="empty-sub">${sub}</div></div>`;
     return;
   }
+  
   el.innerHTML = nonOwner.map(s => {
     const col = avatarColor(s.name);
     const ini = getInitials(s.name);
@@ -1036,10 +1045,12 @@ function renderStaffCards(staff) {
 }
 
 window.searchStaff = function(v) {
-  staffSearchVal = v.toLowerCase();
+  staffSearchVal = (v || '').toLowerCase();
   if (!allStaff.length) {
     const el = document.getElementById('staff-cards-list');
-    if (el) el.innerHTML = `<div class="empty"><div class="empty-ico">${svg('users')}</div><div class="empty-ttl">Loading...</div></div>`;
+    const title = staffSearchVal ? 'No results' : 'No staff yet';
+    const sub = staffSearchVal ? 'Try another search' : 'Add your first team member';
+    if (el) el.innerHTML = `<div class="empty"><div class="empty-ico">${svg('users')}</div><div class="empty-ttl">${title}</div><div class="empty-sub">${sub}</div></div>`;
     return;
   }
   renderStaffCards(allStaff);
