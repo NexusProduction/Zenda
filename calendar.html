@@ -287,11 +287,9 @@ function format12hr(t) {
 async function loadAll() {
   if (!uid) { syncEl.textContent = 'Not synced'; renderCalendar(); showDayEvents(selectedDay); return; }
   try {
-    // 1. Fetch personal events directly to bypass missing index errors
+    // BYPASS INDEX ERROR: Fetching directly and sorting in JS!
     const q1 = query(collection(db, 'calendar'), where('uid', '==', uid));
     const snap1 = await getDocs(q1);
-    
-    // Sort in Javascript instead of relying on Firebase Indexing
     events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date) - new Date(b.date));
 
     if (companyId) {
@@ -300,11 +298,8 @@ async function loadAll() {
       if (userRole === 'manager') vis.push('manager');
       if (userRole === 'staff') vis.push('staff');
       
-      // 2. Fetch company events directly to bypass missing index errors
       const q2 = query(collection(db, 'calendar'), where('companyId', '==', companyId));
       const snap2 = await getDocs(q2);
-      
-      // Sort and Filter in Javascript instead of relying on Firebase Indexing
       companyEvents = snap2.docs
         .map(d => ({id: d.id, companyEvent: true, ...d.data()}))
         .filter(ev => vis.includes(ev.visibility))
