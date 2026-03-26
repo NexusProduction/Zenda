@@ -137,7 +137,6 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
 </div>
 
 <div class="cal-layout">
-  <!-- Calendar panel -->
   <div class="cal-panel">
     <div class="cal-head">
       <button class="cal-nav" onclick="nav(-1)">‹</button>
@@ -159,9 +158,7 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
     <div class="cal-grid" id="cal-grid"></div>
   </div>
 
-  <!-- Right panel -->
   <div class="cal-right">
-    <!-- Day events -->
     <div class="day-events-card">
       <div class="day-events-head">
         <div class="day-events-date" id="day-events-title">Today</div>
@@ -172,7 +169,6 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
       </div>
     </div>
 
-    <!-- Add event -->
     <div class="add-event-card">
       <div class="add-event-head">➕ Add Event</div>
       <div class="ae-form">
@@ -236,7 +232,8 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
 <div id="toast-container"></div>
 
 <script type="module">
-import { loadCalendarEvents, addCalendarEvent, deleteCalendarEvent, loadCompanyEvents } from './apps.js';
+import { db } from './firebase-config.js';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const params = new URLSearchParams(location.search);
 const uid = params.get('uid');
@@ -252,10 +249,8 @@ let selectedPrio = 'high';
 let userRole = 'staff';
 let companyId = null;
 
-// Set today's date as default
 document.getElementById('ae-date').value = dateKey(new Date());
 
-// Load user role from session
 try {
   const sess = sessionStorage.getItem('zenda_user');
   if (sess) {
@@ -265,7 +260,6 @@ try {
   }
 } catch(e){}
 
-// ── Priority selector ──
 window.setPrio = function(p) {
   selectedPrio = p;
   ['high','med','low'].forEach(x=>{
@@ -275,7 +269,6 @@ window.setPrio = function(p) {
   });
 };
 
-// ── Date helpers ──
 function dateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
@@ -291,12 +284,33 @@ function format12hr(t) {
   return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
 }
 
-// ── Load events ──
 async function loadAll() {
   if (!uid) { syncEl.textContent = 'Not synced'; renderCalendar(); showDayEvents(selectedDay); return; }
   try {
-    events = await loadCalendarEvents(uid);
-    if (companyId) companyEvents = await loadCompanyEvents(companyId, userRole);
+    // 1. Fetch personal events directly to bypass missing index errors
+    const q1 = query(collection(db, 'calendar'), where('uid', '==', uid));
+    const snap1 = await getDocs(q1);
+    
+    // Sort in Javascript instead of relying on Firebase Indexing
+    events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+    if (companyId) {
+      let vis = ['all'];
+      if (userRole === 'owner') vis.push('owner', 'manager');
+      if (userRole === 'manager') vis.push('manager');
+      if (userRole === 'staff') vis.push('staff');
+      
+      // 2. Fetch company events directly to bypass missing index errors
+      const q2 = query(collection(db, 'calendar'), where('companyId', '==', companyId));
+      const snap2 = await getDocs(q2);
+      
+      // Sort and Filter in Javascript instead of relying on Firebase Indexing
+      companyEvents = snap2.docs
+        .map(d => ({id: d.id, companyEvent: true, ...d.data()}))
+        .filter(ev => vis.includes(ev.visibility))
+        .sort((a,b) => new Date(a.date) - new Date(b.date));
+    }
+
     syncEl.textContent = '✓ Synced';
     renderCalendar();
     showDayEvents(selectedDay);
@@ -304,7 +318,6 @@ async function loadAll() {
 }
 
 function getAllEvents() {
-  // Merge personal + company events, deduplicate by id
   const seen = new Set();
   const all = [...events, ...companyEvents].filter(e=>{
     if(seen.has(e.id)) return false;
@@ -313,7 +326,6 @@ function getAllEvents() {
   return all;
 }
 
-// ── Render calendar ──
 function renderCalendar() {
   const y=curDate.getFullYear(), m=curDate.getMonth();
   document.getElementById('cal-month').textContent = MONTHS[m];
@@ -327,12 +339,10 @@ function renderCalendar() {
   const grid = document.getElementById('cal-grid');
   let html = '';
 
-  // Prev month days
   for(let i=firstDay-1;i>=0;i--) {
     html += `<div class="cal-day empty other-month"><div class="cal-date">${prevDays-i}</div></div>`;
   }
 
-  // Current month
   for(let day=1;day<=daysInMonth;day++) {
     const d = new Date(y,m,day);
     const key = dateKey(d);
@@ -341,7 +351,6 @@ function renderCalendar() {
     const selCls = isSameDay(d,selectedDay) ? ' selected' : '';
     const hasCls = dayEvs.length ? ' has-events' : '';
 
-    // Show up to 2 event pills
     const pills = dayEvs.slice(0,2).map(ev=>{
       const pillCls = `pill-${ev.type==='task'?'task':ev.priority||'low'}`;
       const label = ev.time ? format12hr(ev.time)+' '+ev.title : ev.title;
@@ -355,7 +364,6 @@ function renderCalendar() {
     </div>`;
   }
 
-  // Next month filler
   const total = firstDay + daysInMonth;
   const rows = Math.ceil(total/7);
   const cells = rows*7;
@@ -366,7 +374,6 @@ function renderCalendar() {
   grid.innerHTML = html;
 }
 
-// ── Select day ──
 window.selectDay = function(y,m,day) {
   selectedDay = new Date(y,m,day);
   document.getElementById('ae-date').value = dateKey(selectedDay);
@@ -385,7 +392,6 @@ window.nav = function(dir) {
   renderCalendar();
 };
 
-// ── Show day events ──
 function showDayEvents(d) {
   const key = dateKey(d);
   const allEvs = getAllEvents();
@@ -407,7 +413,7 @@ function showDayEvents(d) {
   list.innerHTML = dayEvs.map(ev=>{
     const cls = ev.type==='task'?'task':(ev.priority||'low');
     const vis = ev.visibility && ev.visibility!=='self' ? visLabel(ev.visibility) : '';
-    const isOwn = ev.createdBy===uid || (!ev.companyEvent);
+    const isOwn = ev.uid===uid || (!ev.companyEvent);
     return `<div class="event-item ${cls}">
       <div class="event-content">
         <div class="event-title">${escHtml(ev.title)}</div>
@@ -422,7 +428,6 @@ function showDayEvents(d) {
 
 function visLabel(v){const m={all:'Everyone',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'};return m[v]||''}
 
-// ── Add event ──
 window.addEvent = async function() {
   const title = document.getElementById('ae-title').value.trim();
   const date  = document.getElementById('ae-date').value;
@@ -436,9 +441,11 @@ window.addEvent = async function() {
   btn.disabled=true; btn.textContent='Adding...';
 
   try {
-    const newEv = { title, date, time, priority:selectedPrio, visibility:vis, type:'event', companyId };
+    const newEv = { title, date, time, priority:selectedPrio, visibility:vis, type:'event', companyId, uid };
     if(uid) {
-      events = await addCalendarEvent(uid, newEv);
+      const ref = await addDoc(collection(db, 'calendar'), newEv);
+      newEv.id = ref.id;
+      events.push(newEv);
       syncEl.textContent='✓ Synced';
     } else {
       newEv.id=Date.now().toString();
@@ -448,7 +455,7 @@ window.addEvent = async function() {
     document.getElementById('ae-time').value='';
     setPrio('high');
     renderCalendar();
-    // Select the new event's day
+    
     const [yyyy,mm,dd] = date.split('-').map(Number);
     selectedDay = new Date(yyyy,mm-1,dd);
     showDayEvents(selectedDay);
@@ -458,17 +465,19 @@ window.addEvent = async function() {
   finally { btn.disabled=false; btn.textContent='Add Event'; }
 };
 
-// ── Delete event ──
 window.delEvent = async function(id) {
   try {
-    if(uid) { events=await deleteCalendarEvent(uid,id); syncEl.textContent='✓ Synced'; }
+    if(uid) { 
+      await deleteDoc(doc(db, 'calendar', id));
+      events = events.filter(e => e.id !== id);
+      syncEl.textContent='✓ Synced'; 
+    }
     else events=events.filter(e=>e.id!==id);
     renderCalendar(); showDayEvents(selectedDay);
     toast('Event deleted.','info');
   }catch(e){toast('Error: '+e.message,'error');}
 };
 
-// ── Toast ──
 function toast(msg, type='info') {
   let c=document.getElementById('toast-container');
   const t=document.createElement('div');
