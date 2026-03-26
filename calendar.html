@@ -130,10 +130,10 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
 
 <div class="cal-appbar">
   <div class="cal-appbar-left">
-    <button class="cal-back" onclick="window.close()">←</button>
+    <button class="cal-back" onclick="window.history.length > 1 ? window.history.back() : window.close()">←</button>
     <div class="cal-appbar-title"><div class="cal-appbar-icon">📅</div>Calendar</div>
   </div>
-  <div class="cal-sync" id="sync-status">Connecting...</div>
+  <div class="cal-sync" id="sync-status" style="color:#F59E0B">Connecting...</div>
 </div>
 
 <div class="cal-layout">
@@ -259,15 +259,20 @@ let selectedDay = new Date();
 let selectedPrio = 'high';
 let CU = { uid: null, role: 'staff', companyId: null };
 
+// ── RENDER UI IMMEDIATELY (DECOUPLED FROM FIREBASE) ──
 document.getElementById('ae-date').value = dateKey(new Date());
+renderCalendar();
+showDayEvents(selectedDay);
 
-// Make absolutely sure functions are attached to the global window
+// Make functions attached to global window
 window.setPrio = function(p) {
   selectedPrio = p;
   ['high','med','low'].forEach(x => {
     const btn = document.getElementById('prio-' + x);
-    btn.className = 'prio-btn';
-    if(x === p) btn.classList.add('selected-' + x);
+    if(btn) {
+      btn.className = 'prio-btn';
+      if(x === p) btn.classList.add('selected-' + x);
+    }
   });
 };
 
@@ -286,46 +291,56 @@ function format12hr(t) {
   return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
 }
 
+// Ensure the UI never freezes by catching unexpected session errors
 async function init() {
-  const urlUid = new URLSearchParams(location.search).get('uid');
-  const rawSession = sessionStorage.getItem('zenda_user');
-  const sessionUser = rawSession ? JSON.parse(rawSession) : null;
-
-  const authUser = await new Promise(r => {
-    const unsub = onAuthStateChanged(auth, u => { unsub(); r(u); });
-    setTimeout(() => r(null), 3000); 
-  });
-
-  const activeUid = urlUid || (sessionUser ? sessionUser.uid : null) || (authUser ? authUser.uid : null);
-  
-  if (!activeUid) {
-    syncEl.textContent = 'Offline Mode';
-    syncEl.style.color = '#9CA3AF';
-    renderCalendar();
-    showDayEvents(selectedDay);
-    return;
-  }
-
-  CU.uid = activeUid;
-  
-  // Safely fetch full company profile to ensure companyEvents load
   try {
-    const uSnap = await getDoc(doc(db, 'users', activeUid));
-    if (uSnap.exists()) {
-      CU.role = uSnap.data().role || 'staff';
-      CU.companyId = uSnap.data().companyId || activeUid;
-    } else if (sessionUser) {
-      CU.role = sessionUser.role || 'staff';
-      CU.companyId = sessionUser.companyId || null;
+    let activeUid = new URLSearchParams(location.search).get('uid');
+    
+    if (!activeUid) {
+      try {
+        const rawSession = sessionStorage.getItem('zenda_user');
+        if (rawSession) {
+          const sessionUser = JSON.parse(rawSession);
+          activeUid = sessionUser.uid;
+          CU.role = sessionUser.role || 'staff';
+          CU.companyId = sessionUser.companyId || null;
+        }
+      } catch(err) { console.warn("Session error", err); }
     }
-  } catch (e) {
-    if (sessionUser) {
-      CU.role = sessionUser.role || 'staff';
-      CU.companyId = sessionUser.companyId || null;
-    }
-  }
 
-  await loadAll();
+    if (!activeUid) {
+      // Fallback to Firebase Auth
+      const authUser = await new Promise(r => {
+        const unsub = onAuthStateChanged(auth, u => { unsub(); r(u); });
+        setTimeout(() => r(null), 3000); 
+      });
+      if(authUser) activeUid = authUser.uid;
+    }
+    
+    if (!activeUid) {
+      syncEl.textContent = 'Offline Mode';
+      syncEl.style.color = '#9CA3AF';
+      return;
+    }
+
+    CU.uid = activeUid;
+    
+    // Safely fetch full company profile to ensure companyEvents load
+    try {
+      const uSnap = await getDoc(doc(db, 'users', activeUid));
+      if (uSnap.exists()) {
+        CU.role = uSnap.data().role || 'staff';
+        CU.companyId = uSnap.data().companyId || activeUid;
+      }
+    } catch (e) { console.warn("DB Fetch Error", e); }
+
+    await loadAll();
+
+  } catch(fatalErr) {
+    console.error("Fatal Calendar Init Error:", fatalErr);
+    syncEl.textContent = 'Offline Mode';
+    syncEl.style.color = '#EF4444';
+  }
 }
 
 async function loadAll() {
@@ -352,6 +367,8 @@ async function loadAll() {
 
     syncEl.textContent = '✓ Live';
     syncEl.style.color = '#10B981';
+    
+    // Re-render UI with data
     renderCalendar();
     showDayEvents(selectedDay);
   } catch(e) { 
@@ -521,6 +538,7 @@ window.delEvent = async function(id) {
     if(CU.uid) { 
       await deleteDoc(doc(db, 'calendar', id));
       events = events.filter(e => e.id !== id);
+      companyEvents = companyEvents.filter(e => e.id !== id);
     } else {
       events = events.filter(e => e.id !== id);
     }
