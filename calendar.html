@@ -139,14 +139,14 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
 <div class="cal-layout">
   <div class="cal-panel">
     <div class="cal-head">
-      <button class="cal-nav" onclick="nav(-1)">‹</button>
+      <button class="cal-nav" onclick="window.nav(-1)">‹</button>
       <div class="cal-head-center">
         <div class="cal-month" id="cal-month">Month Year</div>
         <div class="cal-year" id="cal-year"></div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
-        <button class="today-btn" onclick="goToday()">Today</button>
-        <button class="cal-nav" onclick="nav(1)">›</button>
+        <button class="today-btn" onclick="window.goToday()">Today</button>
+        <button class="cal-nav" onclick="window.nav(1)">›</button>
       </div>
     </div>
     <div class="cal-daynames">
@@ -208,9 +208,9 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
         <div>
           <span class="ae-label">Priority</span>
           <div class="ae-priority">
-            <button class="prio-btn selected-high" id="prio-high" onclick="setPrio('high')">🔴 High</button>
-            <button class="prio-btn" id="prio-med" onclick="setPrio('med')">🟡 Med</button>
-            <button class="prio-btn" id="prio-low" onclick="setPrio('low')">🟢 Low</button>
+            <button class="prio-btn selected-high" id="prio-high" onclick="window.setPrio('high')">🔴 High</button>
+            <button class="prio-btn" id="prio-med" onclick="window.setPrio('med')">🟡 Med</button>
+            <button class="prio-btn" id="prio-low" onclick="window.setPrio('low')">🟢 Low</button>
           </div>
         </div>
         <div id="visibility-section">
@@ -223,7 +223,7 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
             <option value="staff">💼 Staff only</option>
           </select>
         </div>
-        <button class="add-btn" id="add-event-btn" onclick="addEvent()">Add Event</button>
+        <button class="add-btn" id="add-event-btn" onclick="window.addEvent()">Add Event</button>
       </div>
     </div>
   </div>
@@ -232,10 +232,9 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
 <div id="toast-container"></div>
 
 <script type="module">
-// 1. Standalone Firebase Configuration (no local imports)
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const ZCFG = {
   apiKey: "AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",
@@ -250,7 +249,6 @@ const zA = getApps().find(a => a.name === '[DEFAULT]') || initializeApp(ZCFG);
 const auth = getAuth(zA);
 const db = getFirestore(zA);
 
-// 2. App Logic
 const syncEl = document.getElementById('sync-status');
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -263,6 +261,7 @@ let CU = { uid: null, role: 'staff', companyId: null };
 
 document.getElementById('ae-date').value = dateKey(new Date());
 
+// Make absolutely sure functions are attached to the global window
 window.setPrio = function(p) {
   selectedPrio = p;
   ['high','med','low'].forEach(x => {
@@ -288,7 +287,6 @@ function format12hr(t) {
 }
 
 async function init() {
-  // Get URL param or Session Storage fallback
   const urlUid = new URLSearchParams(location.search).get('uid');
   const rawSession = sessionStorage.getItem('zenda_user');
   const sessionUser = rawSession ? JSON.parse(rawSession) : null;
@@ -309,9 +307,22 @@ async function init() {
   }
 
   CU.uid = activeUid;
-  if (sessionUser) {
-    CU.role = sessionUser.role || 'staff';
-    CU.companyId = sessionUser.companyId || null;
+  
+  // Safely fetch full company profile to ensure companyEvents load
+  try {
+    const uSnap = await getDoc(doc(db, 'users', activeUid));
+    if (uSnap.exists()) {
+      CU.role = uSnap.data().role || 'staff';
+      CU.companyId = uSnap.data().companyId || activeUid;
+    } else if (sessionUser) {
+      CU.role = sessionUser.role || 'staff';
+      CU.companyId = sessionUser.companyId || null;
+    }
+  } catch (e) {
+    if (sessionUser) {
+      CU.role = sessionUser.role || 'staff';
+      CU.companyId = sessionUser.companyId || null;
+    }
   }
 
   await loadAll();
@@ -319,14 +330,11 @@ async function init() {
 
 async function loadAll() {
   try {
-    // Fetch personal events directly to bypass missing index errors
     const q1 = query(collection(db, 'calendar'), where('uid', '==', CU.uid));
     const snap1 = await getDocs(q1);
     
-    // Sort in Javascript
     events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date) - new Date(b.date));
 
-    // Fetch company events
     if (CU.companyId) {
       let vis = ['all'];
       if (CU.role === 'owner') vis.push('owner', 'manager');
@@ -355,11 +363,10 @@ async function loadAll() {
 
 function getAllEvents() {
   const seen = new Set();
-  const all = [...events, ...companyEvents].filter(e => {
+  return [...events, ...companyEvents].filter(e => {
     if(seen.has(e.id)) return false;
     seen.add(e.id); return true;
   });
-  return all;
 }
 
 function renderCalendar() {
@@ -394,7 +401,7 @@ function renderCalendar() {
     }).join('');
     const more = dayEvs.length > 2 ? `<div class="cal-more-events">+${dayEvs.length-2}</div>` : '';
 
-    html += `<div class="cal-day${todayCls}${selCls}${hasCls}" onclick="selectDay(${y},${m},${day})">
+    html += `<div class="cal-day${todayCls}${selCls}${hasCls}" onclick="window.selectDay(${y},${m},${day})">
       <div class="cal-date">${day}</div>
       ${pills}${more}
     </div>`;
@@ -457,7 +464,7 @@ function showDayEvents(d) {
         ${vis ? `<div class="event-visibility">👁 ${vis}</div>` : ''}
         ${ev.type==='task' ? `<div class="event-visibility" style="color:#6366F1">📋 Task</div>` : ''}
       </div>
-      ${isOwn ? `<button class="event-del" onclick="delEvent('${ev.id}')" title="Delete">✕</button>` : ''}
+      ${isOwn ? `<button class="event-del" onclick="window.delEvent('${ev.id}')" title="Delete">✕</button>` : ''}
     </div>`;
   }).join('');
 }
@@ -477,7 +484,15 @@ window.addEvent = async function() {
   btn.disabled = true; btn.textContent = 'Adding...';
 
   try {
-    const newEv = { title, date, time, priority: selectedPrio, visibility: vis, type: 'event', companyId: CU.companyId, uid: CU.uid };
+    const newEv = { 
+      title, date, time, 
+      priority: selectedPrio, 
+      visibility: vis, 
+      type: 'event', 
+      companyId: CU.companyId || null, 
+      uid: CU.uid || null 
+    };
+    
     if (CU.uid) {
       const ref = await addDoc(collection(db, 'calendar'), newEv);
       newEv.id = ref.id;
@@ -489,7 +504,7 @@ window.addEvent = async function() {
     
     document.getElementById('ae-title').value = '';
     document.getElementById('ae-time').value = '';
-    setPrio('high');
+    window.setPrio('high');
     
     const [yyyy,mm,dd] = date.split('-').map(Number);
     selectedDay = new Date(yyyy,mm-1,dd);
