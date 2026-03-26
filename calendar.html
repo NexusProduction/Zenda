@@ -232,11 +232,11 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
 <div id="toast-container"></div>
 
 <script type="module">
+// 1. Standalone Firebase Configuration (no local imports)
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// Initialize Firebase locally to prevent module import crashes
 const ZCFG = {
   apiKey: "AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",
   authDomain: "zenda-app-fe1c2.firebaseapp.com",
@@ -245,10 +245,12 @@ const ZCFG = {
   messagingSenderId: "764717910838",
   appId: "1:764717910838:web:18a9ac7772ba91f4928197"
 };
+
 const zA = getApps().find(a => a.name === '[DEFAULT]') || initializeApp(ZCFG);
 const auth = getAuth(zA);
 const db = getFirestore(zA);
 
+// 2. App Logic
 const syncEl = document.getElementById('sync-status');
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -317,14 +319,14 @@ async function init() {
 
 async function loadAll() {
   try {
-    // 1. Fetch personal events directly to bypass missing index errors
+    // Fetch personal events directly to bypass missing index errors
     const q1 = query(collection(db, 'calendar'), where('uid', '==', CU.uid));
     const snap1 = await getDocs(q1);
     
     // Sort in Javascript
     events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date) - new Date(b.date));
 
-    // 2. Fetch company events
+    // Fetch company events
     if (CU.companyId) {
       let vis = ['all'];
       if (CU.role === 'owner') vis.push('owner', 'manager');
