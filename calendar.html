@@ -234,7 +234,7 @@ body{background:#F0FFF8;min-height:100vh;display:flex;flex-direction:column;font
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const ZCFG = {
   apiKey: "AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",
@@ -291,7 +291,7 @@ function format12hr(t) {
   return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
 }
 
-// Ensure the UI never freezes by catching unexpected session errors
+// Initialize Auth Safely
 async function init() {
   try {
     let activeUid = new URLSearchParams(location.search).get('uid');
@@ -309,7 +309,6 @@ async function init() {
     }
 
     if (!activeUid) {
-      // Fallback to Firebase Auth
       const authUser = await new Promise(r => {
         const unsub = onAuthStateChanged(auth, u => { unsub(); r(u); });
         setTimeout(() => r(null), 3000); 
@@ -325,7 +324,6 @@ async function init() {
 
     CU.uid = activeUid;
     
-    // Safely fetch full company profile to ensure companyEvents load
     try {
       const uSnap = await getDoc(doc(db, 'users', activeUid));
       if (uSnap.exists()) {
@@ -334,7 +332,7 @@ async function init() {
       }
     } catch (e) { console.warn("DB Fetch Error", e); }
 
-    await loadAll();
+    loadAllRealtime();
 
   } catch(fatalErr) {
     console.error("Fatal Calendar Init Error:", fatalErr);
@@ -343,39 +341,50 @@ async function init() {
   }
 }
 
-async function loadAll() {
-  try {
-    const q1 = query(collection(db, 'calendar'), where('uid', '==', CU.uid));
-    const snap1 = await getDocs(q1);
-    
-    events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date) - new Date(b.date));
+// Replaced static getDocs with Real-time onSnapshot listeners
+let unsubPersonal = null;
+let unsubCompany = null;
 
-    if (CU.companyId) {
-      let vis = ['all'];
-      if (CU.role === 'owner') vis.push('owner', 'manager');
-      if (CU.role === 'manager') vis.push('manager');
-      if (CU.role === 'staff') vis.push('staff');
-      
-      const q2 = query(collection(db, 'calendar'), where('companyId', '==', CU.companyId));
-      const snap2 = await getDocs(q2);
-      
+function loadAllRealtime() {
+  if (unsubPersonal) unsubPersonal();
+  if (unsubCompany) unsubCompany();
+
+  // 1. Personal Events
+  const q1 = query(collection(db, 'calendar'), where('uid', '==', CU.uid));
+  unsubPersonal = onSnapshot(q1, (snap1) => {
+    events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
+    updateCalendarUI();
+  }, (e) => {
+    syncEl.textContent = 'Sync Failed';
+    syncEl.style.color = '#EF4444';
+    console.error("Personal events error:", e);
+  });
+
+  // 2. Company Events
+  if (CU.companyId) {
+    let vis = ['all'];
+    if (CU.role === 'owner') vis.push('owner', 'manager');
+    if (CU.role === 'manager') vis.push('manager');
+    if (CU.role === 'staff') vis.push('staff');
+
+    const q2 = query(collection(db, 'calendar'), where('companyId', '==', CU.companyId));
+    unsubCompany = onSnapshot(q2, (snap2) => {
       companyEvents = snap2.docs
         .map(d => ({id: d.id, companyEvent: true, ...d.data()}))
         .filter(ev => vis.includes(ev.visibility))
-        .sort((a,b) => new Date(a.date) - new Date(b.date));
-    }
-
-    syncEl.textContent = '✓ Live';
-    syncEl.style.color = '#10B981';
-    
-    // Re-render UI with data
-    renderCalendar();
-    showDayEvents(selectedDay);
-  } catch(e) { 
-    syncEl.textContent = 'Sync Failed';
-    syncEl.style.color = '#EF4444'; 
-    console.error(e); 
+        .sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
+      updateCalendarUI();
+    }, (e) => {
+      console.warn("Company sync error", e);
+    });
   }
+}
+
+function updateCalendarUI() {
+  syncEl.textContent = '✓ Live';
+  syncEl.style.color = '#10B981';
+  renderCalendar();
+  showDayEvents(selectedDay);
 }
 
 function getAllEvents() {
@@ -511,12 +520,12 @@ window.addEvent = async function() {
     };
     
     if (CU.uid) {
-      const ref = await addDoc(collection(db, 'calendar'), newEv);
-      newEv.id = ref.id;
-      events.push(newEv);
+      await addDoc(collection(db, 'calendar'), newEv);
+      // We don't push locally anymore because onSnapshot handles the live update seamlessly!
     } else {
       newEv.id = Date.now().toString();
       events.push(newEv);
+      updateCalendarUI();
     }
     
     document.getElementById('ae-title').value = '';
@@ -525,8 +534,6 @@ window.addEvent = async function() {
     
     const [yyyy,mm,dd] = date.split('-').map(Number);
     selectedDay = new Date(yyyy,mm-1,dd);
-    renderCalendar();
-    showDayEvents(selectedDay);
     
     toast('Event added! 📅','success');
   } catch(e) { toast('Failed: '+e.message,'error'); }
@@ -537,13 +544,11 @@ window.delEvent = async function(id) {
   try {
     if(CU.uid) { 
       await deleteDoc(doc(db, 'calendar', id));
-      events = events.filter(e => e.id !== id);
-      companyEvents = companyEvents.filter(e => e.id !== id);
+      // onSnapshot listener handles removing it from the UI automatically
     } else {
       events = events.filter(e => e.id !== id);
+      updateCalendarUI();
     }
-    renderCalendar(); 
-    showDayEvents(selectedDay);
     toast('Event deleted.','success');
   } catch(e) { toast('Error: '+e.message,'error'); }
 };
@@ -559,7 +564,7 @@ function toast(msg, type='info') {
 
 function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// Start
+// Start execution
 init();
 </script>
 </body>
