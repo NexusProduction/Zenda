@@ -239,7 +239,6 @@
   </div>
   <div class="fp-body" id="profile-body-mobile"></div>
 </div>
-</div>
 
 <div class="fullpage" id="create-staff-page">
   <div class="fp-hdr">
@@ -448,13 +447,7 @@
 
 <div id="toast-container"></div>
 
-<script>
-window.searchStaff = function(v) {};
-window.clearCSErr  = function(el) {};
-</script>
-
 <script type="module">
-// ── IMPORTS MUST BE AT THE VERY TOP ──
 import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
 import { requireAuth, logout, getCurrentUser } from './auth.js';
 import { listenNotifications, markAllRead as markAllReadFn, markNotificationRead, addNotification } from './notifications.js';
@@ -466,7 +459,9 @@ import { showToast, setButtonLoading, getInitials, avatarColor, formatRole, role
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { sendOTP, verifyUserOTP } from './otp.js';
 
-// Global assignments MUST come after all imports
+// ATTACH GLOBAL STUBS SO ONINPUT HANDLERS DON'T CRASH
+window.searchStaff = function(v) {};
+window.clearCSErr  = function(el) {};
 window.copyToClipboard = copyToClipboard; 
 
 let CU = null, myTasks = [], assignedByMeTasks = [], allStaff = [];
@@ -949,7 +944,7 @@ function renderNotifPanel(items) {
     const safeId  = esc(n.id);
     const safeRelated = n.relatedId ? esc(n.relatedId) : '';
     const safeMsgRaw  = (n.message || '').replace(/'/g, "\'");
-    return `<div class="ni-item ${n.read ? '' : 'unread'}" id="ni-${safeId}" onclick="markNotifRead('${safeId}')">
+    return `<div class="ni-item ${n.read ? '' : 'unread'}" id="ni-${safeId}" onclick="window.markNotifRead('${safeId}')">
       <div class="ni-top">
         <div class="ni-ico ${cls}">${ico}</div>
         <div style="flex:1;min-width:0">
@@ -958,10 +953,10 @@ function renderNotifPanel(items) {
         </div>
       </div>
       ${showActions ? `<div class="ni-actions">
-        <button class="ni-act accept" onclick="event.stopPropagation();niAccept('${safeId}','${safeRelated}')">
+        <button class="ni-act accept" onclick="event.stopPropagation();window.niAccept('${safeId}','${safeRelated}')">
           ${svg('check')} Done
         </button>
-        <button class="ni-act decline" onclick="event.stopPropagation();niDeclineFromNotif('${safeId}','${safeRelated}','${safeMsgRaw}')">
+        <button class="ni-act decline" onclick="event.stopPropagation();window.niDeclineFromNotif('${safeId}','${safeRelated}','${safeMsgRaw}')">
           ${svg('x')} Decline
         </button>
       </div>` : ''}
@@ -1038,7 +1033,7 @@ function renderStaffCards(staff) {
         <div class="staff-meta">${esc(s.email)} · <span class="badge badge-${s.role}">${esc(s.designation || formatRole(s.role))}</span></div>
         <div class="staff-uid">${s.uniqueId || ''}</div>
       </div>
-      ${CU.role === 'owner' ? `<button class="staff-del" title="Delete" onclick="openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId||''}')">
+      ${CU.role === 'owner' ? `<button class="staff-del" title="Delete" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId||''}')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </button>` : ''}
     </div>`;
@@ -1093,7 +1088,7 @@ window.confirmDelete = async function() {
   btn.textContent = 'Deleting…'; btn.disabled = true;
   try {
     await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd);
-    closeModal('delete-modal');
+    window.closeModal('delete-modal');
     showToast('Staff member deleted.', '');
     deleteTargetUid = '';
   } catch(e) { showToast('Error: ' + e.message, 'error'); btn.textContent = 'Delete Permanently'; btn.disabled = false; }
@@ -1187,7 +1182,7 @@ window.openAssignModal = async function() {
   ['task-title','task-desc'].forEach(id => document.getElementById(id).value = '');
   ['task-date','task-time'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('assign-modal').classList.remove('hidden');
-  closeAllPanels();
+  window.closeAllPanels();
 };
 
 window.handleAssign = async function() {
@@ -1203,7 +1198,7 @@ window.handleAssign = async function() {
   try {
     const assignee = allStaff.find(s => s.uid === to);
     await assignTask({ title, description: desc, assignedTo: to, assignedToName: assignee?.name || 'Team Member', assignedBy: CU.uid, assignedByName: CU.name, companyId: CU.companyId, dueDate: date || null, dueTime: time || null });
-    closeModal('assign-modal');
+    window.closeModal('assign-modal');
     showToast(`Assigned to ${assignee?.name}!`, 'success');
   } catch(e) { showToast(e.message, 'error'); }
   setButtonLoading(btn, false, 'Assign Task →');
@@ -1224,7 +1219,7 @@ function buildProfile() {
         <div id="pf-avatar" class="av" style="width:68px;height:68px;font-size:1.5rem;font-weight:600;border-radius:14px;border:2px solid var(--bd);${avatarSrc ? '' : `background:${col}22;color:${col}`}">${avatarSrc ? `<img src="${avatarSrc}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">` : ini}</div>
         <label style="position:absolute;bottom:-4px;right:-4px;width:30px;height:30px;background:var(--ac);border:2px solid var(--bg-base);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--sh-2)" title="Change logo">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          <input type="file" id="avatar-inp" accept="image/*" style="display:none" onchange="handleAvatarChange(event)">
+          <input type="file" id="avatar-inp" accept="image/*" style="display:none" onchange="window.handleAvatarChange(event)">
         </label>
       </div>
       <div id="pf-name-display" style="font-size:15px;font-weight:600;letter-spacing:-0.02em">${esc(name)}</div>
@@ -1235,15 +1230,15 @@ function buildProfile() {
     <div style="padding:0 12px">
       <div class="pf">
         <div><div class="pf-lbl">Full Name</div><div class="pf-val" id="pf-name">${esc(name)}</div></div>
-        <button class="pf-btn" onclick="openEditModal('name')">${svg('edit')}</button>
+        <button class="pf-btn" onclick="window.openEditModal('name')">${svg('edit')}</button>
       </div>
       <div class="pf">
         <div><div class="pf-lbl">Email</div><div class="pf-val" id="pf-email">${esc(email)}</div></div>
-        <button class="pf-btn" onclick="openEditModal('email')">${svg('edit')}</button>
+        <button class="pf-btn" onclick="window.openEditModal('email')">${svg('edit')}</button>
       </div>
       <div class="pf">
         <div><div class="pf-lbl">Unique ID</div><div class="pf-code" id="pf-uid">${uniqueId}</div></div>
-        <button class="pf-btn" onclick="copyToClipboard('${uniqueId}')" title="Copy">${svg('copy')}</button>
+        <button class="pf-btn" onclick="window.copyToClipboard('${uniqueId}')" title="Copy">${svg('copy')}</button>
       </div>
       ${role !== 'owner' ? `` : ''}
       <div class="pf">
@@ -1252,7 +1247,7 @@ function buildProfile() {
     </div>
 
     <div style="padding:12px 12px 16px;border-top:1px solid var(--bd);margin-top:10px">
-      <button class="btn btn-ghost w-full" onclick="handleLogout()" style="justify-content:center;gap:7px">
+      <button class="btn btn-ghost w-full" onclick="window.handleLogout()" style="justify-content:center;gap:7px">
         ${svg('log-out')} Sign Out
       </button>
     </div>`;
@@ -1305,7 +1300,7 @@ window.handleAvatarChange = async function(e) {
 let pwdOtpSent = false;
 window.revealPassword = async function() {
   const panel = document.getElementById('pwd-otp-panel');
-  if (panel.classList.contains('show')) { cancelPwdReveal(); return; }
+  if (panel.classList.contains('show')) { window.cancelPwdReveal(); return; }
   const eyeBtn = document.getElementById('pf-pwd-eye');
   eyeBtn.disabled = true;
   try {
@@ -1411,7 +1406,7 @@ window.saveEdit = async function() {
     } else if (editField === 'email') {
       document.getElementById('pf-email').textContent = val;
     }
-    closeModal('edit-modal');
+    window.closeModal('edit-modal');
     showToast('Updated!', 'success');
   } catch(e) { showToast(e.message, 'error'); }
 };
@@ -1423,9 +1418,9 @@ function buildAppsGrid(ids) {
   const el = document.getElementById('apps-grid');
   const html = ids.filter(id => APP_REGISTRY[id]).map(id => {
     const a = APP_REGISTRY[id];
-    return `<div class="app-icon" onclick="openApp('${a.id}')"><div class="app-img" style="background:${a.bgColor}">${a.icon}</div><div class="app-lbl">${a.name}</div></div>`;
+    return `<div class="app-icon" onclick="window.openApp('${a.id}')"><div class="app-img" style="background:${a.bgColor}">${a.icon}</div><div class="app-lbl">${a.name}</div></div>`;
   }).join('');
-  el.innerHTML = html + `<div class="app-more" onclick="openAppLib()"><div class="app-more-img" style="background:var(--bg-overlay);border:none">${svg('grid')}</div><div class="app-lbl" style="color:var(--tx-3)">More</div></div>`;
+  el.innerHTML = html + `<div class="app-more" onclick="window.openAppLib()"><div class="app-more-img" style="background:var(--bg-overlay);border:none">${svg('grid')}</div><div class="app-lbl" style="color:var(--tx-3)">More</div></div>`;
 }
 window.openApp = id => { const a = APP_REGISTRY[id]; if (a) window.open(a.path + '?uid=' + CU.uid, '_blank'); };
 
@@ -1442,7 +1437,7 @@ function renderAppStore(installedIds) {
   const appMeta = {
     calculator: { cat:'Productivity', color:'#4f46e5', bg:'#eef2ff' },
     calendar:   { cat:'Organization', color:'#16a34a', bg:'#ecfdf5' },
-    inventory:  { cat:'Operations', color:'#d97706', bg:'#fffbeb' },
+    inventory:  { cat:'Operations', color:'#d97706', bg:'#fffbeb' }, // Added Inventory
   };
   const featuredSlides = [
     { id:'inventory',  grad:'linear-gradient(135deg,#d97706,#ea580c)', tagline:'Track products & stock operations.' },
@@ -1468,13 +1463,13 @@ function renderAppStore(installedIds) {
             <div class="store-feat-name" style="font-size:19px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px">${app.name}</div>
             <div class="store-feat-desc" style="font-size:12px;opacity:.78;margin-bottom:14px;line-height:1.5">${f.tagline}</div>
             <div style="display:flex;gap:8px">
-              ${inst ? `<button class="store-btn-install" onclick="openApp('${f.id}')">Open App</button>${!isDef?`<button class="store-btn-install" style="background:rgba(220,38,38,.28);border-color:rgba(255,255,255,.2)" onclick="doUninstallApp('${f.id}')">Remove</button>`:''}` : `<button class="store-btn-install" onclick="doInstallApp('${f.id}')">+ Install Free</button>`}
+              ${inst ? `<button class="store-btn-install" onclick="window.openApp('${f.id}')">Open App</button>${!isDef?`<button class="store-btn-install" style="background:rgba(220,38,38,.28);border-color:rgba(255,255,255,.2)" onclick="window.doUninstallApp('${f.id}')">Remove</button>`:''}` : `<button class="store-btn-install" onclick="window.doInstallApp('${f.id}')">+ Install Free</button>`}
             </div>
           </div>`;
         }).join('')}
       </div>
       <div class="store-carousel-dots" id="carousel-dots">
-        ${featuredSlides.map((_,i)=>`<div class="cdot${i===0?' on':''}" onclick="carouselGo(${i})"></div>`).join('')}
+        ${featuredSlides.map((_,i)=>`<div class="cdot${i===0?' on':''}" onclick="window.carouselGo(${i})"></div>`).join('')}
       </div>
     </div>
 
@@ -1494,8 +1489,8 @@ function renderAppStore(installedIds) {
             <span style="font-size:10px;color:var(--tx-3)">${isDef?'Built-in':inst?'Installed':'Available'}</span>
             <div style="display:flex;gap:5px">
               ${inst
-                ? `<button class="store-btn store-btn-open" onclick="openApp('${app.id}')">Open</button>${!isDef?`<button class="store-btn store-btn-uninstall" onclick="doUninstallApp('${app.id}')">Remove</button>`:''}`
-                : `<button class="store-btn store-btn-get" onclick="doInstallApp('${app.id}')">+ Get</button>`}
+                ? `<button class="store-btn store-btn-open" onclick="window.openApp('${app.id}')">Open</button>${!isDef?`<button class="store-btn store-btn-uninstall" onclick="window.doUninstallApp('${app.id}')">Remove</button>`:''}`
+                : `<button class="store-btn store-btn-get" onclick="window.doInstallApp('${app.id}')">+ Get</button>`}
             </div>
           </div>
         </div>`;
@@ -1516,7 +1511,7 @@ function renderAppStore(installedIds) {
             <span style="font-size:10px;color:var(--tx-3)">Coming soon</span>
             <button class="store-btn" id="notify-btn-${app.id}"
               style="padding:4px 10px;font-size:11px;border-radius:var(--r-sm);cursor:pointer;transition:all .15s;${noted?'background:rgba(22,163,74,.1);color:var(--green);border:1px solid rgba(22,163,74,.25)':'background:var(--ac-s);color:var(--ac);border:1px solid var(--ac-b)'}"
-              onclick="toggleNotify('${app.id}','${app.name}',this)">
+              onclick="window.toggleNotify('${app.id}','${app.name}',this)">
               ${noted?'✓ Notified':'Notify me'}
             </button>
           </div>
@@ -1534,8 +1529,8 @@ function initCarousel() {
   let sx = 0, dragging = false;
   const n = () => carousel.children.length;
   const go = diff => {
-    if (diff < -40) carouselGo((_carouselIdx + 1) % n());
-    else if (diff > 40) carouselGo((_carouselIdx - 1 + n()) % n());
+    if (diff < -40) window.carouselGo((_carouselIdx + 1) % n());
+    else if (diff > 40) window.carouselGo((_carouselIdx - 1 + n()) % n());
   };
   carousel.addEventListener('touchstart', e => { sx=e.touches[0].clientX; dragging=true; clearInterval(_carouselTimer); }, {passive:true});
   carousel.addEventListener('touchend',   e => { if(dragging){dragging=false; go(e.changedTouches[0].clientX-sx); startCarouselAuto();} });
@@ -1549,7 +1544,7 @@ function startCarouselAuto() {
   _carouselTimer = setInterval(() => {
     const carousel = document.getElementById('store-carousel');
     if (!carousel) { clearInterval(_carouselTimer); return; }
-    carouselGo((_carouselIdx + 1) % carousel.children.length);
+    window.carouselGo((_carouselIdx + 1) % carousel.children.length);
   }, 5000);
 }
 window.carouselGo = function(idx) {
@@ -1646,7 +1641,7 @@ window.closeFullpage = function(id) {
 };
 
 window.openCreateStaffPage = function() {
-  resetCreateStaff();
+  window.resetCreateStaff();
   document.getElementById('create-staff-page').classList.add('open');
 };
 
@@ -1723,9 +1718,6 @@ function format12hr(t) {
   const ampm = h >= 12 ? 'PM' : 'AM';
   return `${((h % 12) || 12)}:${String(m).padStart(2,'0')} ${ampm}`;
 }
-
-window.searchStaff = window.searchStaff || function(){};
-window.clearCSErr  = window.clearCSErr  || function(){};
 
 init().catch(console.error);
 </script>
