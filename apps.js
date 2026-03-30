@@ -9,28 +9,34 @@ import {
 
 // ---- App Registry ----
 export const APP_REGISTRY = {
-  calculator: {
-    id:       'calculator',
-    name:     'Calculator',
-    icon:     '🧮',
-    color:    '#6366F1',
-    bgColor:  '#EEF2FF',
-    desc:     'Smart calculator with history',
-    version:  '1.0',
-    path: 'calculator.html',
-    default:  true  // Pre-installed for all users
+  inventory: {
+    id: 'inventory',
+    name: 'Inventory',
+    icon: '📦',
+    path: 'inventory.html',
+    desc: 'Track stock, warehouses, and product movement.',
+    bgColor: '#FFFBEB',
+    default: true
   },
   calendar: {
-    id:       'calendar',
-    name:     'Calendar',
-    icon:     '📅',
-    color:    '#10B981',
-    bgColor:  '#ECFDF5',
-    desc:     'Manage events & reminders',
-    version:  '1.0',
+    id: 'calendar',
+    name: 'Calendar',
+    icon: '📅',
     path: 'calendar.html',
-    default:  false
+    desc: 'Schedule events, view tasks, and team timelines.',
+    bgColor: '#ECFDF5',
+    default: false
   },
+  calculator: { 
+    id: 'calculator', 
+    name: 'Calculator', 
+    icon: '🧮', 
+    path: 'calculator.html', 
+    desc: 'Smart calculations with full history.', 
+    bgColor: '#eef2ff', 
+    default: false 
+  },
+  // ADD THIS EXPENSES BLOCK:
   expenses: {
     id: 'expenses',
     name: 'Expenses',
@@ -39,17 +45,6 @@ export const APP_REGISTRY = {
     desc: 'Track costs, categorize spending, and sync inventory purchases.',
     bgColor: '#FEF2F2',
     default: false
-  },
-  inventory: {
-    id:       'inventory',
-    name:     'Inventory Management',
-    icon:     '📦',
-    color:    '#4F46E5',
-    bgColor:  '#EEF2FF',
-    desc:     'Track warehouses, products & stock movements',
-    version:  '1.0',
-    path: 'inventory.html',
-    default:  false
   }
 };
 
