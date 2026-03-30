@@ -87,12 +87,17 @@
         <div class="page-ttl" id="home-greeting" style="animation:greetIn .5s cubic-bezier(.22,1,.36,1) both">Welcome</div>
         <div class="page-sub" id="home-sub"></div>
       </div>
-      <button class="btn btn-primary btn-sm hidden" id="assign-top-btn" onclick="openAssignModal()">
+      <button class="btn btn-primary hidden" id="assign-top-btn" onclick="openAssignModal()" style="gap:6px;padding:9px 18px">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Assign
       </button>
     </div>
-    <div class="stats-grid" id="stats-grid"></div>
+    <div class="stats-grid" id="stats-grid">
+        <div class="stat-card skel" style="height:120px"></div>
+        <div class="stat-card skel" style="height:120px"></div>
+        <div class="stat-card skel" style="height:120px"></div>
+        <div class="stat-card skel" style="height:120px"></div>
+      </div>
     <div class="charts-row hidden" id="charts-row">
       <div class="chart-card">
         <div class="chart-hdr">
@@ -109,37 +114,42 @@
         <canvas id="donut-chart" height="160"></canvas>
       </div>
     </div>
-    <div class="content-row">
-      <div class="content-card">
+    <!-- Recent Tasks -->
+      <div class="content-card" style="margin-bottom:12px">
         <div class="content-hdr">
           <div><div class="content-ttl" id="recent-ttl">Recent Tasks</div></div>
-          <button class="btn btn-ghost btn-sm" onclick="setTaskTab('assigned-to-me',null)">
-            View All
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <button class="btn btn-ghost btn-sm" onclick="setTaskTab('assigned-to-me',null);showView('tasks')">
+            View All <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
         <div id="recent-tasks"></div>
       </div>
+      <!-- My Apps horizontal -->
       <div class="apps-wrap">
-        <div class="content-hdr"><div class="content-ttl">My Apps</div></div>
+        <div class="content-hdr">
+          <div class="content-ttl">My Apps</div>
+          <button class="btn btn-ghost btn-sm" onclick="window.openAppLib()" style="font-size:.75rem">See all <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+        <div class="apps-grid" id="apps-grid"></div>
+      </div>
         <div class="apps-grid" id="apps-grid"></div>
       </div>
     </div>
   </div>
 
   <div id="view-tasks" class="hidden">
-    <div class="page-hdr">
+    <div class="page-hdr" style="margin-bottom:16px">
       <div>
         <div class="page-ttl">My Tasks</div>
         <div class="page-sub" id="tasks-sub"></div>
       </div>
-      <button class="btn btn-primary btn-sm hidden" id="assign-tasks-btn" onclick="openAssignModal()">
+      <button class="btn btn-primary hidden" id="assign-tasks-btn" onclick="openAssignModal()" style="gap:6px;padding:9px 18px">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Assign Work
+        + Assign Work
       </button>
     </div>
 
-    <div id="task-summary-strip" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;min-width:0"></div>
+    <div id="task-summary-strip" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;min-width:0"></div>
 
     <div class="ftabs" id="task-tab-row">
       <button class="ftab on hidden" onclick="setTaskTab('assigned-to-me',this)" id="tab-to-me">Assigned to Me</button>
@@ -152,7 +162,7 @@
   </div>
 
   <div id="view-staff" class="hidden">
-    <div class="page-hdr">
+    <div class="page-hdr" style="margin-bottom:16px">
       <div>
         <div class="page-ttl">Staff Members</div>
         <div class="page-sub" id="staff-count-sub"></div>
@@ -453,7 +463,7 @@ import { requireAuth, logout, getCurrentUser } from './auth.js';
 import { listenNotifications, markAllRead as markAllReadFn, markNotificationRead, addNotification } from './notifications.js';
 import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined } from './tasks.js';
 import { listenCompanyStaff, getAssignableStaff, createStaff, updateUserProfile, deleteStaffMember } from './staff.js';
-import { getInstalledApps, listenInstalledApps, installApp, uninstallApp } from './apps.js';
+import { getInstalledApps, listenInstalledApps, installApp, uninstallApp, renderAppLibrary, APP_REGISTRY } from './apps.js';
 import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
 import { showToast, setButtonLoading, getInitials, avatarColor, formatRole, roleBadgeClass, copyToClipboard, saveSession } from './utils.js';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -472,17 +482,6 @@ let deleteTargetUid = null, deleteTargetEmail = '', deleteTargetPwd = '', delete
 let pendingDeclineId = null, pendingDeclineTitle = '';
 let barChart = null, donutChart = null;
 let unsubs = [];
-
-// ──────────────────────────────────────────────
-// APP REGISTRY DEFINITION FOR DASHBOARD 
-// (Expenses App added to library and featured)
-// ──────────────────────────────────────────────
-const APP_REGISTRY = {
-  calculator: { id: 'calculator', name: 'Calculator', icon: '🧮', path: 'calculator.html', desc: 'Smart calculations with full history.', bgColor: '#eef2ff', default: false },
-  calendar: { id: 'calendar', name: 'Calendar', icon: '📅', path: 'calendar.html', desc: 'Team events, tasks & reminders.', bgColor: '#ecfdf5', default: false },
-  inventory: { id: 'inventory', name: 'Inventory', icon: '📦', path: 'inventory.html', desc: 'Track products & stock operations.', bgColor: '#fffbeb', default: true },
-  expenses: { id: 'expenses', name: 'Expenses', icon: '💳', path: 'expenses.html', desc: 'Track costs, categorize spending, and sync inventory purchases.', bgColor: '#fef2f2', default: false }
-};
 
 // ──────────────────────────────────────────────
 // INIT
@@ -527,7 +526,7 @@ function setupUI() {
   const h = new Date().getHours();
   const g = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
   document.getElementById('home-greeting').textContent = `Good ${g}, ${name.split(' ')[0]}`;
-  document.getElementById('home-sub').textContent = { owner:'Your company overview', manager:'Your team & tasks', staff:'Your tasks & progress' }[role] || '';
+  document.getElementById('home-sub').textContent = { owner:'Overview of your company and team', manager:'Your team tasks and activity', staff:'Your assignments and progress' }[role] || '';
   document.getElementById('tasks-sub').textContent = `Tasks for ${name.split(' ')[0]}`;
 
   const canAssign = role === 'owner' || role === 'manager';
@@ -639,12 +638,13 @@ function subscribeAll() {
 function renderOwnerStats() {
   const staff = allStaff.filter(s => s.role !== 'owner');
   
+  // Combine logic to get perfect calculation for Owner Dashboard
   const allUniqueTasks = [...myTasks, ...assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
   const pending = allUniqueTasks.filter(t => t.status === 'pending').length;
   const done = allUniqueTasks.filter(t => t.status === 'done').length;
   
   const nb = document.getElementById('notif-badge');
-  const alerts = nb ? (parseInt(nb.dataset.count || nb.textContent) || 0) : 0;
+  const alerts = nb && !nb.classList.contains('hidden') ? (parseInt(nb.textContent.replace('+','')) || 0) : 0;
   const names = staff.slice(0, 5).map(s => `<div class="tip-row"><div class="tip-dot"></div>${esc(s.name)}</div>`).join('');
   const more = staff.length > 5 ? `<div class="tip-more">+${staff.length - 5} more</div>` : '';
   document.getElementById('stats-grid').innerHTML = `
@@ -680,7 +680,7 @@ function renderNonOwnerStats(tasks) {
   const done = tasks.filter(t => t.status === 'done').length;
   const declined = tasks.filter(t => t.status === 'declined').length;
   const nb = document.getElementById('notif-badge');
-  const alerts = nb ? (parseInt(nb.dataset.count || nb.textContent) || 0) : 0;
+  const alerts = nb && !nb.classList.contains('hidden') ? (parseInt(nb.textContent.replace('+','')) || 0) : 0;
   const isManager = CU.role === 'manager';
   document.getElementById('stats-grid').innerHTML = isManager ? `
     <div class="stat-card" onclick="setTaskTab('assigned-to-me',null);showView('tasks')">
@@ -779,6 +779,7 @@ function updateCharts(tasks) {
 // ──────────────────────────────────────────────
 function renderRecentTasks() {
   const el = document.getElementById('recent-tasks');
+  // Combine logic exactly matching counters to display exactly 3 recent tasks flawlessly
   const allUniqueTasks = [...myTasks, ...assignedByMeTasks]
     .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -795,20 +796,20 @@ function renderTaskSummaryStrip() {
   const done     = myTasks.filter(t=>t.status==='done').length;
   const declined = myTasks.filter(t=>t.status==='declined').length;
   el.innerHTML = `
-    <div class="stat-card" style="padding:12px" onclick="setTaskTab('pending',null)">
-      <div class="sc-ico ic-amber" style="width:28px;height:28px;margin-bottom:7px">${svg('clock')}</div>
-      <div class="sc-val" style="font-size:20px">${pending}</div>
-      <div class="sc-lbl">Pending</div>
+    <div class="stat-card" style="padding:14px 12px;text-align:center;cursor:pointer" onclick="setTaskTab('pending',null)">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,158,11,.1);color:#D97706;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">${svg('clock')}</div>
+      <div style="font-family:var(--f);font-size:1.5rem;font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:4px">${pending}</div>
+      <div style="font-size:.75rem;color:var(--tx-2);font-weight:500">Pending</div>
     </div>
-    <div class="stat-card" style="padding:12px" onclick="setTaskTab('done',null)">
-      <div class="sc-ico ic-green" style="width:28px;height:28px;margin-bottom:7px">${svg('check-circle')}</div>
-      <div class="sc-val" style="font-size:20px">${done}</div>
-      <div class="sc-lbl">Done</div>
+    <div class="stat-card" style="padding:14px 12px;text-align:center;cursor:pointer" onclick="setTaskTab('done',null)">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(16,185,129,.1);color:#10B981;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">${svg('check-circle')}</div>
+      <div style="font-family:var(--f);font-size:1.5rem;font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:4px">${done}</div>
+      <div style="font-size:.75rem;color:var(--tx-2);font-weight:500">Done</div>
     </div>
-    <div class="stat-card" style="padding:12px" onclick="setTaskTab('declined',null)">
-      <div class="sc-ico ic-red" style="width:28px;height:28px;margin-bottom:7px">${svg('x-circle')}</div>
-      <div class="sc-val" style="font-size:20px">${declined}</div>
-      <div class="sc-lbl">Declined</div>
+    <div class="stat-card" style="padding:14px 12px;text-align:center;cursor:pointer" onclick="setTaskTab('declined',null)">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,.1);color:#EF4444;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">${svg('x-circle')}</div>
+      <div style="font-family:var(--f);font-size:1.5rem;font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:4px">${declined}</div>
+      <div style="font-size:.75rem;color:var(--tx-2);font-weight:500">Declined</div>
     </div>`;
 }
 
@@ -825,7 +826,7 @@ function renderTasksList() {
   tasks = tasks.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
 
   if (!tasks.length) {
-    el.innerHTML = `<div class="empty" style="margin-top:16px"><div class="empty-ico">${svg('inbox')}</div><div class="empty-ttl">No tasks here</div><div class="empty-sub">${taskTab==='assigned-to-me'?'Tasks assigned to you will appear here':taskTab==='assigned-by-me'?'Tasks you assign to others appear here':'Nothing in this category'}</div></div>`;
+    el.innerHTML = `<div class="empty" style="padding:48px 24px"><div class="empty-ico" style="width:64px;height:64px;border-radius:18px;font-size:1.8rem">📋</div><div class="empty-ttl">No tasks here</div><div class="empty-sub">${taskTab==='assigned-to-me'?'Tasks assigned to you will appear here':taskTab==='assigned-by-me'?'Tasks you assign to others will appear here':'Nothing in this category yet'}</div></div>`;
     return;
   }
   const canRespond = taskTab === 'assigned-to-me' || taskTab === 'pending';
@@ -846,8 +847,8 @@ function renderTaskCard(task, showActions) {
   }[task.status] || '';
 
   let meta = isToMe
-    ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> From <strong>${esc(task.assignedByName)}</strong>`
-    : `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> To <strong>${esc(task.assignedToName)}</strong>`;
+    ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> From <strong>${esc(task.assignedByName||'Someone')}</strong>`
+    : `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> To <strong>${esc(task.assignedToName||'Someone')}</strong>`;
   meta += ` <span class="task-meta-sep">·</span> ${ago(task.createdAt)}`;
   if (task.dueDate) {
     const d = new Date(task.dueDate + (task.dueTime ? 'T' + task.dueTime : ''));
@@ -861,11 +862,11 @@ function renderTaskCard(task, showActions) {
     <div class="task-status-dot ${dotClass}"></div>
     <div class="task-body">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
-        <div class="task-title">${esc(task.title)}</div>
+        <div class="task-title">${esc(task.title || '(Untitled Task)')}</div>
         ${!canAct ? `<span class="task-badge ${badge}" style="display:flex;align-items:center;gap:4px;flex-shrink:0">${badgeIcon}${badgeLabel}</span>` : ''}
       </div>
       <div class="task-meta">${meta}</div>
-      ${task.description ? `<div class="task-desc">${esc(task.description)}</div>` : ''}
+      ${task.description ? `<div class="task-desc">${esc(task.description.length > 120 ? task.description.slice(0,120)+'…' : task.description)}</div>` : ''}
       ${task.status === 'declined' && task.declineReason ? `<div class="task-desc" style="color:var(--red);border-top-color:rgba(220,38,38,.12)">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         Reason: ${esc(task.declineReason)}</div>` : ''}
@@ -1433,15 +1434,12 @@ function buildAppsGrid(ids) {
 }
 window.openApp = id => { const a = APP_REGISTRY[id]; if (a) window.open(a.path + '?uid=' + CU.uid, '_blank'); };
 
-window.openAppLib = async function() { _carouselIdx = 0;
-  const ids = await getInstalledApps(CU.uid);
-  renderAppStore(ids);
-  document.getElementById('app-store-page').classList.add('open');
+window.openAppLib = async function() {
+  // Open app library in new tab
+  const uid = CU?.uid || '';
+  window.open('app-library.html' + (uid ? '?uid=' + uid : ''), '_blank');
 };
 
-// ============================================
-// APP STORE RENDER: Updated to include 'expenses'
-// ============================================
 function renderAppStore(installedIds) {
   const el = document.getElementById('app-store-body');
   if (!el) return;
@@ -1449,19 +1447,17 @@ function renderAppStore(installedIds) {
   const appMeta = {
     calculator: { cat:'Productivity', color:'#4f46e5', bg:'#eef2ff' },
     calendar:   { cat:'Organization', color:'#16a34a', bg:'#ecfdf5' },
-    inventory:  { cat:'Operations', color:'#d97706', bg:'#fffbeb' },
-    expenses:   { cat:'Finance', color:'#dc2626', bg:'#fef2f2' }, // ADDED
+    inventory:  { cat:'Operations', color:'#d97706', bg:'#fffbeb' }, // Added Inventory
   };
   const featuredSlides = [
     { id:'inventory',  grad:'linear-gradient(135deg,#d97706,#ea580c)', tagline:'Track products & stock operations.' },
-    { id:'expenses',   grad:'linear-gradient(135deg,#dc2626,#991b1b)', tagline:'Track costs, categorize spending, and sync inventory.' }, // ADDED
     { id:'calculator', grad:'linear-gradient(135deg,#4f46e5,#7c3aed)', tagline:'Smart calculations with full history.' },
     { id:'calendar',   grad:'linear-gradient(135deg,#059669,#0891b2)', tagline:'Team events, tasks & reminders.' },
   ];
-  // Removed expenses from coming soon
   const comingSoon = [
     { id:'staffmgmt', name:'Staff Management',    icon:'🏢', cat:'HR',            desc:'Attendance, leave requests, payroll summary and shift scheduling.' },
     { id:'announce',  name:'Announcements',       icon:'📢', cat:'Communication', desc:'Send broadcasts, polls and updates to the whole team.' },
+    { id:'expenses',  name:'Expense Tracker',     icon:'💳', cat:'Finance',       desc:'Log team expenses, run approval workflows and budgets.' },
   ];
   const notifyList = CU._notifyList || [];
 
@@ -1670,6 +1666,13 @@ window.closeModal = function(id) {
 };
 document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.add('hidden'); }));
 
+// BUG FIX: Escape key closes open modals and panels
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(o => o.classList.add('hidden'));
+  window.closeAllPanels();
+});
+
 window.handleLogout = async function() { unsubs.forEach(f => f?.()); _profileBuilt = false; await logout(); };
 
 // ──────────────────────────────────────────────
@@ -1693,13 +1696,16 @@ function esc(s = '') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 function ago(iso) {
   if (!iso) return '';
   const d = Date.now() - new Date(iso);
-  if (d < 60000) return 'just now';
-  if (d < 3600000) return Math.floor(d/60000) + 'm ago';
+  if (d < 60000)    return 'just now';
+  if (d < 3600000)  return Math.floor(d/60000) + 'm ago';
   if (d < 86400000) return Math.floor(d/3600000) + 'h ago';
-  return Math.floor(d/86400000) + 'd ago';
+  const days = Math.floor(d/86400000);
+  if (days < 30) return days + 'd ago';
+  const months = Math.floor(days/30);
+  return months + 'mo ago';
 }
 function emptyState(ttl, sub) {
-  return `<div class="empty"><div class="empty-ico">${svg('inbox')}</div><div class="empty-ttl">${ttl}</div><div class="empty-sub">${sub}</div></div>`;
+  return `<div class="empty" style="padding:36px 24px"><div class="empty-ico" style="font-size:1.8rem">📋</div><div class="empty-ttl">${ttl}</div><div class="empty-sub">${sub}</div></div>`;
 }
 
 function svg(name) {
