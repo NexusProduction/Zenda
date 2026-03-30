@@ -31,6 +31,15 @@ export const APP_REGISTRY = {
     path: 'calendar.html',
     default:  false
   },
+  expenses: {
+    id: 'expenses',
+    name: 'Expenses',
+    icon: '💳',
+    path: 'expenses.html',
+    desc: 'Track costs, categorize spending, and sync inventory purchases.',
+    bgColor: '#FEF2F2',
+    default: false
+  },
   inventory: {
     id:       'inventory',
     name:     'Inventory Management',
