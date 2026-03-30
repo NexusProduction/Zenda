@@ -1020,11 +1020,56 @@ window.updateConvPreview=function(){ const qtyInp=document.getElementById('eq');
   document.getElementById('convPreview').style.display='block'; document.getElementById('convPreview').textContent=`${qty} ${selUnit} = ${base} ${curProd.unit||'units'}`; };
 window.setET=function(t){ eType=t; document.getElementById('ettIn').className=`ett in${t==='IN'?' on':''}`; document.getElementById('ettOut').className=`ett out${t==='OUT'?' on':''}`; const b=document.getElementById('entryBtn'); if(b){b.style.background=t==='IN'?'#059669':'#EF4444';b.textContent=`Add ${t} Entry`;} };
 window.submitEntry=async function(){
-  const qtyInp=document.getElementById('eq'); const qty=parseFloat(qtyInp.value); const note=document.getElementById('en').value.trim(); const btn=document.getElementById('entryBtn'); if(!qty||qty<=0){setMM('entryMsg','⚠ Enter positive quantity.','err');return;} const conv=curProd.conversions?.find(c=>c.name===selUnit); 
-  // 1 Base = Ratio Alt => Alt to Base = qty / ratio
+  const qtyInp=document.getElementById('eq'); const qty=parseFloat(qtyInp.value); const note=document.getElementById('en').value.trim(); const btn=document.getElementById('entryBtn'); 
+  if(!qty||qty<=0){setMM('entryMsg','⚠ Enter positive quantity.','err');return;} 
+  const conv=curProd.conversions?.find(c=>c.name===selUnit); 
   const qtyBase=conv?(qty / conv.ratio):qty; 
-  const entryUnit=selUnit||curProd.unit||'units'; if(eType==='OUT'&&qtyBase>(curProd.stock||0)){setMM('entryMsg',`⚠ Not enough stock (${qtyBase} needed, ${curProd.stock||0} available).`,'err');return;} btn.disabled=true;btn.textContent='Adding…';
-  try{ const cid=CU.companyId; const newStock=eType==='IN'?(curProd.stock||0)+qtyBase:(curProd.stock||0)-qtyBase; await updateDoc(doc(db,'products',curProd.id),{stock:newStock}); await addDoc(collection(db,'entries'),{type:eType,qty,qtyBase,unit:entryUnit,entryUnit,note, productId:curProd.id, godownId:curWH, companyId:cid, who:CU.name||'Owner', createdBy:CU.uid, deleted:false, createdAt:serverTimestamp(), }); curProd.stock=newStock; window.closeM('m-entry'); document.getElementById('pdStock').textContent=newStock; document.getElementById('pdStock').className='pd-big'+(curProd.minStock!=null&&newStock<=curProd.minStock?' low':''); await loadEntries(curProd.id); window.showToast(`${eType==='IN'?'Added':'Removed'} ${qty} ${entryUnit} ✓`,eType==='IN'?'s':''); }catch(e){setMM('entryMsg','❌ Failed: '+e.message,'err');} btn.disabled=false;btn.textContent=`Add ${eType} Entry`;
+  const entryUnit=selUnit||curProd.unit||'units'; 
+  if(eType==='OUT'&&qtyBase>(curProd.stock||0)){setMM('entryMsg',`⚠ Not enough stock (${qtyBase} needed, ${curProd.stock||0} available).`,'err');return;} 
+  
+  // Capture Expense Data
+  const logExpense = document.getElementById('logExpenseTgl')?.checked;
+  const cost = parseFloat(document.getElementById('entryCost')?.value) || 0;
+  const expCategory = document.getElementById('entryExpCategory')?.value || 'Inventory Stock';
+
+  if (logExpense && cost <= 0) { setMM('entryMsg','⚠ Enter a valid cost for the expense.','err'); return; }
+
+  btn.disabled=true;btn.textContent='Adding…';
+  try{ 
+    const cid=CU.companyId; 
+    const newStock=eType==='IN'?(curProd.stock||0)+qtyBase:(curProd.stock||0)-qtyBase; 
+    await updateDoc(doc(db,'products',curProd.id),{stock:newStock}); 
+    
+    const entryRef = await addDoc(collection(db,'entries'),{
+      type:eType,qty,qtyBase,unit:entryUnit,entryUnit,note, 
+      productId:curProd.id, godownId:curWH, companyId:cid, 
+      who:CU.name||'Owner', createdBy:CU.uid, deleted:false, createdAt:serverTimestamp(), 
+    }); 
+
+    // FIREBASE EXPENSE SYNC
+    if (logExpense && cost > 0 && eType === 'IN') {
+      await addDoc(collection(db, 'expenses'), {
+        amount: cost,
+        category: expCategory,
+        description: `Stock Purchase: ${qty} ${entryUnit} of ${curProd.name}${note ? ' ('+note+')' : ''}`,
+        relatedEntryId: entryRef.id,
+        productId: curProd.id,
+        companyId: cid,
+        createdBy: CU.uid,
+        createdByName: CU.name || 'Owner',
+        date: new Date().toISOString(),
+        createdAt: serverTimestamp()
+      });
+    }
+
+    curProd.stock=newStock; 
+    window.closeM('m-entry'); 
+    document.getElementById('pdStock').textContent=newStock; 
+    document.getElementById('pdStock').className='pd-big'+(curProd.minStock!=null&&newStock<=curProd.minStock?' low':''); 
+    await loadEntries(curProd.id); 
+    window.showToast(`${eType==='IN'?'Added':'Removed'} ${qty} ${entryUnit} ✓`,eType==='IN'?'s':''); 
+  }catch(e){setMM('entryMsg','❌ Failed: '+e.message,'err');} 
+  btn.disabled=false;btn.textContent=`Add ${eType} Entry`;
 };
 window.prepDelEntry=function(entId){ entToDelete=entId; document.getElementById('delReason').value=''; document.getElementById('wordCount').textContent='0 characters (min 10)'; document.getElementById('wordCount').className='word-count warn'; document.getElementById('delEntMsg').textContent=''; window.openM('m-del-entry'); };
 window.checkCharCount=function(el){ const len=el.value.trim().length; const wc=document.getElementById('wordCount'); if(len<10){wc.textContent=`${len} characters (min 10)`;wc.className='word-count warn';} else if(len>180){wc.textContent=`${len} characters (max 180)`;wc.className='word-count warn';} else{wc.textContent=`${len} characters ✓`;wc.className='word-count ok';} };
