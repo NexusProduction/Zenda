@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Expenses — Zenda</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text y='24' x='5' font-size='20'>💳</text></svg>">
+<style>
+:root {
+  --bg-base: #F9FAFB; --bg-surface: #FFFFFF;
+  --tx-main: #111827; --tx-muted: #6B7280; --tx-light: #9CA3AF;
+  --border: #E5E7EB; --ac: #4F46E5; --ac-hover: #4338CA;
+  --red: #EF4444; --green: #10B981; --amber: #F59E0B;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+body { background: var(--bg-base); color: var(--tx-main); min-height: 100vh; display: flex; flex-direction: column; }
+.hidden { display: none !important; }
+
+/* Header */
+.appbar { background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 0 16px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.appbar-left { display: flex; align-items: center; gap: 10px; }
+.back-btn { background: none; border: none; font-size: 14px; font-weight: 500; color: var(--tx-muted); cursor: pointer; padding: 6px 10px; border-radius: 8px; transition: all 0.2s; }
+.back-btn:hover { background: #F3F4F6; color: var(--tx-main); }
+.app-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+.app-icon { width: 32px; height: 32px; background: #FEF2F2; color: var(--red); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.sync-status { font-size: 12px; font-weight: 600; color: var(--amber); }
+
+/* Layout */
+.container { max-width: 1000px; margin: 0 auto; width: 100%; padding: 24px 16px 80px; display: flex; flex-direction: column; gap: 20px; }
+@media(min-width: 900px) { .container { flex-direction: row; align-items: flex-start; } }
+
+/* Left Panel (Summary) */
+.summary-panel { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+.total-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); text-align: center; }
+.total-label { font-size: 13px; font-weight: 600; color: var(--tx-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+.total-amount { font-family: 'DM Mono', monospace; font-size: 48px; font-weight: 700; color: var(--tx-main); letter-spacing: -0.04em; }
+.total-currency { font-size: 24px; color: var(--tx-light); font-weight: 500; vertical-align: super; }
+
+/* Group Breakdown */
+.group-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 20px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+.section-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+.group-list { display: flex; flex-direction: column; gap: 12px; }
+.group-item { display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #F3F4F6; }
+.group-item:last-child { border-bottom: none; padding-bottom: 0; }
+.group-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.group-val { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 700; color: var(--tx-main); }
+
+/* Right Panel (List) */
+.list-panel { flex: 2; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); overflow: hidden; display: flex; flex-direction: column; }
+.list-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.btn-primary { background: var(--ac); color: white; border: none; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary:hover { background: var(--ac-hover); }
+
+.expense-list { display: flex; flex-direction: column; max-height: 600px; overflow-y: auto; }
+.expense-row { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid #F3F4F6; transition: background 0.2s; position: relative; }
+.expense-row:hover { background: #F9FAFB; }
+.expense-icon { width: 40px; height: 40px; background: #F3F4F6; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.expense-details { flex: 1; min-width: 0; }
+.expense-title { font-size: 14px; font-weight: 600; color: var(--tx-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+.expense-meta { font-size: 12px; color: var(--tx-muted); display: flex; align-items: center; gap: 6px; }
+.expense-tag { font-size: 10px; font-weight: 600; padding: 2px 6px; background: #EEF2FF; color: var(--ac); border-radius: 4px; text-transform: uppercase; }
+.expense-amount { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 700; color: var(--red); text-align: right; }
+.expense-del { position: absolute; right: 20px; background: #FEE2E2; border: none; color: var(--red); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; opacity: 0; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+.expense-row:hover .expense-del { opacity: 1; }
+.expense-del:hover { background: var(--red); color: white; }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--tx-light); font-size: 14px; }
+
+/* Modals */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 16px; opacity: 0; pointer-events: none; transition: 0.2s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--bg-surface); border-radius: 20px; width: 100%; max-width: 440px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); transform: scale(0.95); transition: 0.2s; }
+.modal-overlay.open .modal { transform: scale(1); }
+.modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-ttl { font-size: 18px; font-weight: 700; }
+.close-btn { background: none; border: none; font-size: 20px; color: var(--tx-muted); cursor: pointer; }
+
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: var(--tx-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+.form-input, .form-select { width: 100%; padding: 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; background: var(--bg-base); color: var(--tx-main); outline: none; transition: 0.2s; font-family: inherit; }
+.form-input:focus, .form-select:focus { border-color: var(--ac); background: var(--bg-surface); }
+.amount-wrapper { position: relative; }
+.amount-wrapper span { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--tx-muted); }
+.amount-wrapper input { padding-left: 32px; font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 700; }
+
+.btn-block { width: 100%; padding: 14px; margin-top: 8px; font-size: 15px; }
+
+/* Toast */
+#toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast { padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: white; background: var(--tx-main); box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: toastIn 0.3s forwards; }
+.toast.success { background: #10B981; }
+.toast.error { background: #EF4444; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+@media(max-width: 600px) { .expense-row:hover .expense-del { opacity: 1; position: relative; right: 0; } }
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <div class="appbar-left">
+    <button class="back-btn" onclick="window.history.length > 1 ? window.history.back() : window.close()">← Back</button>
+    <div class="app-title"><div class="app-icon">💳</div>Expenses</div>
+  </div>
+  <div class="sync-status" id="sync-status">Connecting...</div>
+</div>
+
+<div class="container">
+  
+  <div class="summary-panel">
+    <div class="total-card">
+      <div class="total-label">Total Expenses</div>
+      <div><span class="total-currency">₹</span><span class="total-amount" id="grand-total">0.00</span></div>
+    </div>
+
+    <div class="group-card">
+      <div class="section-title">Expense Breakdown</div>
+      <div class="group-list" id="category-breakdown">
+        </div>
+    </div>
+  </div>
+
+  <div class="list-panel">
+    <div class="list-header">
+      <div class="section-title" style="margin:0">Recent Transactions</div>
+      <button class="btn-primary" onclick="openModal('add-expense-modal')">➕ Add Expense</button>
+    </div>
+    <div class="expense-list" id="expense-list">
+      <div class="empty-state">Loading expenses...</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="add-expense-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-ttl">Record Expense</div>
+      <button class="close-btn" onclick="closeModal('add-expense-modal')">✕</button>
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Amount *</label>
+      <div class="amount-wrapper">
+        <span>₹</span>
+        <input type="number" id="exp-amount" class="form-input" placeholder="0.00" min="0" step="any">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Category *</label>
+      <select id="exp-category" class="form-select">
+        <option value="Godown Expense">Godown Expense</option>
+        <option value="Installation">Installation / Setup</option>
+        <option value="Logistics">Logistics / Transport</option>
+        <option value="Raw Materials">Raw Materials</option>
+        <option value="Office & Admin">Office & Admin</option>
+        <option value="Miscellaneous">Other / Miscellaneous</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Description / Note *</label>
+      <input type="text" id="exp-desc" class="form-input" placeholder="What was this for?">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" id="exp-date" class="form-input">
+    </div>
+
+    <button class="btn-primary btn-block" id="submit-exp-btn" onclick="saveExpense()">Save Expense</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const ZCFG = {
+  apiKey: "AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",
+  authDomain: "zenda-app-fe1c2.firebaseapp.com",
+  projectId: "zenda-app-fe1c2",
+  storageBucket: "zenda-app-fe1c2.appspot.com",
+  messagingSenderId: "764717910838",
+  appId: "1:764717910838:web:18a9ac7772ba91f4928197"
+};
+
+const zA = getApps().find(a => a.name === '[DEFAULT]') || initializeApp(ZCFG);
+const auth = getAuth(zA);
+const db = getFirestore(zA);
+
+const syncEl = document.getElementById('sync-status');
+let CU = { uid: null, role: 'staff', companyId: null };
+let expenses = [];
+
+const CAT_ICONS = {
+  'Inventory Stock': '📦', 'Godown Expense': '🏭', 'Installation': '🔧', 
+  'Logistics': '🚚', 'Logistics/Transport': '🚚', 'Raw Materials': '🪵', 
+  'Office & Admin': '📎', 'Miscellaneous': '🧾'
+};
+
+document.getElementById('exp-date').valueAsDate = new Date();
+
+window.openModal = function(id) { document.getElementById(id).classList.add('open'); };
+window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
+function toast(msg, type='info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div'); t.className = `toast ${type}`; t.textContent = msg;
+  c.appendChild(t); setTimeout(() => t.remove(), 3000);
+}
+function esc(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function formatMoney(num) { return Number(num).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function formatDate(iso) { 
+  if(!iso) return ''; const d = new Date(iso);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+async function init() {
+  const urlUid = new URLSearchParams(location.search).get('uid');
+  const rawSession = sessionStorage.getItem('zenda_user');
+  const sessionUser = rawSession ? JSON.parse(rawSession) : null;
+
+  const authUser = await new Promise(r => { const unsub = onAuthStateChanged(auth, u => { unsub(); r(u); }); setTimeout(() => r(null), 3000); });
+  const activeUid = urlUid || (sessionUser ? sessionUser.uid : null) || (authUser ? authUser.uid : null);
+  
+  if (!activeUid) { syncEl.textContent = 'Offline Mode'; syncEl.style.color = '#9CA3AF'; return; }
+  CU.uid = activeUid;
+  
+  try {
+    const uSnap = await getDoc(doc(db, 'users', activeUid));
+    if (uSnap.exists()) {
+      CU.role = uSnap.data().role || 'staff'; CU.companyId = uSnap.data().companyId || activeUid; CU.name = uSnap.data().name;
+    } else if (sessionUser) {
+      CU.role = sessionUser.role || 'staff'; CU.companyId = sessionUser.companyId || null; CU.name = sessionUser.name;
+    }
+  } catch (e) {}
+
+  if (!CU.companyId) return;
+  
+  // Real-time listener for Expenses
+  const q = query(collection(db, 'expenses'), where('companyId', '==', CU.companyId));
+  onSnapshot(q, snap => {
+    expenses = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(b.date||b.createdAt) - new Date(a.date||a.createdAt));
+    syncEl.textContent = '✓ Live'; syncEl.style.color = '#10B981';
+    updateDashboard();
+  }, err => { syncEl.textContent = 'Sync Error'; syncEl.style.color = '#EF4444'; });
+}
+
+function updateDashboard() {
+  // Total
+  const total = expenses.reduce((sum, e) => sum + (Number(e.amount)||0), 0);
+  document.getElementById('grand-total').textContent = formatMoney(total);
+
+  // Group Breakdown
+  const groups = {};
+  expenses.forEach(e => { groups[e.category] = (groups[e.category] || 0) + (Number(e.amount)||0); });
+  
+  const groupHtml = Object.entries(groups).sort((a,b)=>b[1]-a[1]).map(([cat, amt]) => `
+    <div class="group-item">
+      <div class="group-name"><span>${CAT_ICONS[cat]||'🏷️'}</span> ${esc(cat)}</div>
+      <div class="group-val">₹${formatMoney(amt)}</div>
+    </div>
+  `).join('');
+  document.getElementById('category-breakdown').innerHTML = groupHtml || '<div style="color:var(--tx-light);font-size:13px;text-align:center">No expense data yet.</div>';
+
+  // List
+  const listEl = document.getElementById('expense-list');
+  if (!expenses.length) { listEl.innerHTML = '<div class="empty-state">No transactions recorded yet.</div>'; return; }
+  
+  const canDel = CU.role === 'owner' || CU.role === 'manager';
+  
+  listEl.innerHTML = expenses.map(e => `
+    <div class="expense-row">
+      <div class="expense-icon">${CAT_ICONS[e.category]||'🧾'}</div>
+      <div class="expense-details">
+        <div class="expense-title">${esc(e.description)}</div>
+        <div class="expense-meta">
+          <span class="expense-tag">${esc(e.category)}</span>
+          <span>· ${formatDate(e.date||e.createdAt)}</span>
+          <span>· By ${esc(e.createdByName||'Staff')}</span>
+        </div>
+      </div>
+      <div class="expense-amount">-₹${formatMoney(e.amount)}</div>
+      ${(canDel || e.createdBy === CU.uid) ? `<button class="expense-del" onclick="window.delExpense('${e.id}')" title="Delete">✕</button>` : ''}
+    </div>
+  `).join('');
+}
+
+window.saveExpense = async function() {
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  const category = document.getElementById('exp-category').value;
+  const desc = document.getElementById('exp-desc').value.trim();
+  const dateStr = document.getElementById('exp-date').value;
+
+  if(!amount || amount <= 0) { toast('Enter a valid amount', 'error'); return; }
+  if(!desc) { toast('Enter a description', 'error'); return; }
+
+  const btn = document.getElementById('submit-exp-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  try {
+    await addDoc(collection(db, 'expenses'), {
+      amount, category, description: desc, companyId: CU.companyId,
+      createdBy: CU.uid, createdByName: CU.name || 'Staff',
+      date: dateStr ? new Date(dateStr).toISOString() : new Date().toISOString(),
+      createdAt: serverTimestamp()
+    });
+    
+    document.getElementById('exp-amount').value = '';
+    document.getElementById('exp-desc').value = '';
+    closeModal('add-expense-modal');
+    toast('Expense recorded!', 'success');
+  } catch(e) { toast('Failed: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Save Expense';
+};
+
+window.delExpense = async function(id) {
+  if(!confirm("Delete this expense permanently?")) return;
+  try {
+    await deleteDoc(doc(db, 'expenses', id));
+    toast('Expense deleted', 'success');
+  } catch(e) { toast('Failed to delete', 'error'); }
+};
+
+init();
+</script>
+</body>
+</html>
