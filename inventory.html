@@ -71,6 +71,13 @@ body{background:#F9FAFB;min-height:100vh;display:flex;flex-direction:column;font
 .add-row:hover .add-txt{color:#111827}
 .whr{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #F3F4F6;cursor:pointer;position:relative;transition:background .13s}
 .whr:last-child{border-bottom:none}
+@media(max-width:600px){
+  .whr{flex-wrap:wrap;padding:14px 14px;gap:10px;border-bottom:none;background:#fff;border-radius:12px;border:1px solid #E5E7EB;margin:4px 0;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  .whr:hover{background:#FAFBFF}
+  .wh-card{border-radius:0;border:none;box-shadow:none;background:transparent}
+  .whr-meta{width:100%;justify-content:flex-start;margin-top:4px}
+  .wh-arr{display:none}
+}
 .whr::before{content:'';position:absolute;left:0;top:15%;bottom:15%;width:3px;background:#4F46E5;opacity:0;transition:opacity .13s;border-radius:0 3px 3px 0}
 .whr:hover{background:#F9FAFB}
 .whr:hover::before{opacity:1}
@@ -832,7 +839,10 @@ async function loadWHStats(whId){
 // ══ 6. PRODUCTS, DETAIL & MERGED EDIT MODAL ══
 async function loadProds(whId){ if(!whId) return; document.getElementById('prodList').innerHTML='<div style="text-align:center;padding:28px;color:#9CA3AF;font-size:13px">Loading…</div>'; try{ const snap=await getDocs(query(collection(db,'products'),where('godownId','==',whId))); prods=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name)); renderProds(prods); }catch(e){ document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:#EF4444;font-size:13px">Error loading products.</div>`; } }
 function renderProds(list){
-  const el=document.getElementById('prodList'); if(!list.length){ el.innerHTML='<div style="text-align:center;padding:36px 20px"><div style="font-size:3rem;opacity:.07;margin-bottom:12px">📦</div><div style="font-size:14px;font-weight:600;color:#6B7280;margin-bottom:6px">No products yet</div></div>'; return; }
+  const el=document.getElementById('prodList');
+  // Fix: update products count strip
+  const wssP=document.getElementById('wssP'); if(wssP) wssP.textContent=list.length;
+  if(!list.length){ el.innerHTML='<div style="text-align:center;padding:36px 20px"><div style="font-size:3rem;opacity:.07;margin-bottom:12px">📦</div><div style="font-size:14px;font-weight:600;color:#6B7280;margin-bottom:6px">No products yet</div></div>'; return; }
   el.innerHTML=list.map(p=>{
     const isLow=p.minStock!=null?p.stock<=p.minStock:p.stock<=0;
     return `<div class="prow" onclick="window.openProd('${p.id}')"><div class="prow-ico">${p.emoji||'📦'}</div><div class="prow-info"><div class="prow-name">${esc(p.name)}${isLow?'<span class="low-badge">⚠ Low</span>':''}</div><div class="prow-meta">${p.desc?esc(p.desc.slice(0,50)):'&nbsp;'}</div></div><div class="prow-stk"><span class="prow-num${isLow?' low':''}">${p.stock||0}</span><span class="prow-unit">${esc(p.unit||'units')}</span></div><div class="prow-arr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>`;
