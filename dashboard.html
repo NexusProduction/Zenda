@@ -92,12 +92,7 @@
         Assign
       </button>
     </div>
-    <div class="stats-grid" id="stats-grid">
-        <div class="stat-card skel" style="height:120px"></div>
-        <div class="stat-card skel" style="height:120px"></div>
-        <div class="stat-card skel" style="height:120px"></div>
-        <div class="stat-card skel" style="height:120px"></div>
-      </div>
+    <div class="stats-grid" id="stats-grid" data-animate="stagger"></div>
     <div class="charts-row hidden" id="charts-row">
       <div class="chart-card">
         <div class="chart-hdr">
@@ -114,23 +109,25 @@
         <canvas id="donut-chart" height="160"></canvas>
       </div>
     </div>
-    <!-- Recent Tasks -->
-      <div class="content-card" style="margin-bottom:12px">
-        <div class="content-hdr">
-          <div><div class="content-ttl" id="recent-ttl">Recent Tasks</div></div>
-          <button class="btn btn-ghost btn-sm" onclick="setTaskTab('assigned-to-me',null);showView('tasks')">
-            View All <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
+    <div class="content-row">
+        <!-- Recent Tasks (60%) -->
+        <div class="content-card">
+          <div class="content-hdr">
+            <div><div class="content-ttl" id="recent-ttl">Recent Tasks</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="setTaskTab('assigned-to-me',null);showView('tasks')">
+              View All <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <div id="recent-tasks"></div>
         </div>
-        <div id="recent-tasks"></div>
-      </div>
-      <!-- My Apps horizontal -->
-      <div class="apps-wrap">
-        <div class="content-hdr">
-          <div class="content-ttl">My Apps</div>
-          <button class="btn btn-ghost btn-sm" onclick="window.openAppLib()" style="font-size:.75rem">See all <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        <!-- My Apps (40%) -->
+        <div class="apps-wrap">
+          <div class="content-hdr">
+            <div class="content-ttl">My Apps</div>
+            <button class="btn btn-ghost btn-sm" onclick="window.openAppLib()" style="font-size:.75rem">All Apps →</button>
+          </div>
+          <div class="apps-grid" id="apps-grid"></div>
         </div>
-        <div class="apps-grid" id="apps-grid"></div>
       </div>
         <div class="apps-grid" id="apps-grid"></div>
       </div>
@@ -138,7 +135,7 @@
   </div>
 
   <div id="view-tasks" class="hidden">
-    <div class="page-hdr" style="margin-bottom:16px">
+    <div class="page-hdr" style="margin-bottom:14px;margin-top:0">
       <div>
         <div class="page-ttl">My Tasks</div>
         <div class="page-sub" id="tasks-sub"></div>
@@ -162,7 +159,7 @@
   </div>
 
   <div id="view-staff" class="hidden">
-    <div class="page-hdr" style="margin-bottom:16px">
+    <div class="page-hdr" style="margin-bottom:14px;margin-top:0">
       <div>
         <div class="page-ttl">Staff Members</div>
         <div class="page-sub" id="staff-count-sub"></div>
@@ -903,15 +900,27 @@ window.setTaskTab = function(tab, btn) {
 
 window.doAcceptTask = async function(id) {
   const card = document.getElementById('task-' + id);
-  if (card) { card.style.transition = 'opacity .3s, transform .3s'; card.style.opacity = '.4'; card.style.transform = 'scale(.98)'; }
+  if (card) { card.classList.add('task-done-anim'); }
   try {
     await markTaskDone(id);
-    showToast('Task marked done! ✓', 'success');
+    spawnConfetti();
+    showToast('🎉 Task done! Great work!', 'success');
   } catch(e) {
     showToast(e.message, 'error');
-    if (card) { card.style.opacity = '1'; card.style.transform = ''; }
+    if (card) { card.classList.remove('task-done-anim'); card.style.opacity = '1'; }
   }
 };
+
+function spawnConfetti() {
+  const colors = ['#4F46E5','#10B981','#F59E0B','#EF4444','#8B5CF6'];
+  for(let i=0;i<12;i++) {
+    const dot = document.createElement('div');
+    dot.className = 'confetti-dot';
+    dot.style.cssText = `left:${30+Math.random()*40}%;top:${20+Math.random()*30}%;background:${colors[i%colors.length]};animation-delay:${Math.random()*200}ms;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px`;
+    document.body.appendChild(dot);
+    setTimeout(() => dot.remove(), 900);
+  }
+}
 
 window.openDeclineModal = function(id, title) {
   pendingDeclineId = id;
@@ -1426,11 +1435,19 @@ window.saveEdit = async function() {
 // ──────────────────────────────────────────────
 function buildAppsGrid(ids) {
   const el = document.getElementById('apps-grid');
-  const html = ids.filter(id => APP_REGISTRY[id]).map(id => {
+  // Ensure expenses shows if installed
+  const allIds = ids.includes('expenses') ? ids : ids;
+  const html = allIds.filter(id => APP_REGISTRY[id]).map(id => {
     const a = APP_REGISTRY[id];
-    return `<div class="app-icon" onclick="window.openApp('${a.id}')"><div class="app-img" style="background:${a.bgColor}">${a.icon}</div><div class="app-lbl">${a.name}</div></div>`;
+    return `<div class="app-icon" onclick="window.openApp('${a.id}')" title="${a.name}">
+      <div class="app-img" style="background:${a.bgColor}">${a.icon}</div>
+      <div class="app-lbl">${a.name.replace(' Management','').replace(' Tracker','')}</div>
+    </div>`;
   }).join('');
-  el.innerHTML = html + `<div class="app-more" onclick="window.openAppLib()"><div class="app-more-img" style="background:var(--bg-overlay);border:none">${svg('grid')}</div><div class="app-lbl" style="color:var(--tx-3)">More</div></div>`;
+  el.innerHTML = html + `<div class="app-more" onclick="window.openAppLib()">
+    <div class="app-more-img">${svg('grid')}</div>
+    <div class="app-lbl" style="color:var(--tx-3)">More</div>
+  </div>`;
 }
 window.openApp = id => { const a = APP_REGISTRY[id]; if (a) window.open(a.path + '?uid=' + CU.uid, '_blank'); };
 
@@ -1602,7 +1619,19 @@ window.doUninstallApp = async function(id) {
 // ──────────────────────────────────────────────
 window.showView = function(v) {
   ['home','tasks','staff'].forEach(n => {
-    document.getElementById('view-' + n)?.classList.toggle('hidden', n !== v);
+    const el = document.getElementById('view-' + n);
+    if(el) {
+      const hide = n !== v;
+      el.classList.toggle('hidden', hide);
+      // Re-trigger animations when view becomes visible
+      if(!hide) {
+        el.querySelectorAll('.stat-card,.task-card,.staff-card').forEach((c,i)=>{
+          c.style.animationDelay = (i*60)+'ms';
+          c.style.animation = 'none';
+          requestAnimationFrame(()=>{ c.style.animation = ''; });
+        });
+      }
+    }
     document.getElementById('nav-' + n)?.classList.toggle('active', n === v);
   });
   ['home','tasks','assign','notif','profile'].forEach(n => document.getElementById('bn-' + n)?.classList.remove('active'));
@@ -1740,6 +1769,24 @@ function format12hr(t) {
 }
 
 init().catch(console.error);
+
+// ── SECTION REVEAL ANIMATIONS ──
+(function() {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if(e.isIntersecting) {
+        e.target.classList.add('revealed');
+        e.target.querySelectorAll('.stat-card,.task-card,.staff-card,.content-card,.apps-wrap').forEach((el,i) => {
+          el.style.animationDelay = (i*50)+'ms';
+          el.classList.add('anim-in');
+        });
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.05 });
+  document.querySelectorAll('.stats-grid,.content-card,.apps-wrap,.staff-card').forEach(el => io.observe(el));
+})();
+
 </script>
 </body>
 </html>
