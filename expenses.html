@@ -460,7 +460,7 @@ async function init(){
   const urlUid = new URLSearchParams(location.search).get('uid');
   let activeUid = urlUid;
   
-  // Robustly fetch user data from session storage (matching dashboard.html logic)
+  // 1. Check local session
   try {
     const s = sessionStorage.getItem('zenda_user') || localStorage.getItem('zenda_session');
     if (s) {
@@ -470,18 +470,31 @@ async function init(){
         CU = {
           uid: u.uid,
           role: u.role || 'staff',
-          companyId: u.companyId || u.uid, // Fallback to UID for owners
+          companyId: u.companyId || u.uid,
           name: u.name || 'Staff'
         };
       }
     }
-  } catch(e) { console.warn("Session read error", e); }
+  } catch(e) { console.warn("Session read warning"); }
   
-  // If still missing, try Firebase Auth state
+  // 2. Safely check Firebase Auth without triggering the 'unsub' crash
   if (!activeUid) {
     const au = await new Promise(r => {
-      const unsub = onAuthStateChanged(auth, x => { unsub(); r(x); });
-      setTimeout(() => r(null), 4000);
+      let resolved = false;
+      let unsubscribe = onAuthStateChanged(auth, x => { 
+        if(!resolved) {
+          resolved = true;
+          if (unsubscribe) unsubscribe();
+          r(x); 
+        }
+      });
+      setTimeout(() => {
+        if(!resolved) {
+          resolved = true;
+          if (unsubscribe) unsubscribe();
+          r(null);
+        }
+      }, 4000);
     });
     if (au) activeUid = au.uid;
   }
@@ -494,7 +507,7 @@ async function init(){
   
   CU.uid = activeUid;
   
-  // Verify with Firestore
+  // 3. Verify Database
   try {
     const s = await getDoc(doc(db, 'users', activeUid));
     if (s.exists()) {
@@ -514,15 +527,14 @@ async function init(){
     return;
   }
 
-  // Show approvals panel for owner/manager
+  // 4. Show UI elements
   if (CU.role === 'owner' || CU.role === 'manager') {
     document.getElementById('approvals-panel')?.classList.remove('hidden');
   }
 
-  // Load budget
   loadBudget();
 
-  // Real-time expenses listener
+  // 5. Connect Real-time Sync
   const q = query(collection(db, 'expenses'), where('companyId', '==', CU.companyId), orderBy('createdAt', 'desc'));
   onSnapshot(q, snap => {
     allExpenses = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -530,7 +542,6 @@ async function init(){
     syncEl.className = 'sync-badge sync-live';
     renderAll();
   }, (err) => {
-    console.error("Expense sync error:", err);
     syncEl.textContent = 'Sync Error'; 
     syncEl.className = 'sync-badge sync-err';
   });
