@@ -5,17 +5,19 @@ import { addNotification } from './notifications.js';
 import { formatTime } from './utils.js';
 import { addCalendarEvent } from './apps.js';
 
-export async function assignTask({ title, description, assignedTo, assignedToName, assignedBy, assignedByName, companyId, dueDate, dueTime }) {
+export async function assignTask({ title, description, assignedTo, assignedToName, assignedBy, assignedByName, companyId, dueDate, dueTime, priority }) { // Added priority here
   const ref = await addDoc(collection(db, 'tasks'), {
     title, description: description || '',
     assignedTo, assignedToName,
     assignedBy, assignedByName,
     companyId,
     status: 'pending',
+    priority: priority || 'Medium', // Added priority here
     dueDate: dueDate || null,
     dueTime: dueTime || null,
     createdAt: new Date().toISOString()
   });
+// ... rest of the function stays the same
 
   await addNotification(assignedTo, {
     type: 'task_assigned',
