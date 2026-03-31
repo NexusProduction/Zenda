@@ -676,6 +676,7 @@ function subscribeAll() {
       if (role === 'owner') renderOwnerStats();
       renderStaffCards(staff);
       buildAssignSelect(staff);
+      buildFilterAssignerSelect(staff); // <-- ADD THIS LINE
       const nonOwner = staff.filter(s => s.role !== 'owner');
       const sc = document.getElementById('staff-count-sub');
       if(sc) sc.textContent = `${nonOwner.length} member${nonOwner.length !== 1 ? 's' : ''}`;
@@ -863,9 +864,12 @@ function renderTasksList() {
   const seen = new Set();
   tasks = tasks.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
 
-  // --- NEW: APPLY THE CURRENT FILTER ---
+  // --- APPLY THE CURRENT FILTERS ---
   if (window.currentTaskFilter && window.currentTaskFilter !== 'All') {
     tasks = tasks.filter(t => t.priority === window.currentTaskFilter);
+  }
+  if (window.currentAssignerFilter && window.currentAssignerFilter !== 'All') {
+    tasks = tasks.filter(t => t.assignedBy === window.currentAssignerFilter);
   }
 
   if (!tasks.length) {
@@ -1843,6 +1847,69 @@ function format12hr(t) {
   const ampm = h >= 12 ? 'PM' : 'AM';
   return `${((h % 12) || 12)}:${String(m).padStart(2,'0')} ${ampm}`;
 }
+
+init().catch(console.error);
+
+// ──────────────────────────────────────────────
+// TASK FILTERING & CUSTOMIZATION SYSTEM
+// ──────────────────────────────────────────────
+window.currentTaskFilter = 'All';
+window.currentAssignerFilter = 'All';
+
+// Ensure Pending is default when app starts
+taskTab = 'pending';
+
+function buildFilterAssignerSelect(staff) {
+  const sel = document.getElementById('filter-assigner');
+  if(!sel) return;
+  sel.innerHTML = '<option value="All">Anyone</option>' + 
+    staff.map(s => `<option value="${s.uid}">${esc(s.name)}</option>`).join('');
+}
+
+window.openFilterModal = function() {
+  document.getElementById('filter-priority').value = window.currentTaskFilter;
+  document.getElementById('filter-assigner').value = window.currentAssignerFilter;
+  document.getElementById('filter-modal').classList.remove('hidden');
+};
+
+window.applyTaskFilter = function() {
+  window.currentTaskFilter = document.getElementById('filter-priority').value;
+  window.currentAssignerFilter = document.getElementById('filter-assigner').value;
+  
+  const btn = document.getElementById('btn-filter-tasks');
+  if (window.currentTaskFilter !== 'All' || window.currentAssignerFilter !== 'All') {
+    btn.style.color = 'var(--ac)'; 
+    btn.style.background = 'var(--ac-s)';
+    btn.style.borderColor = 'var(--ac)';
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filter Active`;
+  } else {
+    btn.style.color = 'var(--tx-2)';
+    btn.style.background = 'transparent';
+    btn.style.borderColor = 'transparent';
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filter`;
+  }
+  
+  renderTasksList();
+};
+
+window.openCustomizeModal = function() {
+  document.getElementById('customize-modal').classList.remove('hidden');
+};
+
+window.applyCustomize = function() {
+  const density = document.getElementById('cust-density').value;
+  const list = document.getElementById('tasks-list');
+  if (density === 'compact') {
+    list.style.gap = '6px';
+  } else {
+    list.style.gap = '14px';
+  }
+  showToast('View updated', 'success');
+};
+
+// ── SECTION REVEAL ANIMATIONS ──
+(function() {
+  const io = new IntersectionObserver((entries) => {
 
 init().catch(console.error);
 // ──────────────────────────────────────────────
