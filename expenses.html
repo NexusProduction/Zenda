@@ -459,12 +459,33 @@ window.applyFilters=function(){
 async function init(){
   const urlUid=new URLSearchParams(location.search).get('uid');
   let activeUid=urlUid;
-  if(!activeUid){try{const s=sessionStorage.getItem('zenda_user');if(s){const u=JSON.parse(s);activeUid=u.uid;CU.role=u.role||'staff';CU.companyId=u.companyId;CU.name=u.name||'Staff';}}catch(e){}}
-  if(!activeUid){const au=await new Promise(r=>{const u=onAuthStateChanged(auth,x=>{u();r(x);});setTimeout(()=>r(null),3000);});if(au)activeUid=au.uid;}
+  
+  // Try session storage first (fastest)
+  if(!activeUid){
+    try{const s=sessionStorage.getItem('zenda_user')||localStorage.getItem('zenda_session');
+      if(s){const u=JSON.parse(s);if(u.uid){activeUid=u.uid;CU.role=u.role||'staff';CU.companyId=u.companyId;CU.name=u.name||'Staff';}}
+    }catch(e){}
+  }
+  
+  // Try Firebase auth (with shorter timeout)
+  if(!activeUid){
+    const au=await new Promise(r=>{
+      const unsub=onAuthStateChanged(auth,x=>{unsub();r(x);});
+      setTimeout(()=>r(null),4000);
+    });
+    if(au)activeUid=au.uid;
+  }
   if(!activeUid){syncEl.textContent='Offline';syncEl.className='sync-badge sync-err';return;}
   CU.uid=activeUid;
   try{const s=await getDoc(doc(db,'users',activeUid));if(s.exists()){CU.role=s.data().role||'staff';CU.companyId=s.data().companyId||activeUid;CU.name=s.data().name||'Staff';}}catch(e){}
-  if(!CU.companyId)return;
+  // Fallback: if no companyId, use uid as companyId (owner pattern)
+  if(!CU.companyId && activeUid){
+    try{const s=await getDoc(doc(db,'users',activeUid));
+      if(s.exists()){CU.role=s.data().role||'staff';CU.companyId=s.data().companyId||activeUid;CU.name=s.data().name||'Staff';}
+      else{CU.companyId=activeUid;}
+    }catch(e){CU.companyId=activeUid;}
+  }
+  if(!CU.companyId){syncEl.textContent='No account';syncEl.className='sync-badge sync-err';return;}
 
   // Show approvals panel for owner/manager
   if(CU.role==='owner'||CU.role==='manager'){
