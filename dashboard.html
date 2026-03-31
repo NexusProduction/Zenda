@@ -1229,20 +1229,35 @@ window.handleAssign = async function() {
   const desc = document.getElementById('task-desc').value.trim();
   const date = document.getElementById('task-date').value;
   const time = document.getElementById('task-time').value;
-  const priority = document.getElementById('task-priority').value; // NEW
+  
+  // FIX: Safe check for priority in case the HTML isn't perfectly loaded
+  const priorityEl = document.getElementById('task-priority');
+  const priority = priorityEl ? priorityEl.value : 'Medium';
+
   if (!to) { showToast('Select a team member.', 'error'); return; }
   if (!title) { showToast('Enter a task title.', 'error'); return; }
+  
   const btn = document.getElementById('assign-btn');
   setButtonLoading(btn, true);
   try {
     const assignee = allStaff.find(s => s.uid === to);
-    await assignTask({ title, description: desc, assignedTo: to, assignedToName: assignee?.name || 'Team Member', assignedBy: CU.uid, assignedByName: CU.name, companyId: CU.companyId, dueDate: date || null, dueTime: time || null, priority: priority }); // ADDED PRIORITY HERE
+    await assignTask({ 
+      title, 
+      description: desc, 
+      assignedTo: to, 
+      assignedToName: assignee?.name || 'Team Member', 
+      assignedBy: CU.uid, 
+      assignedByName: CU.name, 
+      companyId: CU.companyId, 
+      dueDate: date || null, 
+      dueTime: time || null, 
+      priority: priority 
+    });
     window.closeModal('assign-modal');
     showToast(`Assigned to ${assignee?.name}!`, 'success');
   } catch(e) { showToast(e.message, 'error'); }
   setButtonLoading(btn, false, 'Assign Task →');
 };
-
 // ──────────────────────────────────────────────
 // PROFILE
 // ──────────────────────────────────────────────
