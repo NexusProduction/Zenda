@@ -340,9 +340,19 @@
         <label class="form-label">Assign To</label>
         <select class="zenda-select" id="assign-to"><option value="">Select team member…</option></select>
       </div>
-      <div class="form-group">
-        <label class="form-label">Task Title *</label>
-        <input class="form-input" id="task-title" type="text" placeholder="e.g. Review Q3 report" maxlength="80">
+      <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+          <label class="form-label">Task Title *</label>
+          <input class="form-input" id="task-title" type="text" placeholder="e.g. Review Q3 report" maxlength="80">
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label class="form-label">Priority</label>
+          <select class="zenda-select" id="task-priority">
+            <option value="Low">Low</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="High" style="color: var(--red); font-weight: bold;">High</option>
+          </select>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Description <span style="color:var(--tx-3);font-weight:400">(optional)</span></label>
@@ -856,7 +866,12 @@ function renderTaskCard(task, showActions) {
     <div class="task-status-dot ${dotClass}"></div>
     <div class="task-body">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
-        <div class="task-title">${esc(task.title || '(Untitled Task)')}</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="task-title" style="margin-bottom:0;">${esc(task.title || '(Untitled Task)')}</div>
+          ${task.priority === 'High' ? `<span style="font-size:0.65rem; background:#FEE2E2; color:#DC2626; padding:2px 6px; border-radius:4px; font-weight:700;">HIGH ↑</span>` : ''}
+          ${task.priority === 'Medium' ? `<span style="font-size:0.65rem; background:#FEF3C7; color:#D97706; padding:2px 6px; border-radius:4px; font-weight:700;">MED =</span>` : ''}
+          ${task.priority === 'Low' ? `<span style="font-size:0.65rem; background:#F3F4F6; color:#6B7280; padding:2px 6px; border-radius:4px; font-weight:700;">LOW ↓</span>` : ''}
+        </div>
         ${!canAct ? `<span class="task-badge ${badge}" style="display:flex;align-items:center;gap:4px;flex-shrink:0">${badgeIcon}${badgeLabel}</span>` : ''}
       </div>
       <div class="task-meta">${meta}</div>
@@ -1207,13 +1222,14 @@ window.handleAssign = async function() {
   const desc = document.getElementById('task-desc').value.trim();
   const date = document.getElementById('task-date').value;
   const time = document.getElementById('task-time').value;
+  const priority = document.getElementById('task-priority').value; // NEW
   if (!to) { showToast('Select a team member.', 'error'); return; }
   if (!title) { showToast('Enter a task title.', 'error'); return; }
   const btn = document.getElementById('assign-btn');
   setButtonLoading(btn, true);
   try {
     const assignee = allStaff.find(s => s.uid === to);
-    await assignTask({ title, description: desc, assignedTo: to, assignedToName: assignee?.name || 'Team Member', assignedBy: CU.uid, assignedByName: CU.name, companyId: CU.companyId, dueDate: date || null, dueTime: time || null });
+    await assignTask({ title, description: desc, assignedTo: to, assignedToName: assignee?.name || 'Team Member', assignedBy: CU.uid, assignedByName: CU.name, companyId: CU.companyId, dueDate: date || null, dueTime: time || null, priority: priority }); // ADDED PRIORITY HERE
     window.closeModal('assign-modal');
     showToast(`Assigned to ${assignee?.name}!`, 'success');
   } catch(e) { showToast(e.message, 'error'); }
