@@ -142,10 +142,8 @@
     </div>
 
     <div class="ftabs" id="task-tab-row">
-      <button class="ftab on" onclick="setTaskTab('assigned-to-me',this)" id="tab-to-me">Assigned</button>
-      
-      <button class="ftab" onclick="setTaskTab('pending',this)">Pending</button>
-      
+      <button class="ftab" onclick="setTaskTab('assigned-to-me',this)" id="tab-to-me">Assigned</button>
+      <button class="ftab on" onclick="setTaskTab('pending',this)" id="tab-pending">Pending</button>
       <button class="ftab" onclick="setTaskTab('declined',this)">Denied</button>
     </div>
 
@@ -163,20 +161,15 @@
           </button>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button class="btn btn-ghost btn-sm" style="color: var(--tx-2); font-size: .75rem;" onclick="showToast('Custom Fields coming soon!', '')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> 
-            Custom Fields
-          </button>
-          <button class="btn btn-ghost btn-sm" style="color: var(--tx-2); font-size: .75rem;" onclick="showToast('View Customization coming soon!', '')">
+          <button class="btn btn-ghost btn-sm" style="color: var(--tx-2); font-size: .75rem;" onclick="openCustomizeModal()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> 
             Customize
           </button>
         </div>
       </div>
 
-      <div id="tasks-list"></div>
+      <div id="tasks-list" style="display:flex; flex-direction:column; gap:14px;"></div>
     </div>
-  </div>
 
   <div id="view-staff" class="hidden">
     <div class="page-hdr" style="margin-bottom:14px;">
@@ -406,45 +399,47 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="form-group">
-      <label class="form-label">Priority</label>
-      <select class="zenda-select" id="filter-priority" onchange="applyTaskFilter()">
-        <option value="All">All Priorities</option>
-        <option value="High">High Priority Only</option>
-        <option value="Medium">Medium Priority Only</option>
-        <option value="Low">Low Priority Only</option>
-      </select>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="zenda-select" id="filter-priority" onchange="applyTaskFilter()">
+          <option value="All">All Priorities</option>
+          <option value="High">High Priority Only</option>
+          <option value="Medium">Medium Priority Only</option>
+          <option value="Low">Low Priority Only</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Assigned By</label>
+        <select class="zenda-select" id="filter-assigner" onchange="applyTaskFilter()">
+          <option value="All">Anyone</option>
+          </select>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;">
       <button class="btn btn-primary w-full" onclick="closeModal('filter-modal')">Done</button>
     </div>
   </div>
 </div>
-<div class="modal-overlay hidden" id="decline-modal">
-  <div class="modal" style="max-width:420px">
+
+<div class="modal-overlay hidden" id="customize-modal">
+  <div class="modal" style="max-width:320px">
     <div class="modal-hdr">
-      <div class="modal-ttl">Decline Task</div>
-      <button class="modal-close" onclick="closeModal('decline-modal')">
+      <div class="modal-ttl">Customize View</div>
+      <button class="modal-close" onclick="closeModal('customize-modal')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div style="background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.15);border-radius:var(--r-md);padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--tx-2)">
-      Task: <strong id="decline-task-title"></strong>
+    <div class="form-group">
+      <label class="form-label">List Density</label>
+      <select class="zenda-select" id="cust-density" onchange="applyCustomize()">
+        <option value="comfortable">Comfortable (Spaced out)</option>
+        <option value="compact">Compact (Tighter list)</option>
+      </select>
     </div>
-    <div class="form-group" style="margin-bottom:14px">
-      <label class="form-label">Reason <span style="color:var(--tx-3);font-weight:400">(optional)</span></label>
-      <textarea class="form-input" id="decline-reason" placeholder="Let them know why you're declining…" style="min-height:80px;resize:vertical"></textarea>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('decline-modal')">Cancel</button>
-      <button class="btn btn-danger" style="flex:1" id="confirm-decline-btn" onclick="confirmDecline()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        Decline Task
-      </button>
-    </div>
+    <button class="btn btn-primary w-full" onclick="closeModal('customize-modal')" style="margin-top:16px">Done</button>
   </div>
 </div>
-
 <div class="modal-overlay hidden" id="delete-modal">
   <div class="modal" style="max-width:440px">
     <div class="modal-hdr">
