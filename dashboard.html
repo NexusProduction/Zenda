@@ -518,9 +518,17 @@ function setupUI() {
 
   const localLogo = localStorage.getItem('zenda_logo_' + CU.uid);
   const avatarSrc = localLogo || CU.avatarData || null;
-  if (avatarSrc) CU.avatarData = avatarSrc;
-  setAvatar('topbar-avatar', ini, col, 26, avatarSrc);
-  setAvatar('bn-avatar', ini, col, 22, avatarSrc);
+  if (avatarSrc) {
+    CU.avatarData = avatarSrc;
+    setAvatar('topbar-avatar', ini, col, 26, avatarSrc);
+    setAvatar('bn-avatar', ini, col, 22, avatarSrc);
+  } else {
+    // Safely set initials if no image is available
+    const topAv = document.getElementById('topbar-avatar');
+    if (topAv) { topAv.textContent = ini; topAv.style.background = col + '22'; topAv.style.color = col; }
+    const bnAv = document.getElementById('bn-avatar');
+    if (bnAv) { bnAv.textContent = ini; bnAv.style.background = col + '22'; bnAv.style.color = col; }
+  }
 
   document.getElementById('topbar-name').textContent = name.split(' ')[0];
   getDoc(doc(db, 'companies', CU.companyId)).then(s => {
@@ -833,9 +841,8 @@ function renderTasksList() {
     el.innerHTML = `<div class="empty" style="padding:48px 24px"><div class="empty-ico" style="width:64px;height:64px;border-radius:18px;font-size:1.8rem">📋</div><div class="empty-ttl">No tasks here</div><div class="empty-sub">${taskTab==='assigned-to-me'?'Tasks assigned to you will appear here':taskTab==='assigned-by-me'?'Tasks you assign to others will appear here':'Nothing in this category yet'}</div></div>`;
     return;
   }
-  const canRespond = taskTab === 'assigned-to-me' || taskTab === 'pending';
-  el.innerHTML = tasks.map(t => renderTaskCard(t, canRespond)).join('');
-}
+  // Always let the user respond to tasks assigned to them, regardless of which tab they are viewing
+  const canRespond = true;
 
 function renderTaskCard(task, showActions) {
   const isToMe = task.assignedTo === CU.uid;
