@@ -477,25 +477,29 @@ async function init(){
     }
   } catch(e) { console.warn("Session read warning"); }
   
-  // 2. Safely check Firebase Auth without triggering the 'unsub' crash
+  // 2. Safely check Firebase Auth (Fixes the TDZ crash!)
   if (!activeUid) {
     const au = await new Promise(r => {
       let resolved = false;
-      let unsubscribe = onAuthStateChanged(auth, x => { 
+      const unsub = onAuthStateChanged(auth, user => { 
         if(!resolved) {
           resolved = true;
-          if (unsubscribe) unsubscribe();
-          r(x); 
+          // The magic fix: wait 1 millisecond before unsubscribing
+          setTimeout(() => unsub(), 0); 
+          r(user); 
         }
       });
+      
+      // Fallback timeout
       setTimeout(() => {
         if(!resolved) {
           resolved = true;
-          if (unsubscribe) unsubscribe();
+          setTimeout(() => unsub(), 0);
           r(null);
         }
       }, 4000);
     });
+    
     if (au) activeUid = au.uid;
   }
   
