@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Expense Tracker — Zenda</title>
+<title>Expense & Income Tracker — Zenda</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text y='24' x='5' font-size='20'>💳</text></svg>">
@@ -44,7 +44,7 @@ body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;fo
 .main-grid{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
 @media(max-width:900px){.main-grid{grid-template-columns:1fr}}
 
-/* ── PANEL ── */
+/* ── EXPENSE LIST PANEL ── */
 .panel{background:var(--sf);border:1px solid var(--bd);border-radius:20px;overflow:hidden;box-shadow:0 2px 8px rgba(17,24,39,.05)}
 .panel-hdr{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .panel-ttl{font-family:var(--fd);font-size:1rem;font-weight:800;color:var(--tx1);letter-spacing:-.015em}
@@ -74,6 +74,7 @@ body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;fo
 .exp-meta{font-size:.75rem;color:var(--tx2);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .exp-cat-badge{padding:2px 8px;border-radius:4px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .exp-amount{font-family:var(--fm);font-size:.9375rem;font-weight:700;color:var(--red);flex-shrink:0;text-align:right}
+.exp-amount.income{color:var(--green)}
 .exp-del{background:none;border:none;cursor:pointer;color:var(--tx3);padding:5px;border-radius:6px;transition:all .15s;flex-shrink:0;opacity:0}
 .exp-row:hover .exp-del{opacity:1}
 .exp-del:hover{background:#FEE2E2;color:var(--red)}
@@ -86,6 +87,8 @@ body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;fo
 
 /* ── RIGHT SIDEBAR ── */
 .sidebar-col{display:flex;flex-direction:column;gap:14px}
+
+/* Category breakdown */
 .cat-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
 .cat-item:last-child{border-bottom:none}
 .cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
@@ -94,6 +97,8 @@ body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;fo
 .cat-pct{font-size:.7rem;color:var(--tx3);margin-top:1px}
 .cat-bar-wrap{height:4px;background:var(--sf2);border-radius:99px;margin-top:6px;overflow:hidden}
 .cat-bar{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1)}
+
+/* Budget tracker */
 .budget-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .budget-label{font-size:.84rem;font-weight:600;color:var(--tx1)}
 .budget-vals{font-family:var(--fm);font-size:.78rem;color:var(--tx2)}
@@ -108,14 +113,15 @@ body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;fo
 .btn-primary{background:var(--ac);color:#fff;box-shadow:0 1px 3px rgba(79,70,229,.22)}
 .btn-primary:hover{background:var(--ach);box-shadow:0 4px 12px rgba(79,70,229,.28);transform:translateY(-1px)}
 .btn-ghost{background:transparent;color:var(--tx2);border:1.5px solid var(--bd)}
-.btn-ghost:hover{background:var(--sf2);color:var(--tx1)}
+.btn-ghost:hover{background:var(--sf2);color:var(--tx1);border-color:var(--bd)}
 .btn-sm{padding:5px 12px;font-size:.78rem}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#DC2626}
 .w-full{width:100%}
 
 /* ── MODAL ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(17,24,39,.4);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--sf);border-radius:22px;width:100%;max-width:460px;padding:24px;box-shadow:0 24px 64px rgba(17,24,39,.12);transform:scale(.95);transition:transform .2s cubic-bezier(.34,1.56,.64,1);border:1px solid var(--bd);max-height:90vh;overflow-y:auto}
+.modal{background:var(--sf);border-radius:22px;width:100%;max-width:400px;padding:24px;box-shadow:0 24px 64px rgba(17,24,39,.12);transform:scale(.95);transition:transform .2s cubic-bezier(.34,1.56,.64,1);border:1px solid var(--bd);max-height:90vh;overflow-y:auto}
 .modal-overlay.open .modal{transform:scale(1)}
 .modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
 .modal-ttl{font-family:var(--fd);font-size:1.0625rem;font-weight:800;color:var(--tx1)}
@@ -130,15 +136,7 @@ body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;fo
 .fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .amount-wrap{position:relative}
 .amount-prefix{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-family:var(--fm);font-weight:700;color:var(--tx2);font-size:.9rem;pointer-events:none}
-.amount-inp{padding-left:28px!important;font-family:var(--fm)!important;font-size:1.1rem!important;font-weight:700!important}
-.tgl{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
-.tgl input{opacity:0;width:0;height:0}
-.tgl-sl{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#D1D5DB;transition:.3s;border-radius:34px}
-.tgl-sl:before{position:absolute;content:"";height:16px;width:16px;left:2px;bottom:2px;background:white;transition:.3s;border-radius:50%}
-input:checked + .tgl-sl{background:var(--ac)}
-input:checked + .tgl-sl:before{transform:translateX(16px)}
-.recurring-row{display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--sf2);border-radius:10px;cursor:pointer;margin-bottom:14px;user-select:none}
-.recurring-lbl{font-size:.85rem;font-weight:600;color:var(--tx1)}
+.amount-inp{padding-left:28px!important;font-family:var(--fm)!important;font-size:1.3rem!important;font-weight:700!important;height:48px}
 .approval-note{background:#EEF2FF;border:1px solid #C7D2FE;border-radius:10px;padding:10px 12px;font-size:.78rem;color:var(--ac);line-height:1.55;margin-bottom:14px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;display:inline-block;vertical-align:middle}
@@ -161,14 +159,13 @@ input:checked + .tgl-sl:before{transform:translateX(16px)}
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       Back
     </button>
-    <div class="ab-brand"><div class="ab-icon">&#x1F4B3;</div>Expense Tracker</div>
+    <div class="ab-brand"><div class="ab-icon">&#x1F4B3;</div>Finance Tracker</div>
   </div>
   <span class="sync-badge sync-loading" id="sync-status">Connecting&#x2026;</span>
 </div>
 
 <div class="container">
 
-  <!-- SUMMARY STRIP -->
   <div class="summary-strip">
     <div class="sum-card">
       <div class="sum-icon si-red">&#x1F4B8;</div>
@@ -183,9 +180,8 @@ input:checked + .tgl-sl:before{transform:translateX(16px)}
       <div class="sum-sub">Awaiting review</div>
     </div>
     <div class="sum-card">
-      <div class="sum-icon si-green">&#x2705;</div>
-      <div class="sum-val" id="s-approved">&#x20B9;0</div>
-      <div class="sum-lbl">Approved</div>
+      <div class="sum-icon si-green">&#x1F4B0;</div> <div class="sum-val" id="s-income">&#x20B9;0</div>
+      <div class="sum-lbl">Total Income</div>
       <div class="sum-sub">This month</div>
     </div>
     <div class="sum-card">
@@ -198,7 +194,6 @@ input:checked + .tgl-sl:before{transform:translateX(16px)}
 
   <div class="main-grid">
 
-    <!-- LEFT: Transactions -->
     <div class="panel">
       <div class="panel-hdr">
         <div class="panel-ttl">Transactions</div>
@@ -208,7 +203,7 @@ input:checked + .tgl-sl:before{transform:translateX(16px)}
           </select>
           <button class="btn btn-primary btn-sm" id="add-btn">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Expense
+            Add Record
           </button>
         </div>
       </div>
@@ -223,7 +218,7 @@ input:checked + .tgl-sl:before{transform:translateX(16px)}
         <button class="ftab" data-cat="Miscellaneous">&#x1F9FE; Other</button>
       </div>
       <div class="search-wrap">
-        <input class="search-inp" id="exp-search" placeholder="Search expenses...">
+        <input class="search-inp" id="exp-search" placeholder="Search records...">
       </div>
       <div class="exp-list" id="exp-list">
         <div class="empty-exp">
@@ -234,10 +229,9 @@ input:checked + .tgl-sl:before{transform:translateX(16px)}
       </div>
     </div>
 
-    <!-- RIGHT: Sidebar -->
     <div class="sidebar-col">
       <div class="panel">
-        <div class="panel-hdr"><div class="panel-ttl">Breakdown</div></div>
+        <div class="panel-hdr"><div class="panel-ttl">Expense Breakdown</div></div>
         <div style="padding:14px 16px" id="cat-breakdown">
           <div style="text-align:center;padding:20px;color:var(--tx3);font-size:.84rem">No data yet</div>
         </div>
@@ -264,24 +258,26 @@ input:checked + .tgl-sl:before{transform:translateX(16px)}
           <div style="text-align:center;padding:20px;color:var(--tx3);font-size:.84rem">All caught up</div>
         </div>
       </div>
-      <div class="panel">
-        <div class="panel-hdr"><div class="panel-ttl">This Month</div></div>
-        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px" id="monthly-stats">
-          <div style="text-align:center;padding:12px;color:var(--tx3);font-size:.84rem">No data</div>
-        </div>
-      </div>
     </div>
 
   </div>
 </div>
 
-<!-- ADD EXPENSE MODAL -->
 <div class="modal-overlay" id="add-modal">
   <div class="modal">
     <div class="modal-hdr">
-      <div class="modal-ttl">Record Expense</div>
+      <div class="modal-ttl">Add Record</div>
       <button class="close-btn" id="close-add-modal">&#x2715;</button>
     </div>
+    
+    <div class="fg">
+      <label>Record Type</label>
+      <div style="display:flex;gap:8px">
+        <button type="button" id="btn-type-exp" class="btn btn-ghost w-full" style="border-color:var(--red);color:var(--red);background:#FEF2F2" onclick="window.setExpType('expense')">&#x1F4C9; Expense (Out)</button>
+        <button type="button" id="btn-type-inc" class="btn btn-ghost w-full" style="border-color:var(--bd);color:var(--tx2);background:var(--sf)" onclick="window.setExpType('income')">&#x1F4C8; Income (In)</button>
+      </div>
+    </div>
+
     <div class="fg">
       <label>Amount *</label>
       <div class="amount-wrap">
@@ -289,11 +285,12 @@ input:checked + .tgl-sl:before{transform:translateX(16px)}
         <input type="number" id="exp-amount" class="fi amount-inp" placeholder="0.00" min="0" step="0.01">
       </div>
     </div>
+
     <div class="fg-row">
       <div class="fg">
         <label>Category *</label>
         <select id="exp-category" class="fsel">
-          <option value="Inventory Stock">Inventory Stock</option>
+          <option value="Inventory Stock">Inventory Stock / Sale</option>
           <option value="Godown Expense">Godown Expense</option>
           <option value="Installation">Installation</option>
           <option value="Logistics">Logistics</option>
@@ -303,51 +300,36 @@ input:checked + .tgl-sl:before{transform:translateX(16px)}
         </select>
       </div>
       <div class="fg">
-        <label>Payment Method</label>
-        <select id="exp-payment" class="fsel">
-          <option value="Cash">Cash</option>
-          <option value="Bank Transfer">Bank Transfer</option>
-          <option value="UPI">UPI</option>
-          <option value="Credit Card">Credit Card</option>
-          <option value="Cheque">Cheque</option>
-        </select>
-      </div>
-    </div>
-    <div class="fg">
-      <label>Description *</label>
-      <input type="text" id="exp-desc" class="fi" placeholder="What was this expense for?">
-    </div>
-    <div class="fg">
-      <label>Vendor / Payee</label>
-      <input type="text" id="exp-vendor" class="fi" placeholder="Who was paid? (optional)">
-    </div>
-    <div class="fg-row">
-      <div class="fg">
         <label>Date</label>
         <input type="date" id="exp-date" class="fi">
       </div>
-      <div class="fg">
-        <label>Reference No.</label>
-        <input type="text" id="exp-ref" class="fi" placeholder="Invoice / Bill no.">
-      </div>
     </div>
-    <div class="recurring-row" id="recurring-row">
-      <label class="tgl" onclick="event.stopPropagation()">
-        <input type="checkbox" id="exp-recurring">
-        <span class="tgl-sl"></span>
-      </label>
-      <span class="recurring-lbl">Recurring monthly expense</span>
+
+    <div class="fg">
+      <label>Description *</label>
+      <input type="text" id="exp-desc" class="fi" placeholder="What was this transaction for?">
     </div>
+    
+    <div class="fg">
+      <label>Payment Method</label>
+      <select id="exp-payment" class="fsel">
+        <option value="Cash">Cash</option>
+        <option value="Bank Transfer">Bank Transfer</option>
+        <option value="UPI">UPI</option>
+        <option value="Credit Card">Credit Card</option>
+        <option value="Cheque">Cheque</option>
+      </select>
+    </div>
+
     <div class="approval-note hidden" id="approval-note">
       <strong>Needs approval</strong> &#x2014; This will be sent for review before being recorded.
     </div>
-    <button class="btn btn-primary w-full" id="save-exp-btn" style="padding:12px">
-      Save Expense &#x2192;
+    <button class="btn btn-primary w-full" id="save-exp-btn" style="padding:12px; margin-top:8px;">
+      Save Record &#x2192;
     </button>
   </div>
 </div>
 
-<!-- BUDGET MODAL -->
 <div class="modal-overlay" id="budget-modal">
   <div class="modal" style="max-width:380px">
     <div class="modal-hdr">
@@ -378,11 +360,9 @@ input:checked + .tgl-sl:before{transform:translateX(16px)}
 
 <script type="module">
 // ═══════════════════════════════════════════════════════════
-//  ZENDA EXPENSE TRACKER
-//  Uses shared firebase-config.js + auth.js
-//  FIX: Removed all Unicode chars from JS template literals
-//  FIX: All functions use module scope (no window. prefix issues)
-//  FIX: Auth uses getCurrentUser() with proper fallback
+//  ZENDA FINANCE TRACKER
+//  FIX: Income vs Expense support for correct math
+//  FIX: Simplified form UI
 // ═══════════════════════════════════════════════════════════
 
 import { db, auth } from './firebase-config.js';
@@ -399,6 +379,7 @@ let CU = { uid: null, role: 'staff', companyId: null, name: 'Staff' };
 let allExpenses = [], budget = null;
 let catFilter = '', searchVal = '', monthFilter = '';
 let dbUnsub = null;
+window.currentExpType = 'expense'; // default
 
 // ── CONSTANTS ──
 const CAT_COLORS = {
@@ -435,6 +416,21 @@ document.getElementById('exp-date').valueAsDate = new Date();
   sel.innerHTML = opts;
 })();
 
+// ── TOGGLE INCOME / EXPENSE ──
+window.setExpType = function(type) {
+  window.currentExpType = type;
+  const btnExp = document.getElementById('btn-type-exp');
+  const btnInc = document.getElementById('btn-type-inc');
+  
+  if (type === 'expense') {
+    btnExp.style.background = '#FEF2F2'; btnExp.style.borderColor = 'var(--red)'; btnExp.style.color = 'var(--red)';
+    btnInc.style.background = 'var(--sf)'; btnInc.style.borderColor = 'var(--bd)'; btnInc.style.color = 'var(--tx2)';
+  } else {
+    btnInc.style.background = '#D1FAE5'; btnInc.style.borderColor = 'var(--green)'; btnInc.style.color = 'var(--green)';
+    btnExp.style.background = 'var(--sf)'; btnExp.style.borderColor = 'var(--bd)'; btnExp.style.color = 'var(--tx2)';
+  }
+};
+
 // ── EVENT LISTENERS (NO INLINE ONCLICK) ──
 document.getElementById('add-btn').addEventListener('click', openAddModal);
 document.getElementById('close-add-modal').addEventListener('click', () => closeModal('add-modal'));
@@ -445,10 +441,6 @@ document.getElementById('edit-budget-btn').addEventListener('click', openBudgetM
 document.getElementById('set-budget-btn').addEventListener('click', openBudgetModal);
 document.getElementById('month-filter').addEventListener('change', applyFilters);
 document.getElementById('exp-search').addEventListener('input', applyFilters);
-document.getElementById('recurring-row').addEventListener('click', function() {
-  const cb = document.getElementById('exp-recurring');
-  cb.checked = !cb.checked;
-});
 
 // Category filter tabs
 document.querySelectorAll('.ftab').forEach(btn => {
@@ -498,7 +490,6 @@ function applyFilters() {
 // ── INIT ──
 async function init() {
   try {
-    // FIX: Use getCurrentUser() from auth.js
     const user = await getCurrentUser();
 
     if (!user || !user.uid) {
@@ -515,16 +506,12 @@ async function init() {
       name:      user.name      || 'Staff'
     };
 
-    // Show approvals panel for owners/managers
     if (CU.role === 'owner' || CU.role === 'manager') {
       document.getElementById('approvals-panel').classList.remove('hidden');
     }
 
-    // Load budget separately (once)
     await loadBudget();
 
-    // FIX: Real-time listener WITHOUT orderBy (avoids Firestore index error)
-    // We sort in JS instead
     const q = query(
       collection(db, 'expenses'),
       where('companyId', '==', CU.companyId)
@@ -532,7 +519,6 @@ async function init() {
 
     dbUnsub = onSnapshot(q,
       snap => {
-        // Sort newest first in JS
         allExpenses = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => {
@@ -549,7 +535,6 @@ async function init() {
         console.error('Expenses listener error:', err);
         syncEl.textContent = 'Sync Error';
         syncEl.className = 'sync-badge sync-err';
-        // Show empty state instead of infinite loading
         document.getElementById('exp-list').innerHTML =
           '<div class="empty-exp"><div class="empty-exp-icon">\u26A0\uFE0F</div>' +
           '<div class="empty-exp-ttl">Connection issue</div>' +
@@ -605,16 +590,13 @@ async function saveBudget() {
   }
 }
 
-// ── SAVE EXPENSE ──
+// ── SAVE EXPENSE / INCOME ──
 async function saveExpense() {
   const amount   = parseFloat(document.getElementById('exp-amount').value);
   const category = document.getElementById('exp-category').value;
   const desc     = document.getElementById('exp-desc').value.trim();
-  const vendor   = document.getElementById('exp-vendor').value.trim();
   const dateStr  = document.getElementById('exp-date').value;
-  const refNo    = document.getElementById('exp-ref').value.trim();
   const payment  = document.getElementById('exp-payment').value;
-  const recurring = document.getElementById('exp-recurring').checked;
 
   if (!amount || amount <= 0) { toast('Enter a valid amount', 'error'); return; }
   if (!desc) { toast('Enter a description', 'error'); return; }
@@ -626,17 +608,15 @@ async function saveExpense() {
   try {
     const isStaff = (CU.role === 'staff');
     await addDoc(collection(db, 'expenses'), {
+      type: window.currentExpType, // 'expense' or 'income'
       amount,
       category,
       description: desc,
-      vendor:      vendor  || null,
       paymentMethod: payment,
-      referenceNo: refNo   || null,
       companyId:   CU.companyId,
       createdBy:   CU.uid,
       createdByName: CU.name || 'Staff',
       date: dateStr ? new Date(dateStr).toISOString() : new Date().toISOString(),
-      recurring,
       status: isStaff ? 'pending' : 'approved',
       createdAt: serverTimestamp()
     });
@@ -644,18 +624,16 @@ async function saveExpense() {
     // Clear form
     document.getElementById('exp-amount').value  = '';
     document.getElementById('exp-desc').value    = '';
-    document.getElementById('exp-vendor').value  = '';
-    document.getElementById('exp-ref').value     = '';
-    document.getElementById('exp-recurring').checked = false;
     document.getElementById('exp-date').valueAsDate = new Date();
+    window.setExpType('expense'); // reset to default
 
     closeModal('add-modal');
-    toast(isStaff ? 'Submitted for approval!' : 'Expense recorded!', 'success');
+    toast(isStaff ? 'Submitted for approval!' : 'Record saved!', 'success');
   } catch (e) {
     toast('Failed: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = 'Save Expense \u2192';
+    btn.innerHTML = 'Save Record \u2192';
   }
 }
 
@@ -679,7 +657,7 @@ async function rejectExp(id) {
 }
 
 async function delExp(id) {
-  if (!confirm('Delete this expense?')) return;
+  if (!confirm('Delete this record?')) return;
   try {
     await deleteDoc(doc(db, 'expenses', id));
     toast('Deleted', 'success');
@@ -698,7 +676,6 @@ function renderAll() {
   renderBreakdown();
   renderBudget();
   renderApprovals();
-  renderMonthlyStats();
 }
 
 // ── FILTER HELPERS ──
@@ -712,7 +689,7 @@ function getFilteredExpenses() {
       if (key !== monthFilter) return false;
     }
     if (searchVal) {
-      const text = ((e.description || '') + ' ' + (e.category || '') + ' ' + (e.vendor || '')).toLowerCase();
+      const text = ((e.description || '') + ' ' + (e.category || '')).toLowerCase();
       if (!text.includes(searchVal)) return false;
     }
     return true;
@@ -730,16 +707,25 @@ function getThisMonthExpenses() {
 
 // ── UPDATE SUMMARY ──
 function updateSummary() {
-  const month   = getThisMonthExpenses();
-  const total   = month.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  const pending = allExpenses.filter(e => e.status === 'pending').length;
-  const approved = month
-    .filter(e => e.status === 'approved' || !e.status)
-    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const month  = getThisMonthExpenses();
+  
+  // Calculate expenses (only negative/expense type)
+  const totalExp = month.reduce((s, e) => {
+    if (e.type !== 'income') return s + (Number(e.amount) || 0);
+    return s;
+  }, 0);
+  
+  // Calculate income (only income type)
+  const totalInc = month.reduce((s, e) => {
+    if (e.type === 'income' && e.status !== 'rejected') return s + (Number(e.amount) || 0);
+    return s;
+  }, 0);
 
-  document.getElementById('s-total').textContent    = '\u20B9' + fmt(total);
+  const pending = allExpenses.filter(e => e.status === 'pending').length;
+
+  document.getElementById('s-total').textContent    = '\u20B9' + fmt(totalExp);
   document.getElementById('s-pending').textContent  = pending;
-  document.getElementById('s-approved').textContent = '\u20B9' + fmt(approved);
+  document.getElementById('s-income').textContent   = '\u20B9' + fmt(totalInc);
   document.getElementById('s-count').textContent    = allExpenses.length;
 }
 
@@ -751,8 +737,8 @@ function renderList() {
   const canApprove = CU.role === 'owner' || CU.role === 'manager';
 
   if (!list.length) {
-    const msg = (searchVal || catFilter || monthFilter) ? 'No matching expenses' : 'No expenses yet';
-    const sub = (searchVal || catFilter || monthFilter) ? 'Try different filters' : 'Click "Add Expense" to get started';
+    const msg = (searchVal || catFilter || monthFilter) ? 'No matching records' : 'No records yet';
+    const sub = (searchVal || catFilter || monthFilter) ? 'Try different filters' : 'Click "Add Record" to get started';
     el.innerHTML =
       '<div class="empty-exp">' +
       '<div class="empty-exp-icon">\u{1F4B8}</div>' +
@@ -772,9 +758,10 @@ function renderList() {
     const d   = raw ? new Date(raw) : new Date();
     const dateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     const payIcon  = PAY_ICONS[e.paymentMethod] || '\u{1F4B3}';
+    
     const isPending = e.status === 'pending';
+    const isIncome = e.type === 'income';
 
-    // FIX: Build status badge as plain string without Unicode in JS literals
     let statusBadge = '';
     if (isPending) {
       statusBadge = '<span class="exp-status-badge status-pending">Pending</span>';
@@ -782,7 +769,6 @@ function renderList() {
       statusBadge = '<span class="exp-status-badge status-rejected">Rejected</span>';
     }
 
-    // FIX: Approve/reject buttons use data-id attribute and event delegation
     let approveButtons = '';
     if (isPending && canApprove) {
       approveButtons =
@@ -807,14 +793,12 @@ function renderList() {
       '<div class="exp-title">' + esc(e.description) + '</div>' +
       '<div class="exp-meta">' +
       '<span class="exp-cat-badge" style="background:' + bg + ';color:' + color + '">' + esc(cat) + '</span>' +
-      (e.vendor ? '<span>&#183; ' + esc(e.vendor) + '</span>' : '') +
       '<span>&#183; ' + dateStr + '</span>' +
       '<span>' + payIcon + '</span>' +
-      (e.recurring ? '<span title="Recurring">\u{1F504}</span>' : '') +
       '</div>' +
       '</div>' +
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">' +
-      '<div class="exp-amount">-\u20B9' + fmt(e.amount) + '</div>' +
+      '<div class="exp-amount ' + (isIncome ? 'income' : '') + '">' + (isIncome ? '+' : '-') + '\u20B9' + fmt(e.amount) + '</div>' +
       statusBadge +
       approveButtons +
       '</div>' +
@@ -831,14 +815,15 @@ document.getElementById('exp-list').addEventListener('click', function(e) {
   const action = btn.dataset.action;
   const id     = btn.dataset.id;
   if (!id) return;
-  if (action === 'approve') approveExp(id);
-  else if (action === 'reject')  rejectExp(id);
-  else if (action === 'delete')  delExp(id);
+  if (action === 'approve') window._approveExp(id);
+  else if (action === 'reject')  window._rejectExp(id);
+  else if (action === 'delete')  window._delExp(id);
 });
 
 // ── RENDER BREAKDOWN ──
 function renderBreakdown() {
-  const month  = getThisMonthExpenses().filter(e => e.status !== 'rejected');
+  // Only breakdown actual expenses!
+  const month  = getThisMonthExpenses().filter(e => e.status !== 'rejected' && e.type !== 'income');
   const groups = {};
   month.forEach(e => { groups[e.category] = (groups[e.category] || 0) + (Number(e.amount) || 0); });
   const total  = Object.values(groups).reduce((s, v) => s + v, 0) || 1;
@@ -846,7 +831,7 @@ function renderBreakdown() {
   const el     = document.getElementById('cat-breakdown');
 
   if (!sorted.length) {
-    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:.84rem">No data this month</div>';
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:.84rem">No expenses this month</div>';
     return;
   }
 
@@ -864,7 +849,7 @@ function renderBreakdown() {
       '<span class="cat-val">\u20B9' + fmt(amt) + '</span>' +
       '</div>' +
       '<div class="cat-bar-wrap"><div class="cat-bar" style="width:' + pct + '%;background:' + col + '"></div></div>' +
-      '<div class="cat-pct">' + pct + '% of total</div>' +
+      '<div class="cat-pct">' + pct + '% of expenses</div>' +
       '</div>' +
       '</div>'
     );
@@ -886,7 +871,8 @@ function renderBudget() {
     return;
   }
 
-  const month    = getThisMonthExpenses().filter(e => e.status !== 'rejected');
+  // Budget is only compared against EXPENSES
+  const month    = getThisMonthExpenses().filter(e => e.status !== 'rejected' && e.type !== 'income');
   const spent    = month.reduce((s, e) => s + (Number(e.amount) || 0), 0);
   const pct      = Math.min(Math.round(spent / budget.amount * 100), 100);
   const alertPct = budget.alertPct || 80;
@@ -928,11 +914,13 @@ function renderApprovals() {
   }
 
   el.innerHTML = pending.map(function(e) {
+    const isIncome = e.type === 'income';
+    const valText = (isIncome ? '+' : '-') + '\u20B9' + fmt(e.amount);
     return (
       '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bd)">' +
       '<div style="flex:1;min-width:0">' +
       '<div style="font-size:.82rem;font-weight:600;color:var(--tx1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.description) + '</div>' +
-      '<div style="font-size:.72rem;color:var(--tx2)">\u20B9' + fmt(e.amount) + ' \u00B7 By ' + esc(e.createdByName || 'Staff') + '</div>' +
+      '<div style="font-size:.72rem;color:var(--tx2)">' + valText + ' \u00B7 By ' + esc(e.createdByName || 'Staff') + '</div>' +
       '</div>' +
       '<div style="display:flex;gap:4px;flex-shrink:0">' +
       '<button class="act-btn approve-btn" data-action="approve" data-id="' + e.id + '" style="padding:4px 10px;font-size:.72rem;font-weight:700;border:none;border-radius:6px;cursor:pointer;background:#D1FAE5;color:#065F46">Approve</button>' +
@@ -944,40 +932,16 @@ function renderApprovals() {
 }
 
 // Event delegation for approvals list
-document.getElementById('approvals-list').addEventListener('click', function(e) {
-  const btn = e.target.closest('.act-btn');
-  if (!btn) return;
-  const id = btn.dataset.id;
-  if (!id) return;
-  if (btn.dataset.action === 'approve') approveExp(id);
-  else if (btn.dataset.action === 'reject') rejectExp(id);
-});
-
-// ── RENDER MONTHLY STATS ──
-function renderMonthlyStats() {
-  const month = getThisMonthExpenses().filter(e => e.status !== 'rejected');
-  const el    = document.getElementById('monthly-stats');
-
-  if (!month.length) {
-    el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--tx3);font-size:.84rem">No transactions this month</div>';
-    return;
-  }
-
-  const total     = month.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  const avg       = total / month.length;
-  const days      = new Set(month.map(e => {
-    const raw = e.date || (e.createdAt && e.createdAt.toDate ? e.createdAt.toDate().toISOString() : null) || '';
-    return raw ? new Date(raw).toDateString() : 'unknown';
-  })).size;
-  const recurring = month.filter(e => e.recurring).length;
-
-  el.innerHTML =
-    '<div style="display:flex;justify-content:space-between;font-size:.83rem"><span style="color:var(--tx2)">Transactions</span><strong>' + month.length + '</strong></div>' +
-    '<div style="display:flex;justify-content:space-between;font-size:.83rem"><span style="color:var(--tx2)">Average</span><strong>\u20B9' + fmt(avg) + '</strong></div>' +
-    '<div style="display:flex;justify-content:space-between;font-size:.83rem"><span style="color:var(--tx2)">Active days</span><strong>' + days + '</strong></div>' +
-    '<div style="display:flex;justify-content:space-between;font-size:.83rem"><span style="color:var(--tx2)">Recurring</span><strong>' + recurring + '</strong></div>' +
-    '<div style="height:1px;background:var(--bd);margin:4px 0"></div>' +
-    '<div style="display:flex;justify-content:space-between;font-size:.875rem"><span style="color:var(--tx1);font-weight:600">Total</span><strong style="color:var(--red)">\u20B9' + fmt(total) + '</strong></div>';
+const appList = document.getElementById('approvals-list');
+if (appList) {
+  appList.addEventListener('click', function(e) {
+    const btn = e.target.closest('.act-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!id) return;
+    if (btn.dataset.action === 'approve') window._approveExp(id);
+    else if (btn.dataset.action === 'reject') window._rejectExp(id);
+  });
 }
 
 // ── HELPERS ──
