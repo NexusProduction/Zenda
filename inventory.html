@@ -1029,6 +1029,7 @@ window.updateConvPreview=function(){ const qtyInp=document.getElementById('eq');
   const base=qty / conv.ratio; 
   document.getElementById('convPreview').style.display='block'; document.getElementById('convPreview').textContent=`${qty} ${selUnit} = ${base} ${curProd.unit||'units'}`; };
 window.setET=function(t){ eType=t; document.getElementById('ettIn').className=`ett in${t==='IN'?' on':''}`; document.getElementById('ettOut').className=`ett out${t==='OUT'?' on':''}`; const b=document.getElementById('entryBtn'); if(b){b.style.background=t==='IN'?'#059669':'#EF4444';b.textContent=`Add ${t} Entry`;} };
+
 window.submitEntry=async function(){
   const qtyInp=document.getElementById('eq'); const qty=parseFloat(qtyInp.value); const note=document.getElementById('en').value.trim(); const btn=document.getElementById('entryBtn'); 
   if(!qty||qty<=0){setMM('entryMsg','⚠ Enter positive quantity.','err');return;} 
@@ -1048,7 +1049,7 @@ window.submitEntry=async function(){
   try{ 
     const cid=CU.companyId; 
     const newStock=eType==='IN'?(curProd.stock||0)+qtyBase:(curProd.stock||0)-qtyBase; 
-    await updateDoc(doc(db,'products',curProd.id),{stock:newStock}); 
+    await updateDoc(doc(db,'products'),{stock:newStock}); 
     
     const entryRef = await addDoc(collection(db,'entries'),{
       type:eType,qty,qtyBase,unit:entryUnit,entryUnit,note, 
@@ -1057,11 +1058,14 @@ window.submitEntry=async function(){
     }); 
 
     // FIREBASE EXPENSE SYNC
-    if (logExpense && cost > 0 && eType === 'IN') {
+    if (logExpense && cost > 0) {
+      const type = eType;
+      const itemName = curProd.name;
       await addDoc(collection(db, 'expenses'), {
-        amount: cost,
-        category: expCategory,
-        description: `Stock Purchase: ${qty} ${entryUnit} of ${curProd.name}${note ? ' ('+note+')' : ''}`,
+        type: type === 'OUT' ? 'income' : 'expense',   // <--- PASTE THIS EXACT LINE RIGHT HERE
+        amount: Number(cost),
+        category: expCategory || 'Inventory Stock',
+        description: itemName,
         relatedEntryId: entryRef.id,
         productId: curProd.id,
         companyId: cid,
@@ -1081,6 +1085,7 @@ window.submitEntry=async function(){
   }catch(e){setMM('entryMsg','❌ Failed: '+e.message,'err');} 
   btn.disabled=false;btn.textContent=`Add ${eType} Entry`;
 };
+
 window.prepDelEntry=function(entId){ entToDelete=entId; document.getElementById('delReason').value=''; document.getElementById('wordCount').textContent='0 characters (min 10)'; document.getElementById('wordCount').className='word-count warn'; document.getElementById('delEntMsg').textContent=''; window.openM('m-del-entry'); };
 window.checkCharCount=function(el){ const len=el.value.trim().length; const wc=document.getElementById('wordCount'); if(len<10){wc.textContent=`${len} characters (min 10)`;wc.className='word-count warn';} else if(len>180){wc.textContent=`${len} characters (max 180)`;wc.className='word-count warn';} else{wc.textContent=`${len} characters ✓`;wc.className='word-count ok';} };
 window.confirmDelEntry=async function(){
