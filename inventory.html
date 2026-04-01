@@ -573,7 +573,10 @@ input:checked + .tgl-sl:before { transform: translateX(16px); }
     <div class="mh"></div>
     <div class="mhd"><div><div class="mttl" id="entryTitle">Stock Entry</div><div class="msub" id="entrySub">—</div></div><button class="mx" onclick="window.closeM('m-entry')">✕</button></div>
     <div class="mbd">
-      <div class="ett-tabs"><button class="ett in on" id="ettIn" onclick="window.setET('IN')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg> Stock IN</button><button class="ett out" id="ettOut" onclick="window.setET('OUT')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg> Stock OUT</button></div>
+      <div class="ett-tabs">
+        <button class="ett in on" id="ettIn" onclick="window.setET('IN')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg> Stock IN</button>
+        <button class="ett out" id="ettOut" onclick="window.setET('OUT')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg> Stock OUT</button>
+      </div>
       <div class="mf"><label>Select Unit</label><div class="unit-sel" id="unitSel"></div></div>
       <div class="mf"><label>Quantity *</label><div class="mfr"><span class="mico">#</span><input type="number" id="eq" placeholder="Enter quantity" min="0.0001" step="any" oninput="window.updateConvPreview()"/></div></div>
       <div id="convPreview" style="display:none;background:#EEF2FF;border:1px solid rgba(79,70,229,.2);border-radius:9px;padding:9px 13px;margin-bottom:12px;font-size:13px;color:#4F46E5;font-weight:500"></div>
@@ -581,14 +584,14 @@ input:checked + .tgl-sl:before { transform: translateX(16px); }
       
       <div id="expenseSyncBlock" style="margin:12px 0; padding:12px; background:#F9FAFB; border:1px solid #E5E7EB; border-radius:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <div style="font-size:13px; font-weight:600; color:#374151;">Log as Expense?</div>
+          <div id="logExpText" style="font-size:13px; font-weight:600; color:#374151;">Log as Expense?</div>
           <label class="tgl">
             <input type="checkbox" id="logExpenseTgl" onchange="document.getElementById('expenseFields').style.display=this.checked?'block':'none'">
             <span class="tgl-sl"></span>
           </label>
         </div>
         <div id="expenseFields" style="display:none; margin-top:8px;">
-          <div class="mf" style="margin-bottom:8px;"><label>Total Cost</label><div class="mfr"><span class="mico">₹</span><input type="number" id="entryCost" placeholder="0.00" min="0" step="any"></div></div>
+          <div class="mf" style="margin-bottom:8px;"><label id="costLabel">Total Cost</label><div class="mfr"><span class="mico">₹</span><input type="number" id="entryCost" placeholder="0.00" min="0" step="any"></div></div>
           <div class="mf" style="margin-bottom:0;"><label>Expense Group</label><div class="mfr"><span class="mico">🏷️</span>
             <select id="entryExpCategory" style="padding-left:32px;">
               <option value="Inventory Stock">Inventory Stock</option>
@@ -598,6 +601,7 @@ input:checked + .tgl-sl:before { transform: translateX(16px); }
           </div></div>
         </div>
       </div>
+
       <div class="stock-hint">Current stock: <strong id="eCurS" style="font-family:'DM Mono',monospace">0</strong> <span id="eCurU"></span></div>
       <div class="mmsg" id="entryMsg"></div>
       <div class="macts"><button class="mno" onclick="window.closeM('m-entry')">Cancel</button><button class="mok" id="entryBtn" onclick="window.submitEntry()">Add Entry</button></div>
@@ -1018,17 +1022,45 @@ window.viewDelReason=async function(entId){ try{ const snap=await getDoc(doc(db,
 
 // ══ 8. STOCK ENTRY LOGIC (Strict Numbers) ══
 window.openEntry=function(type){
-  if(!curProd)return; eType=type; window.setET(type); document.getElementById('entryTitle').textContent=`Stock ${type}`; document.getElementById('entrySub').textContent=curProd.name;
-  const eq = document.getElementById('eq'); if(eq) { eq.value=''; eq.type='number'; eq.min='0.0001'; eq.step='any'; eq.required=true; }
-  document.getElementById('en').value=''; document.getElementById('eCurS').textContent=curProd.stock||0; document.getElementById('eCurU').textContent=curProd.unit||'units'; document.getElementById('entryMsg').textContent=''; document.getElementById('convPreview').style.display='none'; buildEntryUnitSel(); const btn=document.getElementById('entryBtn'); btn.style.background=type==='IN'?'#059669':'#EF4444'; btn.textContent=`Add ${type} Entry`; window.openM('m-entry');
+  if(!curProd)return; 
+  eType=type; 
+  window.setET(type); 
+  document.getElementById('entryTitle').textContent=`Stock ${type}`; 
+  document.getElementById('entrySub').textContent=curProd.name;
+  
+  const eq = document.getElementById('eq'); 
+  if(eq) { eq.value=''; eq.type='number'; eq.min='0.0001'; eq.step='any'; eq.required=true; }
+  document.getElementById('en').value=''; 
+  
+  // RESET THE TOGGLE & AMOUNT EVERY TIME IT OPENS
+  const tgl = document.getElementById('logExpenseTgl'); if(tgl) tgl.checked = false;
+  const cst = document.getElementById('entryCost'); if(cst) cst.value = '';
+  const ef = document.getElementById('expenseFields'); if(ef) ef.style.display = 'none';
+
+  document.getElementById('eCurS').textContent=curProd.stock||0; 
+  document.getElementById('eCurU').textContent=curProd.unit||'units'; 
+  document.getElementById('entryMsg').textContent=''; 
+  document.getElementById('convPreview').style.display='none'; 
+  buildEntryUnitSel(); 
+  
+  window.openM('m-entry');
 };
-function buildEntryUnitSel(){ const convs=curProd.conversions||[]; selUnit=curProd.unit||'units'; const allUnits=[{name:curProd.unit||'units',ratio:1,isBase:true},...convs.map(c=>({name:c.name,ratio:c.ratio,isBase:false}))]; const el=document.getElementById('unitSel'); el.innerHTML=allUnits.map(u=>`<button class="unit-opt${u.name===selUnit?' sel':''}" onclick="window.selectUnit('${u.name}',${u.ratio})" data-unit="${u.name}" data-ratio="${u.ratio}">${esc(u.name)}</button>`).join(''); }
-window.selectUnit=function(name,ratio){ selUnit=name; document.querySelectorAll('.unit-opt').forEach(b=>{b.classList.toggle('sel',b.dataset.unit===name);}); window.updateConvPreview(); };
-window.updateConvPreview=function(){ const qtyInp=document.getElementById('eq'); const qty=parseFloat(qtyInp.value)||0; if(!qty||!selUnit||selUnit===(curProd.unit||'units')){document.getElementById('convPreview').style.display='none';return;} const conv=curProd.conversions?.find(c=>c.name===selUnit); if(!conv){document.getElementById('convPreview').style.display='none';return;} 
-  // 1 Base = Ratio Alt => Alt to Base = qty / ratio
-  const base=qty / conv.ratio; 
-  document.getElementById('convPreview').style.display='block'; document.getElementById('convPreview').textContent=`${qty} ${selUnit} = ${base} ${curProd.unit||'units'}`; };
-window.setET=function(t){ eType=t; document.getElementById('ettIn').className=`ett in${t==='IN'?' on':''}`; document.getElementById('ettOut').className=`ett out${t==='OUT'?' on':''}`; const b=document.getElementById('entryBtn'); if(b){b.style.background=t==='IN'?'#059669':'#EF4444';b.textContent=`Add ${t} Entry`;} };
+
+window.setET=function(t){ 
+  eType=t; 
+  document.getElementById('ettIn').className=`ett in${t==='IN'?' on':''}`; 
+  document.getElementById('ettOut').className=`ett out${t==='OUT'?' on':''}`; 
+  const b=document.getElementById('entryBtn'); 
+  if(b){b.style.background=t==='IN'?'#059669':'#EF4444';b.textContent=`Add ${t} Entry`;} 
+
+  // DYNAMICALLY CHANGE LABEL TO 'INCOME' IF OUT
+  const logExpText = document.getElementById('logExpText');
+  const costLabel = document.getElementById('costLabel');
+  if (logExpText && costLabel) {
+      logExpText.textContent = t === 'IN' ? 'Log as Expense?' : 'Log as Income?';
+      costLabel.textContent = t === 'IN' ? 'Total Cost' : 'Total Sale Value';
+  }
+};
 
 window.submitEntry=async function(){
   const qtyInp=document.getElementById('eq'); const qty=parseFloat(qtyInp.value); const note=document.getElementById('en').value.trim(); const btn=document.getElementById('entryBtn'); 
@@ -1038,12 +1070,13 @@ window.submitEntry=async function(){
   const entryUnit=selUnit||curProd.unit||'units'; 
   if(eType==='OUT'&&qtyBase>(curProd.stock||0)){setMM('entryMsg',`⚠ Not enough stock (${qtyBase} needed, ${curProd.stock||0} available).`,'err');return;} 
   
-  // Capture Expense Data
+  // CAPTURE TOGGLE STATE
   const logExpense = document.getElementById('logExpenseTgl')?.checked;
   const cost = parseFloat(document.getElementById('entryCost')?.value) || 0;
   const expCategory = document.getElementById('entryExpCategory')?.value || 'Inventory Stock';
 
-  if (logExpense && cost <= 0) { setMM('entryMsg','⚠ Enter a valid cost for the expense.','err'); return; }
+  // Make sure they actually entered a cost if the toggle is checked
+  if (logExpense && cost <= 0) { setMM('entryMsg','⚠ Enter a valid amount.','err'); return; }
 
   btn.disabled=true;btn.textContent='Adding…';
   try{ 
@@ -1057,12 +1090,13 @@ window.submitEntry=async function(){
       who:CU.name||'Owner', createdBy:CU.uid, deleted:false, createdAt:serverTimestamp(), 
     }); 
 
-    // FIREBASE EXPENSE SYNC
+    // FIREBASE EXPENSE/INCOME SYNC
     if (logExpense && cost > 0) {
       const type = eType;
       const itemName = curProd.name;
+      
       await addDoc(collection(db, 'expenses'), {
-        type: type === 'OUT' ? 'income' : 'expense',   // <--- PASTE THIS EXACT LINE RIGHT HERE
+        type: type === 'OUT' ? 'income' : 'expense',
         amount: Number(cost),
         category: expCategory || 'Inventory Stock',
         description: itemName,
