@@ -1176,11 +1176,17 @@ function renderStaffCards(staff) {
   el.innerHTML = nonOwner.map(s => {
     const col = avatarColor(s.name);
     const ini = getInitials(s.name);
+    // Replace the internal return `...` of renderStaffCards with this:
     return `<div class="staff-card">
       <div class="av" style="width:42px;height:42px;font-size:14px;font-weight:600;border-radius:10px;background:${col}22;color:${col}">${ini}</div>
       <div class="staff-info">
-        <div class="staff-name">${esc(s.name)}</div>
-        <div class="staff-meta">${esc(s.email)} · <span class="badge badge-${s.role}">${esc(s.designation || formatRole(s.role))}</span></div>
+        <div class="staff-name" style="display:flex;align-items:center;gap:8px;">
+          ${esc(s.name)}
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; font-weight:700; text-transform:uppercase; background:${s.role==='manager'?'rgba(59,130,246,0.15)':'rgba(16,185,129,0.15)'}; color:${s.role==='manager'?'#2563EB':'#059669'};">
+            ${s.role === 'manager' ? 'MANAGER' : 'STAFF'}
+          </span>
+        </div>
+        <div class="staff-meta">${esc(s.email)} · ${esc(s.designation || 'Team Member')}</div>
         <div class="staff-uid">${s.uniqueId || ''}</div>
       </div>
       ${CU.role === 'owner' ? `<button class="staff-del" title="Delete" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId||''}')">
@@ -1293,7 +1299,7 @@ window.handleCreateStaff = async function() {
       <div class="cred-row"><span class="cred-lbl">Email</span><span class="cred-val">${esc(email)}</span></div>
       <div class="cred-row"><span class="cred-lbl">Password</span><span class="cred-val">${esc(password)}</span></div>
       <div class="cred-row"><span class="cred-lbl">Unique ID</span><span class="cred-val">${result.uniqueId}</span></div>`;
-    newCanvas = renderCardToElement('new-card-container', 'staff', { name: result.name, email, role: newRole, designation: desig, companyName, uniqueId: result.uniqueId, companyCode: CU.uniqueId });
+    newCanvas = renderCardToElement('new-card-container', 'staff', { name: result.name, email, role: newRole, designation: desig, companyName, uniqueId: result.uniqueId, companyCode: CU.uniqueId, password: password });
     showToast(`${name} added!`, 'success');
     btn.disabled = true;
   } catch(e) {
