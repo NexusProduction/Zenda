@@ -72,9 +72,9 @@ export function drawStaffCard(canvas, { name, email, role, designation, companyN
   ctx.beginPath(); ctx.moveTo(24, 52); ctx.lineTo(W - 24, 52); ctx.stroke();
 
   // BIG Name & Company
-  ctx.font = 'bold 26px "Outfit", sans-serif';
+  ctx.font = 'bold 34px "Outfit", sans-serif';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(truncate(name, 22), 24, 90);
+  ctx.fillText(truncate(name, 18), 24, 92);
 
   ctx.font = '500 13px "DM Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
