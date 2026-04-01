@@ -1063,6 +1063,12 @@ window.setET=function(t){
 };
 
 window.submitEntry=async function(){
+  // Failsafe to guarantee the Product ID exists before firing Firebase
+  if (!curProd || !curProd.id) {
+    setMM('entryMsg', '⚠ Critical Error: Product ID is missing. Please refresh the page.', 'err');
+    return;
+  }
+
   const qtyInp=document.getElementById('eq'); const qty=parseFloat(qtyInp.value); const note=document.getElementById('en').value.trim(); const btn=document.getElementById('entryBtn'); 
   if(!qty||qty<=0){setMM('entryMsg','⚠ Enter positive quantity.','err');return;} 
   const conv=curProd.conversions?.find(c=>c.name===selUnit); 
@@ -1078,11 +1084,14 @@ window.submitEntry=async function(){
   // Make sure they actually entered a cost if the toggle is checked
   if (logExpense && cost <= 0) { setMM('entryMsg','⚠ Enter a valid amount.','err'); return; }
 
-  btn.disabled=true;btn.textContent='Adding…';
+  btn.disabled=true;btn.textContent='Processing…';
   try{ 
     const cid=CU.companyId; 
     const newStock=eType==='IN'?(curProd.stock||0)+qtyBase:(curProd.stock||0)-qtyBase; 
-    await updateDoc(doc(db,'products'),{stock:newStock}); 
+    
+    // EXPLICITLY pass the ID to prevent the "Segment" error
+    const productDocRef = doc(db, 'products', String(curProd.id));
+    await updateDoc(productDocRef, { stock: newStock }); 
     
     const entryRef = await addDoc(collection(db,'entries'),{
       type:eType,qty,qtyBase,unit:entryUnit,entryUnit,note, 
@@ -1116,7 +1125,10 @@ window.submitEntry=async function(){
     document.getElementById('pdStock').className='pd-big'+(curProd.minStock!=null&&newStock<=curProd.minStock?' low':''); 
     await loadEntries(curProd.id); 
     window.showToast(`${eType==='IN'?'Added':'Removed'} ${qty} ${entryUnit} ✓`,eType==='IN'?'s':''); 
-  }catch(e){setMM('entryMsg','❌ Failed: '+e.message,'err');} 
+  }catch(e){
+      console.error(e);
+      setMM('entryMsg','❌ Failed: '+e.message,'err');
+  } 
   btn.disabled=false;btn.textContent=`Add ${eType} Entry`;
 };
 
