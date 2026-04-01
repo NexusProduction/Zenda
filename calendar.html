@@ -137,7 +137,6 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 </head>
 <body>
 
-<!-- APPBAR -->
 <div class="appbar">
   <div class="ab-left">
     <button class="ab-back" onclick="window.history.length>1?window.history.back():window.close()">
@@ -152,9 +151,7 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
   <div class="ab-sync sync-connecting" id="sync-status">Connecting…</div>
 </div>
 
-<!-- ═══════════════ DESKTOP LAYOUT ═══════════════ -->
 <div class="cal-layout">
-  <!-- Left: Calendar grid -->
   <div class="cal-panel">
     <div class="cal-head">
       <button class="cal-nav" onclick="window.nav(-1)">&#8249;</button>
@@ -176,7 +173,6 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
     <div class="cal-grid" id="cal-grid-d"></div>
   </div>
 
-  <!-- Right: Events + Add form -->
   <div class="cal-right">
     <div class="cal-card">
       <div class="cal-card-hdr">
@@ -195,15 +191,12 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
         </div>
       </div>
       <div class="add-form" id="add-form-d">
-        <!-- form injected by renderAddForm() -->
-      </div>
+        </div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ MOBILE LAYOUT ═══════════════ -->
 <div class="mob-cal-wrap">
-  <!-- Mobile calendar grid -->
   <div class="mob-cal-panel">
     <div class="mob-cal-head">
       <button class="mob-cal-nav" onclick="window.nav(-1)">&#8249;</button>
@@ -223,7 +216,6 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
     <div class="mob-grid" id="cal-grid-m"></div>
   </div>
 
-  <!-- Mobile bottom sheet with tabs -->
   <div class="mob-sheet">
     <div class="mob-tabs">
       <button class="mob-tab on" id="mob-tab-events" onclick="showMobTab('events')">
@@ -237,8 +229,7 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
     </div>
     <div class="mob-tab-content hidden" id="mob-add-content">
       <div id="add-form-m" style="display:flex;flex-direction:column;gap:12px;padding:4px 0">
-        <!-- form injected by renderAddForm() -->
-      </div>
+        </div>
     </div>
   </div>
 </div>
@@ -268,6 +259,9 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 
 let events = [];
 let companyEvents = [];
+let myTasks = [];
+let assignedByMeTasks = [];
+
 let curDate = new Date();
 let selectedDay = new Date();
 let selectedPrio = 'high';
@@ -357,10 +351,14 @@ async function init() {
 // Replaced static getDocs with Real-time onSnapshot listeners
 let unsubPersonal = null;
 let unsubCompany = null;
+let unsubTasksToMe = null;
+let unsubTasksByMe = null;
 
 function loadAllRealtime() {
   if (unsubPersonal) unsubPersonal();
   if (unsubCompany) unsubCompany();
+  if (unsubTasksToMe) unsubTasksToMe();
+  if (unsubTasksByMe) unsubTasksByMe();
 
   // 1. Personal Events
   const q1 = query(collection(db, 'calendar'), where('uid', '==', CU.uid));
@@ -391,6 +389,44 @@ function loadAllRealtime() {
       console.warn("Company sync error", e);
     });
   }
+
+  // 3. Tasks Assigned To Me
+  const q3 = query(collection(db, 'tasks'), where('assignedTo', '==', CU.uid));
+  unsubTasksToMe = onSnapshot(q3, (snap) => {
+    myTasks = snap.docs.map(d => {
+      const t = d.data();
+      return {
+        id: d.id,
+        title: t.title,
+        date: t.dueDate,
+        time: t.dueTime,
+        type: 'task',
+        status: t.status,
+        priority: t.priority === 'High' ? 'high' : t.priority === 'Low' ? 'low' : 'med'
+      };
+    }).filter(t => t.date); // Only show tasks that have a Due Date
+    updateCalendarUI();
+  });
+
+  // 4. Tasks Assigned By Me
+  if (CU.role === 'owner' || CU.role === 'manager') {
+    const q4 = query(collection(db, 'tasks'), where('assignedBy', '==', CU.uid));
+    unsubTasksByMe = onSnapshot(q4, (snap) => {
+      assignedByMeTasks = snap.docs.map(d => {
+        const t = d.data();
+        return {
+          id: d.id,
+          title: t.title,
+          date: t.dueDate,
+          time: t.dueTime,
+          type: 'task',
+          status: t.status,
+          priority: t.priority === 'High' ? 'high' : t.priority === 'Low' ? 'low' : 'med'
+        };
+      }).filter(t => t.date);
+      updateCalendarUI();
+    });
+  }
 }
 
 function updateCalendarUI() {
@@ -401,7 +437,8 @@ function updateCalendarUI() {
 
 function getAllEvents() {
   const seen = new Set();
-  return [...events, ...companyEvents].filter(e => {
+  return [...events, ...companyEvents, ...myTasks, ...assignedByMeTasks].filter(e => {
+    if(!e.date) return false; // Must have a date to appear on the calendar
     if(seen.has(e.id)) return false;
     seen.add(e.id); return true;
   });
@@ -466,7 +503,16 @@ function renderCalendar() {
     const dayEvs=allEvs.filter(e=>e.date===key);
     const todayCls=isToday(d)?' today':'';
     const selCls=isSameDay(d,selectedDay)?' selected':'';
-    const dot = dayEvs.length ? '<div class="mob-event-dot" style="background:' + (dayEvs[0].priority==='high'?'#EF4444':dayEvs[0].priority==='med'?'#F59E0B':'#10B981') + '"></div>' : '';
+    
+    // Check if it's a task or event to assign correct dot color
+    let dotColor = '#10B981'; // default low
+    if (dayEvs.length) {
+       if (dayEvs[0].type === 'task') dotColor = '#4F46E5';
+       else if (dayEvs[0].priority === 'high') dotColor = '#EF4444';
+       else if (dayEvs[0].priority === 'med') dotColor = '#F59E0B';
+    }
+    const dot = dayEvs.length ? `<div class="mob-event-dot" style="background:${dotColor}"></div>` : '';
+    
     mobHtml += '<div class="mob-day' + todayCls + selCls + '" onclick="window.selectDay(' + y + ',' + m + ',' + day + ')"><div class="mob-date">' + day + '</div>' + dot + '</div>';
   }
   const mobTotal = mobFirstDay + daysInMonth;
@@ -525,6 +571,7 @@ function showDayEvents(d) {
   const list = document.getElementById('day-events-list-d');
   const mobEmpty = document.getElementById('mob-events-empty');
   const mobList = document.getElementById('day-events-list-m');
+  
   if(!dayEvs.length) {
     if(list) list.innerHTML='<div class="no-events">✨ No events — enjoy your day!</div>';
     if(mobEmpty) mobEmpty.style.display='';
@@ -536,17 +583,21 @@ function showDayEvents(d) {
   const evHtml = dayEvs.map(ev => {
     const cls = ev.type==='task'?'task':(ev.priority||'low');
     const vis = ev.visibility && ev.visibility!=='self' ? visLabel(ev.visibility) : '';
-    const isOwn = ev.uid === CU.uid || (!ev.companyEvent);
+    const isOwn = (ev.uid === CU.uid || !ev.companyEvent) && ev.type !== 'task'; // Prevent deleting tasks from Calendar UI
     return `<div class="event-item ${cls}">
       <div class="event-content">
         <div class="event-title">${escHtml(ev.title)}</div>
         ${ev.time ? `<div class="event-time">⏰ ${format12hr(ev.time)}</div>` : ''}
         ${vis ? `<div class="event-visibility">👁 ${vis}</div>` : ''}
-        ${ev.type==='task' ? `<div class="event-visibility" style="color:#6366F1">📋 Task</div>` : ''}
+        ${ev.type==='task' ? `<div class="event-visibility" style="color:#6366F1">📋 ${ev.status === 'done' ? 'Completed Task' : 'Pending Task'}</div>` : ''}
       </div>
-      ${isOwn ? `<button class="event-del" onclick="window.delEvent('${ev.id}')" title="Delete">✕</button>` : ''}
+      ${isOwn ? `<button class="event-del" onclick="window.delEvent('${ev.id}')" title="Delete Event">✕</button>` : ''}
     </div>`;
   }).join('');
+  
+  // FIX: Properly inject the generated HTML into the lists!
+  if(list) list.innerHTML = evHtml;
+  if(mobList) mobList.innerHTML = evHtml;
 }
 
 function visLabel(v) { const m={all:'Everyone',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
@@ -580,7 +631,6 @@ window.addEvent = async function() {
     
     if (CU.uid) {
       await addDoc(collection(db, 'calendar'), newEv);
-      // We don't push locally anymore because onSnapshot handles the live update seamlessly!
     } else {
       newEv.id = Date.now().toString();
       events.push(newEv);
@@ -596,14 +646,13 @@ window.addEvent = async function() {
     
     toast('Event added! 📅','success');
   } catch(e) { toast('Failed: '+e.message,'error'); }
-  finally { document.querySelectorAll('#add-event-btn').forEach(b => { b.disabled=false; b.textContent='Add Event'; }); }
+  finally { document.querySelectorAll('#add-event-btn').forEach(b => { b.disabled=false; b.textContent='Add Event ✓'; }); }
 };
 
 window.delEvent = async function(id) {
   try {
     if(CU.uid) { 
       await deleteDoc(doc(db, 'calendar', id));
-      // onSnapshot listener handles removing it from the UI automatically
     } else {
       events = events.filter(e => e.id !== id);
       updateCalendarUI();
@@ -699,12 +748,6 @@ function dateKeyNow() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
-
-// Override renderCalendar to render BOTH desktop and mobile grids
-const _origRenderCalendar = window._renderCalendar;
-
-// Override showDayEvents to update both desktop and mobile
-window._origShowDayEvents = null;
 
 // Init the forms
 window.renderAddForm();
