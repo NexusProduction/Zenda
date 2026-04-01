@@ -151,13 +151,13 @@
       
       <div class="premium-toolbar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--bd, #E5E7EB);">
         <div style="display: flex; gap: 8px;">
-          <button class="btn btn-ghost btn-sm" id="btn-filter-tasks" style="color: var(--tx-2); font-size: .75rem;" onclick="window.openFilterModal()">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-filter-tasks" style="color: var(--tx-2); font-size: .75rem;" onclick="window.openFilterModal()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> 
             Filter
           </button>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button class="btn btn-ghost btn-sm" style="color: var(--tx-2); font-size: .75rem;" onclick="window.openCustomizeModal()">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-customize-tasks" style="color: var(--tx-2); font-size: .75rem;" onclick="window.openCustomizeModal()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> 
             Customize
           </button>
@@ -1984,6 +1984,91 @@ function format12hr(t) {
 
 init().catch(console.error);
 
+// ──────────────────────────────────────────────
+// TASK FILTERING & CUSTOMIZATION SYSTEM
+// ──────────────────────────────────────────────
+window.currentTaskFilter = 'All';
+window.currentAssignerFilter = 'All';
+window.currentDueFilter = 'All';
+
+// View Customization variables
+window.currentCustDetails = 'full';
+window.currentCustStyle = 'elevated';
+window.currentCustDensity = 'comfortable';
+window.currentCustMeta = 'show';
+
+try {
+  const saved = localStorage.getItem('zenda_task_prefs_local');
+  if (saved) {
+    const prefs = JSON.parse(saved);
+    window.currentCustDensity = prefs.density || 'comfortable';
+    window.currentCustDetails = prefs.details || 'full';
+    window.currentCustStyle = prefs.style || 'elevated';
+    window.currentCustMeta = prefs.meta || 'show';
+  }
+} catch(e) {}
+
+window.openFilterModal = function() {
+  try {
+    if(document.getElementById('filter-priority')) document.getElementById('filter-priority').value = window.currentTaskFilter || 'All';
+    if(document.getElementById('filter-assigner')) document.getElementById('filter-assigner').value = window.currentAssignerFilter || 'All';
+    if(document.getElementById('filter-due')) document.getElementById('filter-due').value = window.currentDueFilter || 'All';
+    document.getElementById('filter-modal')?.classList.remove('hidden');
+  } catch(e) { console.error("Filter Modal Error:", e); }
+};
+
+window.applyTaskFilter = function() {
+  window.currentTaskFilter = document.getElementById('filter-priority')?.value || 'All';
+  window.currentAssignerFilter = document.getElementById('filter-assigner')?.value || 'All';
+  window.currentDueFilter = document.getElementById('filter-due')?.value || 'All';
+  
+  const btn = document.getElementById('btn-filter-tasks');
+  if (btn) {
+    if (window.currentTaskFilter !== 'All' || window.currentAssignerFilter !== 'All' || window.currentDueFilter !== 'All') {
+      btn.style.color = 'var(--ac)'; 
+      btn.style.background = 'var(--ac-s)';
+      btn.style.borderColor = 'var(--ac)';
+      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filter Active`;
+    } else {
+      btn.style.color = 'var(--tx-2)';
+      btn.style.background = 'transparent';
+      btn.style.borderColor = 'transparent';
+      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filter`;
+    }
+  }
+  renderTasksList();
+};
+
+window.openCustomizeModal = function() {
+  try {
+    if(document.getElementById('cust-density')) document.getElementById('cust-density').value = window.currentCustDensity || 'comfortable';
+    if(document.getElementById('cust-details')) document.getElementById('cust-details').value = window.currentCustDetails || 'full';
+    if(document.getElementById('cust-style')) document.getElementById('cust-style').value = window.currentCustStyle || 'elevated';
+    if(document.getElementById('cust-meta')) document.getElementById('cust-meta').value = window.currentCustMeta || 'show';
+    document.getElementById('customize-modal')?.classList.remove('hidden');
+  } catch(e) { console.error("Customize Modal Error:", e); }
+};
+
+window.applyCustomize = function() {
+  window.currentCustDensity = document.getElementById('cust-density')?.value || 'comfortable';
+  window.currentCustDetails = document.getElementById('cust-details')?.value || 'full';
+  window.currentCustStyle = document.getElementById('cust-style')?.value || 'elevated';
+  window.currentCustMeta = document.getElementById('cust-meta')?.value || 'show';
+  
+  localStorage.setItem('zenda_task_prefs_local', JSON.stringify({
+    density: window.currentCustDensity,
+    details: window.currentCustDetails,
+    style: window.currentCustStyle,
+    meta: window.currentCustMeta
+  }));
+  
+  const list = document.getElementById('tasks-list');
+  if(list) list.style.gap = window.currentCustDensity === 'compact' ? '6px' : '14px';
+  
+  renderTasksList(); 
+  window.showToast('Preferences saved!', 'success');
+};
+  
 // ── SECTION REVEAL ANIMATIONS ──
 (function() {
   const io = new IntersectionObserver((entries) => {
