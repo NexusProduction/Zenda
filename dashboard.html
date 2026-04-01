@@ -2,753 +2,2006 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Expense Tracker — Zenda</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dashboard — Zenda</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text y='24' x='5' font-size='20'>💳</text></svg>">
-<style>
-:root{--bg:#F9FAFB;--sf:#FFFFFF;--sf2:#F3F4F6;--bd:#E5E7EB;--tx1:#111827;--tx2:#6B7280;--tx3:#9CA3AF;--ac:#4F46E5;--ach:#4338CA;--acs:rgba(79,70,229,.08);--green:#10B981;--red:#EF4444;--amber:#F59E0B;--fd:'Plus Jakarta Sans',system-ui,sans-serif;--fb:'DM Sans',system-ui,sans-serif;--fm:'DM Mono',monospace}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;font-family:var(--fb);-webkit-font-smoothing:antialiased;color:var(--tx1)}
-.hidden{display:none!important}
-::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:99px}
-
-/* ── APPBAR ── */
-.appbar{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(17,24,39,.04)}
-.ab-left{display:flex;align-items:center;gap:10px}
-.ab-back{background:none;border:1.5px solid var(--bd);cursor:pointer;color:var(--tx2);padding:6px 12px;border-radius:10px;font-size:.8125rem;display:flex;align-items:center;gap:5px;transition:all .15s;font-family:var(--fb);font-weight:500}
-.ab-back:hover{background:var(--sf2);color:var(--tx1)}
-.ab-brand{display:flex;align-items:center;gap:8px;font-family:var(--fd);font-weight:700;font-size:.9375rem;color:var(--tx1);padding-left:12px;border-left:1px solid var(--bd);margin-left:4px}
-.ab-icon{width:28px;height:28px;background:#FEF2F2;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem}
-.sync-badge{font-size:.75rem;font-family:var(--fd);font-weight:600;padding:4px 10px;border-radius:99px}
-.sync-live{color:var(--green);background:#D1FAE5}
-.sync-loading{color:var(--amber);background:#FEF3C7}
-.sync-err{color:var(--red);background:#FEE2E2}
-
-/* ── LAYOUT ── */
-.container{max-width:1200px;margin:0 auto;width:100%;padding:24px 20px 80px}
-
-/* ── SUMMARY STRIP ── */
-.summary-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-@media(max-width:640px){.summary-strip{grid-template-columns:repeat(2,1fr)}}
-.sum-card{background:var(--sf);border:1px solid var(--bd);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(17,24,39,.04);transition:all .18s;cursor:default}
-.sum-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(17,24,39,.07)}
-.sum-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:1rem}
-.si-red{background:#FEE2E2;color:var(--red)}.si-green{background:#D1FAE5;color:var(--green)}.si-blue{background:#EEF2FF;color:var(--ac)}.si-amber{background:#FEF3C7;color:var(--amber)}
-.sum-val{font-family:var(--fm);font-size:1.375rem;font-weight:700;letter-spacing:-.03em;color:var(--tx1);line-height:1;margin-bottom:4px}
-.sum-lbl{font-size:.75rem;color:var(--tx2);font-weight:500}
-.sum-sub{font-size:.7rem;color:var(--tx3);margin-top:2px}
-
-/* ── MAIN GRID ── */
-.main-grid{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
-@media(max-width:900px){.main-grid{grid-template-columns:1fr}}
-
-/* ── EXPENSE LIST PANEL ── */
-.panel{background:var(--sf);border:1px solid var(--bd);border-radius:20px;overflow:hidden;box-shadow:0 2px 8px rgba(17,24,39,.05)}
-.panel-hdr{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.panel-ttl{font-family:var(--fd);font-size:1rem;font-weight:800;color:var(--tx1);letter-spacing:-.015em}
-.panel-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-
-/* Filter tabs */
-.filter-tabs{display:flex;gap:4px;padding:12px 16px;border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:none;background:var(--sf2)}
-.filter-tabs::-webkit-scrollbar{display:none}
-.ftab{padding:6px 14px;border:1.5px solid var(--bd);background:var(--sf);border-radius:99px;font-family:var(--fd);font-size:.75rem;font-weight:600;color:var(--tx2);cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
-.ftab:hover{border-color:var(--ac);color:var(--ac)}
-.ftab.on{background:var(--ac);color:#fff;border-color:var(--ac)}
-
-/* Search */
-.search-wrap{padding:10px 16px;border-bottom:1px solid var(--bd)}
-.search-inp{width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--bd);border-radius:99px;font-family:var(--fb);font-size:.85rem;outline:none;transition:all .15s;background:var(--sf2);color:var(--tx1);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:10px center}
-.search-inp:focus{border-color:var(--ac);background-color:var(--sf);box-shadow:0 0 0 3px var(--acs)}
-.search-inp::placeholder{color:var(--tx3)}
-
-/* Expense rows */
-.exp-list{max-height:520px;overflow-y:auto}
-.exp-row{display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid var(--bd);transition:background .15s;position:relative}
-.exp-row:last-child{border-bottom:none}
-.exp-row:hover{background:#FAFBFF}
-.exp-row-ico{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;border:1px solid var(--bd)}
-.exp-info{flex:1;min-width:0}
-.exp-title{font-family:var(--fd);font-size:.875rem;font-weight:700;color:var(--tx1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
-.exp-meta{font-size:.75rem;color:var(--tx2);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.exp-cat-badge{padding:2px 8px;border-radius:4px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.exp-amount{font-family:var(--fm);font-size:.9375rem;font-weight:700;color:var(--red);flex-shrink:0;text-align:right}
-.exp-amount.income{color:var(--green)}
-.exp-del{background:none;border:none;cursor:pointer;color:var(--tx3);padding:5px;border-radius:6px;transition:all .15s;flex-shrink:0;opacity:0}
-.exp-row:hover .exp-del{opacity:1}
-.exp-del:hover{background:#FEE2E2;color:var(--red)}
-.exp-status-badge{padding:2px 8px;border-radius:99px;font-size:.68rem;font-weight:700;flex-shrink:0}
-.status-pending{background:#FEF3C7;color:#B45309}.status-approved{background:#D1FAE5;color:#065F46}.status-rejected{background:#FEE2E2;color:#991B1B}
-.empty-exp{text-align:center;padding:48px 24px;display:flex;flex-direction:column;align-items:center;gap:8px}
-.empty-exp-icon{font-size:2.5rem;margin-bottom:4px}
-.empty-exp-ttl{font-family:var(--fd);font-size:1rem;font-weight:700;color:var(--tx1)}
-.empty-exp-sub{font-size:.85rem;color:var(--tx2);line-height:1.6;max-width:240px}
-
-/* ── RIGHT SIDEBAR ── */
-.sidebar-col{display:flex;flex-direction:column;gap:14px}
-
-/* Category breakdown */
-.cat-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
-.cat-item:last-child{border-bottom:none}
-.cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.cat-name{flex:1;font-size:.84rem;font-weight:600;color:var(--tx1)}
-.cat-val{font-family:var(--fm);font-size:.84rem;font-weight:700;color:var(--tx1)}
-.cat-pct{font-size:.7rem;color:var(--tx3);margin-top:1px}
-.cat-bar-wrap{height:4px;background:var(--sf2);border-radius:99px;margin-top:6px;overflow:hidden}
-.cat-bar{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1)}
-
-/* Budget tracker */
-.budget-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.budget-label{font-size:.84rem;font-weight:600;color:var(--tx1)}
-.budget-vals{font-family:var(--fm);font-size:.78rem;color:var(--tx2)}
-.budget-bar-wrap{height:8px;background:var(--sf2);border-radius:99px;overflow:hidden}
-.budget-bar{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1)}
-.budget-warn{font-size:.72rem;font-weight:600;margin-top:4px}
-
-/* ── BUTTONS ── */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:10px;font-family:var(--fd);font-size:.8375rem;font-weight:600;cursor:pointer;border:none;outline:none;white-space:nowrap;user-select:none;transition:all .15s}
-.btn:active{transform:scale(.96)}
-.btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
-.btn-primary{background:var(--ac);color:#fff;box-shadow:0 1px 3px rgba(79,70,229,.22)}
-.btn-primary:hover{background:var(--ach);box-shadow:0 4px 12px rgba(79,70,229,.28);transform:translateY(-1px)}
-.btn-ghost{background:transparent;color:var(--tx2);border:1.5px solid var(--bd)}
-.btn-ghost:hover{background:var(--sf2);color:var(--tx1);border-color:var(--bd)}
-.btn-sm{padding:5px 12px;font-size:.78rem}
-.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#DC2626}
-.w-full{width:100%}
-
-/* ── MODAL ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(17,24,39,.4);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
-.modal-overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--sf);border-radius:22px;width:100%;max-width:460px;padding:24px;box-shadow:0 24px 64px rgba(17,24,39,.12);transform:scale(.95);transition:transform .2s cubic-bezier(.34,1.56,.64,1);border:1px solid var(--bd);max-height:90vh;overflow-y:auto}
-.modal-overlay.open .modal{transform:scale(1)}
-.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-.modal-ttl{font-family:var(--fd);font-size:1.0625rem;font-weight:800;color:var(--tx1)}
-.close-btn{background:var(--sf2);border:none;width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:1rem;transition:all .15s}
-.close-btn:hover{background:#FEE2E2;color:var(--red)}
-.fg{margin-bottom:14px}
-.fg label{display:block;font-family:var(--fd);font-size:.75rem;font-weight:700;color:var(--tx2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
-.fi,.fsel{width:100%;padding:10px 13px;border:1.5px solid var(--bd);border-radius:10px;font-family:var(--fb);font-size:.9rem;background:var(--bg);color:var(--tx1);outline:none;transition:all .15s}
-.fi:focus,.fsel:focus{border-color:var(--ac);background:var(--sf);box-shadow:0 0 0 3px var(--acs)}
-.fi::placeholder{color:var(--tx3)}
-.fsel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-color:var(--bg);padding-right:32px;cursor:pointer}
-.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.amount-wrap{position:relative}
-.amount-prefix{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-family:var(--fm);font-weight:700;color:var(--tx2);font-size:.9rem;pointer-events:none}
-.amount-inp{padding-left:28px!important;font-family:var(--fm)!important;font-size:1.1rem!important;font-weight:700!important}
-.recurring-toggle{display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--sf2);border-radius:10px;cursor:pointer;margin-bottom:14px}
-.tgl{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
-.tgl input{opacity:0;width:0;height:0}
-.tgl-sl{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#D1D5DB;transition:.3s;border-radius:34px}
-.tgl-sl:before{position:absolute;content:"";height:16px;width:16px;left:2px;bottom:2px;background:white;transition:.3s;border-radius:50%}
-input:checked + .tgl-sl{background:var(--ac)}
-input:checked + .tgl-sl:before{transform:translateX(16px)}
-.tgl-lbl{font-size:.85rem;font-weight:600;color:var(--tx1)}
-.approval-note{background:#EEF2FF;border:1px solid #C7D2FE;border-radius:10px;padding:10px 12px;font-size:.78rem;color:var(--ac);line-height:1.55;margin-bottom:14px}
-/* Spinner */
-@keyframes spin{to{transform:rotate(360deg)}}
-.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;display:inline-block}
-
-/* TOAST */
-#toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.toast{padding:11px 15px;border-radius:13px;font-family:var(--fb);font-size:.83rem;font-weight:500;box-shadow:0 8px 32px rgba(17,24,39,.1);min-width:200px;pointer-events:all;border:1px solid;animation:tIn .25s ease}
-.toast-success{background:#F0FDF4;border-color:#BBF7D0;color:#166534}
-.toast-error{background:#FFF5F5;border-color:#FECACA;color:#991B1B}
-.toast-info{background:#EEF2FF;border-color:#C7D2FE;color:var(--ac)}
-@keyframes tIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
-
-@media(max-width:600px){.summary-strip{gap:8px}.container{padding:16px 12px 72px}.panel-hdr{padding:12px 14px}.exp-row{padding:11px 14px}}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text y='24' x='4' font-size='22' font-family='sans-serif' font-weight='900' fill='white'>Z</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
-<div class="appbar">
-  <div class="ab-left">
-    <button class="ab-back" onclick="window.history.length>1?window.history.back():window.close()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      Back
-    </button>
-    <div class="ab-brand"><div class="ab-icon">💳</div>Expense Tracker</div>
+<div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg-base,#f6f6f9);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s">
+  <div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:600;letter-spacing:-0.02em;color:var(--tx-1,#0c0c14)">
+    <div id="loading-logo-icon" style="width:30px;height:30px;background:#4f46e5;border-radius:6px;display:flex;align-items:center;justify-content:center;animation:logoHb 1.2s ease-in-out infinite">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    </div>
+    Zenda
   </div>
-  <span class="sync-badge sync-loading" id="sync-status">Connecting…</span>
+  <div style="width:20px;height:20px;border:2px solid rgba(79,70,229,.2);border-top-color:#4f46e5;border-radius:50%;animation:spin .65s linear infinite"></div>
 </div>
 
-<div class="container">
+<div class="panel-overlay" id="panel-overlay" onclick="window.closeAllPanels()"></div>
 
-  <div class="summary-strip">
-    <div class="sum-card">
-      <div class="sum-icon si-red">💸</div>
-      <div class="sum-val" id="s-total">₹0</div>
-      <div class="sum-lbl">Total Expenses</div>
-      <div class="sum-sub" id="s-total-sub">This month</div>
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo" onclick="window.showView('home')">
+      <div class="topbar-logo-icon" id="topbar-logo-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <span id="topbar-logo-text">Zenda</span>
     </div>
-    <div class="sum-card">
-      <div class="sum-icon si-amber">⏳</div>
-      <div class="sum-val" id="s-pending">0</div>
-      <div class="sum-lbl">Pending Approval</div>
-      <div class="sum-sub">Awaiting review</div>
+    <div class="topbar-company" id="topbar-company"></div>
+  </div>
+  <div class="topbar-right">
+    <button class="icon-btn" id="notif-btn" onclick="window.togglePanel('notif-panel')" title="Notifications">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="notif-badge hidden" id="notif-badge">0</span>
+    </button>
+    <button class="profile-btn" onclick="window.openProfile()">
+      <div class="av" id="topbar-avatar" style="width:26px;height:26px;font-size:10px;font-weight:600"></div>
+      <span class="profile-btn-name" id="topbar-name"></span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="app-body">
+
+<aside class="sidebar" id="sidebar">
+  <nav class="sidebar-nav">
+    <div class="sidebar-section-label">Main</div>
+    <div class="sidebar-item active" id="nav-home" onclick="window.showView('home')">
+      <span class="sidebar-item-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      <span class="sidebar-item-text">Dashboard</span>
     </div>
-    <div class="sum-card">
-      <div class="sum-icon si-green">✅</div>
-      <div class="sum-val" id="s-approved">₹0</div>
-      <div class="sum-lbl">Approved</div>
-      <div class="sum-sub">This month</div>
+    <div class="sidebar-item" id="nav-tasks" onclick="window.showView('tasks')">
+      <span class="sidebar-item-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span>
+      <span class="sidebar-item-text">My Tasks</span>
+      <span class="sidebar-badge red hidden" id="task-badge-side">0</span>
     </div>
-    <div class="sum-card">
-      <div class="sum-icon si-blue">📋</div>
-      <div class="sum-val" id="s-count">0</div>
-      <div class="sum-lbl">Transactions</div>
-      <div class="sum-sub">Total entries</div>
+    <div class="sidebar-item hidden" id="nav-assign" onclick="window.openAssignModal()">
+      <span class="sidebar-item-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+      <span class="sidebar-item-text">Assign Work</span>
+    </div>
+    <div class="sidebar-section-label hidden" id="team-label">Team</div>
+    <div class="sidebar-item hidden" id="nav-staff" onclick="window.showView('staff')">
+      <span class="sidebar-item-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+      <span class="sidebar-item-text">Staff Members</span>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn btn-ghost w-full" style="justify-content:flex-start;gap:8px" onclick="window.handleLogout()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<main class="main-content">
+
+  <div id="view-home">
+    <div class="page-hdr">
+      <div>
+        <div class="page-ttl" id="home-greeting" style="animation:greetIn .5s cubic-bezier(.22,1,.36,1) both">Welcome</div>
+        <div class="page-sub" id="home-sub"></div>
+      </div>
+      <button class="btn btn-primary hidden" id="assign-top-btn" onclick="window.openAssignModal()" style="gap:6px;padding:9px 18px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Assign
+      </button>
+    </div>
+    <div class="stats-grid" id="stats-grid" data-animate="stagger"></div>
+    <div class="charts-row hidden" id="charts-row">
+      <div class="chart-card">
+        <div class="chart-hdr">
+          <div><div class="chart-ttl">Task Activity</div><div class="chart-sub">Last 7 days</div></div>
+          <div class="chart-legend">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--ac)"></div>Assigned</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Done</div>
+          </div>
+        </div>
+        <canvas id="bar-chart" height="120"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-hdr"><div><div class="chart-ttl">Task Status</div><div class="chart-sub">Distribution</div></div></div>
+        <canvas id="donut-chart" height="160"></canvas>
+      </div>
+    </div>
+    <div class="content-row">
+        <div class="content-card">
+          <div class="content-hdr">
+            <div><div class="content-ttl" id="recent-ttl">Recent Tasks</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')">
+              View All <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <div id="recent-tasks"></div>
+        </div>
+        <div class="apps-wrap">
+          <div class="content-hdr">
+            <div class="content-ttl">My Apps</div>
+            <button class="btn btn-ghost btn-sm" onclick="window.openAppLib()" style="font-size:.75rem">All Apps →</button>
+          </div>
+          <div class="apps-grid" id="apps-grid"></div>
+        </div>
     </div>
   </div>
 
-  <div class="main-grid">
+  <div id="view-tasks" class="hidden">
+    <div class="page-hdr" style="margin-bottom:14px;">
+      <div>
+        <div class="page-ttl">My Tasks</div>
+        <div class="page-sub" id="tasks-sub"></div>
+      </div>
+      <button class="btn btn-primary hidden" id="assign-tasks-btn" onclick="window.openAssignModal()" style="gap:6px;padding:9px 18px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Assign Work
+      </button>
+    </div>
 
-    <div class="panel">
-      <div class="panel-hdr">
-        <div class="panel-ttl">Transactions</div>
-        <div class="panel-actions">
-          <select class="btn btn-ghost btn-sm" id="month-filter" onchange="window.applyFilters()" style="padding:5px 10px;cursor:pointer;font-size:.78rem">
-            <option value="">All time</option>
-          </select>
-          <button class="btn btn-primary btn-sm" onclick="window.openAddModal()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Expense
+    <div class="ftabs" id="task-tab-row">
+      <button class="ftab" onclick="window.setTaskTab('assigned-to-me',this)" id="tab-to-me">Assigned</button>
+      <button class="ftab on" onclick="window.setTaskTab('pending',this)" id="tab-pending">Pending</button>
+      <button class="ftab" onclick="window.setTaskTab('declined',this)">Denied</button>
+    </div>
+
+    <div style="background: var(--sf, #ffffff); border: 1px solid var(--bd, #E5E7EB); border-radius: 14px; padding: 16px; margin-top: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+      
+      <div class="premium-toolbar" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--bd, #E5E7EB);">
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-filter-tasks" style="color: var(--tx-2); font-size: .75rem;" onclick="window.openFilterModal()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> 
+            Filter
+          </button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-customize-tasks" style="color: var(--tx-2); font-size: .75rem;" onclick="window.openCustomizeModal()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> 
+            Customize
           </button>
         </div>
       </div>
 
-      <div class="filter-tabs" id="cat-tabs">
-        <button class="ftab on" data-cat="" onclick="window.setCatFilter('',this)">All</button>
-        <button class="ftab" data-cat="Inventory Stock" onclick="window.setCatFilter('Inventory Stock',this)">📦 Inventory</button>
-        <button class="ftab" data-cat="Godown Expense" onclick="window.setCatFilter('Godown Expense',this)">🏭 Godown</button>
-        <button class="ftab" data-cat="Installation" onclick="window.setCatFilter('Installation',this)">🔧 Installation</button>
-        <button class="ftab" data-cat="Logistics" onclick="window.setCatFilter('Logistics',this)">🚚 Logistics</button>
-        <button class="ftab" data-cat="Raw Materials" onclick="window.setCatFilter('Raw Materials',this)">🪵 Materials</button>
-        <button class="ftab" data-cat="Office & Admin" onclick="window.setCatFilter('Office & Admin',this)">📎 Office</button>
-        <button class="ftab" data-cat="Miscellaneous" onclick="window.setCatFilter('Miscellaneous',this)">🧾 Other</button>
-      </div>
-
-      <div class="search-wrap">
-        <input class="search-inp" id="exp-search" placeholder="Search expenses…" oninput="window.applyFilters()">
-      </div>
-
-      <div class="exp-list" id="exp-list">
-        <div class="empty-exp">
-          <div class="empty-exp-icon">💳</div>
-          <div class="empty-exp-ttl">Loading…</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="sidebar-col">
-
-      <div class="panel">
-        <div class="panel-hdr"><div class="panel-ttl">Breakdown</div></div>
-        <div style="padding:14px 16px" id="cat-breakdown">
-          <div style="text-align:center;padding:20px;color:var(--tx3);font-size:.84rem">No data yet</div>
-        </div>
-      </div>
-
-      <div class="panel" id="budget-panel">
-        <div class="panel-hdr">
-          <div class="panel-ttl">Budget</div>
-          <button class="btn btn-ghost btn-sm" onclick="window.openBudgetModal()">Edit</button>
-        </div>
-        <div style="padding:14px 16px" id="budget-display">
-          <div style="text-align:center;padding:16px;color:var(--tx3);font-size:.84rem">
-            <div style="font-size:1.5rem;margin-bottom:6px">🎯</div>
-            No budget set
-            <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="window.openBudgetModal()">Set Budget</button></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel hidden" id="approvals-panel">
-        <div class="panel-hdr">
-          <div class="panel-ttl">Needs Approval</div>
-          <span id="approval-count-badge" style="background:#FEF3C7;color:#B45309;padding:2px 8px;border-radius:99px;font-size:.7rem;font-weight:700"></span>
-        </div>
-        <div style="max-height:260px;overflow-y:auto" id="approvals-list">
-          <div style="text-align:center;padding:20px;color:var(--tx3);font-size:.84rem">All caught up ✓</div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-hdr"><div class="panel-ttl">This Month</div></div>
-        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px" id="monthly-stats">
-          <div style="text-align:center;padding:12px;color:var(--tx3);font-size:.84rem">No data</div>
-        </div>
-      </div>
-
+      <div id="tasks-list" style="display:flex; flex-direction:column; gap:14px;"></div>
     </div>
   </div>
+
+  <div id="view-staff" class="hidden">
+    <div class="page-hdr" style="margin-bottom:14px;">
+      <div>
+        <div class="page-ttl">Staff Members</div>
+        <div class="page-sub" id="staff-count-sub"></div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="add-staff-btn" onclick="window.openCreateStaffPage()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Staff
+      </button>
+    </div>
+    <input class="search-bar" id="staff-search" placeholder="Search by name or email…" oninput="window.searchStaff(this.value)">
+    <div id="staff-cards-list"></div>
+  </div>
+
+</main>
 </div>
 
-<div class="modal-overlay" id="add-modal">
-  <div class="modal">
-    <div class="modal-hdr">
-      <div class="modal-ttl">Record Expense</div>
-      <button class="close-btn" onclick="window.closeM('add-modal')">✕</button>
-    </div>
-
-    <div class="fg">
-      <label>Amount *</label>
-      <div class="amount-wrap">
-        <span class="amount-prefix">₹</span>
-        <input type="number" id="exp-amount" class="fi amount-inp" placeholder="0.00" min="0" step="0.01">
+<nav class="bottom-nav" id="bottom-nav">
+  <div class="bn-items">
+    <button class="bn-item active" id="bn-home" onclick="window.showView('home')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </button>
+    <button class="bn-item" id="bn-tasks" onclick="window.showView('tasks')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+      <span class="bn-dot" id="bn-task-dot"></span>
+      Tasks
+    </button>
+    
+    <button class="bn-item bn-item-assign hidden" id="bn-assign" onclick="window.openAssignModal()">
+      <div class="bn-assign-inner">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </div>
-    </div>
-
-    <div class="fg-row">
-      <div class="fg">
-        <label>Category *</label>
-        <select id="exp-category" class="fsel">
-          <option value="Inventory Stock">📦 Inventory Stock</option>
-          <option value="Godown Expense">🏭 Godown Expense</option>
-          <option value="Installation">🔧 Installation</option>
-          <option value="Logistics">🚚 Logistics</option>
-          <option value="Raw Materials">🪵 Raw Materials</option>
-          <option value="Office & Admin">📎 Office & Admin</option>
-          <option value="Miscellaneous">🧾 Other</option>
-        </select>
-      </div>
-      <div class="fg">
-        <label>Payment Method</label>
-        <select id="exp-payment" class="fsel">
-          <option value="Cash">💵 Cash</option>
-          <option value="Bank Transfer">🏦 Bank Transfer</option>
-          <option value="UPI">📱 UPI</option>
-          <option value="Credit Card">💳 Credit Card</option>
-          <option value="Cheque">📄 Cheque</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="fg">
-      <label>Description *</label>
-      <input type="text" id="exp-desc" class="fi" placeholder="What was this expense for?">
-    </div>
-
-    <div class="fg">
-      <label>Vendor / Payee</label>
-      <input type="text" id="exp-vendor" class="fi" placeholder="Who was paid? (optional)">
-    </div>
-
-    <div class="fg-row">
-      <div class="fg">
-        <label>Date</label>
-        <input type="date" id="exp-date" class="fi">
-      </div>
-      <div class="fg">
-        <label>Reference No.</label>
-        <input type="text" id="exp-ref" class="fi" placeholder="Invoice / Bill no.">
-      </div>
-    </div>
-
-    <label class="recurring-toggle" onclick="document.getElementById('exp-recurring').click()">
-      <label class="tgl"><input type="checkbox" id="exp-recurring"><span class="tgl-sl"></span></label>
-      <span class="tgl-lbl">Recurring monthly expense</span>
-    </label>
-
-    <div class="approval-note hidden" id="approval-note">
-      <strong>📋 Needs approval</strong> — This will be sent to the owner for review before being recorded.
-    </div>
-
-    <button class="btn btn-primary w-full" id="save-exp-btn" onclick="window.saveExpense()" style="padding:12px">
-      Save Expense →
+      <span class="bn-assign-text">Assign</span>
+    </button>
+    
+    <button class="bn-item hidden" id="bn-staff-btn" onclick="window.showView('staff')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Staff
+    </button>
+    <button class="bn-item" id="bn-profile" onclick="window.openProfile()">
+      <div class="av" id="bn-avatar" style="width:22px;height:22px;font-size:9px;font-weight:600;border-radius:50%"></div>
+      Profile
     </button>
   </div>
+</nav>
+
+<div class="side-panel" id="notif-panel">
+  <div class="sp-hdr">
+    <div class="sp-ttl">Notifications <span id="notif-count-badge" style="font-size:10px;font-weight:500;color:var(--tx-3);font-family:var(--f-mono)"></span></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-ghost btn-sm" onclick="window.markAllRead()" style="font-size:11px;gap:4px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>All read</button>
+      <button class="modal-close" onclick="window.closeAllPanels()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="sp-body" id="notif-body">
+    <div class="empty">
+      <div class="empty-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+      <div class="empty-ttl">No notifications</div>
+    </div>
+  </div>
 </div>
 
-<div class="modal-overlay" id="budget-modal">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-hdr">
-      <div class="modal-ttl">Set Monthly Budget</div>
-      <button class="close-btn" onclick="window.closeM('budget-modal')">✕</button>
-    </div>
-    <div class="fg">
-      <label>Monthly Budget (₹)</label>
-      <div class="amount-wrap">
-        <span class="amount-prefix">₹</span>
-        <input type="number" id="budget-amount" class="fi amount-inp" placeholder="50000">
+<div id="profile-page"></div>
+
+<div class="profile-side-panel" id="profile-side-panel">
+  <div class="sp-hdr">
+    <div class="sp-ttl">My Profile</div>
+    <button class="modal-close" onclick="window.closeProfile()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="sp-body" id="profile-body-desktop"></div>
+</div>
+
+<div class="fullpage" id="profile-page-mobile">
+  <div class="fp-hdr">
+    <button class="fp-back" onclick="window.closeProfile()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <div class="fp-ttl">My Profile</div>
+  </div>
+  <div class="fp-body" id="profile-body-mobile"></div>
+</div>
+
+<div class="fullpage" id="create-staff-page">
+  <div class="fp-hdr">
+    <button class="fp-back" onclick="window.closeFullpage('create-staff-page')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <div class="fp-ttl">Add Staff Member</div>
+  </div>
+  <div class="fp-body">
+    <div class="role-cards">
+      <div class="role-card-sel sel-mgr selected" id="rc-manager" onclick="window.selectRole('manager')">
+        <div style="margin-bottom:8px;width:32px;height:32px;border-radius:8px;background:var(--ac-s);display:flex;align-items:center;justify-content:center;margin-left:auto;margin-right:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+        <div style="font-size:13px;font-weight:600;color:var(--tx-1)">Manager</div>
+        <div style="font-size:11px;color:var(--tx-3);margin-top:2px">Can assign tasks</div>
+      </div>
+      <div class="role-card-sel sel-stf" id="rc-staff" onclick="window.selectRole('staff')">
+        <div style="margin-bottom:8px;width:32px;height:32px;border-radius:8px;background:rgba(22,163,74,.1);display:flex;align-items:center;justify-content:center;margin-left:auto;margin-right:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div style="font-size:13px;font-weight:600;color:var(--tx-1)">Staff</div>
+        <div style="font-size:11px;color:var(--tx-3);margin-top:2px">Receives tasks</div>
       </div>
     </div>
-    <div class="fg">
-      <label>Alert at (%)</label>
-      <select id="budget-alert-pct" class="fsel">
-        <option value="70">70% of budget</option>
-        <option value="80" selected>80% of budget</option>
-        <option value="90">90% of budget</option>
-        <option value="100">100% (budget exceeded)</option>
-      </select>
+    <div class="form-section" style="margin-top:12px">
+      <div class="form-section-title">Personal Information</div>
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input class="form-input" id="cs-name" type="text" placeholder="Jane Doe" maxlength="50" oninput="window.clearCSErr(this)">
+            <div class="form-err" id="err-cs-name"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email *</label>
+            <input class="form-input" id="cs-email" type="email" placeholder="jane@email.com" oninput="window.clearCSErr(this)">
+            <div class="form-err" id="err-cs-email"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Designation *</label>
+          <input class="form-input" id="cs-designation" type="text" placeholder="e.g. Senior Developer" oninput="window.clearCSErr(this)">
+          <div class="form-err" id="err-cs-designation"></div>
+        </div>
+      </div>
     </div>
-    <button class="btn btn-primary w-full" onclick="window.saveBudget()" style="padding:11px">Save Budget</button>
+    <div class="form-section">
+      <div class="form-section-title">Login Password</div>
+      <div class="form-group">
+        <label class="form-label">Password * (min. 6 characters)</label>
+        <div class="pwd-wrap">
+          <input class="form-input" id="cs-password" type="password" placeholder="Set their login password" oninput="window.clearCSErr(this)">
+          <button type="button" class="pwd-toggle" onclick="window.togglePwd('cs-password',this)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="form-err" id="err-cs-password"></div>
+      </div>
+      <div style="background:var(--ac-s);border-radius:var(--r-md);padding:10px 12px;font-size:11px;color:var(--ac);margin-top:10px;line-height:1.55">
+        Staff logs in with: <strong>email + this password + OTP</strong>. Their Unique ID is also shown on their ID card.
+      </div>
+    </div>
+    <button class="btn btn-primary w-full" style="padding:12px" id="create-staff-btn" onclick="window.handleCreateStaff()">
+      Create Staff Member &amp; Generate Card →
+    </button>
+    <div id="created-card-section" class="hidden created-wrap">
+      <div style="font-size:1.6rem;margin-bottom:8px">🎉</div>
+      <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em;margin-bottom:4px">Staff Member Added!</div>
+      <div style="font-size:12px;color:var(--tx-3);margin-bottom:14px">Share these credentials with them</div>
+      <div id="new-card-container" style="display:flex;justify-content:center;margin-bottom:12px"></div>
+      <div class="cred-box" id="cred-box"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="window.dlCard()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+        <button style="flex:1;background:#25D366;color:#fff;border:none;padding:8px;border-radius:var(--r-md);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px" onclick="window.waCard()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          WhatsApp
+        </button>
+      </div>
+      <button class="btn btn-ghost w-full" style="margin-top:10px" onclick="window.resetCreateStaff()">+ Add Another</button>
+    </div>
   </div>
+</div>
+
+<div class="modal-overlay hidden" id="assign-modal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-hdr">
+      <div class="modal-ttl">Assign Work</div>
+      <button class="modal-close" onclick="window.closeModal('assign-modal')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Assign To</label>
+        <select class="zenda-select" id="assign-to"><option value="">Select team member…</option></select>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+          <label class="form-label">Task Title *</label>
+          <input class="form-input" id="task-title" type="text" placeholder="e.g. Review Q3 report" maxlength="80">
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label class="form-label">Priority</label>
+          <select class="zenda-select" id="task-priority">
+            <option value="Low">Low</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="High" style="color: var(--red); font-weight: bold;">High</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description <span style="color:var(--tx-3);font-weight:400">(optional)</span></label>
+        <textarea class="form-input" id="task-desc" placeholder="Add details…" style="min-height:64px;resize:vertical"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Due Date <span style="color:var(--tx-3);font-weight:400">(optional)</span></label>
+          <input class="form-input" id="task-date" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Due Time</label>
+          <input class="form-input" id="task-time" type="time">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="window.closeModal('assign-modal')">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" id="assign-btn" onclick="window.handleAssign()">Assign Task →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="decline-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hdr">
+      <div class="modal-ttl">Decline Task</div>
+      <button class="modal-close" onclick="window.closeModal('decline-modal')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.15);border-radius:var(--r-md);padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--tx-2)">
+      Task: <strong id="decline-task-title"></strong>
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">Reason <span style="color:var(--tx-3);font-weight:400">(optional)</span></label>
+      <textarea class="form-input" id="decline-reason" placeholder="Let them know why you're declining…" style="min-height:80px;resize:vertical"></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="window.closeModal('decline-modal')">Cancel</button>
+      <button class="btn btn-danger" style="flex:1" id="confirm-decline-btn" onclick="window.confirmDecline()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Decline Task
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="delete-modal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hdr">
+      <div class="modal-ttl" style="color:var(--red)">Delete Staff Member</div>
+      <button class="modal-close" onclick="window.closeModal('delete-modal')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="del-warn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div class="del-warn-txt">This will permanently delete all data for <strong id="del-name-display"></strong> including their account and history. This cannot be undone.</div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;font-weight:500;color:var(--tx-2);display:block;margin-bottom:6px">
+        Type <strong id="del-confirm-hint" style="color:var(--red);font-family:var(--f-mono);font-size:11px"></strong> to confirm:
+      </label>
+      <input class="del-confirm-input" id="del-confirm-input" type="text" placeholder="Type to confirm…" oninput="window.checkDelConfirm()">
+      <div style="font-size:11px;color:var(--tx-3);margin-top:5px" id="del-hint"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="window.closeModal('delete-modal')">Cancel</button>
+      <button class="btn btn-danger" style="flex:1;opacity:.4;cursor:not-allowed" id="del-confirm-btn" disabled onclick="window.confirmDelete()">Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="edit-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hdr">
+      <div class="modal-ttl" id="edit-modal-ttl">Edit</div>
+      <button class="modal-close" onclick="window.closeModal('edit-modal')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="form-group">
+        <label class="form-label" id="edit-modal-lbl">Value</label>
+        <input class="form-input" id="edit-modal-val" type="text">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="window.closeModal('edit-modal')">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" onclick="window.saveEdit()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="filter-modal">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-hdr">
+      <div class="modal-ttl">Filter Tasks</div>
+      <button class="modal-close" onclick="window.closeModal('filter-modal')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="zenda-select" id="filter-priority" onchange="window.applyTaskFilter()">
+          <option value="All">All Priorities</option>
+          <option value="High">High Priority Only</option>
+          <option value="Medium">Medium Priority Only</option>
+          <option value="Low">Low Priority Only</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Assigned By</label>
+        <select class="zenda-select" id="filter-assigner" onchange="window.applyTaskFilter()">
+          <option value="All">Anyone</option>
+          </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Due Date</label>
+        <select class="zenda-select" id="filter-due" onchange="window.applyTaskFilter()">
+          <option value="All">Any Time</option>
+          <option value="Overdue">Overdue</option>
+          <option value="Today">Due Today</option>
+          <option value="Upcoming">Due Next 7 Days</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-primary w-full" onclick="window.closeModal('filter-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="customize-modal">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-hdr">
+      <div class="modal-ttl">Customize View</div>
+      <button class="modal-close" onclick="window.closeModal('customize-modal')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="form-group">
+        <label class="form-label">List Density</label>
+        <select class="zenda-select" id="cust-density" onchange="window.applyCustomize()">
+          <option value="comfortable">Comfortable (Spaced out)</option>
+          <option value="compact">Compact (Tighter list)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Task Details</label>
+        <select class="zenda-select" id="cust-details" onchange="window.applyCustomize()">
+          <option value="full">Show Full Details</option>
+          <option value="minimal">Minimal (Hide Description)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Task Info</label>
+        <select class="zenda-select" id="cust-meta" onchange="window.applyCustomize()">
+          <option value="show">Show Dates & Assigners</option>
+          <option value="hide">Hide Dates & Assigners</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Card Style</label>
+        <select class="zenda-select" id="cust-style" onchange="window.applyCustomize()">
+          <option value="elevated">Elevated (Shadows)</option>
+          <option value="flat">Flat (Borders only)</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary w-full" onclick="window.closeModal('customize-modal')" style="margin-top:16px">Done</button>
+  </div>
+</div>
+
+<div class="fullpage" id="app-store-page">
+  <div class="fp-hdr">
+    <button class="fp-back" onclick="window.closeFullpage('app-store-page')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <div class="fp-ttl">App Library</div>
+  </div>
+  <div class="fp-body" id="app-store-body" style="padding:16px"></div>
 </div>
 
 <div id="toast-container"></div>
 
 <script type="module">
-import { db, auth } from './firebase-config.js';
-import { getCurrentUser } from './auth.js';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, updateDoc, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
+import { requireAuth, logout, getCurrentUser } from './auth.js';
+import { listenNotifications, markAllRead as markAllReadFn, markNotificationRead, addNotification } from './notifications.js';
+import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined } from './tasks.js';
+import { listenCompanyStaff, getAssignableStaff, createStaff, updateUserProfile, deleteStaffMember } from './staff.js';
+import { getInstalledApps, listenInstalledApps, installApp, uninstallApp, renderAppLibrary, APP_REGISTRY } from './apps.js';
+import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
+import { showToast, setButtonLoading, getInitials, avatarColor, formatRole, roleBadgeClass, copyToClipboard, saveSession } from './utils.js';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { sendOTP, verifyUserOTP } from './otp.js';
 
-const syncEl = document.getElementById('sync-status');
-let CU = { uid: null, role: 'staff', companyId: null, name: 'Staff' };
-let allExpenses = [], budget = null;
-let catFilter = '', searchVal = '', monthFilter = '';
+// ATTACH GLOBAL STUBS SO ONINPUT HANDLERS DON'T CRASH
+window.searchStaff = function(v) {};
+window.clearCSErr  = function(el) {};
+window.copyToClipboard = copyToClipboard; 
+window.showToast = showToast;
 
-const CAT_COLORS = {'Inventory Stock':'#6366F1','Godown Expense':'#D97706','Installation':'#0891B2','Logistics':'#8B5CF6','Raw Materials':'#059669','Office & Admin':'#374151','Miscellaneous':'#9CA3AF'};
-const CAT_BG = {'Inventory Stock':'#EEF2FF','Godown Expense':'#FEF3C7','Installation':'#CFFAFE','Logistics':'#EDE9FE','Raw Materials':'#D1FAE5','Office & Admin':'#F3F4F6','Miscellaneous':'#F9FAFB'};
-const CAT_ICONS = {'Inventory Stock':'📦','Godown Expense':'🏭','Installation':'🔧','Logistics':'🚚','Raw Materials':'🪵','Office & Admin':'📎','Miscellaneous':'🧾'};
-const PAY_ICONS = {'Cash':'💵','Bank Transfer':'🏦','UPI':'📱','Credit Card':'💳','Cheque':'📄'};
+let CU = null, myTasks = [], assignedByMeTasks = [], allStaff = [];
+let _profileBuilt = false;
+let newRole = 'manager', newCanvas = null, newStaffData = null;
+let editField = null, taskTab = 'pending', staffSearchVal = '';
+let deleteTargetUid = null, deleteTargetEmail = '', deleteTargetPwd = '', deleteConfirmStr = '';
+let pendingDeclineId = null, pendingDeclineTitle = '';
+let barChart = null, donutChart = null;
+let unsubs = [];
 
-document.getElementById('exp-date').valueAsDate = new Date();
+// ──────────────────────────────────────────────
+// TASK FILTERING & CUSTOMIZATION SYSTEM
+// ──────────────────────────────────────────────
+window.currentTaskFilter = 'All';
+window.currentAssignerFilter = 'All';
+window.currentDueFilter = 'All';
 
-function buildMonthFilter() {
-  const sel = document.getElementById('month-filter');
-  const months = [];
-  for(let i=0; i<12; i++){
-    const d = new Date(); d.setMonth(d.getMonth()-i);
-    months.push({val:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, label:d.toLocaleDateString('en-IN',{month:'long',year:'numeric'})});
+// View Customization variables
+window.currentCustDetails = 'full';
+window.currentCustStyle = 'elevated';
+window.currentCustDensity = 'comfortable';
+window.currentCustMeta = 'show';
+taskTab = 'pending';
+
+try {
+  const saved = localStorage.getItem('zenda_task_prefs_local');
+  if (saved) {
+    const prefs = JSON.parse(saved);
+    window.currentCustDensity = prefs.density || 'comfortable';
+    window.currentCustDetails = prefs.details || 'full';
+    window.currentCustStyle = prefs.style || 'elevated';
+    window.currentCustMeta = prefs.meta || 'show';
   }
-  sel.innerHTML = '<option value="">All time</option>' + months.map(m => `<option value="${m.val}">${m.label}</option>`).join('');
-}
-buildMonthFilter();
+} catch(e) {}
 
-window.openAddModal = function() {
-  const isStaff = CU.role === 'staff';
-  document.getElementById('approval-note').classList.toggle('hidden', !isStaff);
-  window.openM('add-modal');
-};
-window.openBudgetModal = function() {
-  if(budget) document.getElementById('budget-amount').value = budget.amount || '';
-  window.openM('budget-modal');
-};
-window.openM = id => document.getElementById(id).classList.add('open');
-window.closeM = id => document.getElementById(id).classList.remove('open');
-
-window.setCatFilter = function(cat, btn) {
-  catFilter = cat;
-  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  renderList();
-};
-window.applyFilters = function() {
-  monthFilter = document.getElementById('month-filter').value;
-  searchVal = document.getElementById('exp-search').value.toLowerCase();
-  renderList();
-};
-
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
 async function init() {
-  try {
-    CU = await getCurrentUser();
-    if (!CU || !CU.companyId) { 
-      syncEl.textContent = 'Not Logged In'; 
-      syncEl.className = 'sync-badge sync-err'; 
-      setTimeout(() => window.location.href = 'login.html', 1500);
-      return; 
-    }
+  await requireAuth('login.html');
+  CU = await getCurrentUser();
+  if (!CU) { window.location.href = 'login.html'; return; }
+  saveSession(CU);
+  CU._notifyList = CU.notifyApps || [];
+  setupUI();
+  buildProfile();
+  subscribeAll();
+  hideLoader();
+}
 
-    if (CU.role === 'owner' || CU.role === 'manager') {
-      document.getElementById('approvals-panel')?.classList.remove('hidden');
-    }
+function hideLoader() {
+  const el = document.getElementById('loading-overlay');
+  el.style.opacity = '0'; el.style.transition = 'opacity .4s';
+  setTimeout(() => el.remove(), 400);
+}
 
-    loadBudget();
+// ──────────────────────────────────────────────
+// SETUP UI
+// ──────────────────────────────────────────────
+function setupUI() {
+  const { name, role } = CU;
+  const col = avatarColor(name);
+  const ini = getInitials(name);
 
-    const q = query(collection(db, 'expenses'), where('companyId', '==', CU.companyId));
-    onSnapshot(q, snap => {
-      // FIX 2: Sort locally in Javascript, safely handling BOTH old strings and new Timestamps!
-      allExpenses = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => {
-        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-        return timeB - timeA; // Newest first
-      });
-      syncEl.textContent = '✓ Synced'; 
-      syncEl.className = 'sync-badge sync-live';
-      renderAll();
-    }, (err) => {
-      console.error(err);
-      syncEl.textContent = 'Sync Error'; 
-      syncEl.className = 'sync-badge sync-err';
-    });
+  const localLogo = localStorage.getItem('zenda_logo_' + CU.uid);
+  const avatarSrc = localLogo || CU.avatarData || null;
+  if (avatarSrc) {
+    CU.avatarData = avatarSrc;
+    setAvatar('topbar-avatar', ini, col, 26, avatarSrc);
+    setAvatar('bn-avatar', ini, col, 22, avatarSrc);
+  } else {
+    const topAv = document.getElementById('topbar-avatar');
+    if (topAv) { topAv.textContent = ini; topAv.style.background = col + '22'; topAv.style.color = col; }
+    const bnAv = document.getElementById('bn-avatar');
+    if (bnAv) { bnAv.textContent = ini; bnAv.style.background = col + '22'; bnAv.style.color = col; }
+  }
 
-  } catch(e) {
-    console.error("Init Error", e);
-    syncEl.textContent = 'Error'; 
-    syncEl.className = 'sync-badge sync-err';
+  document.getElementById('topbar-name').textContent = name.split(' ')[0];
+  getDoc(doc(db, 'companies', CU.companyId)).then(s => {
+    if (s.exists()) document.getElementById('topbar-company').textContent = s.data().name;
+  });
+
+  const h = new Date().getHours();
+  const g = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+  document.getElementById('home-greeting').textContent = `Good ${g}, ${name.split(' ')[0]}`;
+  document.getElementById('home-sub').textContent = { owner:'Overview of your company and team', manager:'Your team tasks and activity', staff:'Your assignments and progress' }[role] || '';
+  document.getElementById('tasks-sub').textContent = `Tasks for ${name.split(' ')[0]}`;
+
+  const canAssign = role === 'owner' || role === 'manager';
+  const isOwner = role === 'owner';
+  const canSeeStaff = role === 'owner' || role === 'manager';
+
+  if (canAssign) {
+    document.getElementById('nav-assign')?.classList.remove('hidden');
+    document.getElementById('bn-assign')?.classList.remove('hidden');
+    document.getElementById('assign-top-btn')?.classList.remove('hidden');
+    document.getElementById('assign-tasks-btn')?.classList.remove('hidden');
+    document.getElementById('tab-by-me')?.classList.remove('hidden');
+  }
+  if (!isOwner) {
+    document.getElementById('tab-to-me')?.classList.remove('hidden');
+  } else {
+    document.getElementById('tab-to-me')?.classList.add('hidden');
+    const byMe = document.getElementById('tab-by-me');
+    if (byMe) byMe.classList.add('on');
+    taskTab = 'pending';
+  }
+  if (canSeeStaff) {
+    document.getElementById('nav-staff')?.classList.remove('hidden');
+    document.getElementById('team-label')?.classList.remove('hidden');
+    document.getElementById('bn-staff-btn')?.classList.remove('hidden');
+  }
+  if (isOwner) {
+    const btn = document.getElementById('add-staff-btn');
+    if(btn) btn.style.display = 'flex';
+  }
+  
+  if (role === 'staff' || role === 'manager') {
+    document.getElementById('charts-row')?.classList.remove('hidden');
+    initCharts();
+  }
+  const rTtl = document.getElementById('recent-ttl');
+  if(rTtl) rTtl.textContent = canAssign ? 'Recent Tasks' : 'My Tasks';
+}
+
+function setAvatar(id, initials, color, size, dataUrl) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.width = size + 'px';
+  el.style.height = size + 'px';
+  el.style.fontSize = (size * 0.38) + 'px';
+  if (dataUrl) {
+    el.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    el.textContent = initials;
+    el.style.background = color + '22';
+    el.style.color = color;
   }
 }
 
-async function loadBudget(){
-  try{
-    const s=await getDoc(doc(db,'budgets',CU.companyId));
-    if(s.exists())budget=s.data();
-    renderBudget();
-  }catch(e){}
+// ──────────────────────────────────────────────
+// SUBSCRIPTIONS
+// ──────────────────────────────────────────────
+function subscribeAll() {
+  const { uid, companyId, role } = CU;
+  const canSeeStaff = role === 'owner' || role === 'manager';
+  const canAssign = role === 'owner' || role === 'manager';
+
+  unsubs.push(listenNotifications(uid, (items, unread) => {
+    renderNotifPanel(items);
+    setBadge('notif-badge', unread);
+  }));
+
+  unsubs.push(listenMyTasks(uid, tasks => {
+    myTasks = tasks;
+    const pending = tasks.filter(t => t.status === 'pending').length;
+    setBadge('task-badge-side', pending);
+    setDot('bn-task-dot', pending > 0);
+    renderRecentTasks();
+    renderTasksList();
+    renderTaskSummaryStrip();
+    if (role === 'staff' || role === 'manager') {
+      updateCharts(tasks);
+      renderNonOwnerStats(tasks);
+    }
+    if (role === 'owner') renderOwnerStats();
+  }));
+
+  if (canAssign) {
+    unsubs.push(listenAssignedByMe(uid, tasks => {
+      assignedByMeTasks = tasks;
+      if (role === 'owner') renderOwnerStats();
+      renderRecentTasks();
+      renderTasksList();
+    }));
+  }
+
+  if (canSeeStaff) {
+    unsubs.push(listenCompanyStaff(companyId, staff => {
+      allStaff = staff;
+      if (role === 'owner') renderOwnerStats();
+      renderStaffCards(staff);
+      buildAssignSelect(staff);
+      buildFilterAssignerSelect(staff);
+      const nonOwner = staff.filter(s => s.role !== 'owner');
+      const sc = document.getElementById('staff-count-sub');
+      if(sc) sc.textContent = `${nonOwner.length} member${nonOwner.length !== 1 ? 's' : ''}`;
+    }));
+  } else {
+    getAssignableStaff(companyId, uid).then(s => { allStaff = s; });
+  }
+
+  unsubs.push(listenInstalledApps(uid, ids => buildAppsGrid(ids)));
 }
 
-window.saveBudget=async function(){
-  const amt=parseFloat(document.getElementById('budget-amount').value);
-  const pct=parseInt(document.getElementById('budget-alert-pct').value);
-  if(!amt||amt<=0){toast('Enter a valid budget amount','error');return;}
-  try{
-    await setDoc(doc(db,'budgets',CU.companyId),{amount:amt,alertPct:pct,updatedAt:new Date().toISOString()},{merge:true});
-    budget={amount:amt,alertPct:pct};
-    window.closeM('budget-modal');
-    renderBudget();
-    toast('Budget saved!','success');
-  }catch(e){toast('Failed to save','error');}
-};
-
-function renderAll(){
-  updateSummary();
-  renderList();
-  renderBreakdown();
-  renderBudget();
-  renderApprovals();
-  renderMonthlyStats();
+// ──────────────────────────────────────────────
+// STATS
+// ──────────────────────────────────────────────
+function renderOwnerStats() {
+  const staff = allStaff.filter(s => s.role !== 'owner');
+  const allUniqueTasks = [...myTasks, ...assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+  const pending = allUniqueTasks.filter(t => t.status === 'pending').length;
+  const done = allUniqueTasks.filter(t => t.status === 'done').length;
+  
+  const nb = document.getElementById('notif-badge');
+  const alerts = nb && !nb.classList.contains('hidden') ? (parseInt(nb.textContent.replace('+','')) || 0) : 0;
+  const names = staff.slice(0, 5).map(s => `<div class="tip-row"><div class="tip-dot"></div>${esc(s.name)}</div>`).join('');
+  const more = staff.length > 5 ? `<div class="tip-more">+${staff.length - 5} more</div>` : '';
+  const el = document.getElementById('stats-grid');
+  if(!el) return;
+  el.innerHTML = `
+    <div class="stat-card" onclick="window.showView('staff');document.getElementById('nav-staff')?.classList.add('active')">
+      <div class="sc-ico ic-blue">${svg('users')}</div>
+      <div class="sc-val">${staff.length}</div>
+      <div class="sc-lbl">Staff Members</div>
+      <div class="sc-sub">Click to manage</div>
+      <div class="staff-tip">${names}${more}${!staff.length ? '<div style="opacity:.4;font-size:10px">No staff yet</div>' : ''}</div>
+    </div>
+    <div class="stat-card" onclick="window.setTaskTab('pending',null);window.showView('tasks')">
+      <div class="sc-ico ic-amber">${svg('clock')}</div>
+      <div class="sc-val">${pending}</div>
+      <div class="sc-lbl">Pending Tasks</div>
+      <div class="sc-sub">Awaiting completion</div>
+    </div>
+    <div class="stat-card" onclick="window.setTaskTab('done',null);window.showView('tasks')">
+      <div class="sc-ico ic-green">${svg('check-circle')}</div>
+      <div class="sc-val">${done}</div>
+      <div class="sc-lbl">Completed</div>
+      <div class="sc-sub">Total completions</div>
+    </div>
+    <div class="stat-card" onclick="window.togglePanel('notif-panel')">
+      <div class="sc-ico ic-red">${svg('bell')}</div>
+      <div class="sc-val">${alerts}</div>
+      <div class="sc-lbl">Unread Alerts</div>
+      <div class="sc-sub">Notifications</div>
+    </div>`;
 }
 
-function getFilteredExpenses(){
-  return allExpenses.filter(e=>{
-    if(catFilter&&e.category!==catFilter)return false;
-    if(monthFilter){
-      const d=new Date(e.date||e.createdAt?.toDate?.()??e.createdAt);
-      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      if(key!==monthFilter)return false;
-    }
-    if(searchVal){
-      const text=(e.description+' '+(e.category||'')+' '+(e.vendor||'')).toLowerCase();
-      if(!text.includes(searchVal))return false;
-    }
-    return true;
+function renderNonOwnerStats(tasks) {
+  const pending = tasks.filter(t => t.status === 'pending').length;
+  const done = tasks.filter(t => t.status === 'done').length;
+  const declined = tasks.filter(t => t.status === 'declined').length;
+  const nb = document.getElementById('notif-badge');
+  const alerts = nb && !nb.classList.contains('hidden') ? (parseInt(nb.textContent.replace('+','')) || 0) : 0;
+  const isManager = CU.role === 'manager';
+  const el = document.getElementById('stats-grid');
+  if(!el) return;
+  el.innerHTML = isManager ? `
+    <div class="stat-card" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')">
+      <div class="sc-ico ic-amber">${svg('clock')}</div>
+      <div class="sc-val">${pending}</div>
+      <div class="sc-lbl">My Pending</div>
+      <div class="sc-sub">Assigned to me</div>
+    </div>
+    <div class="stat-card" onclick="window.setTaskTab('done',null);window.showView('tasks')">
+      <div class="sc-ico ic-green">${svg('check-circle')}</div>
+      <div class="sc-val">${done}</div>
+      <div class="sc-lbl">Completed</div>
+      <div class="sc-sub">Tasks done</div>
+    </div>
+    <div class="stat-card" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')">
+      <div class="sc-ico ic-blue">${svg('send')}</div>
+      <div class="sc-val">${assignedByMeTasks.length}</div>
+      <div class="sc-lbl">I Assigned</div>
+      <div class="sc-sub">Tasks I delegated</div>
+    </div>
+    <div class="stat-card" onclick="window.togglePanel('notif-panel')">
+      <div class="sc-ico ic-red">${svg('bell')}</div>
+      <div class="sc-val">${alerts}</div>
+      <div class="sc-lbl">Notifications</div>
+      <div class="sc-sub">Unread</div>
+    </div>` : `
+    <div class="stat-card" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')">
+      <div class="sc-ico ic-amber">${svg('clock')}</div>
+      <div class="sc-val">${pending}</div>
+      <div class="sc-lbl">Pending</div>
+      <div class="sc-sub">Need your action</div>
+    </div>
+    <div class="stat-card" onclick="window.setTaskTab('done',null);window.showView('tasks')">
+      <div class="sc-ico ic-green">${svg('check-circle')}</div>
+      <div class="sc-val">${done}</div>
+      <div class="sc-lbl">Completed</div>
+      <div class="sc-sub">Tasks done</div>
+    </div>
+    <div class="stat-card" onclick="window.setTaskTab('declined',null);window.showView('tasks')">
+      <div class="sc-ico ic-red">${svg('x-circle')}</div>
+      <div class="sc-val">${declined}</div>
+      <div class="sc-lbl">Declined</div>
+      <div class="sc-sub">Rejected tasks</div>
+    </div>
+    <div class="stat-card" onclick="window.togglePanel('notif-panel')">
+      <div class="sc-ico" style="background:rgba(8,145,178,.1);color:var(--cyan)">${svg('bell')}</div>
+      <div class="sc-val">${alerts}</div>
+      <div class="sc-lbl">Notifications</div>
+      <div class="sc-sub">Unread</div>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────
+// CHARTS (staff/manager only)
+// ──────────────────────────────────────────────
+function initCharts() {
+  const bc = document.getElementById('bar-chart')?.getContext('2d');
+  const dc = document.getElementById('donut-chart')?.getContext('2d');
+  if (!bc || !dc) return;
+  const days = last7();
+  barChart = new Chart(bc, {
+    type: 'bar',
+    data: { labels: days.map(d => d.label), datasets: [
+      { label:'Assigned', data: days.map(() => 0), backgroundColor:'rgba(79,70,229,.7)', borderRadius:5, borderSkipped:false },
+      { label:'Done', data: days.map(() => 0), backgroundColor:'rgba(22,163,74,.7)', borderRadius:5, borderSkipped:false }
+    ]},
+    options: { responsive:true, maintainAspectRatio:true, plugins:{legend:{display:false}, tooltip:{backgroundColor:'#0c0c14', padding:10, cornerRadius:8}}, scales:{x:{grid:{display:false}, ticks:{font:{size:11}, color:'#90909f'}}, y:{beginAtZero:true, grid:{color:'#ededf2'}, ticks:{font:{size:11}, color:'#90909f', stepSize:1}}} }
+  });
+  donutChart = new Chart(dc, {
+    type: 'doughnut',
+    data: { labels:['Pending','Done','Declined'], datasets:[{ data:[1,1,0], backgroundColor:['#d97706','#16a34a','#dc2626'], borderWidth:0, hoverOffset:6 }]},
+    options: { responsive:true, maintainAspectRatio:true, plugins:{legend:{position:'bottom', labels:{font:{size:11}, padding:12, color:'#50505f'}}, tooltip:{backgroundColor:'#0c0c14', padding:10, cornerRadius:8}}, cutout:'66%' }
   });
 }
-
-function getThisMonthExpenses(){
-  const now=new Date();
-  return allExpenses.filter(e=>{
-    const d=new Date(e.date||e.createdAt?.toDate?.()??e.createdAt);
-    return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
-  });
+function last7() {
+  const out = [];
+  for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); out.push({ label: d.toLocaleDateString('en-US', {weekday:'short'}), date: d.toDateString() }); }
+  return out;
+}
+function updateCharts(tasks) {
+  if (!donutChart || !barChart) return;
+  donutChart.data.datasets[0].data = [
+    tasks.filter(t => t.status === 'pending').length || 0,
+    tasks.filter(t => t.status === 'done').length || 0,
+    tasks.filter(t => t.status === 'declined').length || 0
+  ];
+  donutChart.update('active');
+  const days = last7();
+  barChart.data.datasets[0].data = days.map(day => tasks.filter(t => new Date(t.createdAt).toDateString() === day.date).length);
+  barChart.data.datasets[1].data = days.map(day => tasks.filter(t => t.status === 'done' && t.completedAt && new Date(t.completedAt).toDateString() === day.date).length);
+  barChart.update('active');
 }
 
-function updateSummary(){
-  const month=getThisMonthExpenses();
-  const total=month.reduce((s,e)=>s+(+e.amount||0),0);
-  const pending=allExpenses.filter(e=>e.status==='pending').length;
-  const approved=month.filter(e=>e.status==='approved'||!e.status).reduce((s,e)=>s+(+e.amount||0),0);
-  document.getElementById('s-total').textContent='₹'+fmt(total);
-  document.getElementById('s-pending').textContent=pending;
-  document.getElementById('s-approved').textContent='₹'+fmt(approved);
-  document.getElementById('s-count').textContent=allExpenses.length;
+// ──────────────────────────────────────────────
+// TASKS VIEW
+// ──────────────────────────────────────────────
+function renderRecentTasks() {
+  const el = document.getElementById('recent-tasks');
+  if(!el) return;
+  const allUniqueTasks = [...myTasks, ...assignedByMeTasks]
+    .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+  const tasks = allUniqueTasks.slice(0, 3); // Limited to 3
+  if (!tasks.length) { el.innerHTML = emptyState('No tasks yet', 'Tasks will appear here'); return; }
+  el.innerHTML = tasks.map(t => renderTaskCard(t, false)).join('');
 }
 
-function renderList(){
-  const list=getFilteredExpenses();
-  const el=document.getElementById('exp-list');
-  const canDel=CU.role==='owner'||CU.role==='manager';
-  const canApprove=CU.role==='owner'||CU.role==='manager';
+function renderTaskSummaryStrip() {
+  // Intentionally left blank to keep the UI clean and premium
+}
 
-  if(!list.length){
-    el.innerHTML=`<div class="empty-exp"><div class="empty-exp-icon">💸</div><div class="empty-exp-ttl">${searchVal||catFilter||monthFilter?'No matching expenses':'No expenses yet'}</div><div class="empty-exp-sub">${searchVal||catFilter||monthFilter?'Try different filters':'Click "Add Expense" to record your first transaction'}</div></div>`;
+function renderTasksList() {
+  const el = document.getElementById('tasks-list');
+  if(!el) return;
+  el.style.gap = window.currentCustDensity === 'compact' ? '6px' : '14px';
+
+  let tasks = [];
+  if (taskTab === 'assigned-to-me') tasks = myTasks;
+  else if (taskTab === 'assigned-by-me') tasks = assignedByMeTasks;
+  else if (taskTab === 'pending')  tasks = [...myTasks, ...assignedByMeTasks].filter(t => t.status === 'pending');
+  else if (taskTab === 'done')     tasks = [...myTasks, ...assignedByMeTasks].filter(t => t.status === 'done');
+  else if (taskTab === 'declined') tasks = [...myTasks, ...assignedByMeTasks].filter(t => t.status === 'declined');
+
+  const seen = new Set();
+  tasks = tasks.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
+
+  // --- APPLY THE CURRENT FILTERS ---
+  if (window.currentTaskFilter && window.currentTaskFilter !== 'All') {
+    // FIX: If old tasks don't have a priority, default them to 'Medium'
+    tasks = tasks.filter(t => (t.priority || 'Medium') === window.currentTaskFilter);
+  }
+  if (window.currentAssignerFilter && window.currentAssignerFilter !== 'All') {
+    tasks = tasks.filter(t => t.assignedBy === window.currentAssignerFilter);
+  }
+  if (window.currentDueFilter && window.currentDueFilter !== 'All') {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const nextWeek = today + (7 * 24 * 60 * 60 * 1000);
+    
+    tasks = tasks.filter(t => {
+      if (!t.dueDate) return false; 
+      const d = new Date(t.dueDate);
+      const taskDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      
+      if (window.currentDueFilter === 'Overdue') {
+        return taskDay < today && t.status === 'pending';
+      } else if (window.currentDueFilter === 'Today') {
+        return taskDay === today;
+      } else if (window.currentDueFilter === 'Upcoming') {
+        return taskDay >= today && taskDay <= nextWeek;
+      }
+      return true;
+    });
+  }
+
+  if (!tasks.length) {
+    el.innerHTML = `<div class="empty" style="padding:48px 24px"><div class="empty-ico" style="width:64px;height:64px;border-radius:18px;font-size:1.8rem">📋</div><div class="empty-ttl">No tasks here</div><div class="empty-sub">${taskTab==='assigned-to-me'?'Tasks assigned to you will appear here':taskTab==='assigned-by-me'?'Tasks you assign to others will appear here':'Nothing in this category yet'}</div></div>`;
     return;
   }
+  
+  const canRespond = true; 
+  el.innerHTML = tasks.map(t => renderTaskCard(t, canRespond)).join('');
+}
 
-  el.innerHTML=list.map(e=>{
-    const cat=e.category||'Miscellaneous';
-    const icon=CAT_ICONS[cat]||'🧾';
-    const bg=CAT_BG[cat]||'#F3F4F6';
-    const d=new Date(e.date||e.createdAt?.toDate?.()??e.createdAt);
-    const dateStr=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-    const payIcon=PAY_ICONS[e.paymentMethod]||'💳';
-    const isPending=e.status==='pending';
-    const statusBadge=isPending?`<span class="exp-status-badge status-pending">Pending</span>`:
-      e.status==='rejected'?`<span class="exp-status-badge status-rejected">Rejected</span>`:'';
-    return `<div class="exp-row">
-      <div class="exp-row-ico" style="background:${bg}">${icon}</div>
-      <div class="exp-info">
-        <div class="exp-title">${esc(e.description)}</div>
-        <div class="exp-meta">
-          <span class="exp-cat-badge" style="background:${bg};color:${CAT_COLORS[cat]||'#374151'}">${cat}</span>
-          ${e.vendor?`<span>· ${esc(e.vendor)}</span>`:''}
-          <span>· ${dateStr}</span>
-          <span title="Payment method">${payIcon}</span>
-          ${e.recurring?'<span title="Recurring">🔄</span>':''}
+function renderTaskCard(task, showActions) {
+  const isToMe = task.assignedTo === CU.uid;
+  const isPending = task.status === 'pending';
+  const canAct = showActions && isToMe && isPending;
+  const dotClass = { pending:'dot-pending', done:'dot-done', declined:'dot-declined' }[task.status] || 'dot-pending';
+  const badge = { pending:'badge-pending', done:'badge-done', declined:'badge-declined' }[task.status];
+  const badgeLabel = { pending:'Pending', done:'Done', declined:'Declined' }[task.status];
+  const badgeIcon = {
+    pending: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    done:    `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    declined:`<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+  }[task.status] || '';
+
+  let meta = isToMe
+    ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> From <strong>${esc(task.assignedByName||'Someone')}</strong>`
+    : `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> To <strong>${esc(task.assignedToName||'Someone')}</strong>`;
+  meta += ` <span class="task-meta-sep">·</span> ${ago(task.createdAt)}`;
+  if (task.dueDate) {
+    const d = new Date(task.dueDate + (task.dueTime ? 'T' + task.dueTime : ''));
+    const isPast = new Date() > d && isPending;
+    meta += ` <span class="task-meta-sep">·</span> <span style="color:${isPast ? 'var(--red)' : 'var(--amber)'}">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      ${isPast ? 'Overdue' : 'Due'} ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}${task.dueTime ? ' ' + format12hr(task.dueTime) : ''}</span>`;
+  }
+
+  const hideDesc = window.currentCustDetails === 'minimal';
+  const hideMeta = window.currentCustMeta === 'hide';
+  const flatStyle = window.currentCustStyle === 'flat' ? 'box-shadow:none; border:1px solid var(--bd);' : '';
+
+  return `<div class="task-card" id="task-${task.id}" style="${flatStyle}">
+    <div class="task-status-dot ${dotClass}"></div>
+    <div class="task-body">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="task-title" style="margin-bottom:0;">${esc(task.title || '(Untitled Task)')}</div>
+          ${(task.priority || 'Medium') === 'High' ? `<div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--tx-2);background:var(--sf2);padding:3px 7px;border-radius:6px;border:1px solid var(--bd)"><div style="width:7px;height:7px;border-radius:50%;background:#EF4444;box-shadow:0 0 4px rgba(239,68,68,0.4)"></div>High</div>` : ''}
+          ${(task.priority || 'Medium') === 'Medium' ? `<div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--tx-2);background:var(--sf2);padding:3px 7px;border-radius:6px;border:1px solid var(--bd)"><div style="width:7px;height:7px;border-radius:50%;background:#F59E0B;box-shadow:0 0 4px rgba(245,158,11,0.4)"></div>Medium</div>` : ''}
+          ${(task.priority || 'Medium') === 'Low' ? `<div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--tx-2);background:var(--sf2);padding:3px 7px;border-radius:6px;border:1px solid var(--bd)"><div style="width:7px;height:7px;border-radius:50%;background:#10B981;box-shadow:0 0 4px rgba(16,185,129,0.4)"></div>Low</div>` : ''}
+        </div>
+        ${!canAct ? `<span class="task-badge ${badge}" style="display:flex;align-items:center;gap:4px;flex-shrink:0">${badgeIcon}${badgeLabel}</span>` : ''}
+      </div>
+      ${!hideMeta ? `<div class="task-meta">${meta}</div>` : ''}
+      ${!hideDesc && task.description ? `<div class="task-desc">${esc(task.description.length > 120 ? task.description.slice(0,120)+'…' : task.description)}</div>` : ''}
+      ${!hideDesc && task.status === 'declined' && task.declineReason ? `<div class="task-desc" style="color:var(--red);border-top-color:rgba(220,38,38,.12)">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Reason: ${esc(task.declineReason)}</div>` : ''}
+    </div>
+    ${canAct ? `
+      <div class="task-actions">
+        <button class="task-act-btn btn-tick" title="Mark as done" onclick="window.doAcceptTask('${task.id}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+        <button class="task-act-btn btn-cross" title="Decline task" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\'")}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>` : ''}
+  </div>`;
+}
+
+window.setTaskTab = function(tab, btn) {
+  taskTab = tab;
+  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
+  if (btn) { btn.classList.add('on'); }
+  else {
+    const map = { 'assigned-to-me':'tab-to-me', 'assigned-by-me':'tab-by-me' };
+    if (map[tab]) document.getElementById(map[tab])?.classList.add('on');
+    else {
+      document.querySelectorAll('.ftab').forEach(b => {
+        if (b.textContent.trim().toLowerCase().includes(tab)) b.classList.add('on');
+      });
+    }
+  }
+  window.showView('tasks');
+  renderTaskSummaryStrip();
+  renderTasksList();
+};
+
+window.doAcceptTask = async function(id) {
+  const card = document.getElementById('task-' + id);
+  if (card) { card.classList.add('task-done-anim'); }
+  try {
+    await markTaskDone(id);
+    spawnConfetti();
+    window.showToast('🎉 Task done! Great work!', 'success');
+  } catch(e) {
+    window.showToast(e.message, 'error');
+    if (card) { card.classList.remove('task-done-anim'); card.style.opacity = '1'; }
+  }
+};
+
+function spawnConfetti() {
+  const colors = ['#4F46E5','#10B981','#F59E0B','#EF4444','#8B5CF6'];
+  for(let i=0;i<12;i++) {
+    const dot = document.createElement('div');
+    dot.className = 'confetti-dot';
+    dot.style.cssText = `left:${30+Math.random()*40}%;top:${20+Math.random()*30}%;background:${colors[i%colors.length]};animation-delay:${Math.random()*200}ms;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px`;
+    document.body.appendChild(dot);
+    setTimeout(() => dot.remove(), 900);
+  }
+}
+
+window.openDeclineModal = function(id, title) {
+  pendingDeclineId = id;
+  pendingDeclineTitle = title;
+  document.getElementById('decline-task-title').textContent = title;
+  document.getElementById('decline-reason').value = '';
+  document.getElementById('decline-modal').classList.remove('hidden');
+};
+
+window.confirmDecline = async function() {
+  const reason = document.getElementById('decline-reason').value.trim();
+  const btn = document.getElementById('confirm-decline-btn');
+  setButtonLoading(btn, true);
+  try {
+    await markTaskDeclined(pendingDeclineId, reason);
+    window.closeModal('decline-modal');
+    window.showToast('Task declined.', '');
+  } catch(e) { window.showToast(e.message, 'error'); }
+  setButtonLoading(btn, false, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Decline Task');
+};
+
+// ──────────────────────────────────────────────
+// NOTIFICATIONS
+// ──────────────────────────────────────────────
+function renderNotifPanel(items) {
+  const el = document.getElementById('notif-body');
+  if (!items.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-ico">${svg('bell')}</div><div class="empty-ttl">No notifications</div></div>`;
+    return;
+  }
+  const icoMap = { login:'ni-blue', task_assigned:'ni-amber', task_done:'ni-green', task_declined:'ni-red' };
+  const svgMap = {
+    login: svg('log-in'), task_assigned: svg('clipboard-list'), task_done: svg('check-circle'), task_declined: svg('x-circle')
+  };
+  el.innerHTML = items.map(n => {
+    const cls = icoMap[n.type] || 'ni-blue';
+    const ico = svgMap[n.type] || svg('bell');
+    const showActions = n.type === 'task_assigned' && n.relatedId && !n.actioned;
+    const safeMsg = esc(n.message);
+    const safeId  = esc(n.id);
+    const safeRelated = n.relatedId ? esc(n.relatedId) : '';
+    const safeMsgRaw  = (n.message || '').replace(/'/g, "\'");
+    return `<div class="ni-item ${n.read ? '' : 'unread'}" id="ni-${safeId}" onclick="window.markNotifRead('${safeId}')">
+      <div class="ni-top">
+        <div class="ni-ico ${cls}">${ico}</div>
+        <div style="flex:1;min-width:0">
+          <div class="ni-msg">${safeMsg}</div>
+          <div class="ni-time">${ago(n.createdAt)}</div>
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-        <div class="exp-amount">-₹${fmt(e.amount)}</div>
-        ${statusBadge}
-        ${isPending&&canApprove?`<div style="display:flex;gap:4px"><button style="padding:3px 8px;font-size:.7rem;font-weight:700;border:none;border-radius:6px;cursor:pointer;background:#D1FAE5;color:#065F46" onclick="window.approveExp('${e.id}')">✓</button><button style="padding:3px 8px;font-size:.7rem;font-weight:700;border:none;border-radius:6px;cursor:pointer;background:#FEE2E2;color:#991B1B" onclick="window.rejectExp('${e.id}')">✕</button></div>`:''}
-      </div>
-      ${canDel||e.createdBy===CU.uid?`<button class="exp-del" onclick="window.delExp('${e.id}')" title="Delete">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      </button>`:''}
+      ${showActions ? `<div class="ni-actions">
+        <button class="ni-act accept" onclick="event.stopPropagation();window.niAccept('${safeId}','${safeRelated}')">
+          ${svg('check')} Done
+        </button>
+        <button class="ni-act decline" onclick="event.stopPropagation();window.niDeclineFromNotif('${safeId}','${safeRelated}','${safeMsgRaw}')">
+          ${svg('x')} Decline
+        </button>
+      </div>` : ''}
     </div>`;
   }).join('');
 }
 
-function renderBreakdown(){
-  const month=getThisMonthExpenses().filter(e=>e.status!=='rejected');
-  const groups={};
-  month.forEach(e=>{groups[e.category]=(groups[e.category]||0)+(+e.amount||0);});
-  const total=Object.values(groups).reduce((s,v)=>s+v,0)||1;
-  const sorted=Object.entries(groups).sort((a,b)=>b[1]-a[1]);
-  const el=document.getElementById('cat-breakdown');
-  if(!sorted.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--tx3);font-size:.84rem">No data this month</div>';return;}
-  el.innerHTML=sorted.map(([cat,amt])=>{
-    const pct=Math.round(amt/total*100);
-    const col=CAT_COLORS[cat]||'#9CA3AF';
-    return `<div class="cat-item">
-      <div class="cat-dot" style="background:${col}"></div>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span class="cat-name">${CAT_ICONS[cat]||'🧾'} ${cat}</span>
-          <span class="cat-val">₹${fmt(amt)}</span>
+window.niAccept = async function(notifId, taskId) {
+  const niEl = document.getElementById('ni-' + notifId);
+  const btn = niEl?.querySelector('.accept');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span style="opacity:.5">Marking done…</span>'; }
+  try {
+    await markTaskDone(taskId);
+    await markNotificationRead(CU.uid, notifId);
+    const niActions = niEl?.querySelector('.ni-actions');
+    if (niActions) {
+      niActions.innerHTML = '<div style="font-size:11px;color:var(--green);display:flex;align-items:center;gap:4px;padding:4px 0">' + svg('check') + ' Marked as done</div>';
+    }
+    niEl?.classList.remove('unread');
+    window.showToast('Task done! ✓', 'success');
+  } catch(e) {
+    window.showToast(e.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = svg('check') + ' Accept'; }
+  }
+};
+
+window.niDeclineFromNotif = function(notifId, taskId, msgFragment) {
+  const match = msgFragment.match(/assigned you: "(.+?)"/);
+  const title = match ? match[1] : 'this task';
+  pendingDeclineId = taskId;
+  pendingDeclineTitle = title;
+  document.getElementById('decline-task-title').textContent = title;
+  document.getElementById('decline-reason').value = '';
+  document.getElementById('decline-modal').classList.remove('hidden');
+  const origConfirm = window.confirmDecline;
+  window.confirmDecline = async function() {
+    await origConfirm();
+    await markNotificationRead(CU.uid, notifId).catch(() => {});
+    const niActions = document.querySelector(`#ni-${notifId} .ni-actions`);
+    if (niActions) niActions.remove();
+    window.confirmDecline = origConfirm;
+  };
+};
+
+window.markNotifRead = async function(id) { try { await markNotificationRead(CU.uid, id); } catch(e) {} };
+window.markAllRead = async function() { await markAllReadFn(CU.uid); window.showToast('All read ✓', ''); };
+
+// ──────────────────────────────────────────────
+// STAFF MANAGEMENT
+// ──────────────────────────────────────────────
+function renderStaffCards(staff) {
+  const el = document.getElementById('staff-cards-list');
+  if (!el) return;
+  const searchQ = (staffSearchVal || '').trim().toLowerCase();
+  
+  const nonOwner = searchQ
+    ? staff.filter(s => s.role !== 'owner' && (s.name + s.email + (s.designation||'')).toLowerCase().includes(searchQ))
+    : staff.filter(s => s.role !== 'owner');
+    
+  if (!nonOwner.length) {
+    const title = searchQ ? 'No results' : 'No staff yet';
+    const sub = searchQ ? 'Try another search' : 'Add your first team member';
+    el.innerHTML = `<div class="empty"><div class="empty-ico">${svg('users')}</div><div class="empty-ttl">${title}</div><div class="empty-sub">${sub}</div></div>`;
+    return;
+  }
+  
+  el.innerHTML = nonOwner.map(s => {
+    const col = avatarColor(s.name);
+    const ini = getInitials(s.name);
+    return `<div class="staff-card">
+      <div class="av" style="width:42px;height:42px;font-size:14px;font-weight:600;border-radius:10px;background:${col}22;color:${col}">${ini}</div>
+      <div class="staff-info">
+        <div class="staff-name" style="display:flex;align-items:center;gap:8px;">
+          ${esc(s.name)}
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; font-weight:700; text-transform:uppercase; background:${s.role==='manager'?'rgba(59,130,246,0.15)':'rgba(16,185,129,0.15)'}; color:${s.role==='manager'?'#2563EB':'#059669'};">
+            ${s.role === 'manager' ? 'MANAGER' : 'STAFF'}
+          </span>
         </div>
-        <div class="cat-bar-wrap"><div class="cat-bar" style="width:${pct}%;background:${col}"></div></div>
-        <div class="cat-pct">${pct}% of total</div>
+        <div class="staff-meta">${esc(s.email)} · ${esc(s.designation || 'Team Member')}</div>
+        <div class="staff-uid">${s.uniqueId || ''}</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        ${CU.role === 'owner' || CU.role === 'manager' ? `
+        <button class="btn btn-ghost btn-sm" onclick="window.quickAssign('${s.uid}')" style="font-size:11px; padding:4px 8px;" title="Assign Task">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Assign Task
+        </button>` : ''}
+        ${CU.role === 'owner' ? `<button class="staff-del" title="Delete" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId||''}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>` : ''}
       </div>
     </div>`;
   }).join('');
 }
 
-function renderBudget(){
-  const el=document.getElementById('budget-display');
-  if(!budget||!budget.amount){el.innerHTML=`<div style="text-align:center;padding:16px;color:var(--tx3);font-size:.84rem"><div style="font-size:1.5rem;margin-bottom:6px">🎯</div>No budget set<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="window.openBudgetModal()">Set Budget</button></div></div>`;return;}
-  const month=getThisMonthExpenses().filter(e=>e.status!=='rejected');
-  const spent=month.reduce((s,e)=>s+(+e.amount||0),0);
-  const pct=Math.min(Math.round(spent/budget.amount*100),100);
-  const alertPct=budget.alertPct||80;
-  const color=pct>=100?'#EF4444':pct>=alertPct?'#F59E0B':'#10B981';
-  const remaining=budget.amount-spent;
-  el.innerHTML=`
-    <div style="padding:4px 0">
-      <div class="budget-row">
-        <div class="budget-label">Monthly Budget</div>
-        <div class="budget-vals">₹${fmt(spent)} / ₹${fmt(budget.amount)}</div>
+window.searchStaff = function(v) {
+  staffSearchVal = (v || '').toLowerCase();
+  if (!allStaff.length) {
+    const el = document.getElementById('staff-cards-list');
+    const title = staffSearchVal ? 'No results' : 'No staff yet';
+    const sub = staffSearchVal ? 'Try another search' : 'Add your first team member';
+    if (el) el.innerHTML = `<div class="empty"><div class="empty-ico">${svg('users')}</div><div class="empty-ttl">${title}</div><div class="empty-sub">${sub}</div></div>`;
+    return;
+  }
+  renderStaffCards(allStaff);
+};
+
+function buildAssignSelect(staff) {
+  const sel = document.getElementById('assign-to');
+  if(!sel) return;
+  const list = staff.filter(s => s.uid !== CU.uid);
+  sel.innerHTML = '<option value="">Select team member…</option>' + list.map(s => `<option value="${s.uid}">${esc(s.name)} (${esc(s.designation || formatRole(s.role))})</option>`).join('');
+}
+
+window.quickAssign = function(staffUid) {
+  window.openAssignModal();
+  setTimeout(() => {
+    const sel = document.getElementById('assign-to');
+    if (sel) sel.value = staffUid;
+  }, 50);
+};
+
+// DELETE MODAL
+window.openDeleteModal = function(uid, name, email, uniqueId) {
+  deleteTargetUid = uid; deleteTargetEmail = email; deleteTargetPwd = uniqueId;
+  const co = document.getElementById('topbar-company').textContent || 'Company';
+  const confirmStr = `${co}/${name}`;
+  deleteConfirmStr = confirmStr;
+  document.getElementById('del-name-display').textContent = name;
+  document.getElementById('del-confirm-hint').textContent = confirmStr;
+  document.getElementById('del-hint').textContent = `Type exactly: ${confirmStr}`;
+  document.getElementById('del-confirm-input').value = '';
+  const btn = document.getElementById('del-confirm-btn');
+  btn.disabled = true; btn.style.opacity = '.4'; btn.style.cursor = 'not-allowed';
+  document.getElementById('delete-modal').classList.remove('hidden');
+};
+
+window.checkDelConfirm = function() {
+  const val = document.getElementById('del-confirm-input').value;
+  const inp = document.getElementById('del-confirm-input');
+  const btn = document.getElementById('del-confirm-btn');
+  const match = val === deleteConfirmStr;
+  inp.classList.toggle('match', match);
+  btn.disabled = !match; btn.style.opacity = match ? '1' : '.4'; btn.style.cursor = match ? 'pointer' : 'not-allowed';
+};
+
+window.confirmDelete = async function() {
+  if (!deleteTargetUid) return;
+  const btn = document.getElementById('del-confirm-btn');
+  btn.textContent = 'Deleting…'; btn.disabled = true;
+  try {
+    await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd);
+    window.closeModal('delete-modal');
+    window.showToast('Staff member deleted.', '');
+    deleteTargetUid = '';
+  } catch(e) { window.showToast('Error: ' + e.message, 'error'); btn.textContent = 'Delete Permanently'; btn.disabled = false; }
+};
+
+// ──────────────────────────────────────────────
+// CREATE STAFF
+// ──────────────────────────────────────────────
+window.selectRole = function(role) {
+  newRole = role;
+  ['manager','staff'].forEach(r => {
+    const el = document.getElementById('rc-' + r);
+    if(el) {
+      if (role === r) {
+        el.style.border = '2px solid var(--ac)';
+        el.style.background = 'var(--sf)';
+        el.style.boxShadow = '0 4px 12px rgba(79,70,229,.15)';
+      } else {
+        el.style.border = '1px solid var(--bd)';
+        el.style.background = 'var(--bg-base)';
+        el.style.boxShadow = 'none';
+      }
+    }
+  });
+};
+
+window.clearCSErr = function(inp) {
+  inp.classList.remove('err');
+  const e = document.getElementById('err-' + inp.id); if (e) { e.textContent = ''; }
+};
+
+function setCSErr(id, msg) {
+  const inp = document.getElementById(id); if (inp) inp.classList.add('err');
+  const e = document.getElementById('err-' + id); if (e) e.textContent = msg;
+}
+
+window.handleCreateStaff = async function() {
+  const name = document.getElementById('cs-name').value.trim();
+  const email = document.getElementById('cs-email').value.trim();
+  const desig = document.getElementById('cs-designation').value.trim();
+  const password = document.getElementById('cs-password').value.trim();
+  let ok = true;
+  if (!name)     { setCSErr('cs-name','Required.'); ok=false; }
+  if (!email)    { setCSErr('cs-email','Required.'); ok=false; }
+  if (!desig)    { setCSErr('cs-designation','Required.'); ok=false; }
+  if (!password) { setCSErr('cs-password','Password is required.'); ok=false; }
+  else if (password.length < 6) { setCSErr('cs-password','Min. 6 characters.'); ok=false; }
+  if (!ok) return;
+  const btn = document.getElementById('create-staff-btn');
+  setButtonLoading(btn, true);
+  try {
+    const cSnap = await getDoc(doc(db, 'companies', CU.companyId));
+    const companyName = cSnap.exists() ? cSnap.data().name : 'Company';
+    const result = await createStaff({ name, email, password, role: newRole, companyId: CU.companyId, companyName, createdBy: CU.uid, designation: desig });
+    newStaffData = { ...result, companyName };
+    document.getElementById('created-card-section').classList.remove('hidden');
+    document.getElementById('created-card-section').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('cred-box').innerHTML = `
+      <div style="font-weight:600;color:var(--green);margin-bottom:8px;font-size:12px">Login Credentials</div>
+      <div class="cred-row"><span class="cred-lbl">Name</span><span class="cred-val">${esc(name)}</span></div>
+      <div class="cred-row"><span class="cred-lbl">Email</span><span class="cred-val">${esc(email)}</span></div>
+      <div class="cred-row"><span class="cred-lbl">Password</span><span class="cred-val">${esc(password)}</span></div>
+      <div class="cred-row"><span class="cred-lbl">Unique ID</span><span class="cred-val">${result.uniqueId}</span></div>`;
+    newCanvas = renderCardToElement('new-card-container', 'staff', { name: result.name, email, role: newRole, designation: desig, companyName, uniqueId: result.uniqueId, companyCode: CU.uniqueId, password });
+    window.showToast(`${name} added!`, 'success');
+    btn.disabled = true;
+  } catch(e) {
+    const msg = e.message || '';
+    if (msg.startsWith('FIELD:')) {
+      const [,fid,fmsg] = msg.split(':');
+      setCSErr(fid, fmsg);
+    } else { window.showToast(msg, 'error'); }
+    setButtonLoading(btn, false, 'Create Staff Member & Generate Card →');
+  }
+};
+
+window.togglePwd = function(id, btn) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.innerHTML = inp.type === 'password'
+    ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
+    : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+};
+
+window.resetCreateStaff = function() {
+  ['cs-name','cs-email','cs-designation','cs-password'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  document.getElementById('created-card-section')?.classList.add('hidden');
+  const csBtn = document.getElementById('create-staff-btn');
+  if(csBtn) csBtn.disabled = false;
+  newCanvas = null; newStaffData = null;
+};
+
+window.dlCard = () => { if (newCanvas && newStaffData) { downloadCard(newCanvas, newStaffData.name + '-zenda-card.png'); window.showToast('Downloaded!', 'success'); } };
+window.waCard = () => { if (newCanvas && newStaffData) shareCardWhatsApp(newCanvas, newStaffData.name + '-zenda-card'); };
+
+// ──────────────────────────────────────────────
+// ASSIGN MODAL
+// ──────────────────────────────────────────────
+window.openAssignModal = async function() {
+  buildAssignSelect(allStaff);
+  document.getElementById('assign-to').value = '';
+  ['task-title','task-desc'].forEach(id => document.getElementById(id).value = '');
+  ['task-date','task-time'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('assign-modal').classList.remove('hidden');
+  window.closeAllPanels();
+};
+
+window.handleAssign = async function() {
+  const to = document.getElementById('assign-to').value;
+  const title = document.getElementById('task-title').value.trim();
+  const desc = document.getElementById('task-desc').value.trim();
+  const date = document.getElementById('task-date').value;
+  const time = document.getElementById('task-time').value;
+  
+  const priorityEl = document.getElementById('task-priority');
+  const priority = priorityEl ? priorityEl.value : 'Medium';
+
+  if (!to) { window.showToast('Select a team member.', 'error'); return; }
+  if (!title) { window.showToast('Enter a task title.', 'error'); return; }
+  
+  const btn = document.getElementById('assign-btn');
+  setButtonLoading(btn, true);
+  try {
+    const assignee = allStaff.find(s => s.uid === to);
+    await assignTask({ 
+      title, 
+      description: desc, 
+      assignedTo: to, 
+      assignedToName: assignee?.name || 'Team Member', 
+      assignedBy: CU.uid, 
+      assignedByName: CU.name, 
+      companyId: CU.companyId, 
+      dueDate: date || null, 
+      dueTime: time || null, 
+      priority: priority 
+    });
+    window.closeModal('assign-modal');
+    window.showToast(`Assigned to ${assignee?.name}!`, 'success');
+  } catch(e) { window.showToast(e.message, 'error'); }
+  setButtonLoading(btn, false, 'Assign Task →');
+};
+
+// ──────────────────────────────────────────────
+// PROFILE
+// ──────────────────────────────────────────────
+function buildProfile() {
+  const { name, email, role, designation, uniqueId } = CU;
+  const col = avatarColor(name);
+  const ini = getInitials(name);
+  const avatarSrc = CU.avatarData || null;
+
+  const html = `
+    <div style="text-align:center;padding:20px 16px 16px;border-bottom:1px solid var(--bd);margin-bottom:14px">
+      <div style="position:relative;display:inline-block;margin-bottom:10px">
+        <div id="pf-avatar" class="av" style="width:68px;height:68px;font-size:1.5rem;font-weight:600;border-radius:14px;border:2px solid var(--bd);${avatarSrc ? '' : `background:${col}22;color:${col}`}">${avatarSrc ? `<img src="${avatarSrc}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">` : ini}</div>
+        <label style="position:absolute;bottom:-4px;right:-4px;width:30px;height:30px;background:var(--ac);border:2px solid var(--bg-base);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--sh-2)" title="Change logo">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <input type="file" id="avatar-inp" accept="image/*" style="display:none" onchange="window.handleAvatarChange(event)">
+        </label>
       </div>
-      <div class="budget-bar-wrap"><div class="budget-bar" style="width:${pct}%;background:${color}"></div></div>
-      <div class="budget-warn" style="color:${color}">
-        ${pct>=100?'⚠️ Budget exceeded!':pct>=alertPct?`⚠️ ${pct}% used`:pct>0?`${pct}% used`:'No spending yet'}
+      <div id="pf-name-display" style="font-size:15px;font-weight:600;letter-spacing:-0.02em">${esc(name)}</div>
+      <div id="pf-company-display" style="font-size:11px;color:var(--tx-3);margin-bottom:8px"></div>
+      <span class="badge badge-${role}">${esc(designation || formatRole(role))}</span>
+    </div>
+
+    <div style="padding:0 12px">
+      <div class="pf">
+        <div><div class="pf-lbl">Full Name</div><div class="pf-val" id="pf-name">${esc(name)}</div></div>
+        <button class="pf-btn" onclick="window.openEditModal('name')">${svg('edit')}</button>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--tx2);margin-top:8px">
-        <span>${remaining>0?'₹'+fmt(remaining)+' remaining':'₹'+fmt(Math.abs(remaining))+' over'}</span>
-        <button class="btn btn-ghost btn-sm" onclick="window.openBudgetModal()" style="padding:3px 8px;font-size:.72rem">Edit</button>
+      <div class="pf">
+        <div><div class="pf-lbl">Email</div><div class="pf-val" id="pf-email">${esc(email)}</div></div>
+        <button class="pf-btn" onclick="window.openEditModal('email')">${svg('edit')}</button>
       </div>
+      <div class="pf">
+        <div><div class="pf-lbl">Unique ID</div><div class="pf-code" id="pf-uid">${uniqueId}</div></div>
+        <button class="pf-btn" onclick="window.copyToClipboard('${uniqueId}')" title="Copy">${svg('copy')}</button>
+      </div>
+      ${role !== 'owner' ? `` : ''}
+      <div class="pf">
+        <div><div class="pf-lbl">Designation</div><div class="pf-val">${esc(designation || formatRole(role))}</div></div>
+      </div>
+    </div>
+
+    <div style="padding:12px 12px 16px;border-top:1px solid var(--bd);margin-top:10px">
+      <button class="btn btn-ghost w-full" onclick="window.handleLogout()" style="justify-content:center;gap:7px">
+        ${svg('log-out')} Sign Out
+      </button>
     </div>`;
+
+  const desktopEl = document.getElementById('profile-body-desktop');
+  const mobileEl  = document.getElementById('profile-body-mobile');
+  if (desktopEl) desktopEl.innerHTML = html;
+  if (mobileEl)  mobileEl.innerHTML  = html;
+
+  getDoc(doc(db, 'companies', CU.companyId)).then(s => {
+    if (s.exists()) document.querySelectorAll('#pf-company-display').forEach(el => el.textContent = s.data().name);
+  });
+
+  setupOTPBoxes('#pwd-otp-boxes');
 }
 
-function renderApprovals(){
-  const pending=allExpenses.filter(e=>e.status==='pending');
-  const badge=document.getElementById('approval-count-badge');
-  if(badge)badge.textContent=pending.length?pending.length+' pending':'';
-  const el=document.getElementById('approvals-list');
-  if(!el)return;
-  if(!pending.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--tx3);font-size:.84rem">All caught up ✓</div>';return;}
-  el.innerHTML=pending.map(e=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bd)">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.82rem;font-weight:600;color:var(--tx1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.description)}</div>
-        <div style="font-size:.72rem;color:var(--tx2)">₹${fmt(e.amount)} · By ${esc(e.createdByName||'Staff')}</div>
-      </div>
-      <div style="display:flex;gap:4px;flex-shrink:0">
-        <button style="padding:4px 10px;font-size:.72rem;font-weight:700;border:none;border-radius:6px;cursor:pointer;background:#D1FAE5;color:#065F46;transition:.15s" onclick="window.approveExp('${e.id}')">✓ Approve</button>
-        <button style="padding:4px 10px;font-size:.72rem;font-weight:700;border:none;border-radius:6px;cursor:pointer;background:#FEE2E2;color:#991B1B;transition:.15s" onclick="window.rejectExp('${e.id}')">✕</button>
-      </div>
-    </div>`).join('');
-}
+let _avatarChanging = false;
+window.handleAvatarChange = async function(e) {
+  if (_avatarChanging) return;
+  _avatarChanging = true;
+  const file = e.target.files[0];
+  if (!file) { _avatarChanging = false; return; }
+  const canvas = document.createElement('canvas');
+  const img = new Image();
+  img.onload = async () => {
+    const size = 160;
+    const scale = Math.min(size / img.width, size / img.height);
+    canvas.width  = Math.round(img.width  * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
 
-function renderMonthlyStats(){
-  const month=getThisMonthExpenses().filter(e=>e.status!=='rejected');
-  const el=document.getElementById('monthly-stats');
-  if(!month.length){el.innerHTML='<div style="text-align:center;padding:12px;color:var(--tx3);font-size:.84rem">No transactions this month</div>';return;}
-  const total=month.reduce((s,e)=>s+(+e.amount||0),0);
-  const avg=total/month.length;
-  const days=[...new Set(month.map(e=>new Date(e.date||e.createdAt?.toDate?.()??e.createdAt).toDateString()))].length;
-  const recurring=month.filter(e=>e.recurring).length;
-  el.innerHTML=`
-    <div style="display:flex;justify-content:space-between;font-size:.83rem"><span style="color:var(--tx2)">Transactions</span><strong>${month.length}</strong></div>
-    <div style="display:flex;justify-content:space-between;font-size:.83rem"><span style="color:var(--tx2)">Average</span><strong>₹${fmt(avg)}</strong></div>
-    <div style="display:flex;justify-content:space-between;font-size:.83rem"><span style="color:var(--tx2)">Active days</span><strong>${days}</strong></div>
-    <div style="display:flex;justify-content:space-between;font-size:.83rem"><span style="color:var(--tx2)">Recurring</span><strong>${recurring}</strong></div>
-    <div style="height:1px;background:var(--bd);margin:4px 0"></div>
-    <div style="display:flex;justify-content:space-between;font-size:.875rem"><span style="color:var(--tx1);font-weight:600">Total</span><strong style="color:var(--red)">₹${fmt(total)}</strong></div>`;
-}
+    try { localStorage.setItem('zenda_logo_' + CU.uid, dataUrl); } catch(_) {}
+    CU.avatarData = dataUrl;
 
-window.saveExpense=async function(){
-  const amount=parseFloat(document.getElementById('exp-amount').value);
-  const cat=document.getElementById('exp-category').value;
-  const desc=document.getElementById('exp-desc').value.trim();
-  const vendor=document.getElementById('exp-vendor').value.trim();
-  const dateStr=document.getElementById('exp-date').value;
-  const ref=document.getElementById('exp-ref').value.trim();
-  const payment=document.getElementById('exp-payment').value;
-  const recurring=document.getElementById('exp-recurring').checked;
+    try { await updateDoc(doc(db, 'users', CU.uid), { avatarData: dataUrl }); } catch(_) {}
 
-  if(!amount||amount<=0){toast('Enter a valid amount','error');return;}
-  if(!desc){toast('Enter a description','error');return;}
+    const pf = document.getElementById('pf-avatar');
+    if (pf) pf.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">`;
+    setAvatar('topbar-avatar', '', '', 26, dataUrl);
+    setAvatar('bn-avatar', '', '', 22, dataUrl);
+    _avatarChanging = false;
+    window.showToast('Logo updated!', 'success');
+  };
+  const reader2 = new FileReader();
+  reader2.onload = ev2 => { img.src = ev2.target.result; };
+  reader2.readAsDataURL(file);
+};
 
-  const btn=document.getElementById('save-exp-btn');
-  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Saving…';
+let pwdOtpSent = false;
+window.revealPassword = async function() {
+  const panel = document.getElementById('pwd-otp-panel');
+  if(!panel) return;
+  if (panel.classList.contains('show')) { window.cancelPwdReveal(); return; }
+  const eyeBtn = document.getElementById('pf-pwd-eye');
+  eyeBtn.disabled = true;
+  try {
+    await sendOTP(CU.email);
+    panel.classList.add('show');
+    document.querySelector('#pwd-otp-boxes .otp-box')?.focus();
+    window.showToast('OTP sent to ' + CU.email, '');
+    pwdOtpSent = true;
+  } catch(e) { window.showToast('Failed to send OTP: ' + e.message, 'error'); }
+  eyeBtn.disabled = false;
+};
 
-  try{
-    const isStaff=CU.role==='staff';
-    await addDoc(collection(db,'expenses'),{
-      amount,category:cat,description:desc,vendor:vendor||null,
-      paymentMethod:payment,referenceNo:ref||null,
-      companyId:CU.companyId,createdBy:CU.uid,createdByName:CU.name||'Staff',
-      date:dateStr?new Date(dateStr).toISOString():new Date().toISOString(),
-      recurring,
-      status:isStaff?'pending':'approved',
-      createdAt:serverTimestamp()
+window.cancelPwdReveal = function() {
+  const panel = document.getElementById('pwd-otp-panel');
+  if(!panel) return;
+  panel.classList.remove('show');
+  document.querySelectorAll('#pwd-otp-boxes .otp-box').forEach(b => { b.value = ''; b.classList.remove('filled'); });
+  pwdOtpSent = false;
+};
+
+window.verifyPwdOTP = async function() {
+  const otp = getOTPValue('#pwd-otp-boxes');
+  if (otp.length !== 6) { window.showToast('Enter all 6 digits.', 'error'); return; }
+  const btn = document.getElementById('otp-verify-pwd-btn');
+  setButtonLoading(btn, true);
+  try {
+    const result = await verifyUserOTP(CU.email, otp);
+    if (!result.success) { window.showToast(result.message, 'error'); setButtonLoading(btn, false, 'Verify & Show'); return; }
+
+    const userSnap = await getDoc(doc(db, 'users', CU.uid));
+    const hint = userSnap.exists() ? userSnap.data().passwordHint : null;
+    const pwd = hint || null;
+
+    document.querySelectorAll('#pf-pwd-dots').forEach(dotsEl => {
+      const revealed = document.createElement('div');
+      revealed.className = 'pf-revealed';
+      revealed.id = 'pf-pwd-dots';
+      revealed.textContent = pwd || '(Password hidden for security — contact support)';
+      if (!pwd) revealed.style.cssText = 'font-family:var(--f);font-size:11px;color:var(--tx-3);font-style:italic';
+      dotsEl.replaceWith(revealed);
     });
 
-    // INVENTORY SYNC TRIGGER (Phase 2 Placeholder)
-    if (cat === 'Inventory Stock' || cat === 'Raw Materials') {
-        toast('Inventory Sync Linked! (Phase 2 feature)', 'info');
-    }
+    document.querySelectorAll('#pwd-otp-panel').forEach(p => p.classList.remove('show'));
 
-    ['exp-amount','exp-desc','exp-vendor','exp-ref'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('exp-recurring').checked=false;
-    document.getElementById('exp-date').valueAsDate=new Date();
-    window.closeM('add-modal');
-    toast(isStaff?'Submitted for approval!':'Expense recorded!','success');
-  }catch(e){toast('Failed: '+e.message,'error');}
-  btn.disabled=false;btn.innerHTML='Save Expense →';
+    document.querySelectorAll('#pf-pwd-eye').forEach(eyeBtn => {
+      eyeBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+      eyeBtn.title = 'Click to hide';
+      eyeBtn.onclick = () => { buildProfile(); };
+    });
+    window.showToast('Password revealed. Keep it safe!', 'success');
+  } catch(e) { window.showToast(e.message, 'error'); }
+  setButtonLoading(btn, false, 'Verify & Show');
 };
 
-window.approveExp=async function(id){
-  try{await updateDoc(doc(db,'expenses',id),{status:'approved',approvedBy:CU.uid,approvedAt:new Date().toISOString()});toast('Approved ✓','success');}
-  catch(e){toast('Failed','error');}
-};
-window.rejectExp=async function(id){
-  try{await updateDoc(doc(db,'expenses',id),{status:'rejected',rejectedBy:CU.uid,rejectedAt:new Date().toISOString()});toast('Rejected','info');}
-  catch(e){toast('Failed','error');}
-};
-window.delExp=async function(id){
-  if(!confirm('Delete this expense?'))return;
-  try{await deleteDoc(doc(db,'expenses',id));toast('Deleted','success');}
-  catch(e){toast('Failed','error');}
-};
-
-// Close modal on overlay click
-document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
-document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(o=>o.classList.remove('open'));});
-
-function fmt(n){return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function esc(s=''){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function toast(msg,type='info'){
-  const c=document.getElementById('toast-container'),t=document.createElement('div');
-  t.className='toast toast-'+type;t.textContent=msg;c.appendChild(t);
-  setTimeout(()=>t.remove(),3000);
+function setupOTPBoxes(selector) {
+  const boxes = document.querySelectorAll(selector + ' .otp-box');
+  boxes.forEach((box, i) => {
+    box.oninput = () => {
+      box.value = box.value.replace(/\D/g, '').slice(-1);
+      box.classList.toggle('filled', !!box.value);
+      if (box.value && i < boxes.length - 1) boxes[i + 1].focus();
+    };
+    box.onkeydown = e => {
+      if (e.key === 'Backspace' && !box.value && i > 0) { boxes[i - 1].focus(); boxes[i - 1].value = ''; boxes[i - 1].classList.remove('filled'); }
+    };
+    box.onpaste = e => {
+      e.preventDefault();
+      const p = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+      p.split('').forEach((c, j) => { if (boxes[j]) { boxes[j].value = c; boxes[j].classList.add('filled'); } });
+    };
+  });
 }
 
-init();
+function getOTPValue(selector) {
+  const panels = document.querySelectorAll(selector.replace(' .otp-box',''));
+  for (const panel of panels) {
+    if (panel.offsetParent !== null) {
+      return Array.from(panel.querySelectorAll('.otp-box')).map(b => b.value).join('');
+    }
+  }
+  return Array.from(document.querySelectorAll(selector + ' .otp-box')).slice(0,6).map(b=>b.value).join('');
+}
+
+window.openEditModal = function(field) {
+  editField = field;
+  const labels = { name: 'Full Name', email: 'Email Address' };
+  document.getElementById('edit-modal-ttl').textContent = 'Edit ' + labels[field];
+  document.getElementById('edit-modal-lbl').textContent = labels[field];
+  document.getElementById('edit-modal-val').value = CU[field];
+  document.getElementById('edit-modal-val').type = field === 'email' ? 'email' : 'text';
+  document.getElementById('edit-modal').classList.remove('hidden');
+};
+
+window.saveEdit = async function() {
+  const val = document.getElementById('edit-modal-val').value.trim();
+  if (!val) { window.showToast('Cannot be empty.', 'error'); return; }
+  try {
+    await updateUserProfile(CU.uid, { [editField]: val });
+    CU[editField] = val;
+    if (editField === 'name') {
+      document.getElementById('pf-name').textContent = val;
+      document.getElementById('pf-name-display').textContent = val;
+      document.getElementById('topbar-name').textContent = val.split(' ')[0];
+    } else if (editField === 'email') {
+      document.getElementById('pf-email').textContent = val;
+    }
+    window.closeModal('edit-modal');
+    window.showToast('Updated!', 'success');
+  } catch(e) { window.showToast(e.message, 'error'); }
+};
+
+// ──────────────────────────────────────────────
+// APPS
+// ──────────────────────────────────────────────
+function buildAppsGrid(ids) {
+  const el = document.getElementById('apps-grid');
+  if(!el) return;
+  const allIds = ids.includes('expenses') ? ids : ids;
+  const html = allIds.filter(id => APP_REGISTRY[id]).map(id => {
+    const a = APP_REGISTRY[id];
+    return `<div class="app-icon" onclick="window.openApp('${a.id}')" title="${a.name}">
+      <div class="app-img" style="background:${a.bgColor}">${a.icon}</div>
+      <div class="app-lbl">${a.name.replace(' Management','').replace(' Tracker','')}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = html + `<div class="app-more" onclick="window.openAppLib()">
+    <div class="app-more-img">${svg('grid')}</div>
+    <div class="app-lbl" style="color:var(--tx-3)">More</div>
+  </div>`;
+}
+window.openApp = id => { const a = APP_REGISTRY[id]; if (a) window.open(a.path + '?uid=' + CU.uid, '_blank'); };
+
+window.openAppLib = async function() {
+  const uid = CU?.uid || '';
+  window.open('app-library.html' + (uid ? '?uid=' + uid : ''), '_blank');
+};
+
+function renderAppStore(installedIds) {
+  const el = document.getElementById('app-store-body');
+  if (!el) return;
+  const all = Object.values(APP_REGISTRY);
+  const appMeta = {
+    calculator: { cat:'Productivity', color:'#4f46e5', bg:'#eef2ff' },
+    calendar:   { cat:'Organization', color:'#16a34a', bg:'#ecfdf5' },
+    inventory:  { cat:'Operations', color:'#d97706', bg:'#fffbeb' }, 
+  };
+  const featuredSlides = [
+    { id:'inventory',  grad:'linear-gradient(135deg,#d97706,#ea580c)', tagline:'Track products & stock operations.' },
+    { id:'calculator', grad:'linear-gradient(135deg,#4f46e5,#7c3aed)', tagline:'Smart calculations with full history.' },
+    { id:'calendar',   grad:'linear-gradient(135deg,#059669,#0891b2)', tagline:'Team events, tasks & reminders.' },
+  ];
+  const comingSoon = [
+    { id:'staffmgmt', name:'Staff Management',    icon:'🏢', cat:'HR',            desc:'Attendance, leave requests, payroll summary and shift scheduling.' },
+    { id:'announce',  name:'Announcements',       icon:'📢', cat:'Communication', desc:'Send broadcasts, polls and updates to the whole team.' },
+    { id:'expenses',  name:'Expense Tracker',     icon:'💳', cat:'Finance',       desc:'Log team expenses, run approval workflows and budgets.' },
+  ];
+  const notifyList = CU._notifyList || [];
+
+  el.innerHTML = `
+    <div class="store-featured-wrap">
+      <div class="store-carousel" id="store-carousel">
+        ${featuredSlides.map((f,i) => {
+          const app = APP_REGISTRY[f.id]; if (!app) return '';
+          const inst = installedIds.includes(f.id);
+          const isDef = app.default;
+          return `<div class="store-featured" style="background:${f.grad}">
+            <div class="store-feat-title" style="font-size:10px;font-weight:600;opacity:.7;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Featured</div>
+            <div class="store-feat-name" style="font-size:19px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px">${app.name}</div>
+            <div class="store-feat-desc" style="font-size:12px;opacity:.78;margin-bottom:14px;line-height:1.5">${f.tagline}</div>
+            <div style="display:flex;gap:8px">
+              ${inst ? `<button class="store-btn-install" onclick="window.openApp('${f.id}')">Open App</button>${!isDef?`<button class="store-btn-install" style="background:rgba(220,38,38,.28);border-color:rgba(255,255,255,.2)" onclick="window.doUninstallApp('${f.id}')">Remove</button>`:''}` : `<button class="store-btn-install" onclick="window.doInstallApp('${f.id}')">+ Install Free</button>`}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="store-carousel-dots" id="carousel-dots">
+        ${featuredSlides.map((_,i)=>`<div class="cdot${i===0?' on':''}" onclick="window.carouselGo(${i})"></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="store-section-title">My Apps</div>
+    <div class="store-grid" style="margin-bottom:24px">
+      ${all.map(app => {
+        const m = appMeta[app.id] || { cat:'Utility', color:'#4f46e5', bg:'#eef2ff' };
+        const inst = installedIds.includes(app.id);
+        const isDef = APP_REGISTRY[app.id]?.default;
+        return `<div class="store-card">
+          <div class="store-card-top">
+            <div class="store-app-icon" style="background:${m.bg};font-size:1.5rem">${app.icon}</div>
+            <div><div class="store-app-name">${app.name}</div><div class="store-app-cat">${m.cat}</div></div>
+          </div>
+          <div class="store-app-desc">${app.desc}</div>
+          <div class="store-app-footer">
+            <span style="font-size:10px;color:var(--tx-3)">${isDef?'Built-in':inst?'Installed':'Available'}</span>
+            <div style="display:flex;gap:5px">
+              ${inst
+                ? `<button class="store-btn store-btn-open" onclick="window.openApp('${app.id}')">Open</button>${!isDef?`<button class="store-btn store-btn-uninstall" onclick="window.doUninstallApp('${app.id}')">Remove</button>`:''}`
+                : `<button class="store-btn store-btn-get" onclick="window.doInstallApp('${app.id}')">+ Get</button>`}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="store-section-title">Coming Soon</div>
+    <div class="store-grid">
+      ${comingSoon.map(app => {
+        const noted = notifyList.includes(app.id);
+        return `<div class="store-card">
+          <div class="store-card-top">
+            <div class="store-app-icon" style="background:var(--bg-sunken);font-size:1.4rem">${app.icon}</div>
+            <div><div class="store-app-name">${app.name}</div><div class="store-app-cat">${app.cat}</div></div>
+          </div>
+          <div class="store-app-desc">${app.desc}</div>
+          <div class="store-app-footer">
+            <span style="font-size:10px;color:var(--tx-3)">Coming soon</span>
+            <button class="store-btn" id="notify-btn-${app.id}"
+              style="padding:4px 10px;font-size:11px;border-radius:var(--r-sm);cursor:pointer;transition:all .15s;${noted?'background:rgba(22,163,74,.1);color:var(--green);border:1px solid rgba(22,163,74,.25)':'background:var(--ac-s);color:var(--ac);border:1px solid var(--ac-b)'}"
+              onclick="window.toggleNotify('${app.id}','${app.name}',this)">
+              ${noted?'✓ Notified':'Notify me'}
+            </button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  setTimeout(initCarousel, 60);
+}
+
+let _carouselIdx = 0, _carouselTimer = null;
+function initCarousel() {
+  const carousel = document.getElementById('store-carousel');
+  if (!carousel) return;
+  let sx = 0, dragging = false;
+  const n = () => carousel.children.length;
+  const go = diff => {
+    if (diff < -40) window.carouselGo((_carouselIdx + 1) % n());
+    else if (diff > 40) window.carouselGo((_carouselIdx - 1 + n()) % n());
+  };
+  carousel.addEventListener('touchstart', e => { sx=e.touches[0].clientX; dragging=true; clearInterval(_carouselTimer); }, {passive:true});
+  carousel.addEventListener('touchend',   e => { if(dragging){dragging=false; go(e.changedTouches[0].clientX-sx); startCarouselAuto();} });
+  carousel.addEventListener('mousedown',  e => { sx=e.clientX; dragging=true; clearInterval(_carouselTimer); });
+  carousel.addEventListener('mouseup',    e => { if(dragging){dragging=false; go(e.clientX-sx); startCarouselAuto();} });
+  carousel.addEventListener('mouseleave', () => { dragging=false; });
+  startCarouselAuto();
+}
+function startCarouselAuto() {
+  clearInterval(_carouselTimer);
+  _carouselTimer = setInterval(() => {
+    const carousel = document.getElementById('store-carousel');
+    if (!carousel) { clearInterval(_carouselTimer); return; }
+    window.carouselGo((_carouselIdx + 1) % carousel.children.length);
+  }, 5000);
+}
+window.carouselGo = function(idx) {
+  const carousel = document.getElementById('store-carousel');
+  if (!carousel) return;
+  _carouselIdx = idx;
+  carousel.style.transform = `translateX(calc(-${idx*100}% - ${idx*10}px))`;
+  document.querySelectorAll('.cdot').forEach((d,i) => d.classList.toggle('on', i===idx));
+};
+
+window.toggleNotify = async function(appId, appName, btn) {
+  if (!CU._notifyList) CU._notifyList = [];
+  const already = CU._notifyList.includes(appId);
+  if (already) {
+    CU._notifyList = CU._notifyList.filter(id=>id!==appId);
+    btn.textContent = 'Notify me';
+    btn.style.cssText = 'padding:4px 10px;font-size:11px;border-radius:var(--r-sm);cursor:pointer;transition:all .15s;background:var(--ac-s);color:var(--ac);border:1px solid var(--ac-b)';
+    window.showToast('Removed from notify list', '');
+  } else {
+    CU._notifyList.push(appId);
+    btn.textContent = '✓ Notified';
+    btn.style.cssText = 'padding:4px 10px;font-size:11px;border-radius:var(--r-sm);cursor:pointer;transition:all .15s;background:rgba(22,163,74,.1);color:var(--green);border:1px solid rgba(22,163,74,.25)';
+    window.showToast(`You'll be notified when ${appName} launches! 🔔`, 'success');
+  }
+  try { await updateDoc(doc(db,'users',CU.uid), { notifyApps: CU._notifyList }); } catch(_) {}
+};
+
+window.doInstallApp = async function(id) {
+  await installApp(CU.uid, id);
+  window.showToast((APP_REGISTRY[id]?.name||'App') + ' installed!', 'success');
+  const ids = await getInstalledApps(CU.uid);
+  renderAppStore(ids);
+};
+
+window.doUninstallApp = async function(id) {
+  if (APP_REGISTRY[id]?.default) { window.showToast('Built-in apps cannot be removed.', ''); return; }
+  await uninstallApp(CU.uid, id);
+  window.showToast((APP_REGISTRY[id]?.name||'App') + ' removed.', '');
+  const ids = await getInstalledApps(CU.uid);
+  renderAppStore(ids);
+};
+
+// ──────────────────────────────────────────────
+// NAVIGATION
+// ──────────────────────────────────────────────
+window.showView = function(v) {
+  ['home','tasks','staff'].forEach(n => {
+    const el = document.getElementById('view-' + n);
+    if(el) {
+      const hide = n !== v;
+      el.classList.toggle('hidden', hide);
+      // Re-trigger animations when view becomes visible
+      if(!hide) {
+        el.querySelectorAll('.stat-card,.task-card,.staff-card').forEach((c,i)=>{
+          c.style.animationDelay = (i*60)+'ms';
+          c.style.animation = 'none';
+          requestAnimationFrame(()=>{ c.style.animation = ''; });
+        });
+      }
+    }
+    document.getElementById('nav-' + n)?.classList.toggle('active', n === v);
+  });
+  ['home','tasks','assign','notif','profile'].forEach(n => document.getElementById('bn-' + n)?.classList.remove('active'));
+  document.getElementById('bn-staff-btn')?.classList.remove('active');
+  const bnMap = { home:'bn-home', tasks:'bn-tasks', staff:'bn-staff-btn' };
+  if (bnMap[v]) document.getElementById(bnMap[v])?.classList.add('active');
+  else document.getElementById('bn-home')?.classList.add('active');
+  if (v === 'tasks') { renderTaskSummaryStrip(); renderTasksList(); }
+};
+
+window.togglePanel = function(id) {
+  const panel = document.getElementById(id);
+  const overlay = document.getElementById('panel-overlay');
+  if(!panel) return;
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+  if (!isOpen) { panel.classList.add('open'); overlay.classList.add('visible'); }
+  else { overlay.classList.remove('visible'); }
+};
+
+window.closeAllPanels = function() {
+  document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+  document.getElementById('profile-side-panel')?.classList.remove('open');
+  document.getElementById('profile-page-mobile')?.classList.remove('open');
+  document.getElementById('panel-overlay')?.classList.remove('visible');
+};
+
+window.openProfile = function() {
+  if (!_profileBuilt) { buildProfile(); _profileBuilt = true; }
+  if (window.innerWidth >= 769) {
+    document.getElementById('profile-side-panel')?.classList.add('open');
+    document.getElementById('panel-overlay')?.classList.add('visible');
+  } else {
+    document.getElementById('profile-page-mobile')?.classList.add('open');
+  }
+};
+
+window.closeProfile = function() {
+  document.getElementById('profile-side-panel')?.classList.remove('open');
+  document.getElementById('profile-page-mobile')?.classList.remove('open');
+  document.getElementById('panel-overlay')?.classList.remove('visible');
+};
+
+window.closeFullpage = function(id) {
+  document.getElementById(id)?.classList.remove('open');
+  if (id === 'app-store-page') clearInterval(_carouselTimer);
+};
+
+window.openCreateStaffPage = function() {
+  window.resetCreateStaff();
+  document.getElementById('create-staff-page')?.classList.add('open');
+};
+
+window.closeModal = function(id) {
+  document.getElementById(id)?.classList.add('hidden');
+  if (id === 'delete-modal') {
+    const inp = document.getElementById('del-confirm-input');
+    const btn = document.getElementById('del-confirm-btn');
+    if (inp) { inp.value = ''; inp.classList.remove('match'); }
+    if (btn) { btn.disabled = true; btn.style.opacity = '.4'; btn.style.cursor = 'not-allowed'; }
+  }
+};
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.add('hidden'); }));
+
+// BUG FIX: Escape key closes open modals and panels
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(o => o.classList.add('hidden'));
+  window.closeAllPanels();
+});
+
+window.handleLogout = async function() { unsubs.forEach(f => f?.()); _profileBuilt = false; await logout(); };
+
+// ──────────────────────────────────────────────
+// HELPERS
+// ──────────────────────────────────────────────
+function setBadge(id, count) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = count > 99 ? '99+' : count;
+  el.classList.toggle('hidden', count <= 0);
+  if (id === 'notif-badge') {
+    const cb = document.getElementById('notif-count-badge');
+    if (cb) cb.textContent = count > 0 ? `(${count} unread)` : '';
+  }
+}
+function setDot(id, show) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('show', show);
+}
+function esc(s = '') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function ago(iso) {
+  if (!iso) return '';
+  const d = Date.now() - new Date(iso);
+  if (d < 60000)    return 'just now';
+  if (d < 3600000)  return Math.floor(d/60000) + 'm ago';
+  if (d < 86400000) return Math.floor(d/3600000) + 'h ago';
+  const days = Math.floor(d/86400000);
+  if (days < 30) return days + 'd ago';
+  const months = Math.floor(days/30);
+  return months + 'mo ago';
+}
+function emptyState(ttl, sub) {
+  return `<div class="empty" style="padding:36px 24px"><div class="empty-ico" style="font-size:1.8rem">📋</div><div class="empty-ttl">${ttl}</div><div class="empty-sub">${sub}</div></div>`;
+}
+
+function svg(name) {
+  const icons = {
+    'users': `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    'clock': `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    'check-circle': `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+    'x-circle': `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+    'bell': `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+    'send': `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+    'log-in': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>`,
+    'log-out': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+    'clipboard-list': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>`,
+    'check': `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    'x': `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    'edit': `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+    'copy': `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+    'eye': `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+    'eye-off': `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`,
+    'lock': `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+    'shield': `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    'grid': `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
+    'inbox': `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>`,
+  };
+  return icons[name] || `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/></svg>`;
+}
+function format12hr(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${((h % 12) || 12)}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+init().catch(console.error);
+
+// ── SECTION REVEAL ANIMATIONS ──
+(function() {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if(e.isIntersecting) {
+        e.target.classList.add('revealed');
+        e.target.querySelectorAll('.stat-card,.task-card,.staff-card,.content-card,.apps-wrap').forEach((el,i) => {
+          el.style.animationDelay = (i*50)+'ms';
+          el.classList.add('anim-in');
+        });
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.05 });
+  document.querySelectorAll('.stats-grid,.content-card,.apps-wrap,.staff-card').forEach(el => io.observe(el));
+})();
+
 </script>
 </body>
 </html>
