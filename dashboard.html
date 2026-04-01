@@ -155,10 +155,10 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> 
             Filter
           </button>
-          </div>
+        </div>
         <div style="display: flex; gap: 8px;">
           <button class="btn btn-ghost btn-sm" style="color: var(--tx-2); font-size: .75rem;" onclick="openCustomizeModal()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> 
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> 
             Customize
           </button>
         </div>
@@ -483,7 +483,7 @@
         <label class="form-label">Assigned By</label>
         <select class="zenda-select" id="filter-assigner" onchange="applyTaskFilter()">
           <option value="All">Anyone</option>
-          </select>
+        </select>
       </div>
       <div class="form-group">
         <label class="form-label">Due Date</label>
@@ -522,6 +522,13 @@
         <select class="zenda-select" id="cust-details" onchange="applyCustomize()">
           <option value="full">Show Full Details</option>
           <option value="minimal">Minimal (Hide Description)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Task Info</label>
+        <select class="zenda-select" id="cust-meta" onchange="applyCustomize()">
+          <option value="show">Show Dates & Assigners</option>
+          <option value="hide">Hide Dates & Assigners</option>
         </select>
       </div>
       <div class="form-group">
@@ -577,6 +584,31 @@ let barChart = null, donutChart = null;
 let unsubs = [];
 
 // ──────────────────────────────────────────────
+// TASK FILTERING & CUSTOMIZATION SYSTEM
+// ──────────────────────────────────────────────
+window.currentTaskFilter = 'All';
+window.currentAssignerFilter = 'All';
+window.currentDueFilter = 'All';
+
+// View Customization variables
+window.currentCustDetails = 'full';
+window.currentCustStyle = 'elevated';
+window.currentCustDensity = 'comfortable';
+window.currentCustMeta = 'show';
+taskTab = 'pending';
+
+try {
+  const saved = localStorage.getItem('zenda_task_prefs_local');
+  if (saved) {
+    const prefs = JSON.parse(saved);
+    window.currentCustDensity = prefs.density || 'comfortable';
+    window.currentCustDetails = prefs.details || 'full';
+    window.currentCustStyle = prefs.style || 'elevated';
+    window.currentCustMeta = prefs.meta || 'show';
+  }
+} catch(e) {}
+
+// ──────────────────────────────────────────────
 // INIT
 // ──────────────────────────────────────────────
 async function init() {
@@ -612,7 +644,6 @@ function setupUI() {
     setAvatar('topbar-avatar', ini, col, 26, avatarSrc);
     setAvatar('bn-avatar', ini, col, 22, avatarSrc);
   } else {
-    // Safely set initials if no image is available
     const topAv = document.getElementById('topbar-avatar');
     if (topAv) { topAv.textContent = ini; topAv.style.background = col + '22'; topAv.style.color = col; }
     const bnAv = document.getElementById('bn-avatar');
@@ -903,6 +934,8 @@ function renderTaskSummaryStrip() {
 function renderTasksList() {
   const el = document.getElementById('tasks-list');
   if(!el) return;
+  el.style.gap = window.currentCustDensity === 'compact' ? '6px' : '14px';
+
   let tasks = [];
   if (taskTab === 'assigned-to-me') tasks = myTasks;
   else if (taskTab === 'assigned-by-me') tasks = assignedByMeTasks;
@@ -926,7 +959,7 @@ function renderTasksList() {
     const nextWeek = today + (7 * 24 * 60 * 60 * 1000);
     
     tasks = tasks.filter(t => {
-      if (!t.dueDate) return false; // If filtering by due date, ignore tasks without one
+      if (!t.dueDate) return false; 
       const d = new Date(t.dueDate);
       const taskDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
       
@@ -946,7 +979,6 @@ function renderTasksList() {
     return;
   }
   
-  // Always let the user respond to tasks assigned to them, regardless of which tab they are viewing
   const canRespond = true; 
   el.innerHTML = tasks.map(t => renderTaskCard(t, canRespond)).join('');
 }
@@ -976,9 +1008,8 @@ function renderTaskCard(task, showActions) {
       ${isPast ? 'Overdue' : 'Due'} ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}${task.dueTime ? ' ' + format12hr(task.dueTime) : ''}</span>`;
   }
 
-  // Check window.currentCustDetails to hide description
   const hideDesc = window.currentCustDetails === 'minimal';
-  // Check window.currentCustStyle to apply flat style
+  const hideMeta = window.currentCustMeta === 'hide';
   const flatStyle = window.currentCustStyle === 'flat' ? 'box-shadow:none; border:1px solid var(--bd);' : '';
 
   return `<div class="task-card" id="task-${task.id}" style="${flatStyle}">
@@ -993,7 +1024,7 @@ function renderTaskCard(task, showActions) {
         </div>
         ${!canAct ? `<span class="task-badge ${badge}" style="display:flex;align-items:center;gap:4px;flex-shrink:0">${badgeIcon}${badgeLabel}</span>` : ''}
       </div>
-      <div class="task-meta">${meta}</div>
+      ${!hideMeta ? `<div class="task-meta">${meta}</div>` : ''}
       ${!hideDesc && task.description ? `<div class="task-desc">${esc(task.description.length > 120 ? task.description.slice(0,120)+'…' : task.description)}</div>` : ''}
       ${!hideDesc && task.status === 'declined' && task.declineReason ? `<div class="task-desc" style="color:var(--red);border-top-color:rgba(220,38,38,.12)">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -1176,7 +1207,6 @@ function renderStaffCards(staff) {
   el.innerHTML = nonOwner.map(s => {
     const col = avatarColor(s.name);
     const ini = getInitials(s.name);
-    // Replace the internal return `...` of renderStaffCards with this:
     return `<div class="staff-card">
       <div class="av" style="width:42px;height:42px;font-size:14px;font-weight:600;border-radius:10px;background:${col}22;color:${col}">${ini}</div>
       <div class="staff-info">
@@ -1352,7 +1382,6 @@ window.handleAssign = async function() {
   const date = document.getElementById('task-date').value;
   const time = document.getElementById('task-time').value;
   
-  // FIX: Safe check for priority in case the HTML isn't perfectly loaded
   const priorityEl = document.getElementById('task-priority');
   const priority = priorityEl ? priorityEl.value : 'Medium';
 
@@ -1929,78 +1958,6 @@ function format12hr(t) {
 }
 
 init().catch(console.error);
-
-// ──────────────────────────────────────────────
-// TASK FILTERING & CUSTOMIZATION SYSTEM
-// ──────────────────────────────────────────────
-window.currentTaskFilter = 'All';
-window.currentAssignerFilter = 'All';
-window.currentDueFilter = 'All';
-
-// View Customization variables
-window.currentCustDetails = 'full';
-window.currentCustStyle = 'elevated';
-
-// Ensure Pending is default when app starts
-taskTab = 'pending';
-
-function buildFilterAssignerSelect(staff) {
-  const sel = document.getElementById('filter-assigner');
-  if(!sel) return;
-  sel.innerHTML = '<option value="All">Anyone</option>' + 
-    staff.map(s => `<option value="${s.uid}">${esc(s.name)}</option>`).join('');
-}
-
-window.openFilterModal = function() {
-  document.getElementById('filter-priority').value = window.currentTaskFilter;
-  document.getElementById('filter-assigner').value = window.currentAssignerFilter;
-  document.getElementById('filter-due').value = window.currentDueFilter;
-  document.getElementById('filter-modal').classList.remove('hidden');
-};
-
-window.applyTaskFilter = function() {
-  window.currentTaskFilter = document.getElementById('filter-priority').value;
-  window.currentAssignerFilter = document.getElementById('filter-assigner').value;
-  window.currentDueFilter = document.getElementById('filter-due').value;
-  
-  const btn = document.getElementById('btn-filter-tasks');
-  if (window.currentTaskFilter !== 'All' || window.currentAssignerFilter !== 'All' || window.currentDueFilter !== 'All') {
-    btn.style.color = 'var(--ac)'; 
-    btn.style.background = 'var(--ac-s)';
-    btn.style.borderColor = 'var(--ac)';
-    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filter Active`;
-  } else {
-    btn.style.color = 'var(--tx-2)';
-    btn.style.background = 'transparent';
-    btn.style.borderColor = 'transparent';
-    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filter`;
-  }
-  
-  renderTasksList();
-};
-
-window.openCustomizeModal = function() {
-  document.getElementById('customize-modal').classList.remove('hidden');
-};
-
-window.applyCustomize = function() {
-  const density = document.getElementById('cust-density').value;
-  const details = document.getElementById('cust-details').value;
-  const style = document.getElementById('cust-style').value;
-  
-  const list = document.getElementById('tasks-list');
-  if (density === 'compact') {
-    list.style.gap = '6px';
-  } else {
-    list.style.gap = '14px';
-  }
-  
-  window.currentCustDetails = details;
-  window.currentCustStyle = style;
-  
-  renderTasksList(); // Re-render to apply the styling changes
-  showToast('View updated', 'success');
-};
 
 // ── SECTION REVEAL ANIMATIONS ──
 (function() {
