@@ -483,7 +483,7 @@
         <label class="form-label">Assigned By</label>
         <select class="zenda-select" id="filter-assigner" onchange="applyTaskFilter()">
           <option value="All">Anyone</option>
-        </select>
+          </select>
       </div>
       <div class="form-group">
         <label class="form-label">Due Date</label>
@@ -1219,9 +1219,16 @@ function renderStaffCards(staff) {
         <div class="staff-meta">${esc(s.email)} · ${esc(s.designation || 'Team Member')}</div>
         <div class="staff-uid">${s.uniqueId || ''}</div>
       </div>
-      ${CU.role === 'owner' ? `<button class="staff-del" title="Delete" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId||''}')">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      </button>` : ''}
+      <div style="display:flex; gap:8px;">
+        ${CU.role === 'owner' || CU.role === 'manager' ? `
+        <button class="btn btn-ghost btn-sm" onclick="window.quickAssign('${s.uid}')" style="font-size:11px; padding:4px 8px;" title="Assign Task">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Assign Task
+        </button>` : ''}
+        ${CU.role === 'owner' ? `<button class="staff-del" title="Delete" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId||''}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>` : ''}
+      </div>
     </div>`;
   }).join('');
 }
@@ -1244,6 +1251,14 @@ function buildAssignSelect(staff) {
   const list = staff.filter(s => s.uid !== CU.uid);
   sel.innerHTML = '<option value="">Select team member…</option>' + list.map(s => `<option value="${s.uid}">${esc(s.name)} (${esc(s.designation || formatRole(s.role))})</option>`).join('');
 }
+
+window.quickAssign = function(staffUid) {
+  window.openAssignModal();
+  setTimeout(() => {
+    const sel = document.getElementById('assign-to');
+    if (sel) sel.value = staffUid;
+  }, 50);
+};
 
 // DELETE MODAL
 window.openDeleteModal = function(uid, name, email, uniqueId) {
@@ -1288,7 +1303,17 @@ window.selectRole = function(role) {
   newRole = role;
   ['manager','staff'].forEach(r => {
     const el = document.getElementById('rc-' + r);
-    if(el) el.className = 'role-card-sel sel-' + r.slice(0,3) + (role === r ? ' selected' : '');
+    if(el) {
+      if (role === r) {
+        el.style.border = '2px solid var(--ac)';
+        el.style.background = 'var(--sf)';
+        el.style.boxShadow = '0 4px 12px rgba(79,70,229,.15)';
+      } else {
+        el.style.border = '1px solid var(--bd)';
+        el.style.background = 'var(--bg-base)';
+        el.style.boxShadow = 'none';
+      }
+    }
   });
 };
 
@@ -1329,7 +1354,7 @@ window.handleCreateStaff = async function() {
       <div class="cred-row"><span class="cred-lbl">Email</span><span class="cred-val">${esc(email)}</span></div>
       <div class="cred-row"><span class="cred-lbl">Password</span><span class="cred-val">${esc(password)}</span></div>
       <div class="cred-row"><span class="cred-lbl">Unique ID</span><span class="cred-val">${result.uniqueId}</span></div>`;
-    newCanvas = renderCardToElement('new-card-container', 'staff', { name: result.name, email, role: newRole, designation: desig, companyName, uniqueId: result.uniqueId, companyCode: CU.uniqueId, password: password });
+    newCanvas = renderCardToElement('new-card-container', 'staff', { name: result.name, email, role: newRole, designation: desig, companyName, uniqueId: result.uniqueId, companyCode: CU.uniqueId, password });
     showToast(`${name} added!`, 'success');
     btn.disabled = true;
   } catch(e) {
