@@ -44,11 +44,12 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 .hidden { display: none !important; }
 
-/* TOPBAR */
+/* ══ TOPBAR ══ */
 .appbar {
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
@@ -68,17 +69,19 @@ body {
 
 .ab-back {
   background: transparent; border: 1.5px solid var(--border); color: var(--text-sub);
-  font-family: var(--font-body); font-size: 13px; font-weight: 600;
-  height: 36px; padding: 0 12px; border-radius: 10px;
-  display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.15s;
+  height: 36px; width: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s;
 }
 .ab-back:hover { background: var(--bg); color: var(--text-main); border-color: var(--border-hover); }
+
+.app-title-desktop { display: inline; }
+.app-title-mobile { display: none; }
 
 .sync-ok { color: var(--green); font-weight: 600; font-size: 12px; font-family: var(--font-display); }
 .sync-err { color: var(--red); font-weight: 600; font-size: 12px; font-family: var(--font-display); }
 .sync-loading { color: var(--text-mute); font-size: 12px; font-family: var(--font-display); }
 
-/* VIEWS & LAYOUT (Restored Desktop PC Widths) */
+/* ══ VIEWS & LAYOUT ══ */
 .view { display: none; flex: 1; flex-direction: column; }
 .view.active { display: flex; }
 
@@ -86,47 +89,84 @@ body {
 .wh-detail { max-width: 1080px; margin: 0 auto; width: 100%; padding: 24px 20px 80px; display: flex; flex-direction: column; gap: 24px; }
 .pd-layout { max-width: 800px; margin: 0 auto; width: 100%; padding: 24px 20px 80px; display: flex; flex-direction: column; gap: 24px; }
 
-/* ══ STAT ROW (4 on PC, 2x2 Grid Cards on Mobile) ══ */
+/* ══ STAT CARDS (PC: 4-Grid | Mobile: Swipeable Carousel) ══ */
+.stats-wrapper { margin-bottom: 24px; }
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 4 columns on Desktop */
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  margin-bottom: 24px;
 }
-@media (max-width: 768px) {
-  .stats { grid-template-columns: repeat(2, 1fr); /* 2x2 grid on mobile/tablet */ gap: 12px; }
-}
+.stat-dots { display: none; }
 
 .sc {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.03); /* Soft, premium shadow */
+  border-radius: 20px;
+  padding: 24px 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 .sc-ico {
-  width: 36px; height: 36px; border-radius: 10px;
+  width: 44px; height: 44px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  margin-bottom: 16px;
+  margin: 0 auto 12px;
 }
 .i-i { background: var(--accent-bg); color: var(--accent); }
 .i-g { background: var(--green-bg); color: var(--green); }
 .i-a { background: var(--amber-bg); color: var(--amber); }
 .i-r { background: var(--red-bg); color: var(--red); }
-.sc-n { font-family: var(--font-display); font-weight: 700; font-size: 28px; line-height: 1; color: var(--text-main); }
-.sc-l { font-size: 13px; color: var(--text-sub); font-weight: 500; margin-top: 6px; }
+.sc-l { font-family: var(--font-body); font-size: 14px; color: var(--text-sub); font-weight: 600; margin-bottom: 4px; }
+.sc-n { font-family: var(--font-display); font-weight: 800; font-size: 36px; line-height: 1; color: var(--text-main); }
 
-/* SECTION HDR */
+/* Mobile View for Stats Carousel & Topbar */
+@media (max-width: 768px) {
+  .app-title-desktop { display: none; }
+  .app-title-mobile { display: inline; text-transform: capitalize; }
+  
+  .stats {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    gap: 16px;
+    padding-bottom: 8px;
+    margin: 0 -20px;
+    padding: 0 20px 8px;
+  }
+  .stats::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+  
+  .sc {
+    flex: 0 0 calc(100% - 40px); /* Takes full width minus some margin to hint next card */
+    scroll-snap-align: center;
+  }
+  
+  .stat-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .stat-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--border-hover); transition: all 0.3s ease;
+  }
+  .stat-dot.active {
+    background: var(--accent); width: 20px; border-radius: 4px;
+  }
+}
+
+/* ══ SECTION HDR ══ */
 .shdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .stitle { font-family: var(--font-display); font-size: 12px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px; }
 .chip { background: var(--accent-bg); border: 1px solid rgba(79,70,229,0.2); border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700; color: var(--accent); font-family: var(--font-display); }
 
-/* LIST CARDS */
+/* ══ LIST CARDS ══ */
 .wh-card, .prod-card, .entry-card, .conv-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
 
-/* ROWS */
+/* ══ ROWS ══ */
 .add-row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; cursor: pointer; border-bottom: 1px solid var(--bg); transition: background 0.15s; }
 .add-row:hover { background: var(--bg); }
 .add-ico { width: 40px; height: 40px; border-radius: 10px; border: 1.5px dashed var(--text-mute); display: flex; align-items: center; justify-content: center; color: var(--text-mute); transition: all 0.15s; }
@@ -158,7 +198,6 @@ body {
 .wh-arr, .prow-arr { color: var(--border-hover); flex-shrink: 0; transition: all 0.15s; }
 .whr:hover .wh-arr, .prow:hover .prow-arr { color: var(--accent); transform: translateX(3px); }
 
-/* MOBILE RESPONSIVENESS FOR LISTS */
 @media (max-width: 600px) {
   .whr { flex-wrap: wrap; padding: 16px; }
   .whr-info { flex: 1 1 100%; min-width: 100%; }
@@ -166,20 +205,20 @@ body {
   .wh-arr { display: none; }
 }
 
-/* DOTS & BADGES */
+/* ══ DOTS & BADGES ══ */
 .hdot { width: 8px; height: 8px; border-radius: 50%; }
 .hg { background: var(--green); box-shadow: 0 0 6px rgba(16,185,129,0.4); }
 .hw { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,0.4); }
 .hl { background: var(--red); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
 .low-badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 700; background: var(--red-bg); color: var(--red); border: 1px solid #FCA5A5; border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
 
-/* EMPTY STATES */
+/* ══ EMPTY STATES ══ */
 .empty-box, .e-empty, .conv-empty { text-align: center; padding: 48px 24px; }
 .empty-ico { font-size: 40px; margin-bottom: 16px; opacity: 0.5; }
 .empty-ttl { font-family: var(--font-display); font-weight: 700; font-size: 16px; color: var(--text-main); margin-bottom: 8px; }
 .empty-sub { font-size: 14px; color: var(--text-sub); line-height: 1.5; margin-bottom: 24px; max-width: 320px; margin-inline: auto; }
 
-/* PRODUCT DETAILS */
+/* ══ PRODUCT DETAILS ══ */
 .hero-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
 .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .hero-left { display: flex; align-items: center; gap: 16px; }
@@ -201,7 +240,7 @@ body {
 .srch-inp { width: 100%; height: 44px; padding: 0 16px 0 40px; border: 1.5px solid var(--border); border-radius: 10px; font-family: var(--font-body); font-size: 14px; background: var(--bg); transition: all 0.15s; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 12px center; }
 .srch-inp:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(79,70,229,0.08); }
 
-/* PRODUCT HERO LAYOUT */
+/* ══ PRODUCT HERO LAYOUT ══ */
 .pd-hero { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03); position: relative; }
 .pd-hero-top { background: linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%); padding: 40px 24px 24px; text-align: center; border-bottom: 1px solid var(--border); }
 .pd-emoji { font-size: 56px; display: block; margin-bottom: 16px; line-height: 1; }
@@ -221,7 +260,7 @@ body {
 .conv-item { display: flex; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--bg); font-size: 14px; color: var(--text-main); }
 .conv-eq { font-family: var(--font-mono); color: var(--accent); font-weight: 700; margin-left: 8px; }
 
-/* ENTRIES ROWS */
+/* ══ ENTRIES ROWS ══ */
 .erow { display: flex; align-items: flex-start; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--bg); transition: background 0.15s; }
 .erow:last-child { border-bottom: none; }
 .erow:hover:not(.del-row) { background: var(--bg); }
@@ -237,7 +276,7 @@ body {
 .e-qi { color: var(--green); } .e-qo { color: var(--red); }
 .e-unit { font-size: 12px; color: var(--text-mute); display: block; margin-top: 4px; }
 
-/* BUTTONS */
+/* ══ BUTTONS ══ */
 button { border: none; font-family: inherit; font-size: 14px; font-weight: 600; border-radius: 10px; cursor: pointer; transition: all 0.15s; }
 .btn-in, .btn-out, .btn-p, .btn-g, .btn-d, .mok, .mno { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 20px; }
 .btn-p, .btn-in, .mok { background: var(--accent); color: white; }
@@ -248,7 +287,7 @@ button { border: none; font-family: inherit; font-size: 14px; font-weight: 600; 
 .mok.green { background: var(--green); }
 .mok.green:hover { background: #047857; }
 
-/* MODALS */
+/* ══ MODALS ══ */
 .mo { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.45); backdrop-filter: blur(6px); z-index: 600; display: none; align-items: center; justify-content: center; padding: 16px; }
 .mo.open { display: flex; }
 .mbox { background: var(--surface); border-radius: 20px; border: 1px solid var(--border); width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
@@ -322,12 +361,12 @@ input[type=number] { -moz-appearance: textfield; }
 <div class="appbar">
   <div class="ab-left">
     <button class="ab-back" id="backBtn" onclick="goBack()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-      <span id="backLbl">Back</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <div style="display:flex;align-items:center;gap:10px;padding-left:16px;border-left:1.5px solid var(--border);margin-left:8px">
       <div style="width:32px;height:32px;background:#FEF3C7;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.9rem">📦</div>
-      <span style="font-family:var(--font-display);font-weight:800;font-size:15px;color:var(--text-main);letter-spacing:-.01em">Inventory Management</span>
+      <span class="app-title-desktop" style="font-family:var(--font-display);font-weight:800;font-size:15px;color:var(--text-main);letter-spacing:-.01em">Inventory Management</span>
+      <span class="app-title-mobile" style="font-family:var(--font-display);font-weight:800;font-size:15px;color:var(--text-main);letter-spacing:-.01em">Inventory</span>
     </div>
   </div>
   <div class="ab-right">
@@ -337,11 +376,20 @@ input[type=number] { -moz-appearance: textfield; }
 
 <div class="view active" id="v-dash">
   <div class="pg">
-    <div class="stats">
-      <div class="sc"><div class="sc-ico i-i"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div class="sc-n" id="sWH">0</div><div class="sc-l">Warehouses</div></div>
-      <div class="sc"><div class="sc-ico i-g"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="sc-n" id="sProds">0</div><div class="sc-l">Products</div></div>
-      <div class="sc"><div class="sc-ico i-a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/></svg></div><div class="sc-n" id="sEnt">0</div><div class="sc-l">Entries Today</div></div>
-      <div class="sc"><div class="sc-ico i-r"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="sc-n" id="sLow">0</div><div class="sc-l">Low Stock</div></div>
+    
+    <div class="stats-wrapper">
+      <div class="stats" id="statsSlider">
+        <div class="sc"><div class="sc-ico i-i"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div class="sc-l">Warehouses</div><div class="sc-n" id="sWH">0</div></div>
+        <div class="sc"><div class="sc-ico i-g"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="sc-l">Products</div><div class="sc-n" id="sProds">0</div></div>
+        <div class="sc"><div class="sc-ico i-a"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/></svg></div><div class="sc-l">Entries Today</div><div class="sc-n" id="sEnt">0</div></div>
+        <div class="sc"><div class="sc-ico i-r"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="sc-l">Low Stock</div><div class="sc-n" id="sLow">0</div></div>
+      </div>
+      <div class="stat-dots" id="statDots">
+        <div class="stat-dot active"></div>
+        <div class="stat-dot"></div>
+        <div class="stat-dot"></div>
+        <div class="stat-dot"></div>
+      </div>
     </div>
     
     <div class="low-alert" id="lowAlert">
@@ -352,11 +400,22 @@ input[type=number] { -moz-appearance: textfield; }
       <button class="btn-g" style="border-color:#F59E0B;color:#92400E;background:#FEF3C7;padding:0 16px;height:36px;font-size:12px;border-radius:8px;flex-shrink:0" onclick="openLowStockModal()">View List</button>
     </div>
 
-    <div class="shdr"><div class="stitle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> Warehouses <span class="chip" id="whCnt">0</span></div></div>
+    <div class="shdr">
+        <div class="stitle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> Warehouses <span class="chip" id="whCnt">0</span></div>
+        <button class="btn-g" style="height:28px; padding:0 10px; font-size:12px; border-radius:6px;" onclick="window.openM('m-wh')">+ Add</button>
+    </div>
+    
     <div class="wh-card">
       <div class="add-row" id="addWhRow" onclick="window.openM('m-wh')"><div class="add-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="add-txt">Add New Warehouse</div></div>
+      
       <div id="whList"></div>
-      <div class="empty-box" id="whEmpty"><div class="empty-ico">🏗️</div><div class="empty-ttl">No warehouses yet</div><div class="empty-sub">Create your first warehouse to start tracking inventory.</div><button class="btn-p" onclick="window.openM('m-wh')" style="margin:0 auto"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Create Warehouse</button></div>
+      
+      <div class="empty-box" id="whEmpty">
+          <div class="empty-ico">🏗️</div>
+          <div class="empty-ttl">No warehouses yet</div>
+          <div class="empty-sub">Create your first warehouse to start tracking inventory.</div>
+          <button class="btn-p" onclick="window.openM('m-wh')" style="margin:0 auto"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Create Warehouse</button>
+      </div>
     </div>
   </div>
 </div>
@@ -641,7 +700,23 @@ window.toggleCat = function(v) { const el = document.getElementById('wcc'); el.c
 window.showToast = function(msg, type) { const c = document.getElementById('tc'); const t = document.createElement('div'); t.className = 'toast' + (type === 's' ? ' s' : type === 'e' ? ' e' : ''); t.textContent = msg; c.appendChild(t); setTimeout(() => { t.style.animation = 'tO .2s ease forwards'; setTimeout(() => t.remove(), 220); }, 3200); };
 
 function setupModalListeners() { document.querySelectorAll('.mo').forEach(o => o.addEventListener('click', e => { if(e.target === o) window.closeM(o.id); })); document.addEventListener('keydown', e => { if(e.key === 'Escape') document.querySelectorAll('.mo.open').forEach(m => window.closeM(m.id)); }); }
-if(document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', setupModalListeners); } else { setupModalListeners(); }
+
+// ══ STATS SLIDER LOGIC ══
+function setupStatsSlider() {
+    const statsEl = document.getElementById('statsSlider');
+    const dots = document.querySelectorAll('.stat-dot');
+    if(statsEl && dots.length > 0) {
+        statsEl.addEventListener('scroll', () => {
+            // Calculate active index based on scroll position
+            let index = Math.round(statsEl.scrollLeft / statsEl.clientWidth);
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === index);
+            });
+        });
+    }
+}
+
+if(document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { setupModalListeners(); setupStatsSlider(); }); } else { setupModalListeners(); setupStatsSlider(); }
 
 // ══ 2. LOCAL EMOJI ENGINE ══
 const EM_LIB = {
@@ -743,12 +818,6 @@ function populateStdUnits(dropdownId, onChangeCallback) {
 // ══ 4. VIEWS & PC LAYOUT ══
 function showView(v){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active')); document.getElementById('v-'+v).classList.add('active');
-  if(v==='dash'){setTopbar('dash');}
-  else if(v==='wh'){setTopbar('wh');}
-  else if(v==='prod'){setTopbar('prod');}
-}
-function setTopbar(viewType){ 
-  document.getElementById('backLbl').textContent=viewType==='dash'?'Back':viewType==='wh'?'Warehouses':'Back'; 
 }
 window.goBack=function(){ const active=document.querySelector('.view.active')?.id; if(active==='v-prod'){showView('wh');} else if(active==='v-wh'){showView('dash');} else window.close(); };
 
@@ -759,6 +828,13 @@ function loadWHs(){
 }
 function renderWHs(){
   const list=document.getElementById('whList'); const empty=document.getElementById('whEmpty'); list.innerHTML='';
+  
+  // LOGIC TO REMOVE "ADD WAREHOUSE" ROW IF AT LEAST 1 WAREHOUSE EXISTS
+  const addRow = document.getElementById('addWhRow');
+  if(addRow && (CU.role==='owner'||CU.role==='manager')) {
+      addRow.style.display = WHs.length > 0 ? 'none' : 'flex';
+  }
+  
   if(!WHs.length){empty.classList.add('show');return;} empty.classList.remove('show');
   
   WHs.forEach((wh,i)=>{
