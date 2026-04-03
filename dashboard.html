@@ -1512,13 +1512,18 @@ function buildProfile() {
         <div><div class="pf-lbl">Unique ID</div><div class="pf-code" id="pf-uid">${uniqueId}</div></div>
         <button class="pf-btn" onclick="window.copyToClipboard('${uniqueId}')" title="Copy">${svg('copy')}</button>
       </div>
-      ${role !== 'owner' ? `` : ''}
       <div class="pf">
         <div><div class="pf-lbl">Designation</div><div class="pf-val">${esc(designation || formatRole(role))}</div></div>
       </div>
     </div>
 
-    <div style="padding:12px 12px 16px;border-top:1px solid var(--bd);margin-top:10px">
+    <div style="padding: 0 12px; margin-top: 16px;">
+        <div style="background: var(--sf2, #f9fafb); border: 1px dashed var(--bd, #e5e7eb); border-radius: 12px; padding: 16px; text-align: center; transition: all 0.3s;" id="pf-premium-box">
+            <div style="font-size:12px; color:var(--tx-2); margin-bottom: 8px;">Loading plan details...</div>
+        </div>
+    </div>
+
+    <div style="padding:12px 12px 16px;border-top:1px solid var(--bd);margin-top:16px">
       <button class="btn btn-ghost w-full" onclick="window.handleLogout()" style="justify-content:center;gap:7px">
         ${svg('log-out')} Sign Out
       </button>
@@ -1529,8 +1534,48 @@ function buildProfile() {
   if (desktopEl) desktopEl.innerHTML = html;
   if (mobileEl)  mobileEl.innerHTML  = html;
 
+  // Fetch Company Data & Check Premium
   getDoc(doc(db, 'companies', CU.companyId)).then(s => {
-    if (s.exists()) document.querySelectorAll('#pf-company-display').forEach(el => el.textContent = s.data().name);
+    if (s.exists()) {
+      const compData = s.data();
+      document.querySelectorAll('#pf-company-display').forEach(el => el.textContent = compData.name);
+
+      // Verify Premium Status and Expiry Date
+      let isPremium = compData.isPremium === true;
+      let expiryDateObj = null;
+
+      if (isPremium && compData.subscriptionExpiry) {
+          expiryDateObj = new Date(compData.subscriptionExpiry);
+          if (new Date() > expiryDateObj) {
+              isPremium = false; // Expired
+          }
+      }
+
+      // Update the Premium Box UI
+      document.querySelectorAll('#pf-premium-box').forEach(box => {
+          if (isPremium) {
+              // Format Date like "15 May 2026"
+              const dateStr = expiryDateObj ? expiryDateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Lifetime';
+              box.style.background = 'rgba(16, 185, 129, 0.05)';
+              box.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+              box.innerHTML = `
+                  <div style="font-size: 24px; margin-bottom: 4px;">👑</div>
+                  <div style="font-weight: 700; color: #059669; font-size: 13px; margin-bottom: 2px;">Premium Active</div>
+                  <div style="font-size: 11px; color: var(--tx-2); font-weight: 500;">Account upgraded till ${dateStr}</div>
+              `;
+          } else {
+              box.style.background = 'rgba(245, 158, 11, 0.05)';
+              box.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+              box.innerHTML = `
+                  <div style="font-size: 24px; margin-bottom: 4px;">👑</div>
+                  <div style="font-weight: 700; color: #D97706; font-size: 13px; margin-bottom: 8px;">Free Plan</div>
+                  <button onclick="window.location.href='subscription.html'" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 12px; cursor: pointer; width: 100%; box-shadow: 0 4px 12px rgba(245,158,11,0.2);">
+                      Upgrade to Premium
+                  </button>
+              `;
+          }
+      });
+    }
   });
 
   setupOTPBoxes('#pwd-otp-boxes');
