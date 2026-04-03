@@ -654,9 +654,45 @@ function setupUI() {
     if (bnAv) { bnAv.textContent = ini; bnAv.style.background = col + '22'; bnAv.style.color = col; }
   }
 
-  document.getElementById('topbar-name').textContent = name.split(' ')[0];
+ document.getElementById('topbar-name').textContent = name.split(' ')[0];
+  
+  // --- CHECK PREMIUM STATUS & TIME LIMIT ---
   getDoc(doc(db, 'companies', CU.companyId)).then(s => {
-    if (s.exists()) document.getElementById('topbar-company').textContent = s.data().name;
+    if (s.exists()) {
+      const compData = s.data();
+      document.getElementById('topbar-company').textContent = compData.name;
+      
+      // 1. Get current premium status
+      let isPremium = compData.isPremium === true;
+      
+      // 2. Check if the subscription time has ended
+      if (isPremium && compData.subscriptionExpiry) {
+        const expiryDate = new Date(compData.subscriptionExpiry);
+        const today = new Date();
+        
+        // If today's date is greater than the expiry date, time is up!
+        if (today > expiryDate) {
+          isPremium = false; 
+        }
+      }
+      
+      // Save it globally so other functions know if they are premium
+      CU.isPremium = isPremium;
+
+      // 3. Control the Upgrade Button
+      const upgBtn = document.getElementById('globalUpgradeBtn');
+      if (upgBtn) {
+        if (isPremium === false) {
+          // SHOW button (Company is free, or time has ended)
+          upgBtn.classList.remove('hidden');
+          upgBtn.style.display = 'flex';
+        } else {
+          // HIDE button (Company is premium and time is still active)
+          upgBtn.classList.add('hidden');
+          upgBtn.style.display = 'none';
+        }
+      }
+    }
   });
 
   const h = new Date().getHours();
