@@ -1,1 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Upgrade — Zenda</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'DM Sans', sans-serif; background: #F4F5F8; color: #0D0F14; margin: 0; padding: 40px 20px; text-align: center; }
+  h1 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 28px; margin-bottom: 10px; }
+  p { color: #6C6F80; margin-bottom: 40px; }
+  
+  .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 900px; margin: 0 auto 40px; }
+  .card { background: #fff; border-radius: 16px; padding: 30px 20px; border: 1px solid #E2E3E9; box-shadow: 0 4px 20px rgba(0,0,0,0.05); position: relative; }
+  .card.pro { border: 2px solid #4F46E5; box-shadow: 0 8px 30px rgba(79,70,229,0.15); }
+  
+  .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #10B981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+  .plan-name { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+  .price { font-size: 36px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: #4F46E5; margin-bottom: 20px; }
+  .price span { font-size: 14px; color: #6C6F80; font-weight: 500; }
+  
+  ul { list-style: none; padding: 0; text-align: left; margin-bottom: 30px; font-size: 14px; color: #3D3F4A; }
+  ul li { margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  ul li::before { content: '✓'; color: #10B981; font-weight: bold; }
+  
+  .payment-section { background: #fff; max-width: 500px; margin: 0 auto; padding: 30px; border-radius: 16px; border: 1px solid #E2E3E9; display: none; }
+  .payment-section.active { display: block; }
+  
+  .upi-box { background: #EEF2FF; border: 1.5px dashed #4F46E5; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-weight: bold; color: #4F46E5; }
+  
+  input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1.5px solid #E2E3E9; border-radius: 8px; font-family: 'DM Sans'; box-sizing: border-box; }
+  button { background: #4F46E5; color: white; border: none; padding: 14px 24px; border-radius: 10px; font-weight: 600; cursor: pointer; width: 100%; transition: 0.2s; }
+  button:hover { background: #4338CA; }
+  
+  .btn-outline { background: white; color: #0D0F14; border: 1.5px solid #E2E3E9; margin-top: 10px; }
+  .btn-outline:hover { background: #F4F5F8; }
+</style>
+</head>
+<body>
 
+  <h1>Upgrade your workspace</h1>
+  <p>Unlock unlimited warehouses and premium features.</p>
+
+  <div class="pricing-grid" id="pricingGrid">
+    <div class="card">
+      <div class="plan-name">Free Starter</div>
+      <div class="price">₹0<span> / forever</span></div>
+      <ul>
+        <li>1 Warehouse limit</li>
+        <li>Unlimited Products</li>
+        <li>Basic Reporting</li>
+      </ul>
+      <button class="btn-outline" onclick="window.location.href='dashboard.html'">Current Plan</button>
+    </div>
+
+    <div class="card pro">
+      <div class="plan-name">Monthly Premium</div>
+      <div class="price">₹30<span> / month</span></div>
+      <ul>
+        <li>Unlimited Warehouses</li>
+        <li>Unlimited Products & Entries</li>
+        <li>Premium Support</li>
+      </ul>
+      <button onclick="showPayment('Monthly (₹30)')">Select Monthly</button>
+    </div>
+
+    <div class="card pro">
+      <div class="badge">2 Months Free! 🎁</div>
+      <div class="plan-name">Annual Premium</div>
+      <div class="price">₹300<span> / year</span></div>
+      <ul>
+        <li>Unlimited Warehouses</li>
+        <li>Unlimited Products & Entries</li>
+        <li>Premium Support</li>
+        <li>Save ₹60 annually</li>
+      </ul>
+      <button onclick="showPayment('Annual (₹300)')">Select Annual</button>
+    </div>
+  </div>
+
+  <div class="payment-section" id="paymentSection">
+    <h2>Complete your payment</h2>
+    <p>You selected the <strong id="selectedPlan">...</strong> plan.</p>
+    
+    <div class="upi-box">
+      Pay via UPI:<br>
+      <span style="font-size: 20px;">your_upi_id@bank</span> </div>
+    
+    <p style="font-size: 13px; margin-bottom: 20px;">Open GPay, PhonePe, or Paytm, send the exact amount to the UPI ID above, and enter the 12-digit UTR/Transaction ID below.</p>
+
+    <input type="text" id="utrNumber" placeholder="Enter 12-digit UTR / Ref Number" maxlength="12">
+    <button id="submitBtn" onclick="submitUpgradeRequest()">Verify Payment</button>
+    <button class="btn-outline" onclick="cancelPayment()">Cancel</button>
+  </div>
+
+<script type="module">
+  import { auth, db } from './firebase-config.js';
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  let CU = null;
+
+  // Initialize User
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = 'login.html'; return; }
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    if(snap.exists()) {
+      CU = { uid: user.uid, ...snap.data() };
+      if(!CU.companyId) CU.companyId = user.uid;
+    }
+  });
+
+  window.showPayment = function(planName) {
+    window.selectedPlanName = planName;
+    document.getElementById('pricingGrid').style.display = 'none';
+    document.getElementById('paymentSection').classList.add('active');
+    document.getElementById('selectedPlan').textContent = planName;
+  }
+
+  window.cancelPayment = function() {
+    document.getElementById('pricingGrid').style.display = 'grid';
+    document.getElementById('paymentSection').classList.remove('active');
+    document.getElementById('utrNumber').value = '';
+  }
+
+  window.submitUpgradeRequest = async function() {
+    const utr = document.getElementById('utrNumber').value.trim();
+    if(utr.length < 8) {
+      alert("Please enter a valid UTR / Transaction number.");
+      return;
+    }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = "Submitting...";
+
+    try {
+      // Save request to Firestore
+      await addDoc(collection(db, 'upgrade_requests'), {
+        companyId: CU.companyId,
+        requestedBy: CU.uid,
+        userName: CU.name,
+        plan: window.selectedPlanName,
+        utrNumber: utr,
+        status: 'pending',
+        timestamp: serverTimestamp()
+      });
+
+      alert("Payment proof submitted successfully! We will verify the UTR and activate your premium account within 2 hours.");
+      window.location.href = 'dashboard.html';
+    } catch (e) {
+      alert("Error submitting request: " + e.message);
+      btn.disabled = false;
+      btn.textContent = "Verify Payment";
+    }
+  }
+</script>
+</body>
+</html>
