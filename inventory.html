@@ -1016,26 +1016,28 @@ body {
 /* ═══════════════════════════════════════
    BUTTONS
 ════════════════════════════════════════ */
-  .fab-add {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: white;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Mobile FAB - hidden by default on PC */
+.fab-add {
+  position: fixed; bottom: 24px; right: 24px;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--accent); color: white; border: none;
+  display: none; 
+  align-items: center; justify-content: center;
   box-shadow: 0 8px 30px rgba(79,70,229,0.35);
-  z-index: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  z-index: 500; cursor: pointer; transition: all 0.2s ease;
 }
 .fab-add:hover { transform: scale(1.05) translateY(-2px); }
 .fab-add.hidden { display: none !important; }
+
+/* PC Button defaults */
+.btn-add-pc { display: inline-flex; }
+
+/* Toggle visibility on Mobile screens */
+@media (max-width: 768px) {
+  .btn-add-pc { display: none !important; }
+  .fab-add { display: flex; }
+}
+  
 button {
   border: none;
   font-family: var(--f-body);
@@ -1700,7 +1702,13 @@ input[type=number] { -moz-appearance: textfield; }
     <div class="prod-card">
       <div class="pc-hdr">
         <div class="pc-title">Products</div>
-        <button class="fab-add hidden" id="btnAddProd" onclick="window.openAddProd()">
+        
+        <button class="btn-primary btn-sm btn-add-pc hidden" id="btnAddProdPC" onclick="window.openAddProd()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Product
+        </button>
+        
+        <button class="fab-add hidden" id="btnAddProdMobile" onclick="window.openAddProd()">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       </div>
@@ -2145,7 +2153,9 @@ window.openWH=async function(wh){
   const isOwner=CU.role==='owner';
   const isManager=CU.role==='manager';
   document.getElementById('btnDelWH').classList.toggle('hidden',!isOwner);
-  document.getElementById('btnAddProd').classList.toggle('hidden',!(isOwner||isManager));
+  const canAdd = (isOwner || isManager);
+  const btnPC = document.getElementById('btnAddProdPC'); if(btnPC) btnPC.classList.toggle('hidden', !canAdd);
+  const btnMob = document.getElementById('btnAddProdMobile'); if(btnMob) btnMob.classList.toggle('hidden', !canAdd);
   document.getElementById('pSrch').value='';
   showView('wh');
   await loadProds(curWH);
