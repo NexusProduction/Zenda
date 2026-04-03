@@ -2037,6 +2037,17 @@ async function init(){
     else{CU={uid:activeUid,role:'owner',companyId:activeUid,name:authUser?.displayName||'Owner'};}
   }catch(e){CU=sessionUser||{uid:activeUid,role:'owner',companyId:activeUid,name:'Owner'};}
   if(!CU.companyId)CU.companyId=activeUid;
+  
+  // NEW: Fetch company premium status
+  try {
+    const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
+    if (compSnap.exists()) {
+      CU.isPremium = compSnap.data().isPremium === true;
+    } else {
+      CU.isPremium = false;
+    }
+  } catch(e) { CU.isPremium = false; }
+
   setSyncBadge('ok','✓ Synced');
   const canM=CU.role==='owner'||CU.role==='manager';
   const addRow=document.getElementById('addWhRow');
@@ -2365,7 +2376,18 @@ window.addProduct=async function(){
 function getConvRowsFixedDataFromAdd(){const rows=document.querySelectorAll('#addProdConvRows .conv-row-fixed');const convs=[];const seen=new Set();for(const row of rows){const mult=parseFloat(row.querySelector('.mult-inp').value);const altUnit=row.querySelector('.alt-unit-sel').value;if(seen.has(altUnit)||!mult||mult<=0||!altUnit)return null;seen.add(altUnit);convs.push({name:altUnit,ratio:mult});}return convs;}
 
 // ── WAREHOUSE MANAGEMENT ──
+// ── WAREHOUSE MANAGEMENT ──
 window.createWH=async function(){
+  // NEW: Premium Limit Check (1 Warehouse for Free users)
+  if (!CU.isPremium && WHs.length >= 1) {
+    window.closeM('m-wh');
+    window.showToast('Free plan limited to 1 warehouse. Please upgrade.', 'e');
+    setTimeout(() => {
+      window.location.href = 'subscription.html';
+    }, 1500);
+    return;
+  }
+
   const name=document.getElementById('wn').value.trim();const loc=document.getElementById('wl').value.trim();const raw=document.getElementById('wc').value;const cat=raw==='other'?(document.getElementById('wcc').value.trim()||'Other'):raw;
   if(!name||!loc){setMM('whMsg','⚠ Enter name and location.','err');return;}setMM('whMsg','Creating…','');
   try{const cid=CU.companyId;await addDoc(collection(db,'godowns'),{name,location:loc,category:cat,companyId:cid,createdBy:CU.uid,createdAt:new Date().toISOString()});['wn','wl'].forEach(id=>document.getElementById(id).value='');document.getElementById('wc').value='general';window.closeM('m-wh');window.showToast('Warehouse created ✓','s');}catch(e){setMM('whMsg','❌ Failed: '+e.message,'err');}
