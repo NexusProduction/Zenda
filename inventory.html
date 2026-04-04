@@ -2144,29 +2144,44 @@ function renderWHs(){
   // Hide add row when warehouses exist (clean UI)
   if(addRow)addRow.style.display='none';
 
- WHs.forEach((wh,i)=>{
-    const isLocked = !CU.isPremium && i > 0; // First warehouse (i=0) is free, the rest lock if not premium
-    const icon = isLocked ? '👑' : ICONS[i%ICONS.length];
+WHs.forEach((wh,i)=>{
+    const isLocked = !CU.isPremium && i > 0;
+    const icon = ICONS[i%ICONS.length]; // Keep normal icon
     const catLabel = CATS[wh.category]||wh.category||'Warehouse';
 
-    // Locked Visuals (Yellow/Amber background)
-    const bgStyle = isLocked ? 'background: var(--amber-soft); border-color: var(--amber-border); opacity: 0.9;' : '';
-    const pcLockText = isLocked ? '<span style="color:var(--amber); font-weight: 700;">Locked • Upgrade to Unlock</span>' : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}`;
-    const mobLockText = isLocked ? '<span style="color:var(--amber); font-weight: 700;">Locked • Tap to Upgrade</span>' : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}`;
+    // 1. Keep standard HTML structures exactly as they normally look
+    const normalPcHtml = `<div class="whr-ico">${icon}</div><div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="whr-meta"><span class="wh-tag">${esc(catLabel)}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div></div><div class="whr-arrow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
+    
+    const normalMobHtml = `<div class="wh-card-m-ico">${icon}</div><div class="wh-card-m-info"><div class="wh-card-m-name">${esc(wh.name)}</div><div class="wh-card-m-loc"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="wh-card-m-right"><span class="wh-card-m-badge">${esc(catLabel)}</span><div class="wh-card-m-meta"><span class="wh-card-m-cnt" id="wmc-${wh.id}">… items</span><div class="hdot hg" id="hmhd-${wh.id}"></div></div></div>`;
+
+    // 2. Create the floating Lock Overlay Pill
+    const lockOverlay = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); z-index:10; border-radius:inherit;"><div style="background:var(--amber); color:white; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px; box-shadow:var(--shadow-sm);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Upgrade to Access</div></div>`;
 
     // ── PC ROW ──
     const row=document.createElement('div');
     row.className='whr';
-    if (isLocked) row.setAttribute('style', bgStyle);
-    row.innerHTML=`<div class="whr-ico" ${isLocked ? 'style="background:none;border:none;font-size:24px;"' : ''}>${icon}</div><div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc">${pcLockText}</div></div><div class="whr-meta"><span class="wh-tag">${esc(catLabel)}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div></div><div class="whr-arrow">${isLocked ? '👑' : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>'}</div>`;
+    if (isLocked) {
+      row.style.position = 'relative';
+      row.style.display = 'block'; 
+      row.style.padding = '0'; // Move original padding inside the blur wrapper
+      row.innerHTML = `<div style="display:flex; align-items:center; gap:16px; width:100%; padding:16px 20px; filter: blur(3.5px) grayscale(40%); opacity: 0.6; pointer-events: none;">${normalPcHtml}</div>${lockOverlay}`;
+    } else {
+      row.innerHTML = normalPcHtml;
+    }
     row.onclick=() => isLocked ? window.location.href='subscription.html' : window.openWH(wh);
     pcList.appendChild(row);
 
     // ── MOBILE CARD ──
     const card=document.createElement('div');
     card.className='wh-card-m';
-    if (isLocked) card.setAttribute('style', bgStyle);
-    card.innerHTML=`<div class="wh-card-m-ico" ${isLocked ? 'style="background:none;border:none;font-size:24px;"' : ''}>${icon}</div><div class="wh-card-m-info"><div class="wh-card-m-name">${esc(wh.name)}</div><div class="wh-card-m-loc">${mobLockText}</div></div><div class="wh-card-m-right"><span class="wh-card-m-badge">${esc(catLabel)}</span><div class="wh-card-m-meta"><span class="wh-card-m-cnt" id="wmc-${wh.id}">… items</span><div class="hdot hg" id="hmhd-${wh.id}"></div></div></div>`;
+    if (isLocked) {
+      card.style.position = 'relative';
+      card.style.display = 'block'; 
+      card.style.padding = '0'; // Move original padding inside the blur wrapper
+      card.innerHTML = `<div style="display:flex; align-items:center; gap:14px; width:100%; padding:16px 18px; filter: blur(3.5px) grayscale(40%); opacity: 0.6; pointer-events: none;">${normalMobHtml}</div>${lockOverlay}`;
+    } else {
+      card.innerHTML = normalMobHtml;
+    }
     card.onclick=() => isLocked ? window.location.href='subscription.html' : window.openWH(wh);
     mobileList.appendChild(card);
 
