@@ -20,9 +20,9 @@ export { auth, db };
 export { firebaseConfig };
 
 export const EMAILJS_CONFIG = {
-  publicKey:  "dg8t6B0d-DhPa3Tl6",
-  serviceId:  "service_dc7ge9b",
-  templateId: "template_4turj9r"
+  serviceId: 'service_dc7ge9b',
+  templateId: 'template_4turj9r',
+  publicKey: 'dg8t6B0d-DhPa3Tl6'
 };
 
 export const APP_VERSION = "1.0.0";
