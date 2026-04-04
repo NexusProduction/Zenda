@@ -148,7 +148,12 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
       Calendar
     </div>
   </div>
-  <div class="ab-sync sync-connecting" id="sync-status">Connecting…</div>
+  <div class="ab-right" style="display: flex; align-items: center; gap: 12px;">
+    <button id="globalUpgradeBtn" class="hidden" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; padding: 0 12px; height: 32px; border-radius: 8px; font-weight: 600; font-size: 12px; display: none; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(245,158,11,0.3);" onclick="window.location.href='subscription.html'">
+      👑 Upgrade
+    </button>
+    <div class="ab-sync sync-connecting" id="sync-status">Connecting…</div>
+  </div>
 </div>
 
 <div class="cal-layout">
@@ -338,6 +343,31 @@ async function init() {
         CU.companyId = uSnap.data().companyId || activeUid;
       }
     } catch (e) { console.warn("DB Fetch Error", e); }
+
+    // Check Premium Status & Expiry Date
+    try {
+      const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
+      if (compSnap.exists()) {
+        const compData = compSnap.data();
+        CU.isPremium = compData.isPremium === true;
+        if (CU.isPremium && compData.subscriptionExpiry) {
+          if (new Date() > new Date(compData.subscriptionExpiry)) {
+            CU.isPremium = false; // Plan expired
+          }
+        }
+      } else { CU.isPremium = false; }
+    } catch(e) { CU.isPremium = false; }
+
+    const upgBtn = document.getElementById('globalUpgradeBtn');
+    if (upgBtn) {
+      if (!CU.isPremium) {
+        upgBtn.classList.remove('hidden');
+        upgBtn.style.display = 'flex';
+      } else {
+        upgBtn.classList.add('hidden');
+        upgBtn.style.display = 'none';
+      }
+    }
 
     loadAllRealtime();
 
