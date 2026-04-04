@@ -2073,7 +2073,7 @@ async function init(){
   }
 
   setSyncBadge('ok','✓ Synced');
-  const canM=CU.role==='owner'||CU.role==='manager';
+  const canM=CU.role==='owner';
   const addRow=document.getElementById('addWhRow');
   if(addRow&&!canM)addRow.style.display='none';
   const btnTop=document.getElementById('btnAddWhTop');
@@ -2113,94 +2113,134 @@ function loadWHs(){
   },()=>setSyncBadge('err','Sync Error'));
 }
 
-function renderWHs(){
-  const pcList=document.getElementById('whList');
-  const mobileList=document.getElementById('whMobileList');
-  const emptyEl=document.getElementById('whEmpty');
-  const addRow=document.getElementById('addWhRow');
-  const canM=CU.role==='owner'||CU.role==='manager';
+function renderWHs(){// ── WAREHOUSE PAGINATION VARIABLES ──
+let whCurrentPage = 1;
+const WH_PER_PAGE = 10; // Shows 10 warehouses per page
 
-  pcList.innerHTML='';
-  mobileList.innerHTML='';
+window.changeWhPage = function(dir) {
+  whCurrentPage += dir;
+  renderWHs();
+};
 
- if(!WHs.length){
-    // Show empty state
+function renderWHs() {
+  const pcList = document.getElementById('whList');
+  const mobileList = document.getElementById('whMobileList');
+  const emptyEl = document.getElementById('whEmpty');
+  const addRow = document.getElementById('addWhRow');
+  const canAdd = CU.role === 'owner'; // Only Owner
+
+  pcList.innerHTML = '';
+  mobileList.innerHTML = '';
+
+  if (!WHs.length) {
     emptyEl.classList.add('visible');
-    if(addRow&&canM)addRow.style.display='flex';
+    if (addRow && canAdd) addRow.style.display = 'flex';
     
-    // Show Mobile add button ONLY when empty
-    if(canM){
-      const addBtn=document.createElement('button');
-      addBtn.className='btn-add-wh-m';
-      addBtn.innerHTML=`<div class="btn-add-wh-m-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span class="btn-add-wh-m-txt">Add New Warehouse</span>`;
-      addBtn.onclick=()=>window.openM('m-wh');
+    // Show Mobile add button ONLY when empty & user is Owner
+    if (canAdd) {
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn-add-wh-m';
+      addBtn.innerHTML = `<div class="btn-add-wh-m-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span class="btn-add-wh-m-txt">Add New Warehouse</span>`;
+      addBtn.onclick = () => window.openM('m-wh');
       mobileList.appendChild(addBtn);
     }
     return;
   }
 
-  // Hide empty state — warehouses exist
   emptyEl.classList.remove('visible');
-  // Hide add row when warehouses exist (clean UI)
-  if(addRow)addRow.style.display='none';
+  if (addRow) addRow.style.display = 'none';
 
-WHs.forEach((wh,i)=>{
-    const isLocked = !CU.isPremium && i > 0;
-    const icon = ICONS[i%ICONS.length]; // Keep normal icon
-    const catLabel = CATS[wh.category]||wh.category||'Warehouse';
+  // ── PAGINATION SLICING ──
+  const totalPages = Math.ceil(WHs.length / WH_PER_PAGE);
+  if (whCurrentPage > totalPages) whCurrentPage = totalPages;
+  if (whCurrentPage < 1) whCurrentPage = 1;
+  
+  const startIndex = (whCurrentPage - 1) * WH_PER_PAGE;
+  const slice = WHs.slice(startIndex, startIndex + WH_PER_PAGE);
 
-    // 1. Keep standard HTML structures exactly as they normally look
+  let lockedPcHtml = '';
+  let lockedMobHtml = '';
+  let hasLocked = false;
+
+  slice.forEach((wh, indexInSlice) => {
+    const globalIndex = startIndex + indexInSlice;
+    const isLocked = !CU.isPremium && globalIndex > 0; // First warehouse (index 0) is always free
+    const icon = ICONS[globalIndex % ICONS.length];
+    const catLabel = CATS[wh.category] || wh.category || 'Warehouse';
+
     const normalPcHtml = `<div class="whr-ico">${icon}</div><div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="whr-meta"><span class="wh-tag">${esc(catLabel)}</span><span class="wh-cnt" id="wc-${wh.id}">… items</span><div class="hdot hg" id="hd-${wh.id}"></div></div><div class="whr-arrow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
     
     const normalMobHtml = `<div class="wh-card-m-ico">${icon}</div><div class="wh-card-m-info"><div class="wh-card-m-name">${esc(wh.name)}</div><div class="wh-card-m-loc"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="wh-card-m-right"><span class="wh-card-m-badge">${esc(catLabel)}</span><div class="wh-card-m-meta"><span class="wh-card-m-cnt" id="wmc-${wh.id}">… items</span><div class="hdot hg" id="hmhd-${wh.id}"></div></div></div>`;
 
-    // 2. Create the floating Lock Overlay Pill
-    const lockOverlay = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); z-index:10; border-radius:inherit;"><div style="background:var(--amber); color:white; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px; box-shadow:var(--shadow-sm);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Upgrade to Access</div></div>`;
-
-    // ── PC ROW ──
-    const row=document.createElement('div');
-    row.className='whr';
     if (isLocked) {
-      row.style.position = 'relative';
-      row.style.display = 'block'; 
-      row.style.padding = '0'; // Move original padding inside the blur wrapper
-      row.innerHTML = `<div style="display:flex; align-items:center; gap:16px; width:100%; padding:16px 20px; filter: blur(3.5px) grayscale(40%); opacity: 0.6; pointer-events: none;">${normalPcHtml}</div>${lockOverlay}`;
+      hasLocked = true;
+      // Group locked warehouses together in strings
+      lockedPcHtml += `<div class="whr" style="border-bottom: 1px solid var(--border); pointer-events: none;">${normalPcHtml}</div>`;
+      lockedMobHtml += `<div class="wh-card-m" style="margin-bottom: 12px; pointer-events: none; box-shadow: none; border-color: transparent;">${normalMobHtml}</div>`;
     } else {
-      row.innerHTML = normalPcHtml;
-    }
-    row.onclick=() => isLocked ? window.location.href='subscription.html' : window.openWH(wh);
-    pcList.appendChild(row);
+      // Render the Unlocked Free Warehouse Normally
+      const row = document.createElement('div');
+      row.className = 'whr';
+      row.innerHTML = normalPcHtml;
+      row.onclick = () => window.openWH(wh);
+      pcList.appendChild(row);
 
-    // ── MOBILE CARD ──
-    const card=document.createElement('div');
-    card.className='wh-card-m';
-    if (isLocked) {
-      card.style.position = 'relative';
-      card.style.display = 'block'; 
-      card.style.padding = '0'; // Move original padding inside the blur wrapper
-      card.innerHTML = `<div style="display:flex; align-items:center; gap:14px; width:100%; padding:16px 18px; filter: blur(3.5px) grayscale(40%); opacity: 0.6; pointer-events: none;">${normalMobHtml}</div>${lockOverlay}`;
-    } else {
-      card.innerHTML = normalMobHtml;
+      const card = document.createElement('div');
+      card.className = 'wh-card-m';
+      card.innerHTML = normalMobHtml;
+      card.onclick = () => window.openWH(wh);
+      mobileList.appendChild(card);
     }
-    card.onclick=() => isLocked ? window.location.href='subscription.html' : window.openWH(wh);
-    mobileList.appendChild(card);
 
-    // Load product count
+    // Load Product Counts
     getDocs(query(collection(db,'products'),where('godownId','==',wh.id))).then(ps=>{
-      const cnt=ps.size;
-      const pc=document.getElementById(`wc-${wh.id}`);
-      const pmc=document.getElementById(`wmc-${wh.id}`);
-      if(pc)pc.textContent=cnt+' items';
-      if(pmc)pmc.textContent=cnt+' items';
-      const low=ps.docs.filter(d=>{const p=d.data();return p.minStock!=null?p.stock<=p.minStock:p.stock<=0;}).length;
-      const dotEl=document.getElementById(`hd-${wh.id}`);
-      const dotMEl=document.getElementById(`hmhd-${wh.id}`);
-      const cls=low>3?'hdot hl':low>0?'hdot hw':'hdot hg';
-      if(dotEl)dotEl.className=cls;
-      if(dotMEl)dotMEl.className=cls;
+      const cnt = ps.size;
+      const pc = document.getElementById(`wc-${wh.id}`);
+      const pmc = document.getElementById(`wmc-${wh.id}`);
+      if(pc) pc.textContent = cnt + ' items';
+      if(pmc) pmc.textContent = cnt + ' items';
+      const low = ps.docs.filter(d=>{const p=d.data();return p.minStock!=null?p.stock<=p.minStock:p.stock<=0;}).length;
+      const dotEl = document.getElementById(`hd-${wh.id}`);
+      const dotMEl = document.getElementById(`hmhd-${wh.id}`);
+      const cls = low>3?'hdot hl':low>0?'hdot hw':'hdot hg';
+      if(dotEl) dotEl.className = cls;
+      if(dotMEl) dotMEl.className = cls;
     }).catch(()=>{});
   });
 
+  // ── RENDER ONE UNIVERSAL BLUR BLOCK FOR LOCKED ITEMS ──
+  if (hasLocked) {
+    const lockOverlay = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:10;"><button onclick="window.location.href='subscription.html'" style="background:var(--amber); color:white; padding:12px 24px; border:none; border-radius:24px; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow: 0 8px 30px rgba(217,119,6,0.3); cursor:pointer; transition: transform 0.2s;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Upgrade to Access All</button></div>`;
+
+    const lockedPcContainer = document.createElement('div');
+    lockedPcContainer.style.position = 'relative';
+    lockedPcContainer.innerHTML = `<div style="filter: blur(5px) grayscale(30%); opacity: 0.6; user-select: none;">${lockedPcHtml}</div>${lockOverlay}`;
+    pcList.appendChild(lockedPcContainer);
+
+    const lockedMobContainer = document.createElement('div');
+    lockedMobContainer.style.position = 'relative';
+    lockedMobContainer.style.marginTop = '6px';
+    lockedMobContainer.innerHTML = `<div style="filter: blur(5px) grayscale(30%); opacity: 0.6; user-select: none;">${lockedMobHtml}</div>${lockOverlay}`;
+    mobileList.appendChild(lockedMobContainer);
+  }
+
+  // ── RENDER PAGINATION ROW ──
+  if (totalPages > 1) {
+    const pagStyle = 'padding:8px 16px; border:1.5px solid var(--border); border-radius:10px; background:var(--white-pure); font-size:13px; font-weight:600; color:var(--text-2); transition:all 0.15s;';
+    const pagHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-top:1px solid var(--border); margin-top:10px;">
+        <button onclick="window.changeWhPage(-1)" ${whCurrentPage===1?'disabled style="opacity:0.5;cursor:not-allowed;'+pagStyle+'"':'style="cursor:pointer;'+pagStyle+'"'}>Previous</button>
+        <span style="font-size:13px; color:var(--text-3); font-weight:600;">Page ${whCurrentPage} of ${totalPages}</span>
+        <button onclick="window.changeWhPage(1)" ${whCurrentPage===totalPages?'disabled style="opacity:0.5;cursor:not-allowed;'+pagStyle+'"':'style="cursor:pointer;'+pagStyle+'"'}>Next</button>
+      </div>`;
+    
+    const pcPag = document.createElement('div'); pcPag.innerHTML = pagHTML;
+    pcList.appendChild(pcPag);
+
+    const mobPag = document.createElement('div'); mobPag.innerHTML = pagHTML;
+    mobileList.appendChild(mobPag);
+  }
+}
 }
 
 window.openWH=async function(wh){
