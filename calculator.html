@@ -70,7 +70,12 @@ body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;fo
     </button>
     <div class="ab-brand"><div class="ab-icon">🧮</div>Calculator</div>
   </div>
-  <div class="ab-sync" id="sync-status">Syncing...</div>
+  <div class="ab-right" style="display: flex; align-items: center; gap: 12px;">
+    <button id="globalUpgradeBtn" class="hidden" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; padding: 0 12px; height: 32px; border-radius: 8px; font-weight: 600; font-size: 12px; display: none; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(245,158,11,0.3);" onclick="window.location.href='subscription.html'">
+      👑 Upgrade
+    </button>
+    <div class="ab-sync" id="sync-status">Syncing...</div>
+  </div>
 </div>
 
 <div class="calc-wrapper">
@@ -115,10 +120,46 @@ body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;fo
 <div id="toast-container"></div>
 
 <script type="module">
-import { saveCalcHistory, loadCalcHistory } from './apps.js';
+iimport { saveCalcHistory, loadCalcHistory } from './apps.js';
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const ZCFG={apiKey:"AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",authDomain:"zenda-app-fe1c2.firebaseapp.com",projectId:"zenda-app-fe1c2",storageBucket:"zenda-app-fe1c2.appspot.com",messagingSenderId:"764717910838",appId:"1:764717910838:web:18a9ac7772ba91f4928197"};
+const zA=getApps().find(a=>a.name==='[DEFAULT]')||initializeApp(ZCFG);
+const db=getFirestore(zA);
 
 const params = new URLSearchParams(window.location.search);
 const uid = params.get('uid');
+
+async function checkPremiumStatus() {
+  if (!uid) return;
+  try {
+    const uSnap = await getDoc(doc(db, 'users', uid));
+    if (uSnap.exists()) {
+      const compId = uSnap.data().companyId || uid;
+      const compSnap = await getDoc(doc(db, 'companies', compId));
+      let isPremium = false;
+      if (compSnap.exists()) {
+        const compData = compSnap.data();
+        isPremium = compData.isPremium === true;
+        if (isPremium && compData.subscriptionExpiry) {
+          if (new Date() > new Date(compData.subscriptionExpiry)) isPremium = false;
+        }
+      }
+      const upgBtn = document.getElementById('globalUpgradeBtn');
+      if (upgBtn) {
+        if (!isPremium) {
+          upgBtn.classList.remove('hidden');
+          upgBtn.style.display = 'flex';
+        } else {
+          upgBtn.classList.add('hidden');
+          upgBtn.style.display = 'none';
+        }
+      }
+    }
+  } catch(e) {}
+}
+checkPremiumStatus();
 
 let display='0', expr='', operator=null, prevVal=null, newInput=false, history=[];
 const displayEl=document.getElementById('calc-display');
