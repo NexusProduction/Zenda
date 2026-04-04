@@ -621,21 +621,33 @@ async function init(){
     if(!user||!user.uid){syncEl.textContent='Not signed in';syncEl.className='sync-badge sync-err';setTimeout(()=>window.location.href='login.html',1500);return;}
     CU={uid:user.uid,role:user.role||'staff',companyId:user.companyId||user.uid,name:user.name||'Staff'};
     
-    // Check Premium Status
+    // Check Premium Status & Expiry Date
     try {
       const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
       if (compSnap.exists()) {
-        CU.isPremium = compSnap.data().isPremium === true;
-        CU.ownerId = compSnap.data().ownerId;
+        const compData = compSnap.data();
+        CU.isPremium = compData.isPremium === true;
+        CU.ownerId = compData.ownerId;
+        
+        // Check if the subscription time has ended
+        if (CU.isPremium && compData.subscriptionExpiry) {
+          const expiryDate = new Date(compData.subscriptionExpiry);
+          if (new Date() > expiryDate) {
+            CU.isPremium = false; // Time ended! Re-lock the categories
+          }
+        }
       }
     } catch(e) {}
 
-    // Show Global Upgrade Button if not premium
-    if (!CU.isPremium) {
-      const upgBtn = document.getElementById('globalUpgradeBtn');
-      if (upgBtn) {
+    // Control the Global Upgrade Button based on final Premium Status
+    const upgBtn = document.getElementById('globalUpgradeBtn');
+    if (upgBtn) {
+      if (!CU.isPremium) {
         upgBtn.classList.remove('hidden');
         upgBtn.style.display = 'flex';
+      } else {
+        upgBtn.classList.add('hidden');
+        upgBtn.style.display = 'none';
       }
     }
 
