@@ -419,7 +419,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
 <script type="module">
 import { db, auth } from './firebase-config.js';
 import { getCurrentUser } from './auth.js';
-import { addNotification } from './notifications.js'; // Imported notification logic
+import { addNotification } from './notifications.js';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── STATE ──
@@ -427,6 +427,84 @@ const syncEl = document.getElementById('sync-status');
 let CU = { uid:null, role:'staff', companyId:null, name:'Staff', isPremium: false, ownerId: null };
 let allData = [], catFilter = '', searchVal = '', monthFilter = '';
 let currentPage = 1, PER_PAGE = 10, catExpanded = false, panelOpen = false, expType = 'expense';
+
+// ── PREMIUM LOCK & APPEAL LOGIC ──
+window.checkExpenseCategory = function() {
+  const catDropdown = document.getElementById('exp-category');
+  const overlay = document.getElementById('premiumLockOverlay');
+  const content = document.getElementById('premiumLockContent');
+
+  // 1. Physically lock the dropdown options if they are not upgraded
+  Array.from(catDropdown.options).forEach(opt => {
+    if (opt.value !== 'Inventory Stock') {
+      if (!CU.isPremium) {
+        opt.disabled = true; // Locks the option
+        if (!opt.text.includes('👑')) opt.text = opt.text + ' (Premium 👑)';
+      } else {
+        opt.disabled = false; // Unlocks the option
+        opt.text = opt.text.replace(' (Premium 👑)', '');
+      }
+    }
+  });
+
+  // 2. Show the Upgrade/Appeal Banner inside the modal
+  if (!CU.isPremium && catDropdown.value !== 'Inventory Stock') {
+    overlay.style.display = 'flex';
+    
+    // Force dropdown back to Inventory if they somehow bypass it
+    catDropdown.value = 'Inventory Stock';
+
+    if (CU.role === 'owner') {
+      content.innerHTML = `
+        <div style="font-size:26px; margin-bottom:6px;">👑</div>
+        <div style="font-weight:700; color:var(--tx1); margin-bottom:4px; font-size:13px;">Premium Categories Locked</div>
+        <div style="font-size:11px; color:var(--tx2); margin-bottom:12px;">Upgrade to unlock Logistics, Office, Materials, and more.</div>
+        <button type="button" onclick="window.location.href='subscription.html'" style="background:var(--blue); color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; width:100%; font-size:12px;">Upgrade to Premium</button>
+      `;
+    } else {
+      content.innerHTML = `
+        <div style="font-size:26px; margin-bottom:6px;">👑</div>
+        <div style="font-weight:700; color:var(--tx1); margin-bottom:4px; font-size:13px;">Premium Categories Locked</div>
+        <div style="font-size:11px; color:var(--tx2); margin-bottom:12px;">Your company needs Premium to log other expense types.</div>
+        <button type="button" id="appealBtn" onclick="window.appealForUpgrade()" style="background:var(--blue); color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; width:100%; font-size:12px;">Appeal for Upgrade</button>
+      `;
+    }
+  } else {
+    // If upgraded or on Inventory, hide the banner completely
+    overlay.style.display = 'none';
+  }
+};
+document.getElementById('exp-category').addEventListener('change', window.checkExpenseCategory);
+
+window.appealForUpgrade = async function() {
+  const btn = document.getElementById('appealBtn');
+  if (btn) {
+    btn.textContent = 'Appealed ✓';
+    btn.style.background = '#10B981'; // Green color
+    btn.disabled = true;
+  }
+
+  try {
+    if (CU.ownerId) {
+      await addNotification(CU.ownerId, {
+        type: 'task_assigned', 
+        message: `Staff (${CU.name}) appealed to upgrade to premium to use full Expense categories.`,
+        actorId: CU.uid,
+        actorName: CU.name
+      });
+      toast("Appeal sent to owner!", "success");
+    } else {
+      toast("Could not find owner ID.", "error");
+    }
+  } catch(e) {
+    toast("Failed to send appeal.", "error");
+    if (btn) {
+      btn.textContent = 'Appeal for Upgrade';
+      btn.style.background = 'var(--blue)';
+      btn.disabled = false;
+    }
+  }
+};
 
 // ── CATEGORY CONFIG ──
 const CAT_COLOR = {'Inventory Stock':'#4F46E5','Godown Expense':'#D97706','Installation':'#0891B2','Logistics':'#8B5CF6','Raw Materials':'#16A34A','Office & Admin':'#374151','Miscellaneous':'#71717A'};
@@ -455,85 +533,6 @@ document.getElementById('exp-date').valueAsDate = new Date();
   }
   sel.innerHTML=opts;
 })();
-
-// ── PREMIUM LOCK & APPEAL LOGIC ──
-// ── PREMIUM LOCK & APPEAL LOGIC ──
-window.checkExpenseCategory = function() {
-  const catDropdown = document.getElementById('exp-category');
-  const overlay = document.getElementById('premiumLockOverlay');
-  const content = document.getElementById('premiumLockContent');
-
-  // 1. Physically lock the dropdown options if they are not upgraded
-  Array.from(catDropdown.options).forEach(opt => {
-    if (opt.value !== 'Inventory Stock') {
-      if (!CU.isPremium) {
-        opt.disabled = true; // Locks the option
-        if (!opt.text.includes('👑')) opt.text = opt.text + ' (Premium 👑)';
-      } else {
-        opt.disabled = false; // Unlocks the option
-        opt.text = opt.text.replace(' (Premium 👑)', '');
-      }
-    }
-  });
-
-  // 2. Show the Upgrade/Appeal Banner inside the modal
-  if (!CU.isPremium) {
-    overlay.style.display = 'flex';
-    
-    // Force dropdown back to Inventory if they somehow bypass it
-    if (catDropdown.value !== 'Inventory Stock') catDropdown.value = 'Inventory Stock';
-
-    if (CU.role === 'owner') {
-      content.innerHTML = `
-        <div style="font-size:26px; margin-bottom:6px;">👑</div>
-        <div style="font-weight:700; color:var(--tx1); margin-bottom:4px; font-size:13px;">Premium Categories Locked</div>
-        <div style="font-size:11px; color:var(--tx2); margin-bottom:12px;">Upgrade to unlock Logistics, Office, Materials, and more.</div>
-        <button type="button" onclick="window.location.href='subscription.html'" style="background:var(--blue); color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; width:100%; font-size:12px;">Upgrade to Premium</button>
-      `;
-    } else {
-      content.innerHTML = `
-        <div style="font-size:26px; margin-bottom:6px;">👑</div>
-        <div style="font-weight:700; color:var(--tx1); margin-bottom:4px; font-size:13px;">Premium Categories Locked</div>
-        <div style="font-size:11px; color:var(--tx2); margin-bottom:12px;">Your company needs Premium to log other expense types.</div>
-        <button type="button" id="appealBtn" onclick="window.appealForUpgrade()" style="background:var(--blue); color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; width:100%; font-size:12px;">Appeal for Upgrade</button>
-      `;
-    }
-  } else {
-    // If upgraded, hide the banner completely
-    overlay.style.display = 'none';
-  }
-};
-document.getElementById('exp-category').addEventListener('change', window.checkExpenseCategory);
-
-window.appealForUpgrade = async function() {
-  const btn = document.getElementById('appealBtn');
-  if (btn) {
-    btn.textContent = 'Appealed ✓';
-    btn.style.background = '#10B981'; // Turns green
-    btn.disabled = true;
-  }
-
-  try {
-    if (CU.ownerId) {
-      await addNotification(CU.ownerId, {
-        type: 'task_assigned', 
-        message: `Staff (${CU.name}) appealed to upgrade to premium to use full Expense categories.`,
-        actorId: CU.uid,
-        actorName: CU.name
-      });
-      toast("Appeal sent to owner!", "success");
-    } else {
-      toast("Could not find owner ID.", "error");
-    }
-  } catch(e) {
-    toast("Failed to send appeal.", "error");
-    if (btn) {
-      btn.textContent = 'Appeal for Upgrade';
-      btn.style.background = 'var(--blue)';
-      btn.disabled = false;
-    }
-  }
-};
 
 // ── BREAKDOWN TOGGLE ──
 const mainGrid = document.getElementById('main-grid');
@@ -645,8 +644,6 @@ async function init(){
     
     // Check Premium Status & Expiry Date
     try {
-      // Check Premium Status & Expiry Date
-    try {
       const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
       if (compSnap.exists()) {
         const compData = compSnap.data();
@@ -674,6 +671,9 @@ async function init(){
         upgBtn.style.display = 'none';
       }
     }
+
+    // Initialize category locks based on fetched premium status
+    window.checkExpenseCategory();
 
     const q=query(collection(db,'expenses'),where('companyId','==',CU.companyId));
     onSnapshot(q,snap=>{
