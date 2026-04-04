@@ -120,16 +120,17 @@ body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;fo
 <div id="toast-container"></div>
 
 <script type="module">
-iimport { saveCalcHistory, loadCalcHistory } from './apps.js';
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const ZCFG={apiKey:"AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",authDomain:"zenda-app-fe1c2.firebaseapp.com",projectId:"zenda-app-fe1c2",storageBucket:"zenda-app-fe1c2.appspot.com",messagingSenderId:"764717910838",appId:"1:764717910838:web:18a9ac7772ba91f4928197"};
-const zA=getApps().find(a=>a.name==='[DEFAULT]')||initializeApp(ZCFG);
-const db=getFirestore(zA);
+import { saveCalcHistory, loadCalcHistory } from './apps.js';
+import { db } from './firebase-config.js'; // Imports existing DB without crashing!
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const params = new URLSearchParams(window.location.search);
 const uid = params.get('uid');
+
+let display='0', expr='', operator=null, prevVal=null, newInput=false, history=[];
+const displayEl=document.getElementById('calc-display');
+const exprEl=document.getElementById('calc-expr');
+const syncEl=document.getElementById('sync-status');
 
 async function checkPremiumStatus() {
   if (!uid) return;
@@ -157,14 +158,8 @@ async function checkPremiumStatus() {
         }
       }
     }
-  } catch(e) {}
+  } catch(e) { console.warn("Failed checking premium:", e); }
 }
-checkPremiumStatus();
-
-let display='0', expr='', operator=null, prevVal=null, newInput=false, history=[];
-const displayEl=document.getElementById('calc-display');
-const exprEl=document.getElementById('calc-expr');
-const syncEl=document.getElementById('sync-status');
 
 async function loadHistory() {
   if(!uid){syncEl.textContent='Not synced';return;}
@@ -223,6 +218,7 @@ document.addEventListener('keydown',(e)=>{
   else if(e.key==='Backspace'){display=display.length>1?display.slice(0,-1):'0';updateDisplay();}
 });
 
+checkPremiumStatus();
 loadHistory();
 updateDisplay();
 </script>
