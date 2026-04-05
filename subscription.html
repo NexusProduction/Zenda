@@ -185,16 +185,47 @@ let selectedPlan = '';
 let currentUserData = null;
 
 // Get the user info so we can send Owner Name and Company Name to the Sheet
+// And check if they are already Premium to show the banner!
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     const snap = await getDoc(doc(db, 'users', user.uid));
     if (snap.exists()) {
       currentUserData = snap.data();
-      // If it's an owner, grab the company name too
+      
       if (currentUserData.companyId) {
         const compSnap = await getDoc(doc(db, 'companies', currentUserData.companyId));
         if (compSnap.exists()) {
-          currentUserData.companyName = compSnap.data().name;
+          const compData = compSnap.data();
+          currentUserData.companyName = compData.name;
+          
+          // Check Premium Status
+          let isPremium = compData.isPremium === true;
+          let expiryDate = compData.subscriptionExpiry ? new Date(compData.subscriptionExpiry) : null;
+          
+          if (isPremium && expiryDate) {
+            if (new Date() > expiryDate) {
+              // Time has passed! Revert to Free Plan
+              isPremium = false; 
+            } else {
+              // User is currently Premium! Show the banner
+              document.getElementById('activePlanBanner').style.display = 'block';
+              
+              // Format the date beautifully (e.g., April 5, 2026)
+              const options = { year: 'numeric', month: 'long', day: 'numeric' };
+              const formattedDate = expiryDate.toLocaleDateString('en-US', options);
+              
+              document.getElementById('activePlanText').innerHTML = `You are currently on the <strong>${compData.planType || 'Premium'}</strong> plan. <br> Your subscription will expire on <strong>${formattedDate}</strong>.`;
+              
+              // Disable the Upgrade buttons and turn them green
+              document.querySelectorAll('.btn-primary').forEach(btn => {
+                btn.disabled = true;
+                btn.textContent = 'Active Plan ✓';
+                btn.style.background = 'var(--green)';
+                btn.style.boxShadow = 'none';
+                btn.style.cursor = 'default';
+              });
+            }
+          }
         }
       }
     }
