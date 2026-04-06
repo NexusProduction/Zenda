@@ -9,20 +9,49 @@
   body { background: #F4F5F8; color: #0D0F14; font-family: 'DM Sans', sans-serif; padding: 40px 20px; }
   .container { max-width: 800px; margin: 0 auto; }
   h1 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; margin-bottom: 20px; }
+  
+  /* Tabs UI */
+  .tabs { display: flex; gap: 12px; margin-bottom: 24px; }
+  .tab-btn { background: white; border: 1.5px solid #E2E3E9; padding: 12px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; color: #6C6F80; transition: 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; }
+  .tab-btn:hover { background: #F9FAFB; }
+  .tab-btn.active { background: #4F46E5; color: white; border-color: #4F46E5; }
+
+  /* Cards */
   .card { background: white; padding: 20px; border-radius: 16px; border: 1px solid #E2E3E9; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .card-col { flex-direction: column; align-items: flex-start; }
+  
   .details { display: flex; flex-direction: column; gap: 4px; }
-  .tag { display: inline-block; background: #EEF2FF; color: #4F46E5; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .tag { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .tag-premium { background: #EEF2FF; color: #4F46E5; }
+  .tag-free { background: #F3F4F6; color: #4B5563; }
+  
   .btn { background: #10B981; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; }
   .btn:hover { background: #059669; }
-  .empty { text-align: center; color: #6C6F80; padding: 40px; }
+  .empty { text-align: center; color: #6C6F80; padding: 40px; font-weight: 500; }
+
+  /* Staff List inside Company Card */
+  .staff-item { font-size: 14px; margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+  .staff-role { font-size: 11px; background: #FEF3C7; color: #92400E; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+  .staff-email { color: #6C6F80; }
 </style>
 </head>
 <body>
 
 <div class="container">
   <h1>👑 Super Admin Portal</h1>
-  <p style="margin-bottom: 24px; color: #6C6F80;">Pending Upgrade Requests</p>
-  <div id="requestList"><div class="empty">Loading...</div></div>
+  
+  <div class="tabs">
+    <button class="tab-btn active" id="btnRequests" onclick="switchTab('requests')">⏳ Pending Requests</button>
+    <button class="tab-btn" id="btnCompanies" onclick="switchTab('companies')">🏢 All Companies</button>
+  </div>
+
+  <div id="viewRequests">
+    <div id="requestList"><div class="empty">Loading requests...</div></div>
+  </div>
+
+  <div id="viewCompanies" style="display: none;">
+    <div id="companyList"><div class="empty">Loading companies...</div></div>
+  </div>
 </div>
 
 <script type="module">
@@ -35,8 +64,28 @@ onAuthStateChanged(auth, async (user) => {
   loadRequests();
 });
 
+// --- UI TAB SWITCHER ---
+window.switchTab = function(tab) {
+  document.getElementById('btnRequests').classList.remove('active');
+  document.getElementById('btnCompanies').classList.remove('active');
+  document.getElementById('viewRequests').style.display = 'none';
+  document.getElementById('viewCompanies').style.display = 'none';
+
+  if (tab === 'requests') {
+    document.getElementById('btnRequests').classList.add('active');
+    document.getElementById('viewRequests').style.display = 'block';
+    loadRequests();
+  } else {
+    document.getElementById('btnCompanies').classList.add('active');
+    document.getElementById('viewCompanies').style.display = 'block';
+    loadCompanies();
+  }
+};
+
+// --- LOAD PENDING PAYMENTS ---
 async function loadRequests() {
   const list = document.getElementById('requestList');
+  list.innerHTML = '<div class="empty">Loading requests...</div>';
   try {
     const q = query(collection(db, 'upgradeRequests'), where('status', '==', 'pending'));
     const snap = await getDocs(q);
@@ -53,46 +102,115 @@ async function loadRequests() {
       div.className = 'card';
       div.innerHTML = `
         <div class="details">
-          <div><span class="tag">${data.plan} Plan</span></div>
-          <div style="font-weight:600; font-size:16px;">${data.companyName} (${data.ownerName})</div>
-          <div style="color:#6C6F80; font-size:14px; font-family:monospace;">UTR: ${data.utr}</div>
+          <div><span class="tag tag-premium">${data.plan} Plan</span></div>
+          <div style="font-weight:600; font-size:16px;">${data.companyName}</div>
+          <div style="color:#6C6F80; font-size:14px;">Requested by: ${data.ownerName}</div>
+          <div style="color:#4F46E5; font-size:14px; font-family:monospace; font-weight:700; margin-top:4px;">UTR: ${data.utr}</div>
         </div>
         <button class="btn" onclick="approveRequest('${docSnap.id}', '${data.companyId}', '${data.plan}')">Approve & Upgrade</button>
       `;
       list.appendChild(div);
     });
   } catch(e) {
-    list.innerHTML = '<div class="empty" style="color:red;">Error loading requests. Check if your email matches the Super Admin rule!</div>';
+    list.innerHTML = '<div class="empty" style="color:red;">Error loading requests. Are you logged in as Super Admin?</div>';
   }
 }
 
+// --- LOAD ALL COMPANIES DIRECTORY ---
+async function loadCompanies() {
+  const list = document.getElementById('companyList');
+  list.innerHTML = '<div class="empty">Fetching all companies...</div>';
+  try {
+    // Fetch both collections at the same time for speed
+    const [compSnap, userSnap] = await Promise.all([
+      getDocs(collection(db, 'companies')),
+      getDocs(collection(db, 'users'))
+    ]);
+
+    // Group users by their company ID so we can list staff easily
+    const usersMap = {};
+    userSnap.forEach(doc => {
+      const u = doc.data();
+      if (!usersMap[u.companyId]) usersMap[u.companyId] = [];
+      usersMap[u.companyId].push(u);
+    });
+
+    if (compSnap.empty) {
+      list.innerHTML = '<div class="empty">No companies registered yet.</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    compSnap.forEach(doc => {
+      const comp = doc.data();
+      const compId = doc.id;
+      const staff = usersMap[compId] || [];
+      
+      let planText = 'Basic Free';
+      let planClass = 'tag-free';
+      let expiryHtml = '';
+      
+      if (comp.isPremium) {
+        planText = comp.planType + ' Plan';
+        planClass = 'tag-premium';
+        if (comp.subscriptionExpiry) {
+          const d = new Date(comp.subscriptionExpiry);
+          let isExpired = new Date() > d;
+          let color = isExpired ? '#DC2626' : '#059669';
+          let prefix = isExpired ? 'Expired on:' : 'Expires:';
+          expiryHtml = `<div style="font-size:13px; color:${color}; font-weight:600; margin-top:6px;">${prefix} ${d.toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'})}</div>`;
+        }
+      }
+
+      let staffHtml = staff.map(s => `
+        <div class="staff-item">
+          👤 ${s.name} <span class="staff-email">(${s.email || 'No email'})</span>
+          <span class="staff-role">${s.role}</span>
+        </div>
+      `).join('');
+
+      list.innerHTML += `
+        <div class="card card-col">
+          <div style="display:flex; justify-content:space-between; width:100%; border-bottom:1px solid #E2E3E9; padding-bottom:12px; margin-bottom:12px;">
+            <div style="font-family:'Plus Jakarta Sans', sans-serif; font-weight:800; font-size:18px;">${comp.name}</div>
+            <div style="text-align:right;">
+              <span class="tag ${planClass}">${planText}</span>
+              ${expiryHtml}
+            </div>
+          </div>
+          <div style="width:100%;">
+            <div style="font-size:12px; color:#6C6F80; font-weight:700; margin-bottom:8px; letter-spacing:0.05em; text-transform:uppercase;">Registered Staff Members</div>
+            ${staffHtml || '<div class="staff-email" style="font-size:14px;">No staff registered yet.</div>'}
+          </div>
+        </div>
+      `;
+    });
+  } catch(e) {
+    list.innerHTML = '<div class="empty" style="color:red;">Error loading companies.</div>';
+    console.error(e);
+  }
+}
+
+// --- APPROVE LOGIC ---
 window.approveRequest = async function(reqId, companyId, plan) {
   if (!confirm(`Are you sure you want to upgrade this company to ${plan}?`)) return;
-  
   try {
-    // 1. Calculate Expiry Date
     let expiry = new Date();
     if (plan === 'Monthly') expiry.setMonth(expiry.getMonth() + 1);
     else if (plan === 'Annual') expiry.setFullYear(expiry.getFullYear() + 1);
     
-    // 2. Upgrade the Company
     await updateDoc(doc(db, 'companies', companyId), {
       isPremium: true,
       planType: plan,
       subscriptionExpiry: expiry.toISOString()
     });
 
-    // 3. Mark request as approved
-    await updateDoc(doc(db, 'upgradeRequests', reqId), {
-      status: 'approved'
-    });
+    await updateDoc(doc(db, 'upgradeRequests', reqId), { status: 'approved' });
 
     alert("✅ Successfully upgraded!");
-    loadRequests(); // Refresh list
-
+    loadRequests(); 
   } catch(e) {
-    alert("Error updating database. Are you logged in as Super Admin?");
-    console.error(e);
+    alert("Error updating database."); console.error(e);
   }
 }
 </script>
