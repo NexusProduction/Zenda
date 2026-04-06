@@ -173,50 +173,36 @@ body { background: var(--bg); color: var(--tx1); font-family: var(--f-body); -we
 
 <script type="module">
 import { auth, db } from './firebase-config.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+// Added collection and addDoc imports!
+import { doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// ==========================================
-// PASTE YOUR GOOGLE APPS SCRIPT URL HERE:
-// ==========================================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwoDMMaKDzJaGrcYbztKK_r6I5hrH5LGvMGeaLPk6JwyLn3WJV1xhz9TBWyCuwHtbmB/exec";
+const APPS_SCRIPT_URL = "PASTE_YOUR_WEB_APP_URL_HERE"; // Optional: keep this if you still want a backup sent to Google Sheets!
 
 let selectedPlan = '';
 let currentUserData = null;
 
-// Get the user info so we can send Owner Name and Company Name to the Sheet
-// And check if they are already Premium to show the banner!
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     const snap = await getDoc(doc(db, 'users', user.uid));
     if (snap.exists()) {
       currentUserData = snap.data();
-      
       if (currentUserData.companyId) {
         const compSnap = await getDoc(doc(db, 'companies', currentUserData.companyId));
         if (compSnap.exists()) {
           const compData = compSnap.data();
           currentUserData.companyName = compData.name;
           
-          // Check Premium Status
           let isPremium = compData.isPremium === true;
           let expiryDate = compData.subscriptionExpiry ? new Date(compData.subscriptionExpiry) : null;
           
           if (isPremium && expiryDate) {
             if (new Date() > expiryDate) {
-              // Time has passed! Revert to Free Plan
               isPremium = false; 
             } else {
-              // User is currently Premium! Show the banner
               document.getElementById('activePlanBanner').style.display = 'block';
-              
-              // Format the date beautifully (e.g., April 5, 2026)
               const options = { year: 'numeric', month: 'long', day: 'numeric' };
-              const formattedDate = expiryDate.toLocaleDateString('en-US', options);
-              
-              document.getElementById('activePlanText').innerHTML = `You are currently on the <strong>${compData.planType || 'Premium'}</strong> plan. <br> Your subscription will expire on <strong>${formattedDate}</strong>.`;
-              
-              // Disable the Upgrade buttons and turn them green
+              document.getElementById('activePlanText').innerHTML = `You are currently on the <strong>${compData.planType || 'Premium'}</strong> plan. <br> Your subscription will expire on <strong>${expiryDate.toLocaleDateString('en-US', options)}</strong>.`;
               document.querySelectorAll('.btn-primary').forEach(btn => {
                 btn.disabled = true;
                 btn.textContent = 'Active Plan ✓';
@@ -238,40 +224,32 @@ window.openPayment = function(plan, price) {
   document.getElementById('utrInput').value = '';
   document.getElementById('payModal').classList.add('open');
 };
-
-window.closePayment = function() {
-  document.getElementById('payModal').classList.remove('open');
-};
+window.closePayment = function() { document.getElementById('payModal').classList.remove('open'); };
 
 window.submitPayment = async function() {
   const utr = document.getElementById('utrInput').value.trim();
   const btn = document.getElementById('submitPayBtn');
 
-  if (utr.length < 6) {
-    alert("Please enter a valid Transaction ID / UTR.");
-    return;
-  }
+  if (utr.length < 6) { alert("Please enter a valid Transaction ID / UTR."); return; }
+  btn.disabled = true; btn.textContent = "Sending...";
 
-  btn.disabled = true;
-  btn.textContent = "Sending...";
-
-  // Prepare data to send to Google Sheet
   const payload = {
     ownerName: currentUserData ? currentUserData.name : "Unknown Owner",
     companyName: (currentUserData && currentUserData.companyName) ? currentUserData.companyName : "Unknown Company",
-    companyId: currentUserData ? currentUserData.companyId : "", // WE ADDED THIS LINE!
+    companyId: currentUserData ? currentUserData.companyId : auth.currentUser.uid,
     plan: selectedPlan,
-    utr: utr
+    utr: utr,
+    status: "pending",
+    createdAt: new Date().toISOString()
   };
 
   try {
-    // Send data to Google Apps Script
-    await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    // 1. Send to Google Sheets as a backup (Optional)
+    fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).catch(e=>console.log(e));
 
-    // Show Success
+    // 2. Save to Firebase for your new Admin Portal!
+    await addDoc(collection(db, 'upgradeRequests'), payload);
+
     closePayment();
     const toast = document.getElementById('toast');
     toast.classList.add('show');
@@ -280,8 +258,7 @@ window.submitPayment = async function() {
   } catch(e) {
     alert("There was an error submitting your request. Please try again.");
   } finally {
-    btn.disabled = false;
-    btn.textContent = "Submit for Verification";
+    btn.disabled = false; btn.textContent = "Submit for Verification";
   }
 };
 </script>
