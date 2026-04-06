@@ -11,32 +11,38 @@
   h1 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; margin-bottom: 20px; }
   
   /* Tabs UI */
-  .tabs { display: flex; gap: 12px; margin-bottom: 24px; }
+  .tabs { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
   .tab-btn { background: white; border: 1.5px solid #E2E3E9; padding: 12px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; color: #6C6F80; transition: 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; }
   .tab-btn:hover { background: #F9FAFB; }
   .tab-btn.active { background: #4F46E5; color: white; border-color: #4F46E5; }
 
   /* Cards */
   .card { background: white; padding: 20px; border-radius: 16px; border: 1px solid #E2E3E9; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-  .card-col { flex-direction: column; align-items: flex-start; }
+  .card-col { flex-direction: column; align-items: flex-start; width: 100%; box-sizing: border-box; }
   
   .details { display: flex; flex-direction: column; gap: 4px; }
   .tag { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; margin-bottom: 4px; }
   .tag-premium { background: #EEF2FF; color: #4F46E5; }
   .tag-free { background: #F3F4F6; color: #4B5563; }
   
-  .btn { background: #10B981; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+  .btn { background: #10B981; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; white-space: nowrap; }
   .btn:hover { background: #059669; }
-  .empty { text-align: center; color: #6C6F80; padding: 40px; font-weight: 500; }
+  .empty { text-align: center; color: #6C6F80; padding: 40px; font-weight: 500; width: 100%; }
 
   /* Staff Dropdown */
   .staff-toggle { background: #EEF2FF; border: 1px solid #C7D2FE; color: #4F46E5; padding: 10px 14px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; font-family: 'DM Sans', sans-serif; margin-top: 4px; }
   .staff-toggle:hover { background: #E0E7FF; }
-  .staff-container { display: none; margin-top: 10px; background: #F9FAFB; padding: 14px; border-radius: 12px; border: 1px solid #E2E3E9; }
+  .staff-container { display: none; margin-top: 10px; background: #F9FAFB; padding: 14px; border-radius: 12px; border: 1px solid #E2E3E9; width: 100%; box-sizing: border-box;}
   
   .staff-item { font-size: 14px; margin-top: 8px; display: flex; align-items: center; gap: 8px; }
   .staff-role { font-size: 11px; background: #FEF3C7; color: #92400E; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
   .staff-email { color: #6C6F80; }
+
+  /* Wallet Input */
+  .wallet-input { flex: 1; padding: 12px; border-radius: 10px; border: 1.5px solid #E2E3E9; font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none; }
+  .wallet-input:focus { border-color: #4F46E5; }
+  .tx-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #F3F4F6; width: 100%; }
+  .tx-row:last-child { border-bottom: none; }
 </style>
 </head>
 <body>
@@ -47,6 +53,7 @@
   <div class="tabs">
     <button class="tab-btn active" id="btnRequests" onclick="switchTab('requests')">⏳ Pending Requests</button>
     <button class="tab-btn" id="btnCompanies" onclick="switchTab('companies')">🏢 All Companies</button>
+    <button class="tab-btn" id="btnWallet" onclick="switchTab('wallet')">💰 Wallet & Revenue</button>
   </div>
 
   <div id="viewRequests">
@@ -56,33 +63,62 @@
   <div id="viewCompanies" style="display: none;">
     <div id="companyList"><div class="empty">Loading companies...</div></div>
   </div>
+
+  <div id="viewWallet" style="display: none;">
+    <div class="card card-col">
+      <div style="font-size:14px; color:#6C6F80; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Current Balance</div>
+      <h2 style="font-family:'Plus Jakarta Sans', sans-serif; font-size:36px; color:#4F46E5; margin: 4px 0 20px;">₹<span id="walletBalance">0</span></h2>
+      
+      <div style="display: flex; gap: 10px; width: 100%;">
+        <input type="number" id="withdrawAmount" class="wallet-input" placeholder="Enter amount to withdraw...">
+        <button class="btn" style="background: #111827;" onclick="withdraw()">Withdraw</button>
+      </div>
+    </div>
+
+    <div class="card card-col">
+      <div style="font-family:'Plus Jakarta Sans', sans-serif; font-weight:800; font-size:18px; border-bottom: 1px solid #E2E3E9; padding-bottom: 12px; margin-bottom: 4px; width: 100%;">Transaction History</div>
+      <div id="txHistory" style="width: 100%;"></div>
+    </div>
+  </div>
 </div>
 
 <script type="module">
 import { auth, db } from './firebase-config.js';
-import { collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+// Make sure setDoc and getDoc are imported for the Wallet!
+import { collection, query, where, getDocs, doc, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+let walletRef = null;
+let currentBalance = 0;
+let txHistory = [];
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) return window.location.href = 'login.html';
+  
+  // Set up the secure wallet database location just for the Super Admin
+  walletRef = doc(db, 'appData', user.uid, 'apps', 'adminWallet');
+  
   loadRequests();
+  loadWallet();
 });
 
 // --- UI TAB SWITCHER ---
 window.switchTab = function(tab) {
-  document.getElementById('btnRequests').classList.remove('active');
-  document.getElementById('btnCompanies').classList.remove('active');
-  document.getElementById('viewRequests').style.display = 'none';
-  document.getElementById('viewCompanies').style.display = 'none';
+  ['btnRequests', 'btnCompanies', 'btnWallet'].forEach(id => document.getElementById(id).classList.remove('active'));
+  ['viewRequests', 'viewCompanies', 'viewWallet'].forEach(id => document.getElementById(id).style.display = 'none');
 
   if (tab === 'requests') {
     document.getElementById('btnRequests').classList.add('active');
     document.getElementById('viewRequests').style.display = 'block';
     loadRequests();
-  } else {
+  } else if (tab === 'companies') {
     document.getElementById('btnCompanies').classList.add('active');
     document.getElementById('viewCompanies').style.display = 'block';
     loadCompanies();
+  } else if (tab === 'wallet') {
+    document.getElementById('btnWallet').classList.add('active');
+    document.getElementById('viewWallet').style.display = 'block';
+    renderWallet();
   }
 };
 
@@ -91,13 +127,74 @@ window.toggleStaff = function(compId) {
   const container = document.getElementById(`staff-${compId}`);
   const icon = document.getElementById(`icon-${compId}`);
   if (container.style.display === 'none') {
-    container.style.display = 'block';
-    icon.textContent = '▲';
+    container.style.display = 'block'; icon.textContent = '▲';
   } else {
-    container.style.display = 'none';
-    icon.textContent = '▼';
+    container.style.display = 'none'; icon.textContent = '▼';
   }
 };
+
+// --- WALLET LOGIC ---
+async function loadWallet() {
+  try {
+    const snap = await getDoc(walletRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      currentBalance = data.balance || 0;
+      txHistory = data.transactions || [];
+    }
+    renderWallet();
+  } catch(e) { console.error("Wallet load error:", e); }
+}
+
+function renderWallet() {
+  document.getElementById('walletBalance').textContent = currentBalance;
+  const list = document.getElementById('txHistory');
+  
+  if (txHistory.length === 0) {
+    list.innerHTML = '<div class="empty">No transactions yet.</div>';
+    return;
+  }
+
+  list.innerHTML = [...txHistory].reverse().map(tx => {
+    let isIncome = tx.type === 'income';
+    let color = isIncome ? '#059669' : '#DC2626';
+    let sign = isIncome ? '+' : '-';
+    let dateStr = new Date(tx.date).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+    
+    return `
+      <div class="tx-row">
+        <div>
+          <div style="font-weight:600; font-size:15px; color:#0D0F14;">${tx.desc}</div>
+          <div style="font-size:12px; color:#6C6F80;">${dateStr}</div>
+        </div>
+        <div style="color:${color}; font-weight:800; font-size:16px;">${sign}₹${tx.amount}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.withdraw = async function() {
+  const amtInput = document.getElementById('withdrawAmount');
+  const amt = parseFloat(amtInput.value);
+  
+  if (isNaN(amt) || amt <= 0) return alert("Please enter a valid amount.");
+  if (amt > currentBalance) return alert("Insufficient balance! You cannot withdraw more than you have.");
+  
+  currentBalance -= amt;
+  txHistory.push({
+    type: 'withdrawal',
+    amount: amt,
+    desc: 'Withdrawn to Bank Account',
+    date: new Date().toISOString()
+  });
+  
+  try {
+    await setDoc(walletRef, { balance: currentBalance, transactions: txHistory }, { merge: true });
+    amtInput.value = '';
+    renderWallet();
+  } catch(e) { alert("Failed to record withdrawal."); }
+};
+
 
 // --- LOAD PENDING PAYMENTS ---
 async function loadRequests() {
@@ -117,6 +214,7 @@ async function loadRequests() {
       const data = docSnap.data();
       const div = document.createElement('div');
       div.className = 'card';
+      // Passed the company name into the approveRequest function so the Wallet knows who paid!
       div.innerHTML = `
         <div class="details">
           <div><span class="tag tag-premium">${data.plan} Plan</span></div>
@@ -124,7 +222,7 @@ async function loadRequests() {
           <div style="color:#6C6F80; font-size:14px;">Requested by: ${data.ownerName}</div>
           <div style="color:#4F46E5; font-size:14px; font-family:monospace; font-weight:700; margin-top:4px;">UTR: ${data.utr}</div>
         </div>
-        <button class="btn" onclick="approveRequest('${docSnap.id}', '${data.companyId}', '${data.plan}')">Approve & Upgrade</button>
+        <button class="btn" onclick="approveRequest('${docSnap.id}', '${data.companyId}', '${data.plan}', '${data.companyName}')">Approve & Upgrade</button>
       `;
       list.appendChild(div);
     });
@@ -151,8 +249,7 @@ async function loadCompanies() {
     });
 
     if (compSnap.empty) {
-      list.innerHTML = '<div class="empty">No companies registered yet.</div>';
-      return;
+      list.innerHTML = '<div class="empty">No companies registered yet.</div>'; return;
     }
 
     list.innerHTML = '';
@@ -166,14 +263,13 @@ async function loadCompanies() {
       let expiryHtml = '';
       
       if (comp.isPremium) {
-        planText = comp.planType + ' Plan';
-        planClass = 'tag-premium';
+        planText = comp.planType + ' Plan'; planClass = 'tag-premium';
         if (comp.subscriptionExpiry) {
           const d = new Date(comp.subscriptionExpiry);
           let isExpired = new Date() > d;
           let color = isExpired ? '#DC2626' : '#059669';
           let prefix = isExpired ? 'Expired on:' : 'Expires:';
-          expiryHtml = `<div style="font-size:13px; color:${color}; font-weight:600; margin-top:6px;">${prefix} ${d.toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'})}</div>`;
+          expiryHtml = `<div style="font-size:13px; color:${color}; font-weight:600; margin-top:6px;">${prefix} ${d.toLocaleDateString('en-US', {year: 'numeric', month: 'short', day: 'numeric'})}</div>`;
         }
       }
 
@@ -188,16 +284,11 @@ async function loadCompanies() {
         <div class="card card-col">
           <div style="display:flex; justify-content:space-between; width:100%; border-bottom:1px solid #E2E3E9; padding-bottom:12px; margin-bottom:12px;">
             <div style="font-family:'Plus Jakarta Sans', sans-serif; font-weight:800; font-size:18px;">${comp.name}</div>
-            <div style="text-align:right;">
-              <span class="tag ${planClass}">${planText}</span>
-              ${expiryHtml}
-            </div>
+            <div style="text-align:right;"><span class="tag ${planClass}">${planText}</span>${expiryHtml}</div>
           </div>
-          
           <div style="width:100%;">
             <button class="staff-toggle" onclick="toggleStaff('${compId}')">
-              <span>View Staff (${staff.length})</span>
-              <span id="icon-${compId}">▼</span>
+              <span>View Staff (${staff.length})</span><span id="icon-${compId}">▼</span>
             </button>
             <div id="staff-${compId}" class="staff-container" style="display: none;">
               <div style="font-size:12px; color:#6C6F80; font-weight:700; margin-bottom:8px; letter-spacing:0.05em; text-transform:uppercase;">Registered Members</div>
@@ -207,30 +298,43 @@ async function loadCompanies() {
         </div>
       `;
     });
-  } catch(e) {
-    list.innerHTML = '<div class="empty" style="color:red;">Error loading companies.</div>';
-    console.error(e);
-  }
+  } catch(e) { list.innerHTML = '<div class="empty" style="color:red;">Error loading companies.</div>'; }
 }
 
-// --- APPROVE LOGIC ---
-window.approveRequest = async function(reqId, companyId, plan) {
+// --- APPROVE LOGIC (Now Adds to Wallet!) ---
+window.approveRequest = async function(reqId, companyId, plan, companyName) {
   if (!confirm(`Are you sure you want to upgrade this company to ${plan}?`)) return;
   try {
     let expiry = new Date();
     if (plan === 'Monthly') expiry.setMonth(expiry.getMonth() + 1);
     else if (plan === 'Annual') expiry.setFullYear(expiry.getFullYear() + 1);
     
+    // 1. Upgrade the company
     await updateDoc(doc(db, 'companies', companyId), {
       isPremium: true,
       planType: plan,
       subscriptionExpiry: expiry.toISOString()
     });
 
+    // 2. Mark request as approved
     await updateDoc(doc(db, 'upgradeRequests', reqId), { status: 'approved' });
 
-    alert("✅ Successfully upgraded!");
+    // 3. Add Money to Wallet!
+    let paymentAmount = plan === 'Monthly' ? 39 : 399;
+    currentBalance += paymentAmount;
+    
+    txHistory.push({
+      type: 'income',
+      amount: paymentAmount,
+      desc: `${plan} Plan Upgrade — ${companyName}`,
+      date: new Date().toISOString()
+    });
+    
+    await setDoc(walletRef, { balance: currentBalance, transactions: txHistory }, { merge: true });
+
+    alert(`✅ Upgraded successfully! ₹${paymentAmount} added to your wallet.`);
     loadRequests(); 
+    renderWallet(); // Refresh wallet UI in the background
   } catch(e) {
     alert("Error updating database."); console.error(e);
   }
