@@ -29,8 +29,12 @@
   .btn:hover { background: #059669; }
   .empty { text-align: center; color: #6C6F80; padding: 40px; font-weight: 500; }
 
-  /* Staff List inside Company Card */
-  .staff-item { font-size: 14px; margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+  /* Staff Dropdown */
+  .staff-toggle { background: #EEF2FF; border: 1px solid #C7D2FE; color: #4F46E5; padding: 10px 14px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; font-family: 'DM Sans', sans-serif; margin-top: 4px; }
+  .staff-toggle:hover { background: #E0E7FF; }
+  .staff-container { display: none; margin-top: 10px; background: #F9FAFB; padding: 14px; border-radius: 12px; border: 1px solid #E2E3E9; }
+  
+  .staff-item { font-size: 14px; margin-top: 8px; display: flex; align-items: center; gap: 8px; }
   .staff-role { font-size: 11px; background: #FEF3C7; color: #92400E; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
   .staff-email { color: #6C6F80; }
 </style>
@@ -82,6 +86,19 @@ window.switchTab = function(tab) {
   }
 };
 
+// --- TOGGLE STAFF DROPDOWN ---
+window.toggleStaff = function(compId) {
+  const container = document.getElementById(`staff-${compId}`);
+  const icon = document.getElementById(`icon-${compId}`);
+  if (container.style.display === 'none') {
+    container.style.display = 'block';
+    icon.textContent = '▲';
+  } else {
+    container.style.display = 'none';
+    icon.textContent = '▼';
+  }
+};
+
 // --- LOAD PENDING PAYMENTS ---
 async function loadRequests() {
   const list = document.getElementById('requestList');
@@ -121,13 +138,11 @@ async function loadCompanies() {
   const list = document.getElementById('companyList');
   list.innerHTML = '<div class="empty">Fetching all companies...</div>';
   try {
-    // Fetch both collections at the same time for speed
     const [compSnap, userSnap] = await Promise.all([
       getDocs(collection(db, 'companies')),
       getDocs(collection(db, 'users'))
     ]);
 
-    // Group users by their company ID so we can list staff easily
     const usersMap = {};
     userSnap.forEach(doc => {
       const u = doc.data();
@@ -164,7 +179,7 @@ async function loadCompanies() {
 
       let staffHtml = staff.map(s => `
         <div class="staff-item">
-          👤 ${s.name} <span class="staff-email">(${s.email || 'No email'})</span>
+          👤 <span style="font-weight:600;">${s.name}</span> <span class="staff-email">(${s.email || 'No email'})</span>
           <span class="staff-role">${s.role}</span>
         </div>
       `).join('');
@@ -178,9 +193,16 @@ async function loadCompanies() {
               ${expiryHtml}
             </div>
           </div>
+          
           <div style="width:100%;">
-            <div style="font-size:12px; color:#6C6F80; font-weight:700; margin-bottom:8px; letter-spacing:0.05em; text-transform:uppercase;">Registered Staff Members</div>
-            ${staffHtml || '<div class="staff-email" style="font-size:14px;">No staff registered yet.</div>'}
+            <button class="staff-toggle" onclick="toggleStaff('${compId}')">
+              <span>View Staff (${staff.length})</span>
+              <span id="icon-${compId}">▼</span>
+            </button>
+            <div id="staff-${compId}" class="staff-container" style="display: none;">
+              <div style="font-size:12px; color:#6C6F80; font-weight:700; margin-bottom:8px; letter-spacing:0.05em; text-transform:uppercase;">Registered Members</div>
+              ${staffHtml || '<div class="staff-email" style="font-size:14px;">No staff registered yet.</div>'}
+            </div>
           </div>
         </div>
       `;
