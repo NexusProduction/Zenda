@@ -2008,7 +2008,19 @@ document.addEventListener('keydown', e => {
   window.closeAllPanels();
 });
 
-window.handleLogout = async function() { unsubs.forEach(f => f?.()); _profileBuilt = false; await logout(); };
+window.handleLogout = async function() { 
+  unsubs.forEach(f => f?.()); 
+  _profileBuilt = false; 
+  
+  // Wipe session and local storage to forget the user entirely on log out
+  sessionStorage.clear();
+  localStorage.removeItem('zenda_session');
+  
+  await logout(); // Firebase signout happens here
+  
+  // Hard redirect
+  window.location.href = 'login.html';
+};
 
 // ──────────────────────────────────────────────
 // HELPERS
