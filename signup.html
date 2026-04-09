@@ -19,81 +19,144 @@
   --fm:'DM Mono',monospace;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--fb);background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-font-smoothing:antialiased;}
+body{font-family:var(--fb);background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-font-smoothing:antialiased; overflow-x:hidden;}
+a{text-decoration:none;color:inherit}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:8px}
 
-/* PAGE LAYOUT - Highly optimized for vertical space to remove scrollbar */
-.page-wrap{display:grid;grid-template-columns:42% 58%;max-width:1050px;width:100%;background:var(--sf);border-radius:28px;box-shadow:0 20px 60px rgba(15,23,42,.08);overflow:hidden; height:min(640px, 92vh); border:1px solid rgba(0,0,0,0.05);}
+/* PAGE LAYOUT - Highly optimized for vertical space to completely remove scrollbar */
+.page-wrap{display:grid;grid-template-columns:44% 56%;max-width:1100px;width:100%;background:var(--sf);border-radius:28px;box-shadow:0 20px 60px rgba(15,23,42,.06);overflow:hidden; height:min(640px, 92vh); border:1px solid rgba(0,0,0,0.05);}
 
 /* LEFT PANEL (2D CARTOON ANIMATION) */
 .left-visual{
-    background:#E0F2FE; /* Soft Sky Blue */
+    background: linear-gradient(180deg, #E0F2FE 0%, #BAE6FD 100%);
     position:relative;
-    display:flex;align-items:center;justify-content:center;
+    display:flex;align-items:flex-end; /* Anchors the SVG exactly to the bottom */
+    justify-content:center;
     border-right:1px solid rgba(0,0,0,0.03);
     overflow:hidden;
 }
 
-/* Dinosaur Animation Keyframes */
-.dino-scene { width: 100%; height: 100%; max-width: 450px; }
-
-/* The logo falling and disappearing */
-.zenda-logo-anim { animation: logoSequence 10s infinite cubic-bezier(0.34, 1.56, 0.64, 1); }
-@keyframes logoSequence {
-    0%, 20% { transform: translate(215px, -80px); opacity: 1; } /* Out of frame */
-    22%, 35% { transform: translate(215px, 85px); opacity: 1; } /* Bonk on head */
-    40%, 75% { transform: translate(290px, 340px); opacity: 1; } /* Slides to ground */
-    80%, 100% { transform: translate(290px, 340px); opacity: 0; } /* Disappears */
+/* ── 2D NATIVE CSS ANIMATION LOGIC ── */
+.dino-scene { 
+    width: 100%; height: 100%; max-height: 100%; 
+    display: block; 
 }
 
-/* Head reacting to the logo */
-.dino-head { transform-origin: 205px 130px; animation: headReact 10s infinite; }
-@keyframes headReact {
-    0%, 21% { transform: rotate(0deg); }
-    22%, 34% { transform: rotate(12deg); } /* Bonked! */
-    38%, 80% { transform: rotate(40deg); } /* Looking down at logo */
-    85%, 100% { transform: rotate(0deg); }
+/* 1. Global Idle Breathing */
+.dino-body-wrap {
+    transform-origin: 250px 500px;
+    animation: breathing 3s ease-in-out infinite;
+}
+@keyframes breathing {
+    0%, 100% { transform: scaleY(1); }
+    50% { transform: scaleY(0.98) scaleX(1.01); }
 }
 
-/* Jaw opening to shout */
-.dino-jaw { transform-origin: -10px 0px; animation: jawShout 10s infinite; }
-@keyframes jawShout {
-    0%, 9%, 21%, 100% { transform: rotate(0deg); }
-    10%, 20% { transform: rotate(35deg); } /* Wide open */
+/* 2. Neck Movement (Anticipation, Roar, Look Down) */
+.dino-neck {
+    transform-origin: 250px 400px; /* Base of neck */
+    animation: neckLogic 12s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+@keyframes neckLogic {
+    0%, 12% { transform: rotate(0deg); }
+    15%, 18% { transform: rotate(8deg); } /* Anticipation (pull back) */
+    20%, 28% { transform: rotate(-18deg); } /* ROAR! (thrust forward) */
+    32%, 46% { transform: rotate(0deg); } /* Idle */
+    47%, 48% { transform: rotate(5deg) scaleY(0.9); } /* Bonk compress */
+    52%, 75% { transform: rotate(-25deg); } /* Look down at logo */
+    82%, 100% { transform: rotate(0deg); } /* Back to normal */
 }
 
-/* Eye getting wide with confusion */
-.dino-eye { transform-origin: 20px -25px; animation: eyeConfused 10s infinite; }
-@keyframes eyeConfused {
-    0%, 21% { transform: scale(1); }
-    22%, 80% { transform: scale(1.6); } /* Wide eyed */
-    85%, 100% { transform: scale(1); }
+/* 3. Head Movement (Squash & Stretch) */
+.dino-head {
+    transform-origin: 250px 150px; /* Base of head */
+    animation: headLogic 12s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+@keyframes headLogic {
+    0%, 12% { transform: rotate(0deg); }
+    15%, 18% { transform: rotate(12deg); } /* Anticipation */
+    20%, 28% { transform: rotate(-8deg); } /* ROAR! */
+    32%, 46% { transform: rotate(0deg) scale(1); } /* Idle */
+    47% { transform: rotate(0deg) scaleY(0.7) scaleX(1.15) translateY(20px); } /* SQUASH FROM BONK */
+    49% { transform: rotate(-5deg) scaleY(1.05) scaleX(0.95); } /* Stretch bounce */
+    52%, 75% { transform: rotate(35deg) scale(1); } /* Look down */
+    82%, 100% { transform: rotate(0deg) scale(1); }
 }
 
-/* Air particles when shouting */
-.shout-particles { animation: airEmit 10s infinite; }
-@keyframes airEmit {
-    0%, 9%, 21%, 100% { opacity: 0; transform: translateX(0) scale(0.5); }
-    12%, 18% { opacity: 1; transform: translateX(15px) scale(1.1); }
+/* 4. Jaw Movement (Shout) */
+.dino-jaw {
+    transform-origin: 210px 155px; /* Jaw hinge */
+    animation: jawLogic 12s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+@keyframes jawLogic {
+    0%, 18% { transform: rotate(0deg); }
+    20%, 28% { transform: rotate(40deg); } /* Open wide */
+    30%, 100% { transform: rotate(0deg); }
 }
 
-/* Leaves shaking slightly from the roar */
-.shake-leaf { animation: leafTremble 10s infinite; }
-@keyframes leafTremble {
-    0%, 9%, 21%, 100% { transform: rotate(0deg); }
-    10%, 14%, 18% { transform: rotate(3deg); }
-    12%, 16%, 20% { transform: rotate(-3deg); }
+/* 5. Eye Emotions (Blink & Wide Eye) */
+.dino-eye-group {
+    transform-origin: 230px 120px;
+    animation: eyeLogic 12s ease-in-out infinite;
+}
+@keyframes eyeLogic {
+    0%, 8% { transform: scale(1); }
+    9% { transform: scaleY(0.1); } /* Blink */
+    10%, 46% { transform: scale(1); }
+    47% { transform: scaleY(0.1); } /* Blink on bonk */
+    50%, 75% { transform: scale(1.6); } /* Wide eyed confusion */
+    76% { transform: scaleY(0.1); } /* Blink */
+    77%, 100% { transform: scale(1); }
+}
+
+/* 6. Shout Particles (Air blasting) */
+.shout-particles {
+    transform-origin: 120px 150px;
+    animation: particlesLogic 12s cubic-bezier(0.2, 1, 0.3, 1) infinite;
+}
+@keyframes particlesLogic {
+    0%, 19% { opacity: 0; transform: translateX(0) scale(0.5); }
+    20% { opacity: 1; transform: translateX(-50px) scale(1.2); }
+    24% { opacity: 0; transform: translateX(-80px) scale(1.6); }
+    25%, 100% { opacity: 0; transform: translateX(0) scale(0.5); }
+}
+
+/* 7. Trembling Leaves (Secondary Action) */
+.bush-shake {
+    animation: leafLogic 12s ease-in-out infinite;
+}
+@keyframes leafLogic {
+    0%, 19% { transform: rotate(0deg); }
+    20%, 22%, 24%, 26%, 28% { transform: rotate(3deg); }
+    21%, 23%, 25%, 27% { transform: rotate(-3deg); }
+    29%, 100% { transform: rotate(0deg); }
+}
+
+/* 8. Falling Zenda Logo Physics */
+.zenda-logo-fall {
+    animation: logoFallLogic 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes logoFallLogic {
+    0%, 44% { transform: translateY(-200px); opacity: 0; }
+    45% { opacity: 1; transform: translateY(-50px); }
+    47% { transform: translateY(70px) translateX(-5px); } /* Hits head */
+    50% { transform: translateY(10px) translateX(-60px) rotate(-60deg); } /* Bounce up & left */
+    54% { transform: translateY(325px) translateX(-120px) rotate(-110deg); } /* Hits floor */
+    56% { transform: translateY(310px) translateX(-130px) rotate(-120deg); } /* Micro bounce */
+    58%, 80% { transform: translateY(325px) translateX(-135px) rotate(-120deg); opacity: 1; scale: 1; } /* Settles */
+    82%, 100% { transform: translateY(325px) translateX(-135px) rotate(-120deg) scale(0); opacity: 0; } /* Poof disappears */
 }
 
 /* RIGHT PANEL (FORM) */
 .right-form{padding:40px 56px;display:flex;flex-direction:column;justify-content:center;background:var(--sf);overflow-y:auto;position:relative;}
 
 /* COMPACT STEPS INDICATOR */
-.steps{display:flex;align-items:center;gap:0;margin-bottom:28px; max-width: 320px; width:100%; margin-left:auto; margin-right:auto;}
+.steps{display:flex;align-items:center;gap:0;margin-bottom:24px; max-width: 320px; width:100%; margin-left:auto; margin-right:auto;}
 .step-item{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;position:relative}
-.step-item::after{content:'';position:absolute;top:12px;left:50%;width:100%;height:3px;background:var(--sf2);z-index:0; border-radius:3px;}
+.step-item::after{content:'';position:absolute;top:10px;left:50%;width:100%;height:3px;background:var(--sf2);z-index:0; border-radius:3px;}
 .step-item:last-child::after{display:none}
 .step-item.done::after{background:var(--ac)}
-.step-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;font-family:var(--fd);color:var(--tx3);background:var(--sf);position:relative;z-index:1; transition:all 0.3s;}
+.step-dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;font-family:var(--fd);color:var(--tx3);background:var(--sf);position:relative;z-index:1; transition:all 0.3s;}
 .step-item.active .step-dot{border-color:var(--ac);color:var(--ac);background:#EEF2FF; transform:scale(1.15);}
 .step-item.done .step-dot{border-color:var(--ac);background:var(--ac);color:#fff}
 .step-lbl{font-size:.65rem;color:var(--tx3);font-weight:700;white-space:nowrap; text-transform:uppercase; letter-spacing:0.04em;}
@@ -101,12 +164,10 @@ body{font-family:var(--fb);background:var(--bg);min-height:100vh;display:flex;al
 .step-item.done .step-lbl{color:var(--ac)}
 
 .form-ttl{font-family:var(--fd);font-size:1.8rem;font-weight:800;color:var(--tx1);letter-spacing:-.03em;margin-bottom:4px}
-.form-sub{font-size:.85rem;color:var(--tx2);margin-bottom:24px; font-weight:500;}
-.form-sub a{color:var(--ac);font-weight:700; text-decoration:underline; text-underline-offset:2px;}
 
 /* FORMS - Vertically Optimized */
-.fblock{display:flex;flex-direction:column;gap:16px} 
-.frow{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fblock{display:flex;flex-direction:column;gap:14px} 
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:500px){.frow{grid-template-columns:1fr}}
 .fgrp{display:flex;flex-direction:column;gap:6px}
 .flbl{font-family:var(--fd);font-size:.8rem;font-weight:700;color:var(--tx1);letter-spacing:.01em}
@@ -122,8 +183,8 @@ body{font-family:var(--fb);background:var(--bg);min-height:100vh;display:flex;al
 .peye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--tx3);padding:4px;display:flex;align-items:center;justify-content:center;transition:color .15s;}
 .peye:hover{color:var(--tx1)}
 
-.pwd-bar-wrap{height:4px;border-radius:4px;background:var(--bd);margin-top:2px;overflow:hidden}
-.pwd-bar{height:100%;border-radius:4px;width:0;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+.pwd-bar-wrap{height:3px;border-radius:3px;background:var(--bd);margin-top:2px;overflow:hidden}
+.pwd-bar{height:100%;border-radius:3px;width:0;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
 
 /* MAIN BUTTON */
 .btnMain{width:100%;padding:14px;border-radius:10px;font-family:var(--fd);font-weight:700;font-size:.95rem;color:#fff;background:var(--ac);border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;box-shadow:0 4px 12px rgba(79,70,229,.2)}
@@ -181,10 +242,17 @@ body{font-family:var(--fb);background:var(--bg);min-height:100vh;display:flex;al
 
 /* MOBILE RESPONSIVENESS */
 @media(max-width:860px) {
-    body { padding:0; align-items:flex-end; background:#E0E7FF;}
-    .page-wrap { grid-template-columns:1fr; border-radius:32px 32px 0 0; min-height:auto; border:none; box-shadow:0 -10px 40px rgba(0,0,0,0.1); max-width:100%; height:auto;}
-    .left-visual { display:none; } 
-    .right-form { padding:32px 24px 40px; border-radius:32px 32px 0 0; background:var(--sf); }
+    body { padding:0; align-items:flex-start; background:#BAE6FD;}
+    .page-wrap { grid-template-columns:1fr; border-radius:0; min-height:100vh; border:none; box-shadow:none; max-width:100%; background:transparent; }
+    
+    .left-visual { 
+        height: 35vh; border:none; 
+        border-radius:0 0 32px 32px; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    } 
+    .dino-scene { max-width:300px; }
+    
+    .right-form { padding:24px 24px 40px; border-radius:32px 32px 0 0; background:var(--sf); min-height:65vh; margin-top:-32px; z-index:20;}
     .frow { grid-template-columns: 1fr; gap: 14px; }
 }
 </style>
@@ -193,38 +261,51 @@ body{font-family:var(--fb);background:var(--bg);min-height:100vh;display:flex;al
 
 <div class="page-wrap">
   <div class="left-visual">
-      <svg class="dino-scene" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+      <svg class="dino-scene" viewBox="0 0 500 500" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">
           
-          <path class="shake-leaf" style="transform-origin: 100px 400px;" d="M30,400 C30,220 170,220 170,400 Z" fill="#34D399"/>
-          <path class="shake-leaf" style="transform-origin: 300px 400px;" d="M180,400 C180,180 420,180 420,400 Z" fill="#34D399"/>
+          <circle cx="100" cy="150" r="40" fill="#FEF08A" />
+          <path d="M300,100 Q330,80 360,100 Q390,80 420,100 L420,120 L300,120 Z" fill="#fff" opacity="0.6" />
 
-          <path d="M100,400 C100,230 280,230 280,400 Z" fill="#FBBF24"/>
-          <path d="M190,300 Q190,180 205,130" fill="none" stroke="#FBBF24" stroke-width="45" stroke-linecap="round"/>
-          
-          <g class="dino-head">
-              <g transform="translate(205, 130)">
-                  <path d="M-20,-20 Q-20,-55 25,-55 Q65,-55 65,-20 Q65,5 -20,5 Z" fill="#FBBF24"/>
-                  
-                  <circle class="dino-eye" cx="20" cy="-25" r="4" fill="#0F172A"/>
-                  
-                  <g class="dino-jaw">
-                      <path d="M-15,0 Q30,5 55,10 Q65,30 -15,15 Z" fill="#F59E0B"/>
-                  </g>
+          <path d="M-50,500 Q50,300 150,500 Z" fill="#34D399" class="bush-shake" style="transform-origin: 50px 500px;"/>
+          <path d="M350,500 Q450,250 550,500 Z" fill="#34D399" class="bush-shake" style="transform-origin: 450px 500px; animation-delay: 0.2s;"/>
 
-                  <g class="shout-particles" opacity="0">
-                      <path d="M80,-10 L110,-25 M85,5 L120,5 M80,20 L110,35" stroke="#94A3B8" stroke-width="4" stroke-linecap="round"/>
+          <ellipse cx="250" cy="485" rx="120" ry="15" fill="rgba(0,0,0,0.06)" />
+
+          <g class="dino-body-wrap">
+              <path d="M150,500 C150,350 350,350 350,500 Z" fill="#FBBF24" />
+
+              <g class="dino-neck">
+                  <path d="M210,400 C210,250 230,150 250,150 C270,150 290,250 290,400 Z" fill="#FBBF24" />
+
+                  <g class="dino-head">
+                      <path d="M210,160 Q210,90 250,90 Q290,90 290,140 Q290,160 250,160 Z" fill="#FBBF24" />
+                      <path d="M210,120 Q130,120 130,150 Q130,160 210,160 Z" fill="#FBBF24" />
+
+                      <g class="dino-jaw">
+                          <path d="M210,155 Q140,155 140,175 Q140,185 210,180 Z" fill="#F59E0B" />
+                      </g>
+
+                      <g class="dino-eye-group">
+                          <circle cx="230" cy="120" r="6" fill="#0F172A" />
+                          <circle cx="228" cy="118" r="2" fill="#fff" />
+                      </g>
+
+                      <circle cx="250" cy="135" r="9" fill="#EF4444" opacity="0.3" />
+
+                      <g class="shout-particles">
+                          <path d="M120,150 L60,120 M110,160 L40,160 M120,170 L60,200" stroke="#94A3B8" stroke-width="6" stroke-linecap="round" />
+                      </g>
                   </g>
               </g>
           </g>
 
-          <g class="zenda-logo-anim">
-              <rect x="-22" y="-22" width="44" height="44" rx="12" fill="#4F46E5"/>
-              <text x="0" y="9" font-family="sans-serif" font-weight="bold" font-size="26" fill="#fff" text-anchor="middle">Z</text>
+          <g class="zenda-logo-fall">
+              <rect x="226" y="-30" width="48" height="48" rx="14" fill="#4F46E5" />
+              <text x="250" y="2" font-family="sans-serif" font-weight="bold" font-size="28" fill="#fff" text-anchor="middle">Z</text>
           </g>
 
-          <path class="shake-leaf" style="transform-origin: 50px 400px;" d="M-60,400 C-60,280 160,280 160,400 Z" fill="#10B981"/>
-          <path class="shake-leaf" style="transform-origin: 350px 400px;" d="M230,400 C230,260 470,260 470,400 Z" fill="#059669"/>
-          
+          <path d="M50,500 Q150,350 250,500 Z" fill="#10B981" class="bush-shake" style="transform-origin: 150px 500px; animation-delay: 0.1s;" />
+          <path d="M250,500 Q350,380 450,500 Z" fill="#059669" class="bush-shake" style="transform-origin: 350px 500px; animation-delay: 0.3s;" />
       </svg>
   </div>
 
@@ -290,7 +371,7 @@ body{font-family:var(--fb);background:var(--bg);min-height:100vh;display:flex;al
         </div>
         
         <button class="btnMain" id="btn-step1" onclick="handleStep1()">Send OTP to Email</button>
-        <p style="font-size:.7rem;color:var(--tx3);text-align:center; font-weight:500;">By signing up you agree to our <a href="#" style="color:var(--tx1);text-decoration:underline;text-underline-offset:2px;">Terms & Conditions</a></p>
+        <p style="font-size:.75rem;color:var(--tx3);text-align:center; font-weight:500; margin-top:2px;">Already have an account? <a href="login.html" style="color:var(--tx1);text-decoration:underline;text-underline-offset:2px;">Sign in</a></p>
       </div>
     </div>
 
