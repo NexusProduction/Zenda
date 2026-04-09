@@ -2,529 +2,1818 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
 <title>Create Workspace — Zenda</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234F46E5'/><text x='50' y='72' font-family='Arial, sans-serif' font-size='68' font-weight='bold' fill='white' text-anchor='middle'>Z</text></svg>">
+
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
 <style>
-:root{
-  --bg:#F3F4F6;--sf:#FFFFFF;--sf2:#F8FAFC;--bd:#E2E8F0;--bd2:#CBD5E1;
-  --tx1:#0F172A;--tx2:#475569;--tx3:#64748B;
-  --ac:#4F46E5;--ach:#4338CA;
-  --green:#10B981;--red:#EF4444;--amber:#F59E0B;
-  --fd:'Plus Jakarta Sans',system-ui,sans-serif;
-  --fb:'DM Sans',system-ui,sans-serif;
-  --fm:'DM Mono',monospace;
+/* ==================================================================================================
+  1. DESIGN SYSTEM & CSS VARIABLES
+  ==================================================================================================
+  Centralized design tokens for colors, typography, spacing, and shadows to maintain
+  absolute consistency across the entire application interface.
+*/
+:root {
+    
+    /* -----------------------------------------
+       A. Color Palette: Backgrounds
+       ----------------------------------------- */
+    --color-bg-page: #F3F4F6;         /* Main browser background */
+    --color-bg-surface: #FFFFFF;      /* Primary form background */
+    --color-bg-surface-alt: #F8FAFC;  /* Secondary/Hover backgrounds */
+    
+    /* -----------------------------------------
+       B. Color Palette: Borders & Lines
+       ----------------------------------------- */
+    --color-border-light: #E2E8F0;
+    --color-border-medium: #CBD5E1;
+    --color-border-dark: #94A3B8;
+    
+    /* -----------------------------------------
+       C. Color Palette: Typography
+       ----------------------------------------- */
+    --color-text-primary: #0F172A;    /* Headings and primary inputs */
+    --color-text-secondary: #475569;  /* Subtitles and labels */
+    --color-text-tertiary: #64748B;   /* Placeholders and minor details */
+    
+    /* -----------------------------------------
+       D. Color Palette: Brand Accents
+       ----------------------------------------- */
+    --color-brand-primary: #4F46E5;   /* Zenda Indigo */
+    --color-brand-hover: #4338CA;     /* Darker Indigo for hover states */
+    --color-brand-light: #EEF2FF;     /* Very light Indigo for backgrounds */
+    
+    /* -----------------------------------------
+       E. Color Palette: Semantic States
+       ----------------------------------------- */
+    --color-semantic-success: #10B981;
+    --color-semantic-success-dark: #059669;
+    --color-semantic-error: #EF4444;
+    --color-semantic-error-bg: #FEF2F2;
+    --color-semantic-warning: #F59E0B;
+    
+    /* -----------------------------------------
+       F. Typography Families
+       ----------------------------------------- */
+    --font-family-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-family-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --font-family-mono: 'DM Mono', Consolas, 'Courier New', monospace;
+    
+    /* -----------------------------------------
+       G. Shadow Elevation System
+       ----------------------------------------- */
+    --shadow-elevation-1: 0 4px 12px rgba(15, 23, 42, 0.06);
+    --shadow-elevation-2: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --shadow-elevation-3: 0 20px 60px rgba(15, 23, 42, 0.08);
+    --shadow-brand-glow: 0 6px 16px rgba(79, 70, 229, 0.25);
+    
+    /* -----------------------------------------
+       H. Border Radii
+       ----------------------------------------- */
+    --radius-small: 8px;
+    --radius-medium: 12px;
+    --radius-large: 24px;
+    --radius-xlarge: 32px;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-/* PAGE WRAP - Minimal height optimized for vertical space with crisp border */
-body{font-family:var(--fb);background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-font-smoothing:antialiased; overflow-x:hidden;}
-.page-wrap{display:grid;grid-template-columns:46% 54%;max-width:1100px;width:100%;background:var(--sf);border-radius:28px;box-shadow:0 20px 60px rgba(15,23,42,.06);overflow:hidden; height:min(640px, 92vh); border:1px solid rgba(0,0,0,0.05);}
-
-/* LEFT PANEL (2D NATIVE STORY ANIMATION) */
-.left-visual{
-    background:#E0F2FE; /* Smooth Blue-Skies */
-    position:relative;
-    display:flex;align-items:flex-end; /* Anchors the SVG to the bottom */
-    justify-content:center;
-    border-right:1px solid rgba(0,0,0,0.03);
-    overflow:hidden;
+/* ==================================================================================================
+  2. GLOBAL RESETS & NORMALIZE
+  ==================================================================================================
+*/
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-/* ── STORY ANIMATION LOGIC (8 SECOND CONTINUOUS LOOP) ── */
-.dino-scene { 
-    width: 100%; height: 100%; max-height: 100%; 
+body {
+    font-family: var(--font-family-body);
+    background-color: var(--color-bg-page);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.2s ease-in-out;
+}
+
+/* Accessibility: Clear focus outlines for keyboard navigation */
+:focus-visible {
+    outline: 3px solid var(--color-brand-primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* ==================================================================================================
+  3. MACRO LAYOUT & ARCHITECTURE
+  ==================================================================================================
+  This establishes the split-screen design. Crucially, the height is restricted 
+  to prevent vertical scrollbars on standard desktop monitors.
+*/
+.page-container {
+    display: grid;
+    grid-template-columns: 46% 54%;
+    max-width: 1100px;
+    width: 100%;
+    background-color: var(--color-bg-surface);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-elevation-3);
+    overflow: hidden;
+    height: min(640px, 92vh);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* ==================================================================================================
+  4. LEFT VISUAL PANEL (THE JUNGLE THEME)
+  ==================================================================================================
+*/
+.visual-panel {
+    background: linear-gradient(180deg, #E0F2FE 0%, #7DD3FC 100%);
+    position: relative;
+    display: flex;
+    align-items: flex-end; /* Anchors the SVG illustration to the absolute bottom */
+    justify-content: center;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+/* The core SVG canvas container */
+.svg-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    max-width: 500px;
+}
+
+/* ==================================================================================================
+  5. NATIVE CSS ANIMATION ENGINE (THE "REAL FEEL" STORY)
+  ==================================================================================================
+  These keyframes create a continuous 8-second looping story.
+*/
+
+/* --- A. The Animated Promotional Text --- */
+.anim-promo-text {
+    transform-origin: center;
+    animation: sequence-text 8s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+@keyframes sequence-text {
+    0%, 15% { 
+        opacity: 0; 
+        transform: translateY(20px) scale(0.9); 
+    }
+    18%, 68% { 
+        opacity: 1; 
+        transform: translateY(0) scale(1); 
+    }
+    72%, 100% { 
+        opacity: 0; 
+        transform: translateY(-30px) scale(1.1); 
+    }
+}
+
+/* --- B. The Falling Zenda Logo Physics --- */
+.anim-logo-physics {
+    transform-origin: center;
+    animation: sequence-logo 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes sequence-logo {
+    0%, 10% { 
+        transform: translateY(-300px) rotate(-45deg); 
+        opacity: 0; 
+    }
+    14% { 
+        opacity: 1; 
+    }
+    18% { 
+        transform: translateY(155px) rotate(0deg); /* IMPACT */
+    }
+    22% { 
+        transform: translateY(140px); /* Rebound bounce */
+    }
+    25%, 65% { 
+        transform: translateY(145px); /* Resting on head */
+        opacity: 1;
+    }
+    68% { 
+        transform: translateY(175px); /* Anticipation dip before throw */
+    }
+    75% { 
+        transform: translateY(-400px) rotate(180deg); /* THROWN HIGH */
+        opacity: 1;
+    }
+    80%, 100% { 
+        transform: translateY(-400px) rotate(180deg); 
+        opacity: 0; 
+    }
+}
+
+/* --- C. Character Body Squash & Stretch --- */
+.anim-boy-body {
+    transform-origin: 250px 500px; /* Pivots from the ground/feet */
+    animation: sequence-body 8s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+@keyframes sequence-body {
+    0%, 16% { 
+        transform: scaleY(1); 
+    }
+    18% { 
+        transform: scaleY(0.92) scaleX(1.05); /* Squash down on catch */
+    }
+    25%, 65% { 
+        transform: scaleY(1); /* Recover to normal */
+    }
+    68% { 
+        transform: scaleY(0.85); /* Deep squat anticipation */
+    }
+    73% { 
+        transform: scaleY(1.05) scaleX(0.98); /* Stretch upward on throw */
+    }
+    80%, 100% { 
+        transform: scaleY(1); 
+    }
+}
+
+/* --- D. Character Head Tracking --- */
+.anim-boy-head {
+    transform-origin: 250px 230px; /* Pivots from the neck joint */
+    animation: sequence-head 8s ease-in-out infinite;
+}
+@keyframes sequence-head {
+    0%, 12% { 
+        transform: rotate(-15deg); /* Looking up waiting for logo */
+    }
+    18% { 
+        transform: rotate(10deg) translateY(10px); /* Absorbing impact */
+    }
+    25%, 65% { 
+        transform: rotate(0deg) translateY(0); /* Balancing logo */
+    }
+    73% { 
+        transform: rotate(-30deg); /* Following the thrown logo upwards */
+    }
+    85%, 100% { 
+        transform: rotate(-15deg); /* Reset to starting position */
+    }
+}
+
+/* --- E. Articulated Waving Arm --- */
+.anim-boy-arm {
+    transform-origin: 210px 300px; /* Shoulder joint pivot */
+    animation: sequence-arm 8s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+@keyframes sequence-arm {
+    0%, 15% { 
+        transform: rotate(60deg); /* Arm resting down */
+    }
+    18% { 
+        transform: rotate(-130deg); /* Arm snaps up fast */
+    }
+    /* Friendly waving back and forth */
+    20% { transform: rotate(-110deg); }
+    22% { transform: rotate(-130deg); }
+    24% { transform: rotate(-110deg); }
+    26% { transform: rotate(-130deg); }
+    28% { transform: rotate(-110deg); }
+    30% { transform: rotate(-130deg); }
+    32% { transform: rotate(-110deg); }
+    34% { transform: rotate(-130deg); }
+    36% { transform: rotate(-110deg); }
+    38% { transform: rotate(-130deg); }
+    40% { transform: rotate(-110deg); }
+    42% { transform: rotate(-130deg); }
+    44% { transform: rotate(-110deg); }
+    46% { transform: rotate(-130deg); }
+    48% { transform: rotate(-110deg); }
+    50% { transform: rotate(-130deg); }
+    52% { transform: rotate(-110deg); }
+    54% { transform: rotate(-130deg); }
+    56% { transform: rotate(-110deg); }
+    58% { transform: rotate(-130deg); }
+    60% { transform: rotate(-110deg); }
+    62% { transform: rotate(-130deg); }
+    65% { 
+        transform: rotate(-130deg); 
+    }
+    68% { 
+        transform: rotate(20deg); /* Arm drops for anticipation */
+    }
+    73% { 
+        transform: rotate(-150deg); /* Massive upward thrust for throw */
+    }
+    85%, 100% { 
+        transform: rotate(60deg); /* Reset to rest */
+    }
+}
+
+/* --- F. Facial Expression Toggles (Bug Fix) --- */
+/* The sad face is visible when the logo is NOT on his head */
+.anim-face-sad {
+    animation: toggle-sad 8s step-end infinite;
+}
+@keyframes toggle-sad {
+    0%, 17.9% { opacity: 1; }
+    18%, 67.9% { opacity: 0; }
+    68%, 100% { opacity: 1; }
+}
+
+/* The happy face is visible when the logo IS on his head */
+.anim-face-happy {
+    animation: toggle-happy 8s step-end infinite;
+}
+@keyframes toggle-happy {
+    0%, 17.9% { opacity: 0; }
+    18%, 67.9% { opacity: 1; }
+    68%, 100% { opacity: 0; }
+}
+
+/* --- G. Environmental Wind Effects --- */
+.anim-leaf-sway {
+    animation: wind-blow 4s ease-in-out infinite alternate;
+}
+.anim-leaf-sway-alt {
+    animation: wind-blow 5s ease-in-out infinite alternate-reverse;
+}
+@keyframes wind-blow {
+    0% { transform: rotate(-2deg); }
+    100% { transform: rotate(3deg); }
+}
+
+/* ==================================================================================================
+  6. RIGHT PANEL FORM LAYOUT
+  ==================================================================================================
+*/
+.form-panel {
+    padding: 48px 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background-color: var(--color-bg-surface);
+    overflow-y: auto;
+    position: relative;
+    z-index: 2;
+}
+
+/* ==================================================================================================
+  7. PROGRESS STEPS INDICATOR
+  ==================================================================================================
+*/
+.progress-tracker {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 32px;
+    max-width: 360px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.step-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    position: relative;
+}
+
+.step-node::after {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    width: 100%;
+    height: 3px;
+    background-color: var(--color-bg-surface-alt);
+    z-index: 0;
+    border-radius: 3px;
+    transition: background-color 0.4s ease;
+}
+
+.step-node:last-child::after {
+    display: none;
+}
+
+.step-node.completed::after {
+    background-color: var(--color-brand-primary);
+}
+
+.step-circle {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border-medium);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    font-family: var(--font-family-display);
+    color: var(--color-text-tertiary);
+    background-color: var(--color-bg-surface);
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.step-node.current .step-circle {
+    border-color: var(--color-brand-primary);
+    color: var(--color-brand-primary);
+    background-color: var(--color-brand-light);
+    transform: scale(1.15);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+}
+
+.step-node.completed .step-circle {
+    border-color: var(--color-brand-primary);
+    background-color: var(--color-brand-primary);
+    color: #ffffff;
+}
+
+.step-label {
+    font-size: 0.7rem;
+    color: var(--color-text-tertiary);
+    font-weight: 700;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: color 0.3s ease;
+}
+
+.step-node.current .step-label { 
+    color: var(--color-text-primary); 
+}
+.step-node.completed .step-label { 
+    color: var(--color-brand-primary); 
+}
+
+/* ==================================================================================================
+  8. TYPOGRAPHY & HEADINGS
+  ==================================================================================================
+*/
+.typography-heading {
+    font-family: var(--font-family-display);
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--color-text-primary);
+    letter-spacing: -0.03em;
+    margin-bottom: 6px;
+    line-height: 1.2;
+}
+
+.typography-subheading {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 28px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.typography-link {
+    color: var(--color-brand-primary);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.2s ease;
+}
+.typography-link:hover { 
+    color: var(--color-brand-hover); 
+}
+
+/* ==================================================================================================
+  9. FORM ARCHITECTURE & GRID
+  ==================================================================================================
+*/
+.form-layout-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-layout-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.input-label {
+    font-family: var(--font-family-display);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    letter-spacing: 0.01em;
+}
+
+.input-field {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid var(--color-border-medium);
+    border-radius: var(--radius-medium);
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s ease;
+    background-color: var(--color-bg-surface-alt);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-body);
+    font-weight: 500;
+}
+
+.input-field:hover:not(:focus) {
+    border-color: var(--color-border-dark);
+    background-color: var(--color-bg-surface);
+}
+
+.input-field:focus {
+    background-color: var(--color-bg-surface);
+    border-color: var(--color-brand-primary);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+}
+
+.input-field::placeholder {
+    color: var(--color-text-tertiary);
+    font-weight: 400;
+}
+
+/* Validation States */
+.input-field.state-error {
+    border-color: var(--color-semantic-error) !important;
+    background-color: var(--color-semantic-error-bg);
+}
+
+.input-field.state-error:focus {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+}
+
+.validation-message {
+    font-size: 0.75rem;
+    color: var(--color-semantic-error);
+    font-weight: 600;
+    min-height: 14px;
+    margin-top: -2px;
+    display: none;
+}
+.validation-message.is-visible { 
     display: block; 
 }
 
-/* 1. Breathing Body (Keeps scene alive) */
-.dino-body-base {
-    transform-origin: 250px 500px;
-    animation: continuous-breathing 4s ease-in-out infinite;
+/* Password Input Specifics */
+.password-wrapper { 
+    position: relative; 
 }
-@keyframes continuous-breathing {
-    0%, 100% { transform: scaleY(1); }
-    50% { transform: scaleY(0.985); }
+.password-wrapper .input-field { 
+    padding-right: 44px; 
 }
 
-/* 2. Articulated Head & Neck pivots independently */
-.dino-neck-piv {
-    transform-origin: 215px 330px; /* Base of neck */
-    animation: continuous-neck-idle 4s ease-in-out infinite;
+.password-toggle-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-tertiary);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
 }
-@keyframes continuous-neck-idle {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(-3deg); }
-}
-
-/* 3. The Fall & The Thrown Back Zenda Block */
-.zenda-actor {
-    transform-origin: center;
-    animation: continuous-zenda-drop-throw 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-@keyframes continuous-zenda-drop-throw {
-    0%, 10% { transform: translate(250px, -200px); opacity: 0; } /* Off-screen up higher */
-    12% { opacity: 1; transform: translate(250px, 0px); } /* Dropping */
-    15% { transform: translate(250px, 260px) rotate(0deg); } /* BONK! Impacts Head */
-    15%, 65% { transform: translate(250px, 260px) rotate(0deg); opacity: 1; } /* Sits on head */
-    68% { transform: translate(250px, 290px); opacity: 1;} /* Anticipation Dip */
-    75% { transform: translate(250px, -300px) rotate(180deg); opacity: 1;} /* THROWN HIGH! */
-    80%, 100% { transform: translate(250px, -300px) rotate(180deg); opacity: 0;} /* Out of frame */
-}
-/* Shaking Leaves from Roar soundwaves */
-.continuous-jungle-shake {
-    animation: sound-shake 8s ease-in-out infinite;
-}
-@keyframes sound-shake {
-    0%, 19% { transform: rotate(0deg); }
-    20%, 22%, 24%, 26%, 28% { transform: rotate(3deg); }
-    21%, 23%, 25%, 27% { transform: rotate(-3deg); }
-    29%, 100% { transform: rotate(0deg); }
+.password-toggle-btn:hover { 
+    color: var(--color-text-primary); 
 }
 
-/* 4. Articulated Right Hand "Hi" Wave pivots independently */
-.dino-hand-hi {
-    transform-origin: 275px 370px; /* Joint at arm base */
-    animation: continuous-hand-wave 8s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
-}
-@keyframes continuous-hand-wave {
-    0%, 14% { transform: rotate(0deg); } /* Relaxed pouting */
-    15% { transform: rotate(-100deg); } /* Snaps up to waive */
-    18%, 21%, 24%, 27%, 30%, 33%, 36%, 39%, 42%, 45%, 48%, 51%, 54%, 57%, 60% { transform: rotate(-110deg); }
-    19.5%, 22.5%, 25.5%, 28.5%, 31.5%, 34.5%, 37.5%, 40.5%, 43.5%, 46.5%, 49.5%, 52.5%, 55.5%, 58.5%, 61.5% { transform: rotate(-90deg); }
-    64% { transform: rotate(-100deg); } /* Final wave */
-    65%, 100% { transform: rotate(0deg); } /* Drops back to sad pout */
+/* Password Strength Meter */
+.strength-meter-track {
+    height: 4px;
+    border-radius: 4px;
+    background-color: var(--color-border-light);
+    margin-top: 4px;
+    overflow: hidden;
 }
 
-/* 5. Face Expressions transitions independently */
-.dino-expression-sad {
-    opacity: 1;
-    animation: continuous-facial-expressions 8s step-end infinite;
-}
-@keyframes continuous-facial-expressions {
-    0%, 14.9% { opacity: 0; } /* Sad pout */
-    15%, 65% { opacity: 1; } /* Wide happy smile */
-    65.1%, 100% { opacity: 0; } /* Sad pout */
+.strength-meter-fill {
+    height: 100%;
+    border-radius: 4px;
+    width: 0;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* 6. Continuous Text materializes independently */
-.dino-text-promo {
-    transform-origin: center;
-    animation: continuous-text-story 8s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+/* ==================================================================================================
+  10. PRIMARY BUTTON STYLES
+  ==================================================================================================
+*/
+.button-primary {
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--radius-medium);
+    font-family: var(--font-family-display);
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: #ffffff;
+    background-color: var(--color-brand-primary);
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+    box-shadow: var(--shadow-brand-glow);
+    position: relative;
+    overflow: hidden;
 }
-@keyframes continuous-text-story {
-    0%, 14.9% { opacity: 0; transform: translateY(20px) scale(0.9); }
-    15%, 65% { opacity: 1; transform: translateY(0) scale(1); } /* Text came also BUISNESS MANAGEMENT WITH ZENDA */
-    68%, 100% { opacity: 0; transform: translateY(-30px) scale(1.1); }
+
+.button-primary:hover {
+    background-color: var(--color-brand-hover);
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+    transform: translateY(-2px);
 }
 
-/* RIGHT PANEL (FORM) */
-.right-form{padding:40px 56px;display:flex;flex-direction:column;justify-content:center;background:var(--sf);overflow-y:auto;position:relative;}
+.button-primary:active {
+    transform: scale(0.98);
+}
 
-/* COMPACT STEPS INDICATOR */
-.steps{display:flex;align-items:center;gap:0;margin-bottom:24px; max-width: 320px; width:100%; margin-left:auto; margin-right:auto;}
-.step-item{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;position:relative}
-.step-item::after{content:'';position:absolute;top:10px;left:50%;width:100%;height:3px;background:var(--sf2);z-index:0; border-radius:3px;}
-.step-item:last-child::after{display:none}
-.step-item.done::after{background:var(--ac)}
-.step-dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;font-family:var(--fd);color:var(--tx3);background:var(--sf);position:relative;z-index:1; transition:all 0.3s;}
-.step-item.active .step-dot{border-color:var(--ac);color:var(--ac);background:#EEF2FF; transform:scale(1.15);}
-.step-item.done .step-dot{border-color:var(--ac);background:var(--ac);color:#fff}
-.step-lbl{font-size:.65rem;color:var(--tx3);font-weight:700;white-space:nowrap; text-transform:uppercase; letter-spacing:0.04em;}
-.step-item.active .step-lbl{color:var(--tx1);}
-.step-item.done .step-lbl{color:var(--ac)}
+.button-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
 
-.form-ttl{font-family:var(--fd);font-size:1.8rem;font-weight:800;color:var(--tx1);letter-spacing:-.03em;margin-bottom:4px}
-.form-sub{font-size:.85rem;color:var(--tx2);margin-bottom:20px; font-weight:500;}
-.form-sub a{color:var(--ac);font-weight:700; text-decoration:underline; text-underline-offset:2px;}
-
-/* FORMS - Vertically Optimized */
-.fblock{display:flex;flex-direction:column;gap:14px} 
-.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:500px){.frow{grid-template-columns:1fr}}
-.fgrp{display:flex;flex-direction:column;gap:6px}
-.flbl{font-family:var(--fd);font-size:.8rem;font-weight:700;color:var(--tx1);letter-spacing:.01em}
-.finp{width:100%;padding:12px 14px;border:1.5px solid var(--bd);border-radius:10px;font-size:.9rem;outline:none;transition:all .15s;background:var(--bg);color:var(--tx1);font-family:var(--fb); font-weight:500;}
-.finp:focus{background:var(--sf); border-color:var(--ac);box-shadow:0 0 0 3px rgba(79,70,229,.1)}
-.finp::placeholder{color:var(--tx3); font-weight:400;}
-.finp.err{border-color:var(--red)!important; background:#FEF2F2;}
-.finp.err:focus{box-shadow:0 0 0 3px rgba(239,68,68,.12)}
-.ferr{font-size:.7rem;color:var(--red);font-weight:600;min-height:12px;margin-top:-2px; display:none;}
-.ferr.show{display:block;}
-
-.pwrap{position:relative}.pwrap .finp{padding-right:40px}
-.peye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--tx3);padding:4px;display:flex;align-items:center;justify-content:center;transition:color .15s;}
-.peye:hover{color:var(--tx1)}
-
-.pwd-bar-wrap{height:3px;border-radius:3px;background:var(--bd);margin-top:2px;overflow:hidden}
-.pwd-bar{height:100%;border-radius:3px;width:0;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
-
-/* MAIN BUTTON */
-.btnMain{width:100%;padding:14px;border-radius:10px;font-family:var(--fd);font-weight:700;font-size:.95rem;color:#fff;background:var(--ac);border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;box-shadow:0 4px 12px rgba(79,70,229,.2)}
-.btnMain:hover{background:var(--ach);box-shadow:0 6px 16px rgba(79,70,229,.3);transform:translateY(-1px)}
-.btnMain:active{transform:scale(.98)}
-
-/* SUCCESS BUTTON ANIMATION */
-.btn-success {
-    background: linear-gradient(to right, #10B981 50%, var(--ac) 50%) !important;
+/* Green Success Gradient Animation */
+.button-state-success {
+    background: linear-gradient(to right, var(--color-semantic-success) 50%, var(--color-brand-primary) 50%) !important;
     background-size: 200% 100% !important;
     background-position: right bottom !important;
-    animation: slideGreen 0.4s forwards ease-out !important;
-    color: white !important;
+    animation: animate-gradient-slide 0.5s forwards cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    color: #ffffff !important;
     border: none !important;
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3) !important;
+    pointer-events: none;
 }
-@keyframes slideGreen { to { background-position: left bottom; } }
+@keyframes animate-gradient-slide {
+    to { background-position: left bottom; }
+}
 
-/* OTP */
-.otp-row{display:flex;gap:8px;justify-content:center;margin:16px 0}
-.obox{width:46px;height:54px;text-align:center;font-family:var(--fm);font-size:1.3rem;font-weight:700;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx1);outline:none;transition:all .18s}
-.obox:focus{background:var(--sf);border-color:var(--ac);box-shadow:0 0 0 3px rgba(79,70,229,.1);transform:scale(1.05)}
-.obox.on{border-color:var(--ac);background:#EEF2FF;color:var(--ac)}
-.timer-row{text-align:center;font-size:.75rem;color:var(--tx3);margin-top:8px}
-.timer-val{font-family:var(--fm);color:var(--tx1);font-weight:600}
-.link-btn{background:none;border:none;color:var(--ac);font-size:.75rem;font-weight:700;cursor:pointer;font-family:var(--fb);text-decoration:underline;text-underline-offset:2px;}
+/* ==================================================================================================
+  11. OTP VERIFICATION UI (STEP 2)
+  ==================================================================================================
+*/
+.otp-container {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin: 24px 0;
+}
 
-.back-form{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:var(--tx2);cursor:pointer;background:none;border:none;padding:0;margin-bottom:16px;font-family:var(--fb);transition:color .15s}
-.back-form:hover{color:var(--ac)}
+.otp-box {
+    width: 54px;
+    height: 64px;
+    text-align: center;
+    font-family: var(--font-family-mono);
+    font-size: 1.6rem;
+    font-weight: 700;
+    border: 2px solid var(--color-border-medium);
+    border-radius: var(--radius-medium);
+    background-color: var(--color-bg-surface-alt);
+    color: var(--color-text-primary);
+    outline: none;
+    transition: all 0.2s ease;
+}
 
-/* MOBILE RESPONSIVENESS */
-@media(max-width:860px) {
-    body { padding:0; align-items:flex-end; background:#E0F2FE;}
-    .page-wrap { grid-template-columns:1fr; border-radius:32px 32px 0 0; min-height:auto; border:none; box-shadow:0 -10px 40px rgba(0,0,0,0.1); max-width:100%; height:auto; border: 1px solid rgba(0,0,0,0.05);}
-    .left-visual { height: 38vh; border:none; border-radius:0 0 32px 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); z-index: 10; align-items:center;} 
-    .dino-scene { max-width:320px;}
-    
-    .right-form { padding:32px 24px 40px; border-radius:32px 32px 0 0; background:var(--sf); margin-top:-32px; z-index:20;}
-    .steps { max-width: 100%; margin-bottom: 24px; }
-    .frow { grid-template-columns: 1fr; gap: 14px; }
+.otp-box:focus {
+    background-color: var(--color-bg-surface);
+    border-color: var(--color-brand-primary);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+    transform: scale(1.05);
+}
+
+.otp-box.is-filled {
+    border-color: var(--color-brand-primary);
+    background-color: var(--color-brand-light);
+    color: var(--color-brand-primary);
+}
+
+.resend-timer-wrapper {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--color-text-tertiary);
+    margin-top: 12px;
+    font-weight: 500;
+}
+
+.resend-timer-value {
+    font-family: var(--font-family-mono);
+    color: var(--color-text-primary);
+    font-weight: 700;
+}
+
+.button-link-style {
+    background: none;
+    border: none;
+    color: var(--color-brand-primary);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-family-body);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.button-back-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    margin-bottom: 24px;
+    font-family: var(--font-family-body);
+    transition: color 0.2s ease;
+}
+.button-back-nav:hover { 
+    color: var(--color-brand-primary); 
+}
+
+/* ==================================================================================================
+  12. SUCCESS DASHBOARD UI (STEP 3)
+  ==================================================================================================
+*/
+.success-container {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.success-icon-badge {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    animation: animate-pop-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 12px 24px rgba(79, 70, 229, 0.15);
+}
+@keyframes animate-pop-in {
+    from { transform: scale(0) rotate(-20deg); opacity: 0; }
+    to { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.access-code-widget {
+    background-color: var(--color-bg-surface);
+    border: 2px dashed var(--color-border-medium);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    margin: 16px 0;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    width: 100%;
+}
+.access-code-widget:hover {
+    border-color: var(--color-brand-primary);
+    box-shadow: var(--shadow-elevation-2);
+    transform: translateY(-2px);
+    background-color: var(--color-bg-surface-alt);
+}
+
+.access-code-label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+    font-family: var(--font-family-display);
+}
+
+.access-code-value {
+    font-family: var(--font-family-mono);
+    font-size: 2rem;
+    color: var(--color-text-primary);
+    letter-spacing: 0.15em;
+    font-weight: 700;
+}
+
+.access-code-hint {
+    font-size: 0.8rem;
+    color: var(--color-text-tertiary);
+    margin-top: 8px;
+    font-weight: 500;
+}
+
+.id-card-preview-area {
+    margin: 16px 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-elevation-2);
+    transition: transform 0.3s ease;
+    border: 1px solid var(--color-border-light);
+    width: 100%;
+}
+.id-card-preview-area:hover { 
+    transform: scale(1.02); 
+}
+
+.card-action-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    width: 100%;
+}
+
+.button-secondary-action {
+    flex: 1;
+    padding: 14px;
+    background-color: var(--color-bg-surface);
+    border: 2px solid var(--color-border-medium);
+    border-radius: var(--radius-small);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-display);
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.button-secondary-action:hover { 
+    border-color: var(--color-text-primary); 
+    background-color: var(--color-bg-surface-alt); 
+}
+
+.button-whatsapp-share {
+    flex: 1;
+    padding: 14px;
+    background-color: var(--color-semantic-success);
+    border: none;
+    border-radius: var(--radius-small);
+    color: #ffffff;
+    font-family: var(--font-family-display);
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+.button-whatsapp-share:hover { 
+    background-color: var(--color-semantic-success-dark); 
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3); 
+    transform: translateY(-1px);
+}
+
+/* ==================================================================================================
+  13. TOAST NOTIFICATIONS & LOADING SPINNERS
+  ==================================================================================================
+*/
+#toast-container-anchor {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.toast-notification {
+    padding: 16px 24px;
+    border-radius: var(--radius-medium);
+    font-size: 0.95rem;
+    font-weight: 700;
+    box-shadow: var(--shadow-elevation-2);
+    min-width: 240px;
+    animation: animate-toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.toast-theme-success { 
+    background-color: var(--color-text-primary); 
+    border-color: var(--color-text-secondary); 
+    color: #ffffff; 
+}
+.toast-theme-error { 
+    background-color: var(--color-semantic-error-bg); 
+    border-color: #FECACA; 
+    color: #991B1B; 
+}
+.toast-theme-info { 
+    background-color: var(--color-brand-light); 
+    border-color: #C7D2FE; 
+    color: var(--color-text-primary); 
+}
+
+@keyframes animate-toast-in {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.loading-spinner-ring {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: animate-spin 0.8s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+}
+@keyframes animate-spin { 
+    to { transform: rotate(360deg); } 
+}
+
+/* ==================================================================================================
+  14. MOBILE RESPONSIVENESS & MEDIA QUERIES
+  ==================================================================================================
+*/
+@media (max-width: 860px) {
+    body { 
+        padding: 0; 
+        align-items: flex-end; 
+        background-color: #BAE6FD;
+    }
+    .page-container { 
+        grid-template-columns: 1fr; 
+        border-radius: 32px 32px 0 0; 
+        min-height: auto; 
+        border: none; 
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1); 
+        max-width: 100%; 
+        height: auto; 
+    }
+    .visual-panel { 
+        height: 40vh; 
+        border: none; 
+        border-radius: 0 0 32px 32px; 
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); 
+        z-index: 10; 
+        align-items: flex-end;
+    } 
+    .svg-canvas { 
+        max-width: 380px;
+    }
+    .form-panel { 
+        padding: 32px 24px 48px; 
+        border-radius: 32px 32px 0 0; 
+        background-color: var(--color-bg-surface); 
+        margin-top: -24px; 
+        z-index: 20;
+    }
+    .progress-tracker { 
+        max-width: 100%; 
+        margin-bottom: 32px; 
+    }
+    .form-layout-grid { 
+        grid-template-columns: 1fr; 
+        gap: 16px; 
+    }
 }
 </style>
 </head>
 <body>
 
-<div class="page-wrap">
-  <div class="left-visual">
-      <svg class="dino-scene" viewBox="0 0 500 500" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">
+<div class="page-container">
+  
+  <div class="visual-panel">
+      
+      <svg class="svg-canvas" viewBox="0 0 500 500" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">
           
-          <g class="dino-text-promo">
-              <text x="250" y="80" font-family="sans-serif" font-weight="900" font-size="28" fill="#0F172A" text-anchor="middle">BUISNESS MANAGEMENT WITH ZENDA</text>
+          <g class="anim-promo-text">
+              <text x="250" y="70" font-family="sans-serif" font-weight="900" font-size="22" fill="#0F172A" text-anchor="middle">
+                  <tspan x="250" dy="0">MANAGE YOUR BUSINESS</tspan>
+                  <tspan x="250" dy="28">WITH ZENDA</tspan>
+              </text>
           </g>
 
-          <path class="continuous-jungle-shake" d="M-50,500 Q50,300 150,500 Z" fill="#34D399" opacity="0.9"/>
-          <path class="continuous-jungle-shake" d="M300,500 Q400,280 500,500 Z" fill="#34D399" opacity="0.9"/>
+          <circle cx="100" cy="180" r="50" fill="#FEF08A" />
           
-          <ellipse cx="250" cy="485" rx="100" ry="12" fill="rgba(0,0,0,0.06)" />
+          <path class="anim-leaf-sway" style="transform-origin: 100px 500px;" d="M-50,500 Q50,200 150,500 Z" fill="#34D399" opacity="0.9"/>
+          <path class="anim-leaf-sway-alt" style="transform-origin: 400px 500px;" d="M300,500 Q400,220 520,500 Z" fill="#34D399" opacity="0.9"/>
+          
+          <ellipse cx="250" cy="485" rx="130" ry="15" fill="rgba(0,0,0,0.06)" />
 
-          <g class="dino-body-base">
-              <path d="M210,500 L210,400 L290,400 L290,500 Z" fill="#1E293B"/> <path d="M200,420 C200,380 230,380 230,420 Z" fill="#0F172A"/> <path d="M190,420 C190,260 310,260 310,420 Z" fill="#4F46E5"/> <path d="M235,420 L235,280 L265,280 L265,420 Z" fill="#FFFFFF"/> <g class="dino-hand-hi">
-                  <path d="M290,300 Q330,360 290,420" fill="none" stroke="#4F46E5" stroke-width="20" stroke-linecap="round"/>
-                  <circle cx="290" cy="420" r="14" fill="#FDE047"/>
-              </g>
+          <g class="anim-boy-body">
+              
+              <path d="M210,500 L210,400 L290,400 L290,500 Z" fill="#1E293B"/> <path d="M200,420 L245,420 L245,500 L200,500 Z" fill="#0F172A"/> <path d="M190,420 C190,260 310,260 310,420 Z" fill="#4F46E5"/> <path d="M235,420 L235,280 L265,280 L265,420 Z" fill="#FFFFFF"/> <path d="M235,280 L190,320 L210,340 Z" fill="#4338CA"/>
+              <path d="M265,280 L310,320 L290,340 Z" fill="#4338CA"/>
 
-              <path d="M210,300 Q170,360 210,420" fill="none" stroke="#4F46E5" stroke-width="20" stroke-linecap="round"/>
-              <circle cx="210" cy="420" r="14" fill="#FDE047"/>
+              <path d="M250,330 L230,280 L270,280 Z" fill="#FDE047"/> 
 
-              <g class="dino-neck-piv">
-                  <path d="M250,330 L230,280 L270,280 Z" fill="#FDE047" /> 
+              <g>
+                  <path d="M210,300 Q150,360 210,420" fill="none" stroke="#4F46E5" stroke-width="26" stroke-linecap="round"/>
+                  <circle cx="210" cy="420" r="16" fill="#FDE047"/>
+                  <path d="M210,420 Q200,440 220,440" fill="none" stroke="#FDE047" stroke-width="8" stroke-linecap="round"/> </g>
+
+              <g class="anim-boy-arm">
+                  <path d="M290,300 Q350,360 290,420" fill="none" stroke="#4F46E5" stroke-width="26" stroke-linecap="round"/>
+                  <circle cx="290" cy="420" r="16" fill="#FDE047"/>
+                  <path d="M290,420 Q300,440 280,440" fill="none" stroke="#FDE047" stroke-width="8" stroke-linecap="round"/> </g>
+
+              <g class="anim-boy-head">
                   
-                  <g class="dino-expression-pouting dino-expression-confused dino-expression-bonked dino-head-reaction">
-                      <circle cx="250" cy="240" r="45" fill="#FDE047"/>
-                      <g class="dino-expression-sad">
-                          <circle cx="230" cy="235" r="5" fill="#0F172A"/>
-                          <circle cx="270" cy="235" r="5" fill="#0F172A"/>
-                          <path d="M240,260 Q250,250 260,260" fill="none" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/> </g>
-                      <g class="dino-expression-sad" style="animation-direction: alternate-reverse;">
-                          <circle cx="230" cy="235" r="5" fill="#0F172A"/>
-                          <circle cx="270" cy="235" r="5" fill="#0F172A"/>
-                          <path d="M240,250 Q250,265 260,250" fill="none" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/> </g>
-                      
-                      <circle cx="230" cy="235" r="5" fill="#0F172A" class="continuous-breathing" style="animation:sound-shake 4s step-end infinite; animation-direction:reverse;"/>
-                      <circle cx="270" cy="235" r="5" fill="#0F172A" class="continuous-breathing" style="animation:sound-shake 4s step-end infinite; animation-direction:reverse;"/>
+                  <circle cx="250" cy="230" r="50" fill="#FDE047"/>
+                  
+                  <circle cx="200" cy="235" r="12" fill="#FDE047"/>
+                  <circle cx="300" cy="235" r="12" fill="#FDE047"/>
 
-                      <path d="M205,240 C205,180 295,180 295,240 Q250,210 205,240 Z" fill="#111827"/>
-                      <path d="M295,240 Q310,240 310,220 Q290,200 270,195 Z" fill="#111827"/>
+                  <path d="M195,230 C195,150 305,150 305,230 Q250,195 195,230 Z" fill="#0F172A"/> 
+                  <path d="M305,230 Q325,230 325,200 Q300,170 270,175 Z" fill="#0F172A"/> 
+                  <path d="M195,230 Q175,230 175,200 Q200,170 230,175 Z" fill="#0F172A"/> 
+                  <path d="M250,165 Q270,140 290,160 Q270,180 250,165 Z" fill="#1E293B"/> 
+                  
+                  <path d="M220,215 L238,212 M262,212 L280,215" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+                  
+                  <circle cx="228" cy="228" r="6" fill="#0F172A"/>
+                  <circle cx="272" cy="228" r="6" fill="#0F172A"/>
+                  <circle cx="230" cy="226" r="2" fill="#FFFFFF"/>
+                  <circle cx="274" cy="226" r="2" fill="#FFFFFF"/>
+
+                  <path d="M250,235 L250,245 L245,245" fill="none" stroke="#D97706" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                  
+                  <circle cx="215" cy="245" r="8" fill="#EF4444" opacity="0.2"/>
+                  <circle cx="285" cy="245" r="8" fill="#EF4444" opacity="0.2"/>
+
+                  <g class="anim-face-sad">
+                      <path d="M240,260 Q250,250 260,260" fill="none" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+                  </g>
+                  
+                  <g class="anim-face-happy">
+                      <path d="M238,255 Q250,268 262,255" fill="none" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
                   </g>
               </g>
           </g>
 
-          <g class="zenda-actor">
-              <rect x="-30" y="-30" width="60" height="60" rx="16" fill="#4F46E5"/> <text x="0" y="14" font-family="sans-serif" font-weight="900" font-size="42" fill="#fff" text-anchor="middle">Z</text>
+          <g class="anim-logo-physics">
+              <rect x="210" y="-30" width="80" height="80" rx="20" fill="#4F46E5" opacity="0.3" filter="blur(10px)"/>
+              
+              <rect x="220" y="-20" width="60" height="60" rx="16" fill="#111827"/>
+              <rect x="220" y="-20" width="60" height="60" rx="16" fill="url(#logoGradientDef)"/>
+              
+              <defs>
+                  <linearGradient id="logoGradientDef" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stop-color="rgba(255,255,255,0.2)"/>
+                      <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
+                  </linearGradient>
+              </defs>
+              
+              <text x="250" y="22" font-family="sans-serif" font-weight="900" font-size="42" fill="#FFFFFF" text-anchor="middle">Z</text>
           </g>
 
-          <path class="continuous-jungle-shake" d="M-60,500 Q40,380 140,500 Z" fill="#10B981" />
-          <path class="continuous-jungle-shake" d="M360,500 Q460,400 560,500 Z" fill="#059669" />
+          <path class="anim-leaf-sway" style="transform-origin: 50px 500px;" d="M-40,500 Q60,350 140,500 Z" fill="#10B981"/>
+          <path class="anim-leaf-sway-alt" style="transform-origin: 450px 500px;" d="M360,500 Q440,350 540,500 Z" fill="#059669"/>
           
+          <path class="anim-leaf-sway" style="transform-origin: 20px 500px;" d="M-10,500 Q40,400 90,500 Z" fill="#047857"/>
+          <path class="anim-leaf-sway-alt" style="transform-origin: 480px 500px;" d="M410,500 Q460,400 510,500 Z" fill="#047857"/>
       </svg>
   </div>
 
-  <div class="right-form">
-    <div class="steps" id="steps">
-      <div class="step-item active" id="step1"><div class="step-dot">1</div><div class="step-lbl">Account</div></div>
-      <div class="step-item" id="step2"><div class="step-dot">2</div><div class="step-lbl">Verify</div></div>
-      <div class="step-item" id="step3"><div class="step-dot">3</div><div class="step-lbl">Done</div></div>
+  <div class="form-panel">
+    
+    <div class="progress-tracker" id="steps-indicator">
+      <div class="step-node current" id="node-step1">
+          <div class="step-circle">1</div>
+          <div class="step-label">Account</div>
+      </div>
+      <div class="step-node" id="node-step2">
+          <div class="step-circle">2</div>
+          <div class="step-label">Verify</div>
+      </div>
+      <div class="step-node" id="node-step3">
+          <div class="step-circle">3</div>
+          <div class="step-label">Done</div>
+      </div>
     </div>
 
-    <div id="v-step1">
-      <div class="form-ttl" style="display:flex; align-items:center; gap:12px;">
-        <button onclick="window.location.href='index.html'" style="background:none; border:none; cursor:pointer; color:var(--tx1); display:flex; align-items:center; padding:0; transition:color 0.2s;" onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='var(--tx1)'" title="Back to Home">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    <div id="view-step1">
+      
+      <div class="typography-heading" style="display:flex; align-items:center; gap:12px;">
+        <button onclick="window.location.href='index.html'" class="button-back-nav" style="margin-bottom:0; padding:8px; border-radius:12px; transition: background 0.2s;" onmouseover="this.style.background='#F1F5F9'" onmouseout="this.style.background='transparent'" title="Back to Home page">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         Create workspace
       </div>
-      <p class="form-sub">Already have an account? <a href="login.html">Sign in here</a></p>
+      <p class="typography-subheading">Already have an account? <a href="login.html" class="typography-link">Sign in here</a></p>
       
-      <div class="fblock">
+      <div class="form-layout-stack">
         
-        <div class="frow">
-          <div class="fgrp">
-            <label class="flbl">Company Name</label>
-            <input class="finp" id="comp-name" type="text" placeholder="Acme Corp" maxlength="50" oninput="clrErr('comp-name')">
-            <div class="ferr" id="e-comp-name"></div>
+        <div class="form-layout-grid">
+          <div class="input-group">
+            <label class="input-label" for="comp-name">Company Name</label>
+            <input class="input-field" id="comp-name" type="text" placeholder="Acme Corp" maxlength="50" oninput="clrErr('comp-name')">
+            <div class="validation-message" id="e-comp-name"></div>
           </div>
-          <div class="fgrp">
-            <label class="flbl">Your Full Name</label>
-            <input class="finp" id="owner-name" type="text" placeholder="John Doe" maxlength="40" oninput="clrErr('owner-name')">
-            <div class="ferr" id="e-owner-name"></div>
+          
+          <div class="input-group">
+            <label class="input-label" for="owner-name">Your Full Name</label>
+            <input class="input-field" id="owner-name" type="text" placeholder="John Doe" maxlength="40" oninput="clrErr('owner-name')">
+            <div class="validation-message" id="e-owner-name"></div>
           </div>
         </div>
         
-        <div class="fgrp">
-            <label class="flbl">Email Address</label>
-            <input class="finp" id="reg-email" type="email" autocomplete="email" placeholder="you@company.com" oninput="clrErr('reg-email')">
-            <div class="ferr" id="e-reg-email"></div>
+        <div class="input-group">
+            <label class="input-label" for="reg-email">Work Email Address</label>
+            <input class="input-field" id="reg-email" type="email" autocomplete="email" placeholder="you@company.com" oninput="clrErr('reg-email')">
+            <div class="validation-message" id="e-reg-email"></div>
         </div>
         
-        <div class="frow">
-            <div class="fgrp">
-                <label class="flbl">Password</label>
-                <div class="pwrap">
-                    <input class="finp" id="reg-pwd" type="password" autocomplete="current-password" placeholder="Min 6 chars" oninput="clrErr('reg-pwd');updateStr(this.value)">
-                    <button class="peye" onclick="toggleEye('reg-pwd',this)">
+        <div class="form-layout-grid">
+            <div class="input-group">
+                <label class="input-label" for="reg-pwd">Password</label>
+                <div class="password-wrapper">
+                    <input class="input-field" id="reg-pwd" type="password" autocomplete="current-password" placeholder="Min 6 chars" oninput="clrErr('reg-pwd');updateStr(this.value)">
+                    <button class="password-toggle-btn" onclick="toggleEye('reg-pwd',this)" aria-label="Toggle password visibility">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                 </div>
-                <div class="pwd-bar-wrap"><div class="pwd-bar" id="pwd-bar"></div></div>
-                <div class="ferr" id="e-reg-pwd"></div>
+                <div class="strength-meter-track"><div class="strength-meter-fill" id="pwd-bar"></div></div>
+                <div class="validation-message" id="e-reg-pwd"></div>
             </div>
             
-            <div class="fgrp">
-                <label class="flbl">Confirm Password</label>
-                <div class="pwrap">
-                    <input class="finp" id="reg-pwd2" type="password" autocomplete="current-password" placeholder="Re-enter" oninput="clrErr('reg-pwd2')">
-                    <button class="peye" onclick="toggleEye('reg-pwd2',this)">
+            <div class="input-group">
+                <label class="input-label" for="reg-pwd2">Confirm Password</label>
+                <div class="password-wrapper">
+                    <input class="input-field" id="reg-pwd2" type="password" autocomplete="current-password" placeholder="Re-enter" oninput="clrErr('reg-pwd2')">
+                    <button class="password-toggle-btn" onclick="toggleEye('reg-pwd2',this)" aria-label="Toggle password visibility">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                 </div>
-                <div class="ferr" id="e-reg-pwd2"></div>
+                <div class="validation-message" id="e-reg-pwd2"></div>
             </div>
         </div>
         
-        <button class="btnMain" id="btn-step1" onclick="handleStep1()">Send OTP to Email</button>
-        <p style="font-size:.7rem;color:var(--tx3);text-align:center; font-weight:500;">By signing up you agree to our <a href="#" style="color:var(--tx1);text-decoration:underline;text-underline-offset:2px;">Terms & Conditions</a></p>
+        <button class="button-primary" id="btn-step1" onclick="handleStep1()">Send Verification Code</button>
+        
+        <p style="font-size:0.75rem; color:var(--color-text-tertiary); text-align:center; font-weight:500; margin-top:8px;">
+            By signing up you agree to our <a href="#" style="color:var(--color-text-primary); text-decoration:underline; text-underline-offset:3px;">Terms of Service</a>
+        </p>
       </div>
     </div>
 
-    <div id="v-step2" style="display:none">
-      <button class="back-form" onclick="showStep(1)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          Change email
+    <div id="view-step2" style="display:none">
+      
+      <button class="button-back-nav" onclick="showStep(1)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Change email address
       </button>
-      <div style="text-align:center;margin-bottom:4px">
-        <div style="width:64px;height:64px;background:#EEF2FF;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px; box-shadow:0 8px 16px rgba(79,70,229,0.1);">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      
+      <div style="text-align:center; margin-bottom:12px">
+        <div style="width:72px; height:72px; background:var(--color-brand-light); border-radius:24px; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; box-shadow:0 12px 24px rgba(79,70,229,0.15);">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
         </div>
-        <div class="form-ttl" style="margin-bottom:4px;">Verify email</div>
-        <div style="font-size:.85rem;color:var(--tx2);line-height:1.5;font-weight:500">6-digit code sent to <br><strong style="color:var(--tx1)" id="otp-email-show"></strong></div>
+        <div class="typography-heading" style="margin-bottom:8px;">Verify your email</div>
+        <div style="font-size:0.95rem; color:var(--color-text-secondary); line-height:1.6; font-weight:500">
+            We sent a 6-digit code to <br><strong style="color:var(--color-text-primary)" id="otp-email-show"></strong>
+        </div>
       </div>
-      <div class="otp-row" id="otp-row">
-        <input class="obox" maxlength="1" inputmode="numeric"><input class="obox" maxlength="1" inputmode="numeric"><input class="obox" maxlength="1" inputmode="numeric"><input class="obox" maxlength="1" inputmode="numeric"><input class="obox" maxlength="1" inputmode="numeric"><input class="obox" maxlength="1" inputmode="numeric">
+      
+      <div class="otp-container" id="otp-row">
+        <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 1">
+        <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 2">
+        <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 3">
+        <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 4">
+        <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 5">
+        <input class="otp-box" maxlength="1" inputmode="numeric" aria-label="Digit 6">
       </div>
-      <button class="btnMain" id="btn-verify" onclick="handleVerify()">Create Workspace</button>
-      <div class="timer-row"><span id="timer-txt">Resend in <strong class="timer-val" id="timer-val">60s</strong></span><button class="link-btn" id="resend-btn" onclick="resendOTP()" style="display:none">Resend OTP</button></div>
+      
+      <button class="button-primary" id="btn-verify" onclick="handleVerify()">Create Workspace Now</button>
+      
+      <div class="resend-timer-wrapper">
+          <span id="timer-txt">Resend code in <strong class="resend-timer-value" id="timer-val">60s</strong></span>
+          <button class="button-link-style" id="resend-btn" onclick="resendOTP()" style="display:none">Resend OTP</button>
+      </div>
     </div>
 
-    <div id="v-step3" style="display:none">
-      <div class="success-wrap">
-        <div class="success-ico">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <div class="form-ttl" style="margin-bottom:4px;">Workspace Live!</div>
-        <div style="font-size:.85rem;color:var(--tx2);margin-bottom:16px;font-weight:500">Your company is ready. Keep this code secure.</div>
-        
-        <div class="code-box" id="code-box" onclick="copyCode()">
-          <div class="code-lbl">Master Company Code</div>
-          <div class="code-val" id="code-val">—</div>
-          <div class="code-hint">Click to copy</div>
+    <div id="view-step3" style="display:none">
+      <div class="success-container">
+          
+        <div class="success-icon-badge">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         
-        <div id="company-card-container" class="card-preview"></div>
+        <div class="typography-heading" style="margin-bottom:8px;">Workspace is Live!</div>
+        <div style="font-size:0.95rem; color:var(--color-text-secondary); margin-bottom:24px; font-weight:500; line-height:1.5;">
+            Your company environment is ready. Please save your master access code below.
+        </div>
         
-        <div class="card-actions">
-          <button class="btn-dl" onclick="dlCard()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download
+        <div class="access-code-widget" id="code-box" onclick="copyCode()">
+          <div class="access-code-label">Master Company Code</div>
+          <div class="access-code-value" id="code-val">—</div>
+          <div class="access-code-hint">Click box to copy securely</div>
+        </div>
+        
+        <div id="company-card-container" class="id-card-preview-area"></div>
+        
+        <div class="card-action-row">
+          <button class="button-secondary-action" onclick="dlCard()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Save Card
           </button>
-          <button class="btn-wa" onclick="waCard()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            WhatsApp
+          <button class="button-whatsapp-share" onclick="waCard()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Share
           </button>
         </div>
-        <button class="btnMain" onclick="window.location.href='dashboard.html'" style="margin-top:16px">Go to Dashboard →</button>
+        
+        <button class="button-primary" onclick="window.location.href='dashboard.html'" style="margin-top:24px; padding:18px;">Enter Dashboard →</button>
       </div>
     </div>
+
   </div>
 </div>
 
-<div id="toasts"></div>
+<div id="toast-container-anchor"></div>
 
 <script type="module">
-import{auth,db,EMAILJS_CONFIG}from'./firebase-config.js';
-import{ownerSignUp}from'./auth.js';
-import{sendOTP,verifyUserOTP}from'./otp.js';
-import{renderCardToElement,downloadCard,shareCardWhatsApp}from'./card-generator.js';
-import{isValidEmail}from'./utils.js';
+// Explicit architecture imports
+import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
+import { ownerSignUp } from './auth.js';
+import { sendOTP, verifyUserOTP } from './otp.js';
+import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
+import { isValidEmail } from './utils.js';
 
-if(EMAILJS_CONFIG.publicKey&&EMAILJS_CONFIG.publicKey!=='YOUR_EMAILJS_PUBLIC_KEY'){try{emailjs.init({publicKey: EMAILJS_CONFIG.publicKey});}catch(e){console.error("EmailJS Init Error:", e);}}
-let createdCanvas=null,createdCode='',timerID=null;
+// Application State Variables
+let createdCanvas = null;
+let createdCode = '';
+let timerID = null;
 
-window.showStep = function(n){
-    [1,2,3].forEach(i=>{
-        document.getElementById('v-step'+i).style.display=i===n?'block':'none';
-        const s=document.getElementById('step'+i);
-        s.className='step-item'+(i<n?' done':i===n?' active':'');
-        s.querySelector('.step-dot').innerHTML=i<n?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':i;
+// Initialize EmailJS Dependency securely
+if(EMAILJS_CONFIG && EMAILJS_CONFIG.publicKey && EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY'){
+    try {
+        emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey });
+    } catch(e) {
+        console.error("EmailJS Initialization Error:", e);
+    }
+}
+
+/**
+ * Handle Multi-Step Form Navigation and Timeline Progression
+ * @param {number} n - The target step number to transition to (1, 2, or 3)
+ */
+window.showStep = function(n) {
+    const stepsArray = [1, 2, 3];
+    
+    stepsArray.forEach(i => {
+        // Toggle view container visibility
+        const stepContainer = document.getElementById('view-step' + i);
+        if (stepContainer) {
+            stepContainer.style.display = (i === n) ? 'block' : 'none';
+        }
+        
+        // Update navigation tracker states
+        const stepIndicator = document.getElementById('node-step' + i);
+        if (stepIndicator) {
+            
+            // Assign appropriate classes for active/completed states
+            stepIndicator.className = 'step-node' + (i < n ? ' completed' : i === n ? ' current' : '');
+            
+            const dot = stepIndicator.querySelector('.step-circle');
+            if (i < n) {
+                // Render SVG checkmark for completed steps
+                dot.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            } else {
+                // Render raw number for pending or current steps
+                dot.innerHTML = i;
+            }
+        }
     });
 };
 
-window.toggleEye=(id,btn)=>{
-    const inp=document.getElementById(id);
-    inp.type=inp.type==='password'?'text':'password';
-    if(inp.type==='text'){
-        btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+/**
+ * Password Visibility Toggle Function
+ * Converts the input type between 'password' and 'text'
+ * @param {string} id - The DOM ID of the input field
+ * @param {HTMLElement} btn - The toggle button element to swap icons
+ */
+window.toggleEye = function(id, btn) {
+    const inp = document.getElementById(id);
+    if (!inp) return;
+    
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
     } else {
-        btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+        inp.type = 'password';
+        btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
     }
 };
 
-window.clrErr=id=>{document.getElementById(id)?.classList.remove('err');const e=document.getElementById('e-'+id);if(e){e.textContent='';e.classList.remove('show');}};
-function showErr(id,msg){document.getElementById(id)?.classList.add('err');const e=document.getElementById('e-'+id);if(e){e.textContent=msg;e.classList.add('show');}}
-function clearAllErrs(){document.querySelectorAll('.finp.err').forEach(e=>e.classList.remove('err'));document.querySelectorAll('.ferr.show').forEach(e=>{e.textContent='';e.classList.remove('show');});}
-
-window.updateStr=pwd=>{
-    const bar=document.getElementById('pwd-bar');
-    if(!pwd){bar.style.width='0';return;}
-    let s=0;
-    if(pwd.length>=6)s++;
-    if(pwd.length>=10)s++;
-    if(/[A-Z]/.test(pwd))s++;
-    if(/\d/.test(pwd))s++;
-    if(/[^A-Za-z0-9]/.test(pwd))s++;
-    const w=['0%','20%','42%','62%','82%','100%'];
-    const c=['','#EF4444','#F59E0B','#3B82F6','#10B981','#059669'];
-    bar.style.width=w[s];
-    bar.style.background=c[s];
+/**
+ * Utility Function: Clear Specific Input Error States
+ */
+window.clrErr = function(id) {
+    const input = document.getElementById(id);
+    if (input) {
+        input.classList.remove('state-error');
+    }
+    
+    const errText = document.getElementById('e-' + id);
+    if (errText) {
+        errText.textContent = '';
+        errText.classList.remove('is-visible');
+    }
 };
 
-window.handleStep1=async()=>{
-  clearAllErrs();
-  const comp=document.getElementById('comp-name').value.trim();
-  const owner=document.getElementById('owner-name').value.trim();
-  const email=document.getElementById('reg-email').value.trim();
-  const pwd=document.getElementById('reg-pwd').value;
-  const pwd2=document.getElementById('reg-pwd2').value;
-  let ok=true;
-  
-  if(!comp){showErr('comp-name','Req.');ok=false;}
-  if(!owner){showErr('owner-name','Req.');ok=false;}
-  if(!email){showErr('reg-email','Req.');ok=false;}else if(!isValidEmail(email)){showErr('reg-email','Invalid.');ok=false;}
-  if(!pwd){showErr('reg-pwd','Req.');ok=false;}else if(pwd.length<6){showErr('reg-pwd','Min 6.');ok=false;}
-  if(pwd!==pwd2){showErr('reg-pwd2','Mismatch.');ok=false;}
-  
-  if(!ok)return;
-  const btn=document.getElementById('btn-step1');
-  btnLoad(btn,true);
-  
-  try{
-      await sendOTP(email,owner,comp);
-      document.getElementById('otp-email-show').textContent=email;
-      
-      btn.classList.add('btn-success');
-      btn.innerHTML = 'Success ✓';
-      
-      setTimeout(() => {
-          btn.classList.remove('btn-success');
-          btnLoad(btn,false,'Send OTP to Email');
-          showStep(2);
-          setupBoxes();
-          startTimer();
-      }, 450);
-      
-      toast('Security code sent!','info');
-  } catch(e) {
-      toast('Error: '+e.message,'err');
-      btnLoad(btn,false,'Send OTP to Email');
-  }
+/**
+ * Utility Function: Display Specific Input Error States
+ */
+function showErr(id, msg) {
+    const input = document.getElementById(id);
+    if (input) {
+        input.classList.add('state-error');
+    }
+    
+    const errText = document.getElementById('e-' + id);
+    if (errText) {
+        errText.textContent = msg;
+        errText.classList.add('is-visible');
+    }
+}
+
+/**
+ * Utility Function: Purge All Error States Globally
+ */
+function clearAllErrs() {
+    document.querySelectorAll('.input-field.state-error').forEach(e => {
+        e.classList.remove('state-error');
+    });
+    document.querySelectorAll('.validation-message.is-visible').forEach(e => {
+        e.textContent = '';
+        e.classList.remove('is-visible');
+    });
+}
+
+/**
+ * Real-time Password Strength Evaluator
+ * Analyzes string complexity and updates the DOM progress bar
+ */
+window.updateStr = function(pwd) {
+    const bar = document.getElementById('pwd-bar');
+    if (!bar) return;
+    
+    if (!pwd) {
+        bar.style.width = '0';
+        return;
+    }
+    
+    let score = 0;
+    
+    // Entropy criteria checklist
+    if (pwd.length >= 6) score++;
+    if (pwd.length >= 10) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/\d/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    
+    // State definitions
+    const widths = ['0%', '20%', '42%', '62%', '82%', '100%'];
+    const colors = ['', 'var(--color-semantic-error)', 'var(--color-semantic-warning)', '#3B82F6', 'var(--color-semantic-success)', 'var(--color-semantic-success-dark)'];
+    
+    score = Math.min(score, 5); // Safety cap
+    
+    bar.style.width = widths[score];
+    bar.style.background = colors[score];
 };
 
-window.handleVerify=async()=>{
-  const otp=getOTPVal();if(otp.length!==6){toast('Enter 6 digits.','err');return;}
-  const btn=document.getElementById('btn-verify');
-  btnLoad(btn,true);
-  
-  try{
-      const r=await verifyUserOTP(document.getElementById('reg-email').value.trim(),otp);
-      if(!r.success){toast(r.message,'err');clearBoxes();btnLoad(btn,false,'Create Workspace');return;}
-      
-      const comp=document.getElementById('comp-name').value.trim();
-      const owner=document.getElementById('owner-name').value.trim();
-      const email=document.getElementById('reg-email').value.trim();
-      const pwd=document.getElementById('reg-pwd').value;
-      
-      const data=await ownerSignUp(comp,owner,email,pwd);
-      createdCode=data.uniqueCode;
-      
-      btn.classList.add('btn-success');
-      btn.innerHTML = 'Verified ✓';
-      
-      setTimeout(() => {
-          showStep(3);
-          document.getElementById('code-val').textContent=data.uniqueCode.slice(0,4)+'-'+data.uniqueCode.slice(4);
-          createdCanvas=renderCardToElement('company-card-container','company',{companyName:comp,ownerName:owner,email,uniqueCode:data.uniqueCode});
-      }, 400);
-      
-      toast('Workspace created! 🎉','ok');
-  } catch(e) {
-      toast('Error: '+e.message,'err');
-      btnLoad(btn,false,'Create Workspace');
-  }
+/**
+ * Execution: Step 1 (Account Verification Initiation)
+ */
+window.handleStep1 = async () => {
+    
+    // Purge previous validation errors
+    clearAllErrs();
+    
+    // Extract values
+    const compInput = document.getElementById('comp-name');
+    const ownerInput = document.getElementById('owner-name');
+    const emailInput = document.getElementById('reg-email');
+    const pwdInput = document.getElementById('reg-pwd');
+    const pwd2Input = document.getElementById('reg-pwd2');
+    
+    const comp = compInput ? compInput.value.trim() : '';
+    const owner = ownerInput ? ownerInput.value.trim() : '';
+    const email = emailInput ? emailInput.value.trim() : '';
+    const pwd = pwdInput ? pwdInput.value : '';
+    const pwd2 = pwd2Input ? pwd2Input.value : '';
+    
+    let isFormValid = true;
+    
+    // Sequential strict validation pipeline
+    if (!comp) { 
+        showErr('comp-name', 'Company name required.'); 
+        isFormValid = false; 
+    }
+    
+    if (!owner) { 
+        showErr('owner-name', 'Full name required.'); 
+        isFormValid = false; 
+    }
+    
+    if (!email) { 
+        showErr('reg-email', 'Email required.'); 
+        isFormValid = false; 
+    } else if (!isValidEmail(email)) { 
+        showErr('reg-email', 'Invalid email format.'); 
+        isFormValid = false; 
+    }
+    
+    if (!pwd) { 
+        showErr('reg-pwd', 'Password required.'); 
+        isFormValid = false; 
+    } else if (pwd.length < 6) { 
+        showErr('reg-pwd', 'Minimum 6 characters.'); 
+        isFormValid = false; 
+    }
+    
+    if (pwd !== pwd2) { 
+        showErr('reg-pwd2', 'Passwords do not match.'); 
+        isFormValid = false; 
+    }
+    
+    // Halt execution if pipeline fails
+    if (!isFormValid) return;
+    
+    const btn = document.getElementById('btn-step1');
+    btnLoad(btn, true);
+    
+    try {
+        
+        // Execute API call for OTP generation
+        await sendOTP(email, owner, comp);
+        
+        // Inject dynamic data into next step UI
+        const displayLabel = document.getElementById('otp-email-show');
+        if (displayLabel) displayLabel.textContent = email;
+        
+        // Apply success micro-interaction to button
+        btn.classList.add('button-state-success');
+        btn.innerHTML = 'Success ✓';
+        
+        // Defer transition to allow animation completion
+        setTimeout(() => {
+            btn.classList.remove('button-state-success');
+            btnLoad(btn, false, 'Send Verification Code');
+            showStep(2);
+            setupBoxes();
+            startTimer();
+        }, 500);
+        
+        toast('Verification code dispatched securely.', 'toast-theme-info');
+        
+    } catch(error) {
+        toast('Request failed: ' + error.message, 'toast-theme-error');
+        btnLoad(btn, false, 'Send Verification Code');
+    }
 };
 
-window.resendOTP=async()=>{try{await sendOTP(document.getElementById('reg-email').value.trim());clearBoxes();startTimer();toast('New OTP sent!','info');}catch(e){toast('Failed.','err');}};
-window.copyCode=()=>{navigator.clipboard.writeText(createdCode).then(()=>{const b=document.getElementById('code-box');b.style.background='#F3F4F6';b.style.borderColor='var(--tx1)';setTimeout(()=>{b.style.background='';b.style.borderColor='';},1200);toast('Code copied!','ok');});};
-window.dlCard=()=>{if(createdCanvas){downloadCard(createdCanvas,document.getElementById('comp-name').value+'-zenda-card.png');toast('Downloaded!','ok');}};
-window.waCard=()=>{if(createdCanvas)shareCardWhatsApp(createdCanvas,document.getElementById('comp-name').value+'-zenda-card');};
+/**
+ * Execution: Step 2 (Final Verification and Workspace Creation)
+ */
+window.handleVerify = async () => {
+    
+    const otp = getOTPVal();
+    
+    // Ensure payload completeness
+    if (otp.length !== 6) {
+        toast('Please complete the 6-digit code.', 'toast-theme-error');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-verify');
+    btnLoad(btn, true);
+    
+    try {
+        const emailInput = document.getElementById('reg-email');
+        const email = emailInput ? emailInput.value.trim() : '';
+        
+        // Validate OTP via Firebase/Backend
+        const verificationResult = await verifyUserOTP(email, otp);
+        
+        // Handle incorrect codes
+        if (!verificationResult.success) {
+            toast(verificationResult.message, 'toast-theme-error');
+            clearBoxes();
+            btnLoad(btn, false, 'Create Workspace Now');
+            return;
+        }
+        
+        // Retrieve master data payload
+        const comp = document.getElementById('comp-name').value.trim();
+        const owner = document.getElementById('owner-name').value.trim();
+        const pwd = document.getElementById('reg-pwd').value;
+        
+        // Finalize account creation in database
+        const accountData = await ownerSignUp(comp, owner, email, pwd);
+        createdCode = accountData.uniqueCode;
+        
+        // Apply final success animation
+        btn.classList.add('button-state-success');
+        btn.innerHTML = 'Verified ✓';
+        
+        // Defer handoff transition
+        setTimeout(() => {
+            showStep(3);
+            
+            // Format output (e.g. ABCD-1234)
+            const formattedCode = createdCode.slice(0, 4) + '-' + createdCode.slice(4);
+            const valLabel = document.getElementById('code-val');
+            if (valLabel) valLabel.textContent = formattedCode;
+            
+            // Trigger Canvas rendering for physical ID card preview
+            createdCanvas = renderCardToElement('company-card-container', 'company', {
+                companyName: comp,
+                ownerName: owner,
+                email: email,
+                uniqueCode: createdCode
+            });
+            
+        }, 500);
+        
+        toast('Workspace created successfully! 🎉', 'toast-theme-success');
+        
+    } catch(error) {
+        toast('Critical Error: ' + error.message, 'toast-theme-error');
+        btnLoad(btn, false, 'Create Workspace Now');
+    }
+};
 
-function setupBoxes(){const boxes=document.querySelectorAll('#otp-row .obox');boxes.forEach((box,i)=>{box.value='';box.classList.remove('on');box.oninput=()=>{box.value=box.value.replace(/\D/g,'').slice(-1);box.classList.toggle('on',!!box.value);if(box.value&&i<boxes.length-1)boxes[i+1].focus();};box.onkeydown=e=>{if(e.key==='Backspace'&&!box.value&&i>0){boxes[i-1].focus();boxes[i-1].value='';boxes[i-1].classList.remove('on');}};box.onpaste=e=>{e.preventDefault();const p=e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);p.split('').forEach((c,j)=>{if(boxes[j]){boxes[j].value=c;boxes[j].classList.add('on');}});if(p.length===6)handleVerify();};});setTimeout(()=>boxes[0]?.focus(),80);}
-function getOTPVal(){return Array.from(document.querySelectorAll('#otp-row .obox')).map(b=>b.value).join('');}
-function clearBoxes(){document.querySelectorAll('#otp-row .obox').forEach(b=>{b.value='';b.classList.remove('on');});document.querySelector('#otp-row .obox')?.focus();}
-function startTimer(){if(timerID)clearInterval(timerID);let s=60;const tv=document.getElementById('timer-val'),tt=document.getElementById('timer-txt'),rb=document.getElementById('resend-btn');tt.style.display='inline';rb.style.display='none';tv.textContent=s+'s';timerID=setInterval(()=>{s--;tv.textContent=s+'s';if(s<=0){clearInterval(timerID);tt.style.display='none';rb.style.display='inline';}},1000);}
+/**
+ * OTP Resend Trigger
+ */
+window.resendOTP = async () => {
+    try {
+        const email = document.getElementById('reg-email').value.trim();
+        await sendOTP(email);
+        clearBoxes();
+        startTimer();
+        toast('A new security code has been sent.', 'toast-theme-info');
+    } catch(e) {
+        toast('Failed to re-dispatch code.', 'toast-theme-error');
+    }
+};
 
-function btnLoad(btn,loading,label){if(!btn)return;if(loading){btn.disabled=true;btn.dataset.lbl=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>';}else{btn.disabled=false;btn.innerHTML=label||btn.dataset.lbl;}}
-function toast(msg,type='info'){const c=document.getElementById('toasts');const t=document.createElement('div');t.className='toast t-'+type;
-let icon = 'ℹ️'; if(type==='ok') icon='✓'; if(type==='err') icon='⚠️';
-t.innerHTML = `<span style="font-size:14px">${icon}</span> ${msg}`;
-c.appendChild(t);setTimeout(()=>t.remove(),3500);}
+/**
+ * Clipboard Management
+ */
+window.copyCode = () => {
+    if (!createdCode) return;
+    navigator.clipboard.writeText(createdCode).then(() => {
+        const box = document.getElementById('code-box');
+        if (box) {
+            // Provide visual feedback loop
+            box.style.background = 'var(--color-bg-surface-alt)';
+            box.style.borderColor = 'var(--color-brand-primary)';
+            setTimeout(() => {
+                box.style.background = '';
+                box.style.borderColor = '';
+            }, 1000);
+        }
+        toast('Master code secured in clipboard!', 'toast-theme-success');
+    });
+};
 
-document.addEventListener('keydown',e=>{ 
-  if(e.key!=='Enter') return; 
-  const s1 = document.getElementById('v-step1');
-  const s2 = document.getElementById('v-step2');
-  if(s1.style.display !== 'none') window.handleStep1();
-  else if(s2.style.display !== 'none') window.handleVerify();
+/**
+ * Download Rendered Canvas Context
+ */
+window.dlCard = () => {
+    if (createdCanvas) {
+        const comp = document.getElementById('comp-name').value.trim();
+        const filename = (comp ? comp.toLowerCase().replace(/\s+/g, '-') : 'workspace') + '-access-card.png';
+        downloadCard(createdCanvas, filename);
+        toast('Access card downloaded.', 'toast-theme-success');
+    }
+};
+
+/**
+ * Platform Specific Share Dispatch
+ */
+window.waCard = () => {
+    if (createdCanvas) {
+        const comp = document.getElementById('comp-name').value.trim();
+        const msg = comp ? comp + ' workspace access card' : 'Zenda access card';
+        shareCardWhatsApp(createdCanvas, msg);
+    }
+};
+
+/**
+ * Complex OTP Input Manager
+ * Controls focus logic, copy-pasting, and backspacing across 6 individual nodes
+ */
+function setupBoxes() {
+    const boxes = document.querySelectorAll('#otp-row .otp-box');
+    if (!boxes.length) return;
+    
+    boxes.forEach((box, index) => {
+        // Reset states
+        box.value = '';
+        box.classList.remove('is-filled');
+        
+        // Handle physical keyboard input
+        box.oninput = () => {
+            box.value = box.value.replace(/\D/g, '').slice(-1); // Strip non-numeric
+            box.classList.toggle('is-filled', !!box.value);
+            
+            // Advance focus
+            if (box.value && index < boxes.length - 1) {
+                boxes[index + 1].focus();
+            }
+        };
+        
+        // Handle deletion recursion
+        box.onkeydown = (e) => {
+            if (e.key === 'Backspace' && !box.value && index > 0) {
+                boxes[index - 1].focus();
+                boxes[index - 1].value = '';
+                boxes[index - 1].classList.remove('is-filled');
+            }
+        };
+        
+        // Handle native paste events
+        box.onpaste = (e) => {
+            e.preventDefault();
+            const clipboardData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+            const dataArray = clipboardData.split('');
+            
+            dataArray.forEach((char, j) => {
+                if (boxes[j]) {
+                    boxes[j].value = char;
+                    boxes[j].classList.add('is-filled');
+                }
+            });
+            
+            // Auto-submit if completely filled by paste
+            if (dataArray.length === 6) {
+                handleVerify();
+            }
+        };
+    });
+    
+    // Auto-focus injection
+    setTimeout(() => {
+        if (boxes[0]) boxes[0].focus();
+    }, 150);
+}
+
+/**
+ * Reconstructs OTP string from nodes
+ */
+function getOTPVal() {
+    const boxes = document.querySelectorAll('#otp-row .otp-box');
+    return Array.from(boxes).map(b => b.value).join('');
+}
+
+/**
+ * Resets OTP Node states
+ */
+function clearBoxes() {
+    const boxes = document.querySelectorAll('#otp-row .otp-box');
+    boxes.forEach(b => {
+        b.value = '';
+        b.classList.remove('is-filled');
+    });
+    if (boxes.length > 0) boxes[0].focus();
+}
+
+/**
+ * Countdown Timer Manager
+ */
+function startTimer() {
+    if (timerID) clearInterval(timerID);
+    
+    let secondsLeft = 60;
+    const valDisplay = document.getElementById('timer-val');
+    const textDisplay = document.getElementById('timer-txt');
+    const resendBtn = document.getElementById('resend-btn');
+    
+    if (!valDisplay || !textDisplay || !resendBtn) return;
+    
+    // Reset View
+    textDisplay.style.display = 'inline';
+    resendBtn.style.display = 'none';
+    valDisplay.textContent = secondsLeft + 's';
+    
+    // Interval loop
+    timerID = setInterval(() => {
+        secondsLeft--;
+        valDisplay.textContent = secondsLeft + 's';
+        
+        // Cleanup and transition state
+        if (secondsLeft <= 0) {
+            clearInterval(timerID);
+            textDisplay.style.display = 'none';
+            resendBtn.style.display = 'inline';
+        }
+    }, 1000);
+}
+
+/**
+ * Standard Loading State Injector
+ */
+function btnLoad(btn, loading, label) {
+    if (!btn) return;
+    
+    if (loading) {
+        btn.disabled = true;
+        if (!btn.dataset.lbl) btn.dataset.lbl = btn.innerHTML;
+        btn.innerHTML = '<span class="loading-spinner-ring"></span>';
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = label || btn.dataset.lbl || 'Submit';
+    }
+}
+
+/**
+ * Custom Toast Notification Builder
+ */
+function toast(msg, themeClass = 'toast-theme-info') {
+    const anchor = document.getElementById('toast-container-anchor');
+    if (!anchor) return;
+    
+    const notificationNode = document.createElement('div');
+    notificationNode.className = 'toast-notification ' + themeClass;
+    
+    // Semantic SVG injection
+    let iconMarkup = '';
+    if (themeClass === 'toast-theme-success') {
+        iconMarkup = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    } else if (themeClass === 'toast-theme-error') {
+        iconMarkup = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+    } else {
+        iconMarkup = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+    }
+    
+    notificationNode.innerHTML = `${iconMarkup} <span style="font-size:15px; font-weight:600;">${msg}</span>`;
+    anchor.appendChild(notificationNode);
+    
+    // Destructor timing
+    setTimeout(() => {
+        notificationNode.style.opacity = '0';
+        notificationNode.style.transform = 'translateX(20px)';
+        notificationNode.style.transition = 'all 0.3s ease';
+        setTimeout(() => notificationNode.remove(), 300);
+    }, 4000);
+}
+
+/**
+ * Global Keyboard Hook
+ */
+document.addEventListener('keydown', e => { 
+    if (e.key !== 'Enter') return; 
+    
+    const step1View = document.getElementById('view-step1');
+    const step2View = document.getElementById('view-step2');
+    
+    // Route Enter key based on current view state
+    if (step1View && step1View.style.display !== 'none') {
+        window.handleStep1();
+    } else if (step2View && step2View.style.display !== 'none') {
+        window.handleVerify();
+    }
 });
 </script>
+
 </body>
 </html>
