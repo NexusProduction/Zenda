@@ -138,12 +138,26 @@ a{text-decoration:none;color:inherit}
     .page-wrap { grid-template-columns:1fr; border-radius:32px 32px 0 0; min-height:auto; border:none; box-shadow:0 -10px 40px rgba(0,0,0,0.15); max-width:100%; background:transparent; }
     
     /* Show the solar system on mobile, hidden bottom part */
-    .right { display:flex; position:absolute; top:0; left:0; width:100%; height:52vh; z-index:-1; background:transparent; border:none; box-shadow:none; padding:0; justify-content:flex-start; padding-top:0; overflow:hidden; }
-    .visual-title { display:none; } /* Removed title in phone view */
-    .orbit-container { margin-top: 20px; transform: scale(0.95); } /* Made system big so the bottom naturally hides behind the form */
+    .right { display:flex; position:absolute; top:0; left:0; width:100%; height:45vh; z-index:-1; background:transparent; border:none; box-shadow:none; padding:0; justify-content:center; padding-top:10px; overflow:hidden; }
+    .visual-title { display:none !important; } /* Ensure title is completely removed in phone view */
+    .orbit-container { margin-top: -10px; transform: scale(0.65); } /* Made system smaller */
     
-    /* Keep form sheet at the bottom */
-    .left { padding:44px 32px; border-radius:32px 32px 0 0; background:var(--sf); margin-top: 48vh; width: 100%; box-shadow: 0 -10px 30px rgba(0,0,0,0.05);}
+    /* Keep form sheet at the bottom, made it bigger */
+    .left { padding:48px 32px; border-radius:32px 32px 0 0; background:var(--sf); margin-top: 40vh; width: 100%; box-shadow: 0 -10px 30px rgba(0,0,0,0.05); min-height: 60vh;}
+}
+
+/* SUCCESS BUTTON ANIMATION */
+.btn-success {
+    background: linear-gradient(to right, #10B981 50%, var(--ac) 50%) !important;
+    background-size: 200% 100% !important;
+    background-position: right bottom !important;
+    animation: slideGreen 0.4s forwards ease-out !important;
+    color: white !important;
+    pointer-events: none;
+    border: none !important;
+}
+@keyframes slideGreen {
+    to { background-position: left bottom; }
 }
 
 /* ── LOGIN CELEBRATION ANIMATIONS ── */
@@ -431,9 +445,18 @@ window.doLogin = async () => {
     await sendOTP(email);
     document.getElementById('otp-email-lbl').textContent = email;
     
-    go('v-otp');
-    setupBoxes();
-    startTimer();
+    // Left-to-right green fill animation on success
+    btn.classList.add('btn-success');
+    btn.innerHTML = 'Success ✓';
+    
+    setTimeout(() => {
+        btn.classList.remove('btn-success');
+        btnLoad(btn, false, 'Sign In & Send OTP');
+        go('v-otp');
+        setupBoxes();
+        startTimer();
+    }, 450); // Wait for the animation to finish before sliding to next view
+    
     toast('Security OTP sent to inbox','info');
     
   } catch(e) {
@@ -469,8 +492,15 @@ window.verifyOTP = async () => {
         saveSession({uid:snap.docs[0].id, ...snap.docs[0].data()});
     }
     
-    // Play success animation overlay
-    document.getElementById('success-overlay').classList.add('show');
+    // Add success animation to the Verify button
+    btn.classList.add('btn-success');
+    btn.innerHTML = 'Verified ✓';
+    
+    // Play full screen success animation overlay slightly after button turns green
+    setTimeout(() => {
+        document.getElementById('success-overlay').classList.add('show');
+    }, 300);
+    
     setTimeout(()=>{ window.location.href='dashboard.html'; }, 1400);
 
   } catch(e) {
