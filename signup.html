@@ -23,128 +23,83 @@ body{font-family:var(--fb);background:var(--bg);min-height:100vh;display:flex;al
 a{text-decoration:none;color:inherit}
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:8px}
 
-/* PAGE LAYOUT - Highly optimized for vertical space to completely remove scrollbar */
+/* PAGE LAYOUT - Hyper-optimized for vertical space to remove scrollbar on PC */
 .page-wrap{display:grid;grid-template-columns:44% 56%;max-width:1100px;width:100%;background:var(--sf);border-radius:28px;box-shadow:0 20px 60px rgba(15,23,42,.06);overflow:hidden; height:min(640px, 92vh); border:1px solid rgba(0,0,0,0.05);}
 
-/* LEFT PANEL (2D CARTOON ANIMATION) */
+/* LEFT PANEL (NATIVE CSS ANIMATION) */
 .left-visual{
-    background: linear-gradient(180deg, #E0F2FE 0%, #BAE6FD 100%);
+    background:linear-gradient(180deg, #E0F2FE 0%, #BAE6FD 100%);
     position:relative;
-    display:flex;align-items:flex-end; /* Anchors the SVG exactly to the bottom */
-    justify-content:center;
+    display:flex;align-items:center;justify-content:center;
     border-right:1px solid rgba(0,0,0,0.03);
     overflow:hidden;
 }
 
-/* ── 2D NATIVE CSS ANIMATION LOGIC ── */
-.dino-scene { 
-    width: 100%; height: 100%; max-height: 100%; 
-    display: block; 
+/* ── 2D REAL-FEEL ANIMATION LOGIC ── */
+.scene-container { width: 100%; height: 100%; max-width: 450px; position:relative;}
+.dino-scene { width: 100%; height: 100%; display:block;}
+
+/* 1. Verbatim Top Header */
+.top-header-text {
+    position: absolute;
+    top: 40px; left: 0; width: 100%;
+    text-align: center;
+    font-family: var(--fm);
+    font-size: 1.15rem; font-weight: 500;
+    color: var(--tx2);
+    opacity: 1;
+    letter-spacing: -0.01em;
+    z-index: 20;
 }
 
-/* 1. Global Idle Breathing */
-.dino-body-wrap {
-    transform-origin: 250px 500px;
-    animation: breathing 3s ease-in-out infinite;
+/* 2. Boy Body Breathing & Reacting to catch */
+.boy-body {
+    transform-origin: 250px 480px;
+    animation: breathing 3s ease-in-out infinite, reactToCatch 12s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
 }
 @keyframes breathing {
     0%, 100% { transform: scaleY(1); }
-    50% { transform: scaleY(0.98) scaleX(1.01); }
+    50% { transform: scaleY(0.985) scaleX(1.005); }
+}
+@keyframes reactToCatch {
+    0%, 25% { transform: rotate(0deg); }
+    30% { transform: scaleY(0.9) scaleX(1.1); } /* Squash on impact */
+    35%, 100% { transform: rotate(-5deg); } /* Settles with slight tilt */
 }
 
-/* 2. Neck Movement (Anticipation, Roar, Look Down) */
-.dino-neck {
-    transform-origin: 250px 400px; /* Base of neck */
-    animation: neckLogic 12s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
-}
-@keyframes neckLogic {
-    0%, 12% { transform: rotate(0deg); }
-    15%, 18% { transform: rotate(8deg); } /* Anticipation (pull back) */
-    20%, 28% { transform: rotate(-18deg); } /* ROAR! (thrust forward) */
-    32%, 46% { transform: rotate(0deg); } /* Idle */
-    47%, 48% { transform: rotate(5deg) scaleY(0.9); } /* Bonk compress */
-    52%, 75% { transform: rotate(-25deg); } /* Look down at logo */
-    82%, 100% { transform: rotate(0deg); } /* Back to normal */
-}
-
-/* 3. Head Movement (Squash & Stretch) */
-.dino-head {
-    transform-origin: 250px 150px; /* Base of head */
+/* 3. Boy Head Moving (Anticipation & Bonk squash) */
+.boy-head {
+    transform-origin: 250px 220px;
     animation: headLogic 12s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
 }
 @keyframes headLogic {
     0%, 12% { transform: rotate(0deg); }
-    15%, 18% { transform: rotate(12deg); } /* Anticipation */
-    20%, 28% { transform: rotate(-8deg); } /* ROAR! */
-    32%, 46% { transform: rotate(0deg) scale(1); } /* Idle */
-    47% { transform: rotate(0deg) scaleY(0.7) scaleX(1.15) translateY(20px); } /* SQUASH FROM BONK */
-    49% { transform: rotate(-5deg) scaleY(1.05) scaleX(0.95); } /* Stretch bounce */
-    52%, 75% { transform: rotate(35deg) scale(1); } /* Look down */
-    82%, 100% { transform: rotate(0deg) scale(1); }
+    15% { transform: rotate(-10deg); } /* Anticipation (looks up) */
+    18%, 24% { transform: rotate(-25deg) translateY(-8px); } /* Looking up at falling logo */
+    28% { transform: translateY(12px) scaleY(0.7) scaleX(1.15); } /* SQUASH ON CONTACT */
+    32%, 100% { transform: rotate(0deg) scale(1); } /* Back to normal smile */
 }
 
-/* 4. Jaw Movement (Shout) */
-.dino-jaw {
-    transform-origin: 210px 155px; /* Jaw hinge */
-    animation: jawLogic 12s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
-}
-@keyframes jawLogic {
-    0%, 18% { transform: rotate(0deg); }
-    20%, 28% { transform: rotate(40deg); } /* Open wide */
-    30%, 100% { transform: rotate(0deg); }
-}
-
-/* 5. Eye Emotions (Blink & Wide Eye) */
-.dino-eye-group {
-    transform-origin: 230px 120px;
-    animation: eyeLogic 12s ease-in-out infinite;
-}
-@keyframes eyeLogic {
-    0%, 8% { transform: scale(1); }
-    9% { transform: scaleY(0.1); } /* Blink */
-    10%, 46% { transform: scale(1); }
-    47% { transform: scaleY(0.1); } /* Blink on bonk */
-    50%, 75% { transform: scale(1.6); } /* Wide eyed confusion */
-    76% { transform: scaleY(0.1); } /* Blink */
-    77%, 100% { transform: scale(1); }
-}
-
-/* 6. Shout Particles (Air blasting) */
-.shout-particles {
-    transform-origin: 120px 150px;
-    animation: particlesLogic 12s cubic-bezier(0.2, 1, 0.3, 1) infinite;
-}
-@keyframes particlesLogic {
-    0%, 19% { opacity: 0; transform: translateX(0) scale(0.5); }
-    20% { opacity: 1; transform: translateX(-50px) scale(1.2); }
-    24% { opacity: 0; transform: translateX(-80px) scale(1.6); }
-    25%, 100% { opacity: 0; transform: translateX(0) scale(0.5); }
-}
-
-/* 7. Trembling Leaves (Secondary Action) */
-.bush-shake {
-    animation: leafLogic 12s ease-in-out infinite;
-}
-@keyframes leafLogic {
-    0%, 19% { transform: rotate(0deg); }
-    20%, 22%, 24%, 26%, 28% { transform: rotate(3deg); }
-    21%, 23%, 25%, 27% { transform: rotate(-3deg); }
-    29%, 100% { transform: rotate(0deg); }
-}
-
-/* 8. Falling Zenda Logo Physics */
+/* 4. Falling Logo Physics */
 .zenda-logo-fall {
     animation: logoFallLogic 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 @keyframes logoFallLogic {
-    0%, 44% { transform: translateY(-200px); opacity: 0; }
-    45% { opacity: 1; transform: translateY(-50px); }
-    47% { transform: translateY(70px) translateX(-5px); } /* Hits head */
-    50% { transform: translateY(10px) translateX(-60px) rotate(-60deg); } /* Bounce up & left */
-    54% { transform: translateY(325px) translateX(-120px) rotate(-110deg); } /* Hits floor */
-    56% { transform: translateY(310px) translateX(-130px) rotate(-120deg); } /* Micro bounce */
-    58%, 80% { transform: translateY(325px) translateX(-135px) rotate(-120deg); opacity: 1; scale: 1; } /* Settles */
-    82%, 100% { transform: translateY(325px) translateX(-135px) rotate(-120deg) scale(0); opacity: 0; } /* Poof disappears */
+    0%, 18% { transform: translateY(-300px); opacity: 0; }
+    19% { opacity: 1; transform: translateY(-50px); }
+    22% { transform: translateY(150px); } /* Hits boy's raised hands */
+    28%, 100% { transform: translateY(150px) scale(1); opacity: 1; } /* Handled and stationary */
+}
+
+/* 5. Shaking Leaves from Roar soundwaves */
+.leaf-shake {
+    animation: leafLogic 12s ease-in-out infinite;
+}
+@keyframes leafLogic {
+    0%, 19% { transform: rotate(0deg); }
+    20%, 22%, 24%, 26%, 28% { transform: rotate(4deg); }
+    21%, 23%, 25%, 27% { transform: rotate(-4deg); }
+    29%, 100% { transform: rotate(0deg); }
 }
 
 /* RIGHT PANEL (FORM) */
@@ -164,8 +119,10 @@ a{text-decoration:none;color:inherit}
 .step-item.done .step-lbl{color:var(--ac)}
 
 .form-ttl{font-family:var(--fd);font-size:1.8rem;font-weight:800;color:var(--tx1);letter-spacing:-.03em;margin-bottom:4px}
+.form-sub{font-size:.85rem;color:var(--tx2);margin-bottom:20px; font-weight:500;}
+.form-sub a{color:var(--ac);font-weight:700; text-decoration:underline; text-underline-offset:2px;}
 
-/* FORMS - Vertically Optimized */
+/* FORMS - Vertically Optimized to remove scrollbar */
 .fblock{display:flex;flex-direction:column;gap:14px} 
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:500px){.frow{grid-template-columns:1fr}}
@@ -186,10 +143,15 @@ a{text-decoration:none;color:inherit}
 .pwd-bar-wrap{height:3px;border-radius:3px;background:var(--bd);margin-top:2px;overflow:hidden}
 .pwd-bar{height:100%;border-radius:3px;width:0;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
 
-/* MAIN BUTTON */
-.btnMain{width:100%;padding:14px;border-radius:10px;font-family:var(--fd);font-weight:700;font-size:.95rem;color:#fff;background:var(--ac);border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;box-shadow:0 4px 12px rgba(79,70,229,.2)}
-.btnMain:hover{background:var(--ach);box-shadow:0 6px 16px rgba(79,70,229,.3);transform:translateY(-1px)}
+/* MAIN Submit BUTTON with gradient success fill from perfected design */
+.btnMain{width:100%;padding:14px;border-radius:10px;font-family:var(--fd);font-weight:700;font-size:.95rem;color:#fff;background:var(--ac);border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;box-shadow:0 4px 12px rgba(79,70,229,0.18)}
+.btnMain:hover{background:var(--ach);box-shadow:0 6px 16px rgba(79,70,229,0.25);transform:translateY(-1px)}
 .btnMain:active{transform:scale(.98)}
+
+/* SSO Buttons */
+.sso-wrap { display:flex; gap:12px; margin-top:20px;}
+.btn-sso { flex:1; padding:10px; border-radius:10px; border:2px solid var(--bd); font-size:.85rem; font-family:var(--fd); font-weight:700; color:var(--tx1); background:#fff; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; gap:8px;}
+.btn-sso:hover { border-color:var(--tx1); background:#F3F4F6; transform:translateY(-1px); box-shadow:0 4px 12px rgba(15,23,42,0.06);}
 
 /* SUCCESS BUTTON ANIMATION */
 .btn-success {
@@ -214,46 +176,18 @@ a{text-decoration:none;color:inherit}
 .back-form{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:var(--tx2);cursor:pointer;background:none;border:none;padding:0;margin-bottom:16px;font-family:var(--fb);transition:color .15s}
 .back-form:hover{color:var(--ac)}
 
-/* Success Step 3 */
-.success-wrap{text-align:center}
-.success-ico{width:64px;height:64px;border-radius:20px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;animation:popIn .5s cubic-bezier(.34,1.56,.64,1); box-shadow:0 8px 16px rgba(79,70,229,0.15);}
-@keyframes popIn{from{transform:scale(0) rotate(-15deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
-.code-box{background:var(--sf);border:1.5px dashed var(--bd2);border-radius:10px;padding:14px;margin:12px 0;cursor:pointer;transition:all .2s}
-.code-box:hover{border-color:var(--ac);box-shadow:0 4px 16px rgba(15,23,42,.06); transform:translateY(-2px);}
-.code-lbl{font-size:.65rem;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-family:var(--fd)}
-.code-val{font-family:var(--fm);font-size:1.6rem;color:var(--tx1);letter-spacing:.15em; font-weight:700;}
-.code-hint{font-size:.7rem;color:var(--tx3);margin-top:4px; font-weight:500;}
-.card-preview{margin:12px 0;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.1); transition:transform .3s; border:1px solid var(--bd);}
-.card-actions{display:flex;gap:12px;margin-top:8px}
-.btn-dl{flex:1;padding:10px;background:var(--sf);border:1.5px solid var(--bd);border-radius:8px;color:var(--tx1);font-family:var(--fd);font-weight:700;font-size:.85rem;cursor:pointer;transition:all .18s; display:flex; align-items:center; justify-content:center; gap:6px;}
-.btn-dl:hover{border-color:var(--tx1);background:#F3F4F6}
-.btn-wa{flex:1;padding:10px;background:#10B981;border:none;border-radius:8px;color:#fff;font-family:var(--fd);font-weight:700;font-size:.85rem;cursor:pointer;transition:all .18s; display:flex; align-items:center; justify-content:center; gap:6px;}
-.btn-wa:hover{background:#059669;}
-
-/* Toasts */
-#toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
-.toast{padding:12px 18px;border-radius:10px;font-size:.85rem;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,.12);min-width:200px;animation:tIn .28s ease;border:1px solid;display:flex;align-items:center;gap:8px}
-.t-ok{background:#0F172A;border-color:#334155;color:#fff}
-.t-err{background:#FEF2F2;border-color:#FECACA;color:#991B1B}
-.t-info{background:#EEF2FF;border-color:#C7D2FE;color:var(--tx1)}
-@keyframes tIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
-.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;display:inline-block;vertical-align:middle}
-@keyframes spin{to{transform:rotate(360deg)}}
-
 /* MOBILE RESPONSIVENESS */
 @media(max-width:860px) {
-    body { padding:0; align-items:flex-start; background:#BAE6FD;}
-    .page-wrap { grid-template-columns:1fr; border-radius:0; min-height:100vh; border:none; box-shadow:none; max-width:100%; background:transparent; }
+    body { padding:0; align-items:flex-end; background:#BAE6FD;}
+    .page-wrap { grid-template-columns:1fr; border-radius:32px 32px 0 0; min-height:auto; border:none; box-shadow:0 -10px 40px rgba(0,0,0,0.1); max-width:100%; height:auto; }
+    .left-visual { height: 38vh; border:none; border-radius:0 0 32px 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); z-index: 10; align-items:center;} 
+    .dino-scene { max-width:320px;}
+    .top-header-text { top: 20px; font-size: 1rem; }
     
-    .left-visual { 
-        height: 35vh; border:none; 
-        border-radius:0 0 32px 32px; 
-        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-    } 
-    .dino-scene { max-width:300px; }
-    
-    .right-form { padding:24px 24px 40px; border-radius:32px 32px 0 0; background:var(--sf); min-height:65vh; margin-top:-32px; z-index:20;}
+    .right-form { padding:32px 24px 40px; border-radius:32px 32px 0 0; background:var(--sf); margin-top:-32px; z-index:20;}
+    .steps { max-width: 100%; margin-bottom: 24px; }
     .frow { grid-template-columns: 1fr; gap: 14px; }
+    .sso-wrap { flex-direction:column; gap:8px;}
 }
 </style>
 </head>
@@ -261,51 +195,46 @@ a{text-decoration:none;color:inherit}
 
 <div class="page-wrap">
   <div class="left-visual">
+      
+      <div class="top-header-text">(manage buiness with Zenda)</div>
+      
       <svg class="dino-scene" viewBox="0 0 500 500" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">
           
-          <circle cx="100" cy="150" r="40" fill="#FEF08A" />
-          <path d="M300,100 Q330,80 360,100 Q390,80 420,100 L420,120 L300,120 Z" fill="#fff" opacity="0.6" />
+          <ellipse cx="250" cy="485" rx="100" ry="12" fill="rgba(0,0,0,0.06)" />
 
-          <path d="M-50,500 Q50,300 150,500 Z" fill="#34D399" class="bush-shake" style="transform-origin: 50px 500px;"/>
-          <path d="M350,500 Q450,250 550,500 Z" fill="#34D399" class="bush-shake" style="transform-origin: 450px 500px; animation-delay: 0.2s;"/>
+          <path class="leaf-shake" style="transform-origin: 100px 500px;" d="M-50,500 Q50,300 150,500 Z" fill="#34D399"/>
+          <path class="leaf-shake" style="transform-origin: 400px 500px;" d="M300,500 Q400,280 500,500 Z" fill="#34D399"/>
 
-          <ellipse cx="250" cy="485" rx="120" ry="15" fill="rgba(0,0,0,0.06)" />
+          <g class="zenda-logo-fall">
+              <rect x="226" y="0" width="48" height="48" rx="14" fill="#4F46E5"/>
+              <text x="250" y="32" font-family="sans-serif" font-weight="bold" font-size="28" fill="#fff" text-anchor="middle">Z</text>
+          </g>
 
-          <g class="dino-body-wrap">
-              <path d="M150,500 C150,350 350,350 350,500 Z" fill="#FBBF24" />
+          <g class="boy-body">
+              <path d="M190,480 Q190,380 250,380 Q310,380 310,480 Z" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5"/>
+              <path d="M220,380 C220,360 280,360 280,380 L280,480 L220,480 Z" fill="#4F46E5" /> <g class="boy-arms-raised">
+                  <path d="M190,410 L150,320 M310,410 L350,320" stroke="#FBBF24" stroke-width="25" stroke-linecap="round"/> <circle cx="150" cy="320" r="20" fill="#FBBF24"/> <circle cx="350" cy="320" r="20" fill="#FBBF24"/> </g>
 
-              <g class="dino-neck">
-                  <path d="M210,400 C210,250 230,150 250,150 C270,150 290,250 290,400 Z" fill="#FBBF24" />
-
-                  <g class="dino-head">
-                      <path d="M210,160 Q210,90 250,90 Q290,90 290,140 Q290,160 250,160 Z" fill="#FBBF24" />
-                      <path d="M210,120 Q130,120 130,150 Q130,160 210,160 Z" fill="#FBBF24" />
-
-                      <g class="dino-jaw">
-                          <path d="M210,155 Q140,155 140,175 Q140,185 210,180 Z" fill="#F59E0B" />
-                      </g>
-
+              <g class="boy-head">
+                  <circle cx="250" cy="220" r="60" fill="#FBBF24"/> <g class="face-smile">
+                      <path d="M225,185 L240,182 M260,182 L275,185" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
                       <g class="dino-eye-group">
-                          <circle cx="230" cy="120" r="6" fill="#0F172A" />
-                          <circle cx="228" cy="118" r="2" fill="#fff" />
+                          <circle cx="230" cy="195" r="5" fill="#0F172A"/>
+                          <circle cx="270" cy="195" r="5" fill="#0F172A"/>
                       </g>
-
-                      <circle cx="250" cy="135" r="9" fill="#EF4444" opacity="0.3" />
-
-                      <g class="shout-particles">
-                          <path d="M120,150 L60,120 M110,160 L40,160 M120,170 L60,200" stroke="#94A3B8" stroke-width="6" stroke-linecap="round" />
-                      </g>
+                      <path d="M242,208 L258,208 M235,225 Q250,238 265,225" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
                   </g>
+                  
+                  <circle cx="250" cy="225" r="10" fill="#EF4444" opacity="0.3"/>
+                  
+                  <path d="M190,220 Q190,140 250,140 Q310,140 310,220" fill="#475569"/>
+                  <path d="M190,220 Q170,180 200,160 Q210,180 190,220 Z M280,160 Q300,180 290,220 Q280,180 280,160 Z" fill="#475569"/>
               </g>
           </g>
 
-          <g class="zenda-logo-fall">
-              <rect x="226" y="-30" width="48" height="48" rx="14" fill="#4F46E5" />
-              <text x="250" y="2" font-family="sans-serif" font-weight="bold" font-size="28" fill="#fff" text-anchor="middle">Z</text>
-          </g>
-
-          <path d="M50,500 Q150,350 250,500 Z" fill="#10B981" class="bush-shake" style="transform-origin: 150px 500px; animation-delay: 0.1s;" />
-          <path d="M250,500 Q350,380 450,500 Z" fill="#059669" class="bush-shake" style="transform-origin: 350px 500px; animation-delay: 0.3s;" />
+          <path class="leaf-shake" style="transform-origin: 50px 500px;" d="M-60,500 Q40,380 140,500 Z" fill="#10B981"/>
+          <path class="leaf-shake" style="transform-origin: 450px 500px;" d="M360,500 Q460,400 560,500 Z" fill="#059669"/>
+          
       </svg>
   </div>
 
@@ -317,12 +246,13 @@ a{text-decoration:none;color:inherit}
     </div>
 
     <div id="v-step1">
-      <div class="form-ttl" style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+      <div class="form-ttl" style="display:flex; align-items:center; gap:12px;">
         <button onclick="window.location.href='index.html'" style="background:none; border:none; cursor:pointer; color:var(--tx1); display:flex; align-items:center; padding:0; transition:color 0.2s;" onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='var(--tx1)'" title="Back to Home">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         Create workspace
       </div>
+      <p class="form-sub">Already have an account? <a href="login.html">Sign in here</a></p>
       
       <div class="fblock">
         
@@ -371,7 +301,19 @@ a{text-decoration:none;color:inherit}
         </div>
         
         <button class="btnMain" id="btn-step1" onclick="handleStep1()">Send OTP to Email</button>
-        <p style="font-size:.75rem;color:var(--tx3);text-align:center; font-weight:500; margin-top:2px;">Already have an account? <a href="login.html" style="color:var(--tx1);text-decoration:underline;text-underline-offset:2px;">Sign in</a></p>
+        
+        <div class="sso-wrap">
+            <button class="btn-sso">
+                <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/></svg>
+                Google
+            </button>
+            <button class="btn-sso">
+                <svg width="18" height="18" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05 1.78-3.19 1.78-1.14 0-1.52-.7-2.81-.7s-1.71.68-2.81.68c-1.14 0-2.21-.83-3.19-1.78-1.98-1.91-3.37-5.11-1.98-7.51.71-1.22 2-1.99 3.19-1.99.98 0 1.83.68 2.81.68s1.83-.68 2.81-.68c.98 0 1.83.68 2.81.68a3.19 3.19 0 0 1 3.19 1.99c1.39 2.4 0 5.6-1.98 7.51z M13.86 3.51c0-1.14-.98-2.05-2.05-2.05s-2.05.98-2.05 2.05a2.05 2.05 0 0 0 2.05 2.05 2.05 2.05 0 0 0 2.05-2.05z" fill="#0F172A"/></svg>
+                Apple
+            </button>
+        </div>
+
+        <p style="font-size:.7rem;color:var(--tx3);text-align:center; font-weight:500;">By signing up you agree to our <a href="#" style="color:var(--tx1);text-decoration:underline;text-underline-offset:2px;">Terms</a></p>
       </div>
     </div>
 
@@ -566,7 +508,6 @@ let icon = 'ℹ️'; if(type==='ok') icon='✓'; if(type==='err') icon='⚠️';
 t.innerHTML = `<span style="font-size:14px">${icon}</span> ${msg}`;
 c.appendChild(t);setTimeout(()=>t.remove(),3500);}
 
-// Enter key support
 document.addEventListener('keydown',e=>{ 
   if(e.key!=='Enter') return; 
   const s1 = document.getElementById('v-step1');
