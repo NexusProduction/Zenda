@@ -87,6 +87,16 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
 .btn-ghost.loading::after { border-color: rgba(15, 23, 42, 0.1); border-top-color: var(--tx-title); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── ACTIVE SUBSCRIPTION BANNER ── */
+.active-sub-banner { background: linear-gradient(135deg, #D1FAE5, #A7F3D0); border: 1.5px solid #6EE7B7; border-radius: 16px; padding: 16px 24px; margin-bottom: 48px; display: none; align-items: center; justify-content: center; gap: 12px; text-align: center; }
+.active-sub-banner.show { display: flex; }
+.active-sub-banner .banner-icon { font-size: 22px; }
+.active-sub-banner .banner-text { font-family: var(--f-disp); font-weight: 700; font-size: 15px; color: #065F46; }
+.active-sub-banner .banner-text span { font-weight: 800; color: #047857; }
+
+/* Green active/disabled button for current plan */
+.btn-active { background: #10B981; color: white; cursor: not-allowed; opacity: 0.85; border: none; box-shadow: 0 4px 12px rgba(16,185,129,0.2); }
+
 /* ── BILLING PORTAL LINK ── */
 .billing-portal { margin-top: 56px; font-size: 15px; color: var(--tx-muted); font-weight: 500; }
 .billing-portal a { color: var(--brand); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; transition: color 0.2s; }
@@ -151,6 +161,12 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
   <h1 class="title" id="pageTitle">Choose your plan</h1>
   <p class="subtitle" id="pageSubtitle">Select the offer that best suits your team's needs.</p>
 
+  <!-- Active subscription banner — shown only if user already has a valid plan -->
+  <div class="active-sub-banner" id="activeSubBanner">
+    <div class="banner-icon">✅</div>
+    <div class="banner-text">Your <span id="activePlanName"></span> subscription is active and valid till <span id="activePlanExpiry"></span></div>
+  </div>
+
   <div class="grid">
     <div class="card" id="cardBasic">
       <div class="c-name">Basic</div>
@@ -211,13 +227,11 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
 </div>
 
 <!-- ── PAYMENT MODAL ── -->
-<div class="modal-overlay" id="payModal">
+<!-- Clicking the dark overlay closes the modal (no X button needed) -->
+<div class="modal-overlay" id="payModal" onclick="handleOverlayClick(event)">
   <div class="modal">
-    <button class="m-close" onclick="closePayment()">✕</button>
     <div class="m-title">Complete Checkout</div>
     <div class="m-sub">Scan the QR code below and pay the exact amount.</div>
-    
-    <div class="pay-amount" id="payAmount">₹0</div>
 
     <!-- ✅ QR CODE SECTION (replace the img src with your actual payment QR) -->
     <div class="qr-wrapper">
@@ -233,7 +247,7 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
       <div class="qr-label">Scan with any UPI app to pay</div>
       <div class="qr-steps">
         <span class="qr-step">1. Scan QR</span>
-        <span class="qr-step">2. Pay exact amount</span>
+        <span class="qr-step" id="payStepAmount">2. Pay exact amount</span>
         <span class="qr-step">3. Copy UTR below</span>
       </div>
     </div>
@@ -286,7 +300,38 @@ onAuthStateChanged(auth, async (user) => {
       if (currentUserData.companyId) {
         const compSnap = await getDoc(doc(db, 'companies', currentUserData.companyId));
         if (compSnap.exists()) {
-          currentUserData.companyName = compSnap.data().name;
+          const compData = compSnap.data();
+          currentUserData.companyName = compData.name;
+
+          // ── CHECK FOR ACTIVE SUBSCRIPTION & UPDATE UI ──
+          if (compData.isPremium && compData.subscriptionExpiry) {
+            const expiry = new Date(compData.subscriptionExpiry);
+            const isStillActive = expiry > new Date();
+
+            if (isStillActive) {
+              // Show the banner
+              const expiryStr = expiry.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+              document.getElementById('activePlanName').textContent = compData.planType || 'Premium';
+              document.getElementById('activePlanExpiry').textContent = expiryStr;
+              document.getElementById('activeSubBanner').classList.add('show');
+
+              // Disable & green-out the matching plan button
+              const planType = (compData.planType || '').toLowerCase();
+              if (planType === 'monthly') {
+                const btn = document.getElementById('btnMonthly');
+                btn.textContent = '✓ Active Plan';
+                btn.className = 'btn btn-active';
+                btn.disabled = true;
+                btn.onclick = null;
+              } else if (planType === 'annual') {
+                const btn = document.getElementById('btnAnnual');
+                btn.textContent = '✓ Active Plan';
+                btn.className = 'btn btn-active';
+                btn.disabled = true;
+                btn.onclick = null;
+              }
+            }
+          }
         }
       }
     }
@@ -297,13 +342,21 @@ onAuthStateChanged(auth, async (user) => {
 window.openPayment = function(plan, price) {
   window.selectedPlan = plan;
   window.selectedPrice = price;
-  document.getElementById('payAmount').textContent = `₹${price}`;
+  // ✅ Price shown inside step 2 label, not as a separate big number
+  document.getElementById('payStepAmount').textContent = `2. Pay exact ₹${price}`;
   document.getElementById('utrInput').value = '';
   document.getElementById('payModal').classList.add('open');
 };
 
 window.closePayment = function() { 
   document.getElementById('payModal').classList.remove('open'); 
+};
+
+// ✅ Clicking the dark overlay (but NOT the modal card itself) closes the modal
+window.handleOverlayClick = function(e) {
+  if (e.target === document.getElementById('payModal')) {
+    closePayment();
+  }
 };
 
 // ── FIREBASE SUBMIT ──
