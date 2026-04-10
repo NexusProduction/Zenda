@@ -251,15 +251,37 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
   <button class="succ-btn" onclick="window.location.href='dashboard.html'">Explore new features &rarr;</button>
 </div>
 
-<script>
-let selectedPlan = '';
-let selectedPrice = 0;
+<script type="module">
+import { auth, db } from './firebase-config.js';
+import { collection, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+window.selectedPlan = '';
+window.selectedPrice = 0;
+let currentUserData = null;
+
+// ── FETCH USER & COMPANY DATA ON LOAD ──
+// We MUST have this data so the Admin portal knows WHO is requesting the upgrade!
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    if (snap.exists()) {
+      currentUserData = snap.data();
+      if (currentUserData.companyId) {
+        const compSnap = await getDoc(doc(db, 'companies', currentUserData.companyId));
+        if (compSnap.exists()) {
+          currentUserData.companyName = compSnap.data().name;
+        }
+      }
+    }
+  }
+});
 
 // ── PAYMENT MODAL LOGIC ──
 window.openPayment = function(plan, price) {
-  selectedPlan = plan;
-  selectedPrice = price;
-  document.getElementById('payAmount').textContent = `₹${selectedPrice}`;
+  window.selectedPlan = plan;
+  window.selectedPrice = price;
+  document.getElementById('payAmount').textContent = `₹${price}`;
   document.getElementById('utrInput').value = '';
   document.getElementById('payModal').classList.add('open');
 };
@@ -268,8 +290,8 @@ window.closePayment = function() {
   document.getElementById('payModal').classList.remove('open'); 
 };
 
-// ── SUBMIT & REWARD STATE ──
-window.submitPayment = function() {
+// ── ACTUAL FIREBASE SUBMIT (Sends to Admin Portal) ──
+window.submitPayment = async function() {
   const utr = document.getElementById('utrInput').value.trim();
   const btn = document.getElementById('submitPayBtn');
 
@@ -278,17 +300,40 @@ window.submitPayment = function() {
   // Tactile Loading State
   btn.classList.add('loading');
 
-  // Simulate network request & DB save (1.5 seconds)
-  // (In a real app, you would call Firebase here)
-  setTimeout(() => {
-    btn.classList.remove('loading');
+  try {
+    // 1. Build the exact payload your Admin Portal expects
+    const payload = {
+      plan: window.selectedPlan,
+      price: window.selectedPrice,
+      utr: utr,
+      status: "pending", 
+      userId: auth.currentUser ? auth.currentUser.uid : "Unknown User",
+      userEmail: auth.currentUser ? auth.currentUser.email : "Unknown Email",
+      // CRITICAL: Admin portal needs these 3 fields to work:
+      ownerName: currentUserData ? currentUserData.name : "Unknown Owner",
+      companyName: (currentUserData && currentUserData.companyName) ? currentUserData.companyName : "Unknown Company",
+      companyId: currentUserData ? currentUserData.companyId : (auth.currentUser ? auth.currentUser.uid : "Unknown"),
+      createdAt: new Date().toISOString()
+    };
+
+    // 2. Push to Firestore Database
+    await addDoc(collection(db, 'upgradeRequests'), payload);
+
+    // 3. Trigger UI Success state
     closePayment();
-    triggerSuccessReward(selectedPlan);
-  }, 1500);
+    triggerSuccessReward(window.selectedPlan);
+
+  } catch (error) {
+    console.error("Firebase Error:", error);
+    alert("Database connection failed. Please ensure you are logged in.");
+  } finally {
+    btn.classList.remove('loading');
+  }
 };
 
-function triggerSuccessReward(planName) {
-  document.getElementById('mainContainer').style.display = 'none'; // Hide pricing
+// ── SUCCESS REWARD STATE ──
+window.triggerSuccessReward = function(planName) {
+  document.getElementById('mainContainer').style.display = 'none'; 
   const screen = document.getElementById('successScreen');
   document.getElementById('succPlanName').textContent = planName;
   screen.classList.add('show');
@@ -296,7 +341,7 @@ function triggerSuccessReward(planName) {
 }
 
 // ── LIGHTWEIGHT CONFETTI SCRIPT ──
-function fireConfetti() {
+window.fireConfetti = function() {
   const canvas = document.getElementById('confetti');
   const ctx = canvas.getContext('2d');
   canvas.width = window.innerWidth;
@@ -326,7 +371,7 @@ function fireConfetti() {
       p.tiltAngle += p.tiltAngleInc;
       p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2;
       p.x += Math.sin(p.tiltAngle) * 2;
-      p.dy += 0.05; // gravity
+      p.dy += 0.05; 
       p.y += p.dy;
       p.x += p.dx;
 
