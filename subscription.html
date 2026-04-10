@@ -346,12 +346,121 @@ function fireConfetti() {
 </script>
 
 <script type="module">
-  // If you later want to connect this to Firebase to read active plans or save the UTR, 
-  // you can put your imports and DB logic here safely!
-  /*
-  import { auth, db } from './firebase-config.js';
-  import { doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  */
+  <script type="module">
+import { auth, db } from './firebase-config.js';
+import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+window.selectedPlan = '';
+window.selectedPrice = 0;
+
+// ── PAYMENT MODAL LOGIC ──
+window.openPayment = function(plan, price) {
+  window.selectedPlan = plan;
+  window.selectedPrice = price;
+  document.getElementById('payAmount').textContent = `₹${price}`;
+  document.getElementById('utrInput').value = '';
+  document.getElementById('payModal').classList.add('open');
+};
+
+window.closePayment = function() { 
+  document.getElementById('payModal').classList.remove('open'); 
+};
+
+// ── ACTUAL FIREBASE SUBMIT (Sends to Admin Portal) ──
+window.submitPayment = async function() {
+  const utr = document.getElementById('utrInput').value.trim();
+  const btn = document.getElementById('submitPayBtn');
+
+  if (utr.length < 6) { alert("Please enter a valid Transaction ID."); return; }
+  
+  // Tactile Loading State
+  btn.classList.add('loading');
+
+  try {
+    // 1. Build the exact payload for your Admin Portal
+    const payload = {
+      plan: window.selectedPlan,
+      price: window.selectedPrice,
+      utr: utr,
+      status: "pending", // Your admin portal will read this
+      userId: auth.currentUser ? auth.currentUser.uid : "Unknown User",
+      userEmail: auth.currentUser ? auth.currentUser.email : "Unknown Email",
+      createdAt: new Date().toISOString()
+    };
+
+    // 2. Push to Firestore Database
+    await addDoc(collection(db, 'upgradeRequests'), payload);
+
+    // 3. Trigger UI Success state
+    closePayment();
+    triggerSuccessReward(window.selectedPlan);
+
+  } catch (error) {
+    console.error("Firebase Error:", error);
+    alert("Database connection failed. Please ensure you are logged in.");
+  } finally {
+    btn.classList.remove('loading');
+  }
+};
+
+// ── SUCCESS REWARD STATE ──
+window.triggerSuccessReward = function(planName) {
+  document.getElementById('mainContainer').style.display = 'none'; 
+  const screen = document.getElementById('successScreen');
+  document.getElementById('succPlanName').textContent = planName;
+  screen.classList.add('show');
+  fireConfetti();
+}
+
+// ── LIGHTWEIGHT CONFETTI SCRIPT ──
+window.fireConfetti = function() {
+  const canvas = document.getElementById('confetti');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const particles = [];
+  const colors = ['#F59E0B', '#10B981', '#4F46E5', '#EF4444', '#38BDF8'];
+
+  for (let i = 0; i < 100; i++) {
+    particles.push({
+      x: canvas.width / 2,
+      y: canvas.height / 2 + 100,
+      r: Math.random() * 6 + 4,
+      dx: Math.random() * 10 - 5,
+      dy: Math.random() * -15 - 5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      tilt: Math.floor(Math.random() * 10) - 10,
+      tiltAngleInc: (Math.random() * 0.07) + 0.05,
+      tiltAngle: 0
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let active = false;
+    particles.forEach(p => {
+      p.tiltAngle += p.tiltAngleInc;
+      p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2;
+      p.x += Math.sin(p.tiltAngle) * 2;
+      p.dy += 0.05; 
+      p.y += p.dy;
+      p.x += p.dx;
+
+      if (p.y <= canvas.height) active = true;
+
+      ctx.beginPath();
+      ctx.lineWidth = p.r;
+      ctx.strokeStyle = p.color;
+      ctx.moveTo(p.x + p.tilt + p.r, p.y);
+      ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
+      ctx.stroke();
+    });
+    if (active) requestAnimationFrame(draw);
+  }
+  draw();
+}
+</script>
 </script>
 
 </body>
