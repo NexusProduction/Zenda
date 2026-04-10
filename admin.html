@@ -84,7 +84,6 @@
 
 <script type="module">
 import { auth, db } from './firebase-config.js';
-// Make sure setDoc and getDoc are imported for the Wallet!
 import { collection, query, where, getDocs, doc, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
@@ -94,10 +93,7 @@ let txHistory = [];
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) return window.location.href = 'login.html';
-  
-  // Set up the secure wallet database location just for the Super Admin
   walletRef = doc(db, 'appData', user.uid, 'apps', 'adminWallet');
-  
   loadRequests();
   loadWallet();
 });
@@ -160,7 +156,6 @@ function renderWallet() {
     let color = isIncome ? '#059669' : '#DC2626';
     let sign = isIncome ? '+' : '-';
     let dateStr = new Date(tx.date).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
-    
     return `
       <div class="tx-row">
         <div>
@@ -214,7 +209,9 @@ async function loadRequests() {
       const data = docSnap.data();
       const div = document.createElement('div');
       div.className = 'card';
-      // Passed the company name into the approveRequest function so the Wallet knows who paid!
+
+      // ✅ FIX: Use data-* attributes instead of injecting values into onclick strings.
+      // This prevents crashes when companyName contains apostrophes or quotes (e.g. "Ali's Store").
       div.innerHTML = `
         <div class="details">
           <div><span class="tag tag-premium">${data.plan} Plan</span></div>
@@ -222,10 +219,30 @@ async function loadRequests() {
           <div style="color:#6C6F80; font-size:14px;">Requested by: ${data.ownerName}</div>
           <div style="color:#4F46E5; font-size:14px; font-family:monospace; font-weight:700; margin-top:4px;">UTR: ${data.utr}</div>
         </div>
-        <button class="btn" onclick="approveRequest('${docSnap.id}', '${data.companyId}', '${data.plan}', '${data.companyName}')">Approve & Upgrade</button>
+        <button
+          class="btn approve-btn"
+          data-req-id="${docSnap.id}"
+          data-company-id="${data.companyId}"
+          data-plan="${data.plan}"
+          data-company-name="${(data.companyName || '').replace(/"/g, '&quot;')}"
+        >
+          Approve & Upgrade
+        </button>
       `;
       list.appendChild(div);
     });
+
+    // ✅ Attach click handlers AFTER rendering — safe for any company name
+    document.querySelectorAll('.approve-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const reqId      = this.dataset.reqId;
+        const companyId  = this.dataset.companyId;
+        const plan       = this.dataset.plan;
+        const companyName = this.dataset.companyName;
+        approveRequest(reqId, companyId, plan, companyName);
+      });
+    });
+
   } catch(e) {
     list.innerHTML = '<div class="empty" style="color:red;">Error loading requests. Are you logged in as Super Admin?</div>';
   }
@@ -301,9 +318,9 @@ async function loadCompanies() {
   } catch(e) { list.innerHTML = '<div class="empty" style="color:red;">Error loading companies.</div>'; }
 }
 
-// --- APPROVE LOGIC (Now Adds to Wallet!) ---
-window.approveRequest = async function(reqId, companyId, plan, companyName) {
-  if (!confirm(`Are you sure you want to upgrade this company to ${plan}?`)) return;
+// --- APPROVE LOGIC ---
+async function approveRequest(reqId, companyId, plan, companyName) {
+  if (!confirm(`Are you sure you want to upgrade "${companyName}" to the ${plan} plan?`)) return;
   try {
     let expiry = new Date();
     if (plan === 'Monthly') expiry.setMonth(expiry.getMonth() + 1);
@@ -319,10 +336,9 @@ window.approveRequest = async function(reqId, companyId, plan, companyName) {
     // 2. Mark request as approved
     await updateDoc(doc(db, 'upgradeRequests', reqId), { status: 'approved' });
 
-    // 3. Add Money to Wallet!
+    // 3. Add income to Wallet
     let paymentAmount = plan === 'Monthly' ? 39 : 399;
     currentBalance += paymentAmount;
-    
     txHistory.push({
       type: 'income',
       amount: paymentAmount,
@@ -332,11 +348,12 @@ window.approveRequest = async function(reqId, companyId, plan, companyName) {
     
     await setDoc(walletRef, { balance: currentBalance, transactions: txHistory }, { merge: true });
 
-    alert(`✅ Upgraded successfully! ₹${paymentAmount} added to your wallet.`);
+    alert(`✅ "${companyName}" upgraded to ${plan}! ₹${paymentAmount} added to your wallet.`);
     loadRequests(); 
-    renderWallet(); // Refresh wallet UI in the background
+    renderWallet();
   } catch(e) {
-    alert("Error updating database."); console.error(e);
+    alert("Error updating database. Check console for details.");
+    console.error(e);
   }
 }
 </script>
