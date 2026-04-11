@@ -652,37 +652,54 @@ window.renderTaskCard = function(task, showActions) {
     const isPending = task.status === 'pending';
     const isDone = task.status === 'done';
     
+    // Tag Styling
     let priorityColor = 'var(--bg-overlay)';
     let priorityText = 'var(--tx-2)';
     if(task.priority === 'High') { priorityColor = 'var(--red-l)'; priorityText = 'var(--red)'; }
     if(task.priority === 'Medium') { priorityColor = 'var(--amber-l)'; priorityText = 'var(--amber-h)'; }
 
+    // Dynamic Classes
     const checkIcon = isDone ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` : '';
-    const checkboxClass = isDone ? 'task-checkbox done' : 'task-checkbox';
-    const titleClass = isDone ? 'task-title done' : 'task-title';
+    const checkboxClass = isDone ? 'card-checkbox done' : 'card-checkbox';
+    const titleClass = isDone ? 'card-title done' : 'card-title';
+    const cardStateClass = isDone ? 'premium-task-card completed-state' : 'premium-task-card';
 
-    // Avatar initials
+    // Assignee Initials for overlapping avatars
     const assigneeIni = task.assignedToName ? task.assignedToName.charAt(0).toUpperCase() : 'T';
+    const assignerIni = task.assignedByName ? task.assignedByName.charAt(0).toUpperCase() : 'A';
 
     return `
-    <div class="premium-task-card anim-stagger" id="task-${task.id}">
+    <div class="${cardStateClass}" id="task-${task.id}">
+        
         <div class="${checkboxClass}" ${isPending && isToMe ? `onclick="window.doAcceptTask('${task.id}')"` : ''}>
             ${checkIcon}
         </div>
-        <div class="task-content">
-            <div class="${titleClass}">${esc(task.title || '(Untitled Task)')}</div>
-            <div class="task-sub-row">
-                <div class="task-time">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    ${task.dueDate ? esc(task.dueDate) : 'No due date'}
+
+        <div class="card-content-wrap">
+            <div class="${titleClass}">${esc(task.title || 'Untitled Task')}</div>
+            
+            ${task.description ? `<div style="font-size:0.8rem; color:var(--tx-3); line-height:1.4; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;">${esc(task.description)}</div>` : ''}
+
+            <div class="card-meta-strip">
+                
+                <div style="display:flex; gap:8px; align-items:center;">
+                    ${task.dueDate ? `
+                    <div class="card-time-block">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        ${esc(task.dueDate)}
+                    </div>` : ''}
+                    
+                    ${task.priority ? `<span style="font-size:0.7rem; font-weight:700; background:${priorityColor}; color:${priorityText}; padding:4px 10px; border-radius:8px;">${task.priority}</span>` : ''}
                 </div>
-                <div class="task-tags-avatars">
-                    ${task.priority ? `<span style="font-size:0.65rem; font-weight:700; background:${priorityColor}; color:${priorityText}; padding:4px 10px; border-radius:99px;">${task.priority}</span>` : ''}
-                    <div class="avatar-group">
-                        <div class="av bg-blue-soft text-blue">${assigneeIni}</div>
+
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <div class="card-avatar-stack">
+                        <div class="av bg-blue-soft text-blue" title="Assignee: ${esc(task.assignedToName)}">${assigneeIni}</div>
+                        ${!isToMe ? `<div class="av" style="background:#F1F5F9; color:#475569;" title="Assigned By: ${esc(task.assignedByName)}">${assignerIni}</div>` : ''}
                     </div>
+
                     ${isPending && showActions && isToMe ? `
-                    <button style="width:28px; height:28px; border-radius:50%; border:none; background:var(--red-l); color:var(--red); display:flex; align-items:center; justify-content:center; cursor:pointer;" title="Decline" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\'")}')">
+                    <button style="width:32px; height:32px; border-radius:10px; border:1px solid var(--red-l); background:transparent; color:var(--red); display:flex; align-items:center; justify-content:center; cursor:pointer;" title="Decline" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\'")}')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>` : ''}
                 </div>
@@ -729,33 +746,49 @@ window.renderTasksList = function() {
     const seen = new Set();
     list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
 
-    // Inject visual calendar strip
-    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    // Generate Premium Weekly Calendar Strip
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const today = new Date();
-    const currentDate = today.getDate();
     
-    let calendarStripHTML = '<div class="weekly-calendar-strip">';
-    for(let i = -3; i <= 3; i++) {
-        let d = new Date(today);
-        d.setDate(currentDate + i);
+    let calendarStripHTML = '<div class="mobile-week-strip">';
+    // Show 2 days ago to 4 days ahead
+    for(let i = -2; i <= 4; i++) {
+        let d = new Date();
+        d.setDate(today.getDate() + i);
         let isToday = i === 0;
+        
         calendarStripHTML += `
-            <div class="cal-day ${isToday ? 'active' : ''}">
-                <span class="cal-day-name">${days[d.getDay()]}</span>
-                <span class="cal-day-num">${d.getDate()}</span>
+            <div class="date-bubble ${isToday ? 'active' : ''}">
+                <span class="date-day">${days[d.getDay()]}</span>
+                <span class="date-num">${d.getDate()}</span>
             </div>
         `;
     }
     calendarStripHTML += '</div>';
 
+    // Empty State
     if (!list.length) {
-        el.innerHTML = calendarStripHTML + `<div class="empty" style="padding:48px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No tasks found</div><div class="empty-sub">Nothing matches this filter.</div></div>`;
+        el.innerHTML = calendarStripHTML + `
+        <div class="empty" style="padding:60px 20px;">
+            <div style="width:80px; height:80px; background:var(--bg-overlay); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg>
+            </div>
+            <div style="font-size:1.1rem; font-weight:700; color:var(--tx-1);">You're all caught up!</div>
+            <div style="font-size:0.9rem; color:var(--tx-3); margin-top:6px;">No tasks match this filter right now.</div>
+        </div>`;
         return;
     }
     
-    el.innerHTML = calendarStripHTML + '<div class="task-list-wrapper">' + list.map(t => window.renderTaskCard(t, true)).join('') + '</div>';
-};
+    // Render list
+    let delay = 0;
+    const listHTML = list.map((t, index) => {
+        const cardHTML = window.renderTaskCard(t, true);
+        // Inject inline style for staggered animation delay
+        return cardHTML.replace('class="premium-task-card anim-stagger"', `class="premium-task-card anim-stagger" style="animation-delay: ${index * 0.1}s;"`);
+    }).join('');
 
+    el.innerHTML = calendarStripHTML + '<div class="task-list-wrapper">' + listHTML + '</div>';
+};
 window.renderStaffCards = function(staff) {
   const el = document.getElementById('staff-cards-list');
   if (!el) return;
@@ -858,36 +891,6 @@ window.setTaskTab = function(tab, btn) {
 };
 
 window.doAcceptTask = async function(id) {
-  // Add instant UI feedback before Firebase finishes
-  const taskEl = document.getElementById('task-' + id);
-  const checkbox = taskEl?.querySelector('.task-checkbox');
-  const title = taskEl?.querySelector('.task-title');
-  
-  if (checkbox) {
-      checkbox.classList.add('done');
-      checkbox.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-  }
-  if (title) title.classList.add('done');
-
-  try {
-    await markTaskDone(id);
-    window.showToast('🎉 Task done!', 'success');
-  } catch(e) {
-    // Revert if it fails
-    if (checkbox) { checkbox.classList.remove('done'); checkbox.innerHTML = ''; }
-    if (title) title.classList.remove('done');
-    window.showToast(e.message, 'error');
-  }
-};
-
-window.openDeclineModal = function(id, title) {
-  pendingDeclineId = id;
-  pendingDeclineTitle = title;
-  document.getElementById('decline-task-title').textContent = title;
-  document.getElementById('decline-reason').value = '';
-  document.getElementById('decline-modal').classList.remove('hidden');
-};
-
 window.confirmDecline = async function() {
   const reason = document.getElementById('decline-reason').value.trim();
   const btn = document.getElementById('confirm-decline-btn');
