@@ -648,42 +648,47 @@ window.updateCharts = function(tasks) {
 };
 
 window.renderTaskCard = function(task, showActions) {
-  const isToMe = task.assignedTo === CU.uid;
-  const isPending = task.status === 'pending';
-  const canAct = showActions && isToMe && isPending;
-  
-  const badgeClass = task.status === 'done' ? 'badge-green' : task.status === 'pending' ? 'badge-amber' : 'badge-red';
-  const badgeText = task.status.charAt(0).toUpperCase() + task.status.slice(1);
-  
-  const metaText = isToMe ? `From ${esc(task.assignedByName||'Someone')}` : `To ${esc(task.assignedToName||'Someone')}`;
-  
-  return `
-  <div class="premium-task-card anim-stagger" id="task-${task.id}">
-      <div class="task-drag-handle">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="2"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
-      </div>
-      <div class="task-main">
-          <div class="task-title-row">
-              <div class="task-title">${esc(task.title || '(Untitled Task)')}</div>
-              ${(task.priority || 'Medium') === 'High' ? `<span class="status-pill badge-red" style="padding:2px 6px; font-size: 0.6rem;">High</span>` : ''}
-              <span class="status-pill ${badgeClass}">${badgeText}</span>
-          </div>
-          <div class="task-meta-row">
-              <span class="meta-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${metaText}</span>
-              ${task.dueDate ? `<span class="meta-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Due: ${task.dueDate}</span>` : ''}
-          </div>
-          ${task.description ? `<div style="font-size:0.8rem; color:var(--tx-3); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;">${esc(task.description)}</div>` : ''}
-      </div>
-      ${canAct ? `
-      <div class="task-actions">
-          <button class="icon-action-btn done-btn" title="Mark Done" onclick="window.doAcceptTask('${task.id}')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          </button>
-          <button class="icon-action-btn cross-btn" title="Decline Task" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\'")}')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-      </div>` : ''}
-  </div>`;
+    const isToMe = task.assignedTo === window.CU?.uid;
+    const isPending = task.status === 'pending';
+    const isDone = task.status === 'done';
+    
+    let priorityColor = 'var(--bg-overlay)';
+    let priorityText = 'var(--tx-2)';
+    if(task.priority === 'High') { priorityColor = 'var(--red-l)'; priorityText = 'var(--red)'; }
+    if(task.priority === 'Medium') { priorityColor = 'var(--amber-l)'; priorityText = 'var(--amber-h)'; }
+
+    const checkIcon = isDone ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` : '';
+    const checkboxClass = isDone ? 'task-checkbox done' : 'task-checkbox';
+    const titleClass = isDone ? 'task-title done' : 'task-title';
+
+    // Avatar initials
+    const assigneeIni = task.assignedToName ? task.assignedToName.charAt(0).toUpperCase() : 'T';
+
+    return `
+    <div class="premium-task-card anim-stagger" id="task-${task.id}">
+        <div class="${checkboxClass}" ${isPending && isToMe ? `onclick="window.doAcceptTask('${task.id}')"` : ''}>
+            ${checkIcon}
+        </div>
+        <div class="task-content">
+            <div class="${titleClass}">${esc(task.title || '(Untitled Task)')}</div>
+            <div class="task-sub-row">
+                <div class="task-time">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    ${task.dueDate ? esc(task.dueDate) : 'No due date'}
+                </div>
+                <div class="task-tags-avatars">
+                    ${task.priority ? `<span style="font-size:0.65rem; font-weight:700; background:${priorityColor}; color:${priorityText}; padding:4px 10px; border-radius:99px;">${task.priority}</span>` : ''}
+                    <div class="avatar-group">
+                        <div class="av bg-blue-soft text-blue">${assigneeIni}</div>
+                    </div>
+                    ${isPending && showActions && isToMe ? `
+                    <button style="width:28px; height:28px; border-radius:50%; border:none; background:var(--red-l); color:var(--red); display:flex; align-items:center; justify-content:center; cursor:pointer;" title="Decline" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\'")}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>` : ''}
+                </div>
+            </div>
+        </div>
+    </div>`;
 };
 
 window.renderRecentTasks = function() {
@@ -698,26 +703,57 @@ window.renderRecentTasks = function() {
   el.innerHTML = tasks.map(t => renderTaskCard(t, false)).join('');
 };
 
+window.renderRecentTasks = function() {
+    const el = document.getElementById('recent-tasks');
+    if(!el) return;
+    const allUniqueTasks = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])]
+        .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        
+    const tasks = allUniqueTasks.slice(0, 3);
+    if (!tasks.length) { el.innerHTML = `<div class="empty" style="padding:36px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No recent tasks</div></div>`; return; }
+    el.innerHTML = '<div class="task-list-wrapper">' + tasks.map(t => window.renderTaskCard(t, false)).join('') + '</div>';
+};
+
 window.renderTasksList = function() {
-  const el = document.getElementById('tasks-list');
-  if(!el) return;
+    const el = document.getElementById('tasks-list');
+    if (!el) return;
+    
+    let list = [];
+    if (window.taskTab === 'pending') list = window.myTasks.filter(t => t.status === 'pending');
+    else if (window.taskTab === 'done') list = window.myTasks.filter(t => t.status === 'done');
+    else if (window.taskTab === 'assigned-to-me') list = window.myTasks.filter(t => t.assignedTo === window.CU?.uid);
+    else if (window.taskTab === 'assigned-by-me') list = window.assignedByMeTasks;
+    else list = window.myTasks;
+    
+    const seen = new Set();
+    list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
 
-  let tasks = [];
-  if (taskTab === 'assigned-to-me') tasks = myTasks;
-  else if (taskTab === 'assigned-by-me') tasks = assignedByMeTasks;
-  else if (taskTab === 'pending')  tasks = [...myTasks, ...assignedByMeTasks].filter(t => t.status === 'pending');
-  else if (taskTab === 'done')     tasks = [...myTasks, ...assignedByMeTasks].filter(t => t.status === 'done');
-  else if (taskTab === 'declined') tasks = [...myTasks, ...assignedByMeTasks].filter(t => t.status === 'declined');
+    // Inject visual calendar strip
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const today = new Date();
+    const currentDate = today.getDate();
+    
+    let calendarStripHTML = '<div class="weekly-calendar-strip">';
+    for(let i = -3; i <= 3; i++) {
+        let d = new Date(today);
+        d.setDate(currentDate + i);
+        let isToday = i === 0;
+        calendarStripHTML += `
+            <div class="cal-day ${isToday ? 'active' : ''}">
+                <span class="cal-day-name">${days[d.getDay()]}</span>
+                <span class="cal-day-num">${d.getDate()}</span>
+            </div>
+        `;
+    }
+    calendarStripHTML += '</div>';
 
-  const seen = new Set();
-  tasks = tasks.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
-
-  if (!tasks.length) {
-    el.innerHTML = `<div class="empty" style="padding:48px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No tasks here</div><div class="empty-sub">Nothing in this category yet</div></div>`;
-    return;
-  }
-  
-  el.innerHTML = tasks.map(t => renderTaskCard(t, true)).join('');
+    if (!list.length) {
+        el.innerHTML = calendarStripHTML + `<div class="empty" style="padding:48px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No tasks found</div><div class="empty-sub">Nothing matches this filter.</div></div>`;
+        return;
+    }
+    
+    el.innerHTML = calendarStripHTML + '<div class="task-list-wrapper">' + list.map(t => window.renderTaskCard(t, true)).join('') + '</div>';
 };
 
 window.renderStaffCards = function(staff) {
@@ -754,30 +790,41 @@ window.renderStaffCards = function(staff) {
   }).join('');
 };
 
-window.buildAppsGrid = function(ids) {
-  const el = document.getElementById('apps-grid');
-  if(!el) return;
-  // Based on your original ID filtering
-  const allIds = (ids || []).includes('expenses') ? ids : ids;
-  
-  el.innerHTML = `
-    <div class="app-squircle-wrap" onclick="window.openAppLib()">
+window.buildAppsGrid = function() {
+    const el = document.getElementById('apps-grid');
+    if (!el) return;
+    el.innerHTML = `
+    <div class="app-squircle-wrap" onclick="window.openApp('calendar')">
         <div class="app-squircle bg-grad-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
         <span class="app-name">Calendar</span>
     </div>
-    <div class="app-squircle-wrap" onclick="window.openAppLib()">
+    <div class="app-squircle-wrap" onclick="window.openApp('inventory')">
         <div class="app-squircle bg-grad-orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
         <span class="app-name">Inventory</span>
     </div>
-    <div class="app-squircle-wrap" onclick="window.openAppLib()">
+    <div class="app-squircle-wrap" onclick="window.openApp('expenses')">
         <div class="app-squircle bg-grad-purple"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
         <span class="app-name">Expenses</span>
     </div>
     <div class="app-squircle-wrap" onclick="window.openAppLib()">
         <div class="app-squircle bg-gray"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div>
-        <span class="app-name">More</span>
+        <span class="app-name">More Apps</span>
     </div>
-  `;
+    `;
+};
+
+window.openApp = function(appId) {
+    const appMap = {
+        'calendar': 'calendar.html',
+        'inventory': 'inventory.html',
+        'expenses': 'expenses.html'
+    };
+    const file = appMap[appId];
+    if (file) {
+        window.location.href = file + (window.CU?.uid ? '?uid=' + window.CU.uid : '');
+    } else {
+        window.showToast('App not found!', 'error');
+    }
 };
 
 function renderNotifPanel(items) {
@@ -811,10 +858,24 @@ window.setTaskTab = function(tab, btn) {
 };
 
 window.doAcceptTask = async function(id) {
+  // Add instant UI feedback before Firebase finishes
+  const taskEl = document.getElementById('task-' + id);
+  const checkbox = taskEl?.querySelector('.task-checkbox');
+  const title = taskEl?.querySelector('.task-title');
+  
+  if (checkbox) {
+      checkbox.classList.add('done');
+      checkbox.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  }
+  if (title) title.classList.add('done');
+
   try {
     await markTaskDone(id);
-    window.showToast('🎉 Task done! Great work!', 'success');
+    window.showToast('🎉 Task done!', 'success');
   } catch(e) {
+    // Revert if it fails
+    if (checkbox) { checkbox.classList.remove('done'); checkbox.innerHTML = ''; }
+    if (title) title.classList.remove('done');
     window.showToast(e.message, 'error');
   }
 };
@@ -1070,7 +1131,21 @@ function ago(iso) {
 }
 
 window.markNotifRead = async function(id) { try { await markNotificationRead(CU.uid, id); } catch(e) {} };
-window.markAllRead = async function() { await markAllReadFn(CU.uid); window.showToast('All read ✓', ''); };
+window.markAllRead = async function() { 
+    try {
+        await markAllReadFn(CU.uid); 
+        // Clear UI instantly so there's no ghost loading
+        const notifBody = document.getElementById('notif-body');
+        if (notifBody) {
+            notifBody.innerHTML = `<div class="empty"><div class="empty-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl">No notifications</div></div>`;
+        }
+        const badge = document.getElementById('notif-badge');
+        if (badge) badge.classList.add('hidden');
+        window.showToast('All read ✓', ''); 
+    } catch(e) {
+        console.error(e);
+    }
+};
 
 // Run
 init().catch(console.error);
