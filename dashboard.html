@@ -361,7 +361,14 @@ function setBadge(id, count) { const el = document.getElementById(id); if (!el) 
 function setDot(id, show) { const el = document.getElementById(id); if (el) el.classList.toggle('show', show); }
 function ago(iso) { if (!iso) return ''; const d = Date.now() - new Date(iso); if (d < 60000) return 'just now'; if (d < 3600000) return Math.floor(d / 60000) + 'm ago'; if (d < 86400000) return Math.floor(d / 3600000) + 'h ago'; return Math.floor(d / 86400000) + 'd ago'; }
 function last7() { const out = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); out.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }), date: d.toDateString() }); } return out; }
-
+function formatDateIN(dateInput) {
+    if (!dateInput) return '';
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return dateInput; 
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${d.getDate().toString().padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+  
 // Init
 async function init() {
   try {
@@ -436,12 +443,13 @@ function setupUI() {
   }
   
   // Dynamically inject tabs based on user role to fix hardcoding and dynamic-state bugs
-  const tabRow = document.getElementById('task-tab-row');
+const tabRow = document.getElementById('task-tab-row');
   if (tabRow) {
       if (isOwner) {
           tabRow.innerHTML = `
               <button class="ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
               <button class="ftab" onclick="window.setTaskTab('done',this)">Done</button>
+              <button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>
           `;
           window.taskTab = 'assigned-by-me';
       } else {
@@ -449,6 +457,7 @@ function setupUI() {
               <button class="ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button>
               <button class="ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
               <button class="ftab" onclick="window.setTaskTab('done',this)">Done</button>
+              <button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>
           `;
           window.taskTab = 'assigned-to-me';
       }
@@ -639,66 +648,78 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     const isPending = task.status === 'pending';
     const isDone = task.status === 'done';
     
+    // Check if overdue
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && isPending;
+    const isDeclined = task.status === 'declined' || isOverdue;
+    
     let priorityClass = '';
     if(task.priority === 'High') priorityClass = 'priority-high';
     if(task.priority === 'Medium') priorityClass = 'priority-medium';
 
-    const checkboxClass = isDone ? 'card-checkbox done' : 'card-checkbox';
     const titleClass = isDone ? 'card-title done' : 'card-title';
     const cardStateClass = isDone ? `premium-task-card completed-state ${priorityClass}` : `premium-task-card ${priorityClass}`;
     
-    const checkIcon = `<svg width="14" height="14" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6l-10 12h7l-3 8 10-12h-7z"/></svg>`;
     const assigneeName = task.assignedToName || 'Team Member';
+    const assigneeIni = assigneeName.charAt(0).toUpperCase();
 
-    // Clean, simple badge for the user's full name (Replaces all the circles)
+    // Generate a dynamic soft background color based on the initial letter
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+    const charCode = assigneeIni.charCodeAt(0) || 0;
+    const bgCol = colors[charCode % colors.length];
+
+    // Left Element is always the clean colored Avatar (Checkbox is completely removed)
+    const leftElement = `
+        <div class="av" style="width:42px; height:42px; font-size:1.2rem; font-weight:800; border-radius:50%; flex-shrink:0; background:${bgCol}1A; color:${bgCol}; border: 1px solid ${bgCol}33;">
+            ${assigneeIni}
+        </div>
+    `;
+
+    // Format Dates (Assigned Date - Due Date/Done Date)
+    const assignedDateStr = formatDateIN(task.createdAt || Date.now());
+    let dateDisplayStr = assignedDateStr;
+    
+    if (isDone && task.completedAt) {
+        dateDisplayStr = `${assignedDateStr} — ${formatDateIN(task.completedAt)}`;
+    } else if (task.dueDate) {
+        dateDisplayStr = `${assignedDateStr} — ${formatDateIN(task.dueDate)}`;
+    }
+
+    // Clean badge for the user's full name
     const assigneeBadge = `
-        <div style="display:flex; align-items:center; gap:4px; font-size:0.75rem; font-weight:600; color:var(--tx-2); background:var(--bg-overlay); padding:3px 8px; border-radius:6px; border:1px solid var(--bd-color);">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:600; color:var(--tx-2); background:var(--bg-overlay); padding:4px 10px; border-radius:8px; border:1px solid var(--bd-color);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             ${esc(assigneeName)}
         </div>
     `;
 
-    // RECENT TASKS: No checkbox, just the clean title and metadata strip
-    if (isRecent) {
-        return `
-        <div class="${cardStateClass}">
-            <div class="card-content-wrap">
-                <div class="${titleClass}">${esc(task.title || 'Untitled Task')}</div>
-                <div class="card-meta-strip">
-                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        ${assigneeBadge}
-                        ${task.dueDate ? `<div class="card-time-block" style="padding: 2px 8px; font-size: 0.75rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${esc(task.dueDate)}</div>` : ''}
-                        ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2); padding: 2px 8px; font-size: 0.65rem;">${task.priority}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    }
+    // Action Buttons (Only shows if task is assigned to you, pending, and not overdue/declined)
+    const actionButtons = (isPending && !isDeclined && showActions && isToMe) 
+        ? `<div style="display:flex; gap:8px; align-items:center; margin-top: 4px;">
+             <button style="padding: 6px 14px; border-radius:8px; border:none; background:var(--green-l); color:var(--green-h); font-weight:700; font-size:0.75rem; cursor:pointer; box-shadow:0 2px 4px rgba(16,185,129,0.1);" onclick="window.doAcceptTask('${task.id}')">✓ Done</button>
+             <button style="padding: 6px 14px; border-radius:8px; border:none; background:var(--red-l); color:var(--red); font-weight:700; font-size:0.75rem; cursor:pointer; box-shadow:0 2px 4px rgba(239,68,68,0.1);" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g, '&quot;')}')">✗ Decline</button>
+           </div>`
+        : ``;
 
-    // MY TASKS: Checkbox on the left, clean metadata on the right
     return `
     <div class="${cardStateClass}" id="task-${task.id}">
-        <div class="${checkboxClass}" ${isPending && isToMe ? `onclick="window.doAcceptTask('${task.id}')"` : ''}>
-            ${isDone ? checkIcon : ''}
-        </div>
-        <div class="card-content-wrap">
-            <div class="${titleClass}">${esc(task.title || 'Untitled Task')}</div>
-            <div class="card-meta-strip">
+        ${leftElement}
+        <div class="card-content-wrap" style="gap: 6px; width: 100%;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+                <div class="${titleClass}" style="flex: 1; min-width: 200px;">${esc(task.title || 'Untitled Task')}</div>
+                <div class="card-time-block" style="padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; margin-left: auto;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    ${esc(dateDisplayStr)}
+                </div>
+            </div>
+            
+            <div class="card-meta-strip" style="margin-top:2px;">
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     ${assigneeBadge}
-                    ${task.dueDate ? `
-                    <div class="card-time-block">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        ${esc(task.dueDate)}
-                    </div>` : ''}
-                    ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2);">${task.priority}</span>` : ''}
+                    ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2); padding: 4px 10px; font-size: 0.65rem;">${task.priority}</span>` : ''}
+                    ${isDeclined && !isDone ? `<span class="priority-tag" style="background:var(--red-l); color:var(--red); padding: 4px 10px; font-size: 0.65rem;">Declined / Overdue</span>` : ''}
                 </div>
-                <div style="display:flex; gap:12px; align-items:center;">
-                    ${isPending && showActions && isToMe ? `
-                    <button style="width:32px; height:32px; border-radius:10px; border:1px solid var(--red-l); background:transparent; color:var(--red); display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g, '&quot;')}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>` : ''}
-                </div>
+                ${actionButtons}
             </div>
         </div>
     </div>`;
@@ -743,11 +764,21 @@ window.renderTasksList = function() {
     if (!el) return;
     
     let list = [];
-    if (window.taskTab === 'assigned-to-me') list = window.myTasks.filter(t => t.assignedTo === window.CU?.uid && t.status !== 'done');
-    else if (window.taskTab === 'assigned-by-me') list = window.assignedByMeTasks.filter(t => t.status !== 'done');
+    const now = new Date();
+    
+    // Logic to determine if task is overdue
+    const isOverdue = (t) => t.dueDate && new Date(t.dueDate) < now && t.status === 'pending';
+    const isDeclinedOrOverdue = (t) => t.status === 'declined' || isOverdue(t);
+    const isActive = (t) => t.status === 'pending' && !isOverdue(t);
+
+    // Filter into correct tabs
+    if (window.taskTab === 'assigned-to-me') list = window.myTasks.filter(t => t.assignedTo === window.CU?.uid && isActive(t));
+    else if (window.taskTab === 'assigned-by-me') list = window.assignedByMeTasks.filter(t => isActive(t));
     else if (window.taskTab === 'done') list = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])].filter(t => t.status === 'done');
+    else if (window.taskTab === 'declined') list = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])].filter(t => isDeclinedOrOverdue(t));
     else list = window.myTasks;
     
+    // Remove duplicates
     const seen = new Set();
     list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
 
@@ -763,21 +794,21 @@ window.renderTasksList = function() {
         return;
     }
     
-    // Segregate Done Tab
-    if (window.taskTab === 'done') {
-        const iCompleted = list.filter(t => t.assignedTo === window.CU?.uid);
-        const othersCompleted = list.filter(t => t.assignedTo !== window.CU?.uid);
+    // Render distinct sections if in "Done" or "Declined" tab
+    if (window.taskTab === 'done' || window.taskTab === 'declined') {
+        const iProcessed = list.filter(t => t.assignedTo === window.CU?.uid);
+        const othersProcessed = list.filter(t => t.assignedTo !== window.CU?.uid);
         
         let html = '<div class="task-list-wrapper">';
-        if (iCompleted.length > 0) {
-            html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-2); padding: 8px 16px 4px; text-transform:uppercase; letter-spacing:0.04em;">Tasks I Completed</div>`;
-            html += iCompleted.map((t, i) => window.renderTaskCard(t, false).replace('class="premium-task-card completed-state', `class="premium-task-card completed-state" style="animation-delay: ${i * 0.1}s;"`)).join('');
+        if (iProcessed.length > 0) {
+            html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-2); padding: 8px 16px 4px; text-transform:uppercase; letter-spacing:0.04em;">My Tasks</div>`;
+            html += iProcessed.map((t, i) => window.renderTaskCard(t, false).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay: ${i * 0.1}s;"`)).join('');
         }
-        if (othersCompleted.length > 0) {
-            html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-3); padding: 24px 16px 8px; border-top: 1px solid var(--bd-color); margin-top:12px; text-transform:uppercase; letter-spacing:0.04em;">Tasks Completed by Others</div>`;
-            html += othersCompleted.map((t, i) => {
+        if (othersProcessed.length > 0) {
+            html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-3); padding: 24px 16px 8px; border-top: 1px solid var(--bd-color); margin-top:12px; text-transform:uppercase; letter-spacing:0.04em;">Team Tasks</div>`;
+            html += othersProcessed.map((t, i) => {
                 let cardHTML = window.renderTaskCard(t, false);
-                return cardHTML.replace('class="premium-task-card completed-state', `class="premium-task-card completed-state" style="opacity: 0.65; background: var(--bg-overlay); animation-delay: ${i * 0.1}s;"`);
+                return cardHTML.replace('class="premium-task-card', `class="premium-task-card" style="opacity: 0.75; background: var(--bg-overlay); animation-delay: ${i * 0.1}s;"`);
             }).join('');
         }
         html += '</div>';
