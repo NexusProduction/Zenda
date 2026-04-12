@@ -21,7 +21,7 @@
 .expandable-search .search-icon-btn { background: var(--bg-raised); border: 1px solid var(--bd-color); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: absolute; left: 0; z-index: 2; transition: all 0.3s; color: var(--tx-2); box-shadow: var(--sh-1); }
 .expandable-search.active .search-icon-btn { border: none; background: transparent; box-shadow: none; left: 6px; width: 32px; height: 32px; color: var(--ac); }
 
-.btn-delete-big { background: var(--red-l); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--r-md); padding: 6px 14px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.btn-delete-big { background: var(--red-l); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--r-md); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
 .btn-delete-big:hover { background: var(--red); color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25); }
 
 /* 60% Curved Panel Overlay */
@@ -192,7 +192,7 @@
           <p class="page-sub" id="staff-count-sub"></p>
         </div>
         <div class="staff-header-actions">
-            <div class="expandable-search" id="staff-search-wrap">
+            <div class="expandable-search" id="staff-search-wrap" style="margin-right: 16px;">
                 <button class="search-icon-btn" onclick="document.getElementById('staff-search-wrap').classList.toggle('active'); document.getElementById('staff-search').focus();">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </button>
@@ -862,8 +862,7 @@ window.renderStaffCards = function(staff) {
 
     const actionHtml = isOwner ? `
       <button class="btn-delete-big" title="Remove Staff" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId || ''}')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-        Remove
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
       </button>
     ` : '';
 
@@ -1151,6 +1150,7 @@ window.closeAllPanels = function() {
   document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
   document.getElementById('profile-side-panel')?.classList.remove('open');
   document.getElementById('profile-page-mobile')?.classList.remove('open');
+  document.getElementById('create-staff-page')?.classList.remove('open'); // Slides panel back to right
   document.getElementById('panel-overlay')?.classList.remove('visible');
 };
 
@@ -1187,7 +1187,15 @@ window.handleLogout = async function() {
   await logout();
   window.location.href = 'login.html';
 };
-
+// Close expanding search bar when clicking outside of it
+document.addEventListener('click', function(e) {
+    const searchWrap = document.getElementById('staff-search-wrap');
+    if (searchWrap && searchWrap.classList.contains('active')) {
+        if (!searchWrap.contains(e.target)) {
+            searchWrap.classList.remove('active');
+        }
+    }
+});
 // Start App Fallback
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
