@@ -14,13 +14,14 @@
 /* ==========================================================================
    STAFF PAGE PREMIUM OVERHAUL & OVERRIDES
    ========================================================================== */
-.staff-header-actions { display: flex; align-items: center; gap: 16px; justify-content: flex-end; margin-top: 8px; }
-.expandable-search { position: relative; display: flex; align-items: center; }
+.staff-header-actions { display: flex; align-items: center; gap: 16px; justify-content: flex-end; margin-top: 8px; margin-right: 16px; }
+.expandable-search { position: relative; display: flex; align-items: center; margin-right: 16px; }
 .expandable-search input { width: 0; opacity: 0; padding: 8px; border: none; background: transparent; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); outline: none; font-size: 0.9rem; color: var(--tx-1); border-radius: var(--r-pill); }
 .expandable-search.active input { width: 250px; opacity: 1; padding: 8px 12px 8px 40px; border: 1px solid var(--ac); background: var(--bg-raised); box-shadow: 0 0 0 3px var(--ac-s); }
 .expandable-search .search-icon-btn { background: var(--bg-raised); border: 1px solid var(--bd-color); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: absolute; left: 0; z-index: 2; transition: all 0.3s; color: var(--tx-2); box-shadow: var(--sh-1); }
 .expandable-search.active .search-icon-btn { border: none; background: transparent; box-shadow: none; left: 6px; width: 32px; height: 32px; color: var(--ac); }
 
+/* Perfect Square Trash Bin Button */
 .btn-delete-big { background: var(--red-l); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--r-sm); width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; }
 .btn-delete-big:hover { background: var(--red); color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25); }
 
@@ -29,17 +30,15 @@
 #create-staff-page.open { transform: translateX(0); }
 .panel-overlay.visible { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 
+/* Toast Out Animation Fix & Padding tweaks */
+.toast.out { animation: toastOut 0.3s forwards; }
+.sidebar-nav { padding-top: 8px !important; }
+.sidebar-section-label:first-child { margin-top: 8px !important; }
+
 @media (max-width: 768px) {
     #create-staff-page { width: 100%; border-radius: 0; }
     .expandable-search.active input { width: 180px; }
 }
-
-/* 1. Fix Toast Fade Out */
-.toast.out { animation: toastOut 0.3s forwards; }
-
-/* 2. Reduce Top Padding of Sidebar Overview */
-.sidebar-nav { padding-top: 8px !important; }
-.sidebar-section-label:first-child { margin-top: 8px !important; }
 </style>
 </head>
 <body>
@@ -199,12 +198,13 @@
           <p class="page-sub" id="staff-count-sub"></p>
         </div>
         <div class="staff-header-actions">
-            <div class="expandable-search" id="staff-search-wrap" style="margin-right: 16px;">
+            <div class="expandable-search" id="staff-search-wrap">
                 <button class="search-icon-btn" onclick="document.getElementById('staff-search-wrap').classList.toggle('active'); document.getElementById('staff-search').focus();">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </button>
                 <input type="text" id="staff-search" placeholder="Search name, email, role..." oninput="window.searchStaff(this.value)">
             </div>
+            
             <button class="btn btn-primary" id="add-staff-btn" onclick="window.openCreateStaffPage()" style="display:none; padding: 12px 24px; font-size: 0.95rem; box-shadow: var(--sh-2);">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add Staff Member
@@ -683,6 +683,19 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     
     const assigneeName = task.assignedToName || 'Team Member';
     const assigneeFirstName = assigneeName.split(' ')[0];
+    const assigneeIni = assigneeName.charAt(0).toUpperCase();
+
+    // Generate a dynamic soft background color based on the initial letter
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+    const charCode = assigneeIni.charCodeAt(0) || 0;
+    const bgCol = colors[charCode % colors.length];
+
+    // Left Element is always the clean colored Avatar
+    const leftElement = `
+        <div class="av" style="width:42px; height:42px; font-size:1.2rem; font-weight:800; border-radius:50%; flex-shrink:0; background:${bgCol}1A; color:${bgCol}; border: 1px solid ${bgCol}33;">
+            ${assigneeIni}
+        </div>
+    `;
 
     // Format Dates (Assigned Date - Due Date/Done Date)
     const assignedDateStr = formatDateIN(task.createdAt || Date.now());
@@ -720,7 +733,8 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
 
     return `
     <div class="${cardStateClass}" id="task-${task.id}">
-        <div class="card-content-wrap" style="gap: 8px; width: 100%;">
+        ${leftElement}
+        <div class="card-content-wrap" style="gap: 6px; width: 100%;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
                 <div class="${titleClass}" style="flex: 1; min-width: 200px;">${esc(task.title || 'Untitled Task')}</div>
                 <div class="card-time-block" style="padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; margin-left: auto;">
@@ -754,7 +768,7 @@ window.renderRecentTasks = function() {
     }
     
     const listHTML = tasks.map((t, index) => {
-        const html = window.renderTaskCard(t, false, true);
+        const html = window.renderTaskCard(t, false, true); // isRecent = true
         return html.replace('class="premium-task-card', `class="premium-task-card" style="margin: 0 16px; animation-delay: ${index * 0.1}s;"`);
     }).join('');
     
@@ -834,7 +848,7 @@ window.renderTasksList = function() {
             html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-3); padding: 24px 16px 8px; border-top: 1px solid var(--bd-color); margin-top:12px; text-transform:uppercase; letter-spacing:0.04em;">Team Tasks</div>`;
             html += othersProcessed.map((t, i) => {
                 let cardHTML = window.renderTaskCard(t, false);
-                return cardHTML.replace('class="premium-task-card', `class="premium-task-card" style="opacity: 0.75; background: var(--bg-overlay); animation-delay: ${i * 0.1}s;"`);
+                return cardHTML.replace('class="premium-task-card', `class="premium-task-card" style="opacity: 0.85; background: var(--bg-overlay); animation-delay: ${i * 0.1}s;"`);
             }).join('');
         }
         html += '</div>';
@@ -862,23 +876,35 @@ window.renderStaffCards = function(staff) {
   }
   
   const isOwner = window.CU?.role === 'owner';
+  const isManager = window.CU?.role === 'manager';
   
   el.innerHTML = nonOwner.map(s => {
     const ini = getInitials(s.name);
-    const emailHtml = isOwner ? `<div class="team-email"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>${esc(s.email)}</div>` : '';
+    
+    const emailHtml = isOwner ? `
+      <div class="team-email">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        ${esc(s.email)}
+      </div>
+    ` : '';
 
-    const isManager = window.CU?.role === 'manager';
-    // Owner can delete anyone. Managers can only delete 'staff', not other managers.
     const canDelete = isOwner || (isManager && s.role === 'staff');
 
-    // Pass passwordHint to openDeleteModal so Firebase Auth can be completely wiped
+    // Square Trash Bin Action Button
     const actionHtml = canDelete ? `
       <button class="btn-delete-big" title="Remove Staff" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${esc(s.passwordHint || '')}')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
       </button>
     ` : '';
 
-    const assignBtnHtml = (isOwner || window.CU?.role === 'manager') ? `<button class="btn-text" style="font-size: 12px; padding: 6px 14px;" onclick="window.quickAssign('${s.uid}')">Assign Task</button>` : '';
+    const assignBtnHtml = (isOwner || isManager) ? `
+      <button class="btn-text" style="font-size: 12px; padding: 4px 12px;" onclick="window.quickAssign('${s.uid}')">Assign Task</button>
+    ` : '';
 
     return `
     <div class="team-card anim-stagger">
@@ -1031,11 +1057,6 @@ window.handleAssign = async function() {
   setButtonLoading(btn, false, 'Assign Task');
 };
 
-window.searchStaff = function(v) {
-  staffSearchVal = (v || '').toLowerCase();
-  window.renderStaffCards(allStaff);  
-};
-
 window.openDeleteModal = function(uid, name, email, password) {
   deleteTargetUid = uid; 
   deleteConfirmStr = name;
@@ -1060,7 +1081,6 @@ window.confirmDelete = async function() {
   const btn = document.getElementById('del-confirm-btn');
   btn.textContent = 'Deleting…'; btn.disabled = true;
   try {
-    // Passing email and password completely removes them from Firebase Auth
     await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd);
     window.closeModal('delete-modal');
     window.showToast('Staff member deleted successfully.', 'success');
@@ -1086,18 +1106,26 @@ window.initiateCreateStaff = async function() {
     const email    = document.getElementById('cs-email').value.trim();
     const desig    = document.getElementById('cs-designation').value.trim();
     const password = document.getElementById('cs-password').value.trim();
-    if (!name || !email || !desig || password.length < 6) { window.showToast('Please fill all fields correctly (Password min 6 chars).', 'error'); return; }
+    
+    if (!name || !email || !desig || password.length < 6) { 
+        window.showToast('Please fill all fields correctly (Password min 6 chars).', 'error'); 
+        return; 
+    }
     
     const btn = document.getElementById('create-staff-btn');
     setButtonLoading(btn, true, 'Sending Verification Code...');
+    
     try {
         await sendOTP(email);
         document.getElementById('otp-sent-email').textContent = email;
         document.getElementById('staff-form-container').classList.add('hidden');
         document.getElementById('staff-otp-container').classList.remove('hidden');
         window.showToast('Verification code sent to ' + email, 'success');
-    } catch(e) { window.showToast(e.message || 'Failed to send OTP', 'error'); }
-    finally { setButtonLoading(btn, false, 'Verify Email & Create Staff →'); }
+    } catch(e) {
+        window.showToast(e.message || 'Failed to send OTP', 'error');
+    } finally {
+        setButtonLoading(btn, false, 'Verify Email & Create Staff →');
+    }
 };
 
 window.finalizeCreateStaff = async function() {
@@ -1111,18 +1139,29 @@ window.finalizeCreateStaff = async function() {
     
     const btn = document.getElementById('verify-staff-btn');
     setButtonLoading(btn, true, 'Verifying...');
+    
     try {
         await verifyUserOTP(email, otpCode);
+        
         const cSnap = await getDoc(doc(db, 'companies', window.CU.companyId));
         const companyName = cSnap.exists() ? cSnap.data().name : 'Company';
+        
         const result = await createStaff({ name, email, password, role:'staff', companyId:window.CU.companyId, companyName, createdBy:window.CU.uid, designation:desig });
         
         document.getElementById('staff-otp-container').classList.add('hidden');
         document.getElementById('created-card-section').classList.remove('hidden');
-        document.getElementById('cred-box').innerHTML = `<strong style="color:var(--tx-1)">Name:</strong> ${esc(name)}<br><strong style="color:var(--tx-1)">Email:</strong> ${esc(email)}<br><strong style="color:var(--tx-1)">Password:</strong> ${esc(password)}<br><strong style="color:var(--tx-1)">Zenda ID:</strong> ${result.uniqueId}`;
+        document.getElementById('cred-box').innerHTML = `
+            <strong style="color:var(--tx-1)">Name:</strong> ${esc(name)}<br>
+            <strong style="color:var(--tx-1)">Email:</strong> ${esc(email)}<br>
+            <strong style="color:var(--tx-1)">Password:</strong> ${esc(password)}<br>
+            <strong style="color:var(--tx-1)">Zenda ID:</strong> ${result.uniqueId}
+        `;
         window.showToast(`${name} added to your team!`, 'success');
-    } catch(e) { window.showToast(e.message || 'Invalid Code. Try again.', 'error'); }
-    finally { setButtonLoading(btn, false, 'Verify & Confirm'); }
+    } catch(e) {
+        window.showToast(e.message || 'Invalid Code. Try again.', 'error');
+    } finally {
+        setButtonLoading(btn, false, 'Verify & Confirm');
+    }
 };
 
 window.cancelCreateStaff = function() {
@@ -1170,7 +1209,7 @@ window.closeAllPanels = function() {
   document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
   document.getElementById('profile-side-panel')?.classList.remove('open');
   document.getElementById('profile-page-mobile')?.classList.remove('open');
-  document.getElementById('create-staff-page')?.classList.remove('open'); // Slides panel back to right
+  document.getElementById('create-staff-page')?.classList.remove('open');
   document.getElementById('panel-overlay')?.classList.remove('visible');
 };
 
@@ -1207,6 +1246,7 @@ window.handleLogout = async function() {
   await logout();
   window.location.href = 'login.html';
 };
+
 // Close expanding search bar when clicking outside of it
 document.addEventListener('click', function(e) {
     const searchWrap = document.getElementById('staff-search-wrap');
@@ -1216,6 +1256,7 @@ document.addEventListener('click', function(e) {
         }
     }
 });
+
 // Start App Fallback
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
@@ -1228,7 +1269,7 @@ if (document.readyState === 'loading') {
     setTimeout(() => {
         const loader = document.getElementById('loading-overlay');
         if (loader && loader.style.opacity !== '0') {
-            console.error("Zenda Error: Firebase module failed to load.");
+            console.error("Zenda Error: Firebase module failed to load. Check 'firebase-config.js' export names.");
             loader.style.opacity = '0';
             setTimeout(() => loader.remove(), 400);
         }
