@@ -303,6 +303,13 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="edit-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hdr"><div class="modal-ttl" id="edit-modal-ttl">Edit</div><button class="modal-close" onclick="window.closeModal('edit-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div style="display:flex;flex-direction:column;gap:12px"><div class="form-group"><label class="form-label" id="edit-modal-lbl">Value</label><input class="form-input" id="edit-modal-val" type="text"></div><div style="display:flex;gap:8px"><button class="btn btn-ghost w-full" onclick="window.closeModal('edit-modal')">Cancel</button><button class="btn btn-primary w-full" onclick="window.saveEdit()">Save</button></div></div>
+  </div>
+</div>
+
 <div class="fullpage" id="app-store-page">
   <div class="fp-hdr"><button class="fp-back" onclick="window.closeFullpage('app-store-page')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button><div class="fp-ttl">App Library</div></div>
   <div class="fp-body" id="app-store-body"></div>
@@ -331,7 +338,7 @@ window.showToast    = showToast;
 window.CU                  = null;
 window.myTasks             = [];
 window.assignedByMeTasks   = [];
-window.taskTab             = 'pending'; // Changed default based on dynamic logic
+window.taskTab             = 'pending';
 
 let allStaff       = [];
 let _profileBuilt  = false;
@@ -354,7 +361,7 @@ function formatDateIN(dateInput) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${d.getDate().toString().padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
-  
+
 // Init
 async function init() {
   try {
@@ -428,8 +435,8 @@ function setupUI() {
     document.getElementById('assign-tasks-btn')?.classList.remove('hidden');
   }
   
-  // Dynamically inject tabs based on user role to fix hardcoding and dynamic-state bugs
-const tabRow = document.getElementById('task-tab-row');
+  // Set up Tabs dynamically based on role
+  const tabRow = document.getElementById('task-tab-row');
   if (tabRow) {
       if (isOwner) {
           tabRow.innerHTML = `
@@ -462,8 +469,6 @@ const tabRow = document.getElementById('task-tab-row');
     document.getElementById('charts-row')?.classList.remove('hidden');
     initCharts();
   }
-  const rTtl = document.getElementById('recent-ttl');
-  if (rTtl) rTtl.textContent = canAssign ? 'Recent Tasks' : 'My Tasks';
 }
 
 function setAvatar(id, initials, color, size, dataUrl) {
@@ -491,7 +496,6 @@ function subscribeAll() {
     setDot('bn-task-dot', pending > 0);
     window.renderRecentTasks();
     window.renderTasksList();
-    window.updateProgressRing();
     if (role === 'staff' || role === 'manager') { updateCharts(tasks); renderNonOwnerStats(tasks); }
     if (role === 'owner') renderOwnerStats();
   }));
@@ -502,7 +506,6 @@ function subscribeAll() {
       if (role === 'owner') renderOwnerStats();
       window.renderRecentTasks();
       window.renderTasksList();
-      window.updateProgressRing();
     }));
   }
 
@@ -523,35 +526,6 @@ function subscribeAll() {
   unsubs.push(listenInstalledApps(uid, ids => buildAppsGrid(ids)));
 }
 
-window.updateProgressRing = function() {
-    const ring = document.querySelector('.progress-ring__circle');
-    const pctText = document.getElementById('progress-percent');
-    if (!ring || !pctText) return;
-    
-    // Determine relevant tasks based on user role (Owner tracks assigned, Staff tracks assigned to them)
-    let allRelevant = [];
-    if (window.CU?.role === 'owner') {
-        allRelevant = [...(window.assignedByMeTasks||[])];
-    } else {
-        allRelevant = [...(window.myTasks||[])].filter(t => t.assignedTo === window.CU?.uid);
-    }
-    
-    // Remove duplicates
-    allRelevant = allRelevant.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-    
-    const done  = allRelevant.filter(t => t.status === 'done').length;
-    const total = allRelevant.length;
-    const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
-    
-    const circumference = 24 * 2 * Math.PI; // matches path definition dynamic circumference
-    ring.style.strokeDasharray = circumference;
-    const offset = circumference - (pct / 100) * circumference;
-    ring.style.strokeDashoffset = offset;
-    pctText.textContent = `${pct}%`;
-    
-    const sub = document.getElementById('task-header-sub');
-    if (sub) sub.textContent = `${done} of ${total} tasks completed`;
-};
 
 function renderOwnerStats() {
   const staff = allStaff.filter(s => s.role !== 'owner');
@@ -634,7 +608,7 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     const isPending = task.status === 'pending';
     const isDone = task.status === 'done';
     
-    // Proper Overdue Logic (ignores tasks due later today)
+    // Check if overdue
     let isOverdue = false;
     if (task.dueDate && isPending) {
         const dDate = new Date(task.dueDate);
@@ -660,7 +634,7 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     const charCode = assigneeIni.charCodeAt(0) || 0;
     const bgCol = colors[charCode % colors.length];
 
-    // Left Avatar
+    // Left Element is always the clean colored Avatar
     const leftElement = `
         <div class="av" style="width:42px; height:42px; font-size:1.2rem; font-weight:800; border-radius:50%; flex-shrink:0; background:${bgCol}1A; color:${bgCol}; border: 1px solid ${bgCol}33;">
             ${assigneeIni}
@@ -751,7 +725,6 @@ window.setTaskTab = function(tab, btn) {
     if (btn) { 
         btn.classList.add('on'); 
     } else {
-        // Find dynamically injected tab
         const targetBtn = Array.from(document.querySelectorAll('.ftab')).find(b => b.getAttribute('onclick').includes(tab));
         if (targetBtn) targetBtn.classList.add('on');
     }
@@ -786,13 +759,6 @@ window.renderTasksList = function() {
     const seen = new Set();
     list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
 
-    // Apply Native Date Filter
-    const dateFilterEl = document.getElementById('task-date-filter');
-    const selectedDate = dateFilterEl ? dateFilterEl.value : '';
-    if (selectedDate) {
-        list = list.filter(t => t.dueDate === selectedDate);
-    }
-
     if (!list.length) {
         el.innerHTML = `
         <div class="empty" style="padding:60px 20px;">
@@ -819,7 +785,7 @@ window.renderTasksList = function() {
             html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-3); padding: 24px 16px 8px; border-top: 1px solid var(--bd-color); margin-top:12px; text-transform:uppercase; letter-spacing:0.04em;">Team Tasks</div>`;
             html += othersProcessed.map((t, i) => {
                 let cardHTML = window.renderTaskCard(t, false);
-                return cardHTML.replace('class="premium-task-card', `class="premium-task-card" style="opacity: 0.85; background: var(--bg-overlay); animation-delay: ${i * 0.1}s;"`);
+                return cardHTML.replace('class="premium-task-card', `class="premium-task-card" style="opacity: 0.75; background: var(--bg-overlay); animation-delay: ${i * 0.1}s;"`);
             }).join('');
         }
         html += '</div>';
@@ -833,6 +799,61 @@ window.renderTasksList = function() {
 };
 
 window.renderStaffCards = function(staff) {
+  const el = document.getElementById('staff-cards-list');
+  if (!el) return;
+  const searchQ = (typeof staffSearchVal !== 'undefined' ? staffSearchVal : '').trim().toLowerCase();
+  
+  const nonOwner = searchQ
+    ? staff.filter(s => s.role !== 'owner' && (s.name + s.email + (s.designation || '')).toLowerCase().includes(searchQ))
+    : staff.filter(s => s.role !== 'owner');
+    
+  if (!nonOwner.length) { 
+      el.innerHTML = `<div class="empty"><div class="empty-ico">👥</div><div class="empty-ttl">No staff yet</div></div>`; 
+      return; 
+  }
+  
+  const isOwner = window.CU?.role === 'owner';
+  
+  el.innerHTML = nonOwner.map(s => {
+    const ini = getInitials(s.name);
+    
+    const emailHtml = isOwner ? `
+      <div class="team-email">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        ${esc(s.email)}
+      </div>
+    ` : '';
+
+    const actionHtml = isOwner ? `
+      <button class="more-btn" title="Delete Staff" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId || ''}')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+      </button>
+    ` : '';
+
+    const assignBtnHtml = (isOwner || window.CU?.role === 'manager') ? `
+      <button class="btn-text" style="font-size: 12px; padding: 4px 12px;" onclick="window.quickAssign('${s.uid}')">Assign Task</button>
+    ` : '';
+
+    return `
+    <div class="team-card anim-stagger">
+      <div class="team-card-top">
+        <div class="team-profile-info">
+            <div class="team-av">${ini}</div>
+            <div class="team-text-block">
+                <div class="team-name">${esc(s.name)}</div>
+                <div class="team-role">${esc(s.designation || formatRole(s.role))}</div>
+            </div>
+        </div>
+        ${actionHtml}
+      </div>
+      ${emailHtml}
+      <div class="team-card-actions">
+        <div class="status-pill-active">Active</div>
+        ${assignBtnHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
 
 function buildAppsGrid(ids) {
   const el = document.getElementById('apps-grid');
@@ -887,28 +908,27 @@ function buildProfile() {
 window.doAcceptTask = async function(id) {
   const taskEl = document.getElementById('task-' + id);
   if (taskEl) {
-    const cb = taskEl.querySelector('.card-checkbox');
     const ti = taskEl.querySelector('.card-title');
-    if (cb) { cb.classList.add('done'); cb.innerHTML = `<svg width="14" height="14" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6l-10 12h7l-3 8 10-12h-7z"/></svg>`; }
     if (ti) ti.classList.add('done');
     taskEl.classList.add('completed-state');
+    const buttons = taskEl.querySelectorAll('button');
+    buttons.forEach(b => b.style.display = 'none');
   }
   
   const taskObj = (window.myTasks||[]).find(t => t.id === id);
   if (taskObj) taskObj.status = 'done';
-  window.updateProgressRing();
 
   try {
     await markTaskDone(id);
     window.showToast('Task completed! 🎉', 'success');
   } catch(e) {
     if (taskObj) taskObj.status = 'pending';
-    window.updateProgressRing();
     if (taskEl) {
       taskEl.classList.remove('completed-state');
-      const cb = taskEl.querySelector('.card-checkbox'); const ti = taskEl.querySelector('.card-title');
-      if (cb) { cb.classList.remove('done'); cb.innerHTML = ''; }
+      const ti = taskEl.querySelector('.card-title');
       if (ti) ti.classList.remove('done');
+      const buttons = taskEl.querySelectorAll('button');
+      buttons.forEach(b => b.style.display = 'block');
     }
     window.showToast(e.message, 'error');
   }
@@ -963,11 +983,6 @@ window.handleAssign = async function() {
     window.showToast(`Assigned to ${assignee?.name}!`, 'success');
   } catch(e) { window.showToast(e.message, 'error'); }
   setButtonLoading(btn, false, 'Assign Task');
-};
-
-window.searchStaff = function(v) {
-  staffSearchVal = (v || '').toLowerCase();
-  window.renderStaffCards(allStaff);  
 };
 
 window.openDeleteModal = function(uid, name, email, uniqueId) {
@@ -1075,17 +1090,6 @@ window.openModal         = function(id) { document.getElementById(id)?.classList
 window.closeModal        = function(id) { document.getElementById(id)?.classList.add('hidden'); };
 window.openAssignModal   = function() { window.openModal('assign-modal'); };
 window.openFilterModal   = function() { window.openModal('filter-modal'); };
-
-window.markNotifRead = async function(id) { try { await markNotificationRead(window.CU?.uid, id); } catch(e) {} };
-window.markAllRead   = async function() {
-  try {
-    await markAllReadFn(window.CU?.uid);
-    const nb = document.getElementById('notif-body');
-    if (nb) nb.innerHTML = `<div class="empty"><div class="empty-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl">No notifications</div></div>`;
-    document.getElementById('notif-badge')?.classList.add('hidden');
-    window.showToast('All read', 'success');
-  } catch(e) { console.error(e); }
-};
 
 window.handleLogout = async function() {
   unsubs.forEach(f => f?.());
