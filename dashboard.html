@@ -96,27 +96,11 @@
 
       <div class="stats-grid" id="stats-grid"></div>
 
-      <div class="charts-row hidden" id="charts-row">
-        <div class="chart-card">
-          <div class="chart-hdr">
-            <div>
-              <div class="chart-ttl">Activity Overview</div>
-              <div class="chart-sub">Tasks completed over the last 7 days</div>
-            </div>
-          </div>
-          <div style="height: 240px; position: relative; padding: 0 16px;">
-            <canvas id="main-area-chart"></canvas>
-          </div>
-          <canvas id="bar-chart" class="hidden"></canvas>
-          <canvas id="donut-chart" class="hidden"></canvas>
-        </div>
-      </div>
-
       <div class="content-row mt-4">
           <div class="content-card">
             <div class="content-hdr">
               <div class="content-ttl" id="recent-ttl">Recent Tasks</div>
-              <button class="btn-text" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')">View All</button>
+              <button class="btn-text" onclick="window.showView('tasks')">View All</button>
             </div>
             <div id="recent-tasks" class="task-list-wrapper"></div>
           </div>
@@ -151,20 +135,13 @@
           <div class="progress-ring-container" style="position:relative; width:56px; height:56px;">
               <svg class="progress-ring" width="56" height="56" style="transform:rotate(-90deg);">
                   <circle stroke="#E2E8F0" stroke-width="5" fill="transparent" r="24" cx="28" cy="28"/>
-                  <circle class="progress-ring__circle" stroke="#4F46E5" stroke-width="5" stroke-linecap="round" fill="transparent" r="24" cx="28" cy="28" style="stroke-dasharray:150.7; stroke-dashoffset:150.7; transition:stroke-dashoffset 0.8s cubic-bezier(0.34,1.56,0.64,1);"/>
+                  <circle class="progress-ring__circle" stroke="#4F46E5" stroke-width="5" stroke-linecap="round" fill="transparent" r="24" cx="28" cy="28" style="stroke-dasharray:150.796; stroke-dashoffset:150.796; transition:stroke-dashoffset 0.8s cubic-bezier(0.34,1.56,0.64,1);"/>
               </svg>
               <div class="progress-ring-text" id="progress-percent" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:0.85rem; font-weight:800; color:var(--ac);">0%</div>
           </div>
       </div>
 
-      <div class="ftabs" id="task-tab-row">
-        </div>
-      
-      <div style="padding: 0 24px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-         <label style="font-size: 0.85rem; font-weight: 600; color: var(--tx-2);">Filter Date:</label>
-         <input type="date" id="task-date-filter" class="form-input" style="width: auto; padding: 8px 12px; border-radius: 8px; min-width: 140px; box-shadow: var(--sh-1);" onchange="window.renderTasksList()">
-         <button class="btn-subtle" style="padding: 8px 12px; font-size: 0.8rem; border-radius: 8px; border: none; box-shadow: var(--sh-1);" onclick="document.getElementById('task-date-filter').value=''; window.renderTasksList()">Clear</button>
-      </div>
+      <div class="ftabs" id="task-tab-row" style="margin-bottom: 16px;"></div>
 
       <div id="tasks-list"></div>
     </div>
@@ -175,7 +152,7 @@
           <h1 class="page-ttl">My Team</h1>
           <p class="page-sub" id="staff-count-sub"></p>
         </div>
-        <button class="btn btn-primary" id="add-staff-btn" onclick="window.openCreateStaffPage()">
+        <button class="btn btn-primary" id="add-staff-btn" onclick="window.openCreateStaffPage()" style="display:none">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add Member
         </button>
@@ -318,13 +295,6 @@
   </div>
 </div>
 
-<div class="modal-overlay hidden" id="edit-modal">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-hdr"><div class="modal-ttl" id="edit-modal-ttl">Edit</div><button class="modal-close" onclick="window.closeModal('edit-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-    <div style="display:flex;flex-direction:column;gap:12px"><div class="form-group"><label class="form-label" id="edit-modal-lbl">Value</label><input class="form-input" id="edit-modal-val" type="text"></div><div style="display:flex;gap:8px"><button class="btn btn-ghost w-full" onclick="window.closeModal('edit-modal')">Cancel</button><button class="btn btn-primary w-full" onclick="window.saveEdit()">Save</button></div></div>
-  </div>
-</div>
-
 <div class="fullpage" id="app-store-page">
   <div class="fp-hdr"><button class="fp-back" onclick="window.closeFullpage('app-store-page')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button><div class="fp-ttl">App Library</div></div>
   <div class="fp-body" id="app-store-body"></div>
@@ -353,7 +323,7 @@ window.showToast    = showToast;
 window.CU                  = null;
 window.myTasks             = [];
 window.assignedByMeTasks   = [];
-window.taskTab             = 'pending';
+window.taskTab             = 'pending'; // Default tab
 
 let allStaff       = [];
 let _profileBuilt  = false;
@@ -441,8 +411,9 @@ function setupUI() {
     document.getElementById('bn-assign')?.classList.remove('hidden');
     document.getElementById('assign-top-btn')?.classList.remove('hidden');
     document.getElementById('assign-tasks-btn')?.classList.remove('hidden');
-    document.getElementById('tab-by-me')?.classList.remove('hidden');
   }
+  
+  // Set up Tabs dynamically based on role
   const tabRow = document.getElementById('task-tab-row');
   if (tabRow) {
       if (isOwner) {
@@ -460,6 +431,7 @@ function setupUI() {
           window.taskTab = 'assigned-to-me';
       }
   }
+
   if (canSeeStaff) {
     document.getElementById('nav-staff')?.classList.remove('hidden');
     document.getElementById('team-label')?.classList.remove('hidden');
@@ -473,8 +445,6 @@ function setupUI() {
     document.getElementById('charts-row')?.classList.remove('hidden');
     initCharts();
   }
-  const rTtl = document.getElementById('recent-ttl');
-  if (rTtl) rTtl.textContent = canAssign ? 'Recent Tasks' : 'My Tasks';
 }
 
 function setAvatar(id, initials, color, size, dataUrl) {
@@ -513,6 +483,7 @@ function subscribeAll() {
       if (role === 'owner') renderOwnerStats();
       window.renderRecentTasks();
       window.renderTasksList();
+      window.updateProgressRing();
     }));
   }
 
@@ -538,27 +509,29 @@ window.updateProgressRing = function() {
     const pctText = document.getElementById('progress-percent');
     if (!ring || !pctText) return;
     
-    // Get all tasks relevant to user
-    const allRelevant = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+    // Determine relevant tasks based on user role (Owner tracks assigned, Staff tracks assigned to them)
+    let allRelevant = [];
+    if (window.CU?.role === 'owner') {
+        allRelevant = [...(window.assignedByMeTasks||[])];
+    } else {
+        allRelevant = [...(window.myTasks||[])].filter(t => t.assignedTo === window.CU?.uid);
+    }
+    
+    // Remove duplicates
+    allRelevant = allRelevant.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
     
     const done  = allRelevant.filter(t => t.status === 'done').length;
     const total = allRelevant.length;
     const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
     
-    const circumference = 24 * 2 * Math.PI; // Matches r="24" in SVG
+    const circumference = 24 * 2 * Math.PI; // 150.796
     ring.style.strokeDasharray = circumference;
-    ring.style.strokeDashoffset = circumference - (pct / 100) * circumference;
+    const offset = circumference - (pct / 100) * circumference;
+    ring.style.strokeDashoffset = offset;
     pctText.textContent = `${pct}%`;
     
     const sub = document.getElementById('task-header-sub');
     if (sub) sub.textContent = `${done} of ${total} tasks completed`;
-};
-  const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
-  const circumference = 24 * 2 * Math.PI;
-  ring.style.strokeDashoffset = circumference - (pct / 100) * circumference;
-  pctText.textContent = `${pct}%`;
-  const sub = document.getElementById('task-header-sub');
-  if (sub) sub.textContent = `${done} of ${total} tasks completed`;
 };
 
 function renderOwnerStats() {
@@ -573,7 +546,7 @@ function renderOwnerStats() {
       <div class="sc-top"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val">${staff.length}</div></div>
       <div class="sc-ico bg-blue-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div>
     </div>
-    <div class="stat-card anim-stagger" onclick="window.setTaskTab('pending',null);window.showView('tasks')">
+    <div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')">
       <div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending Tasks</div><div class="sc-val">${pending}</div></div>
       <div class="sc-ico bg-amber-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
     </div>
@@ -650,26 +623,34 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     const titleClass = isDone ? 'card-title done' : 'card-title';
     const cardStateClass = isDone ? `premium-task-card completed-state ${priorityClass}` : `premium-task-card ${priorityClass}`;
     
-    const checkIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    const checkIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
     const assigneeName = task.assignedToName || 'Team Member';
     const assigneeIni = assigneeName.charAt(0).toUpperCase();
 
-    // If it's a recent task on home screen, swap checkbox with an Avatar
-    const leftElement = isRecent 
-        ? `<div class="av bg-blue-soft text-blue" style="width:28px; height:28px; font-size:0.75rem; border-radius:50%; flex-shrink:0;">${assigneeIni}</div>`
-        : `<div class="${checkboxClass}" ${isPending && isToMe ? `onclick="window.doAcceptTask('${task.id}')"` : ''}>${isDone ? checkIcon : ''}</div>`;
+    // RECENT TASKS: Only show Avatar on the left, no duplicate name, no checkbox.
+    if (isRecent) {
+        return `
+        <div class="${cardStateClass}">
+            <div class="av bg-blue-soft text-blue" style="width:36px; height:36px; font-size:1rem; border-radius:50%; flex-shrink:0;">${assigneeIni}</div>
+            <div class="card-content-wrap">
+                <div class="${titleClass}">${esc(task.title || 'Untitled Task')}</div>
+                <div class="card-meta-strip">
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span style="font-size:0.85rem; font-weight:700; color:var(--tx-2);">${esc(assigneeName)}</span>
+                        ${task.dueDate ? `<div class="card-time-block" style="padding: 2px 8px; font-size: 0.75rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${esc(task.dueDate)}</div>` : ''}
+                        ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2); padding: 2px 8px; font-size: 0.65rem;">${task.priority}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
 
-    // If it's recent, hide the second avatar block from the right side
-    const rightAvatarHTML = isRecent 
-        ? `<span style="font-size:0.85rem; font-weight:600; color:var(--tx-2);">${esc(assigneeName)}</span>`
-        : `<div style="display:flex; align-items:center; gap:6px;">
-                <div class="av bg-blue-soft text-blue" style="width:24px; height:24px; font-size:0.7rem; border-radius:50%;">${assigneeIni}</div>
-                <span style="font-size:0.85rem; font-weight:600; color:var(--tx-2);">${esc(assigneeName)}</span>
-           </div>`;
-
+    // MY TASKS: Checkbox on the left, Avatar + Name on the right
     return `
     <div class="${cardStateClass}" id="task-${task.id}">
-        ${leftElement}
+        <div class="${checkboxClass}" ${isPending && isToMe ? `onclick="window.doAcceptTask('${task.id}')"` : ''}>
+            ${isDone ? checkIcon : ''}
+        </div>
         <div class="card-content-wrap">
             <div class="${titleClass}">${esc(task.title || 'Untitled Task')}</div>
             <div class="card-meta-strip">
@@ -682,7 +663,14 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
                     ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2);">${task.priority}</span>` : ''}
                 </div>
                 <div style="display:flex; gap:12px; align-items:center;">
-                    ${rightAvatarHTML}
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <div class="av bg-blue-soft text-blue" style="width:24px; height:24px; font-size:0.7rem; border-radius:50%;">${assigneeIni}</div>
+                        <span style="font-size:0.85rem; font-weight:600; color:var(--tx-2);">${esc(assigneeName)}</span>
+                    </div>
+                    ${isPending && showActions && isToMe ? `
+                    <button style="width:32px; height:32px; border-radius:10px; border:1px solid var(--red-l); background:transparent; color:var(--red); display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g, '&quot;')}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>` : ''}
                 </div>
             </div>
         </div>
@@ -703,12 +691,24 @@ window.renderRecentTasks = function() {
     }
     
     const listHTML = tasks.map((t, index) => {
-        // Pass TRUE for isRecent
-        const html = window.renderTaskCard(t, false, true);
+        const html = window.renderTaskCard(t, false, true); // isRecent = true
         return html.replace('class="premium-task-card', `class="premium-task-card" style="margin: 0 16px; animation-delay: ${index * 0.1}s;"`);
     }).join('');
     
     el.innerHTML = '<div class="task-list-wrapper" style="padding-bottom: 16px;">' + listHTML + '</div>';
+};
+
+window.setTaskTab = function(tab, btn) {
+    window.taskTab = tab;
+    document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
+    if (btn) { 
+        btn.classList.add('on'); 
+    } else {
+        // Find tab dynamically
+        const targetBtn = Array.from(document.querySelectorAll('.ftab')).find(b => b.getAttribute('onclick').includes(tab));
+        if (targetBtn) targetBtn.classList.add('on');
+    }
+    window.renderTasksList();
 };
 
 window.renderTasksList = function() {
@@ -716,7 +716,6 @@ window.renderTasksList = function() {
     if (!el) return;
     
     let list = [];
-    
     if (window.taskTab === 'assigned-to-me') list = window.myTasks.filter(t => t.assignedTo === window.CU?.uid && t.status !== 'done');
     else if (window.taskTab === 'assigned-by-me') list = window.assignedByMeTasks.filter(t => t.status !== 'done');
     else if (window.taskTab === 'done') list = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])].filter(t => t.status === 'done');
@@ -724,13 +723,6 @@ window.renderTasksList = function() {
     
     const seen = new Set();
     list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
-
-    // Apply Native Date Filter
-    const dateFilterEl = document.getElementById('task-date-filter');
-    const selectedDate = dateFilterEl ? dateFilterEl.value : '';
-    if (selectedDate) {
-        list = list.filter(t => t.dueDate === selectedDate);
-    }
 
     if (!list.length) {
         el.innerHTML = `
@@ -750,12 +742,10 @@ window.renderTasksList = function() {
         const othersCompleted = list.filter(t => t.assignedTo !== window.CU?.uid);
         
         let html = '<div class="task-list-wrapper">';
-        
         if (iCompleted.length > 0) {
             html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-2); padding: 8px 16px 4px; text-transform:uppercase; letter-spacing:0.04em;">Tasks I Completed</div>`;
             html += iCompleted.map((t, i) => window.renderTaskCard(t, false).replace('class="premium-task-card completed-state', `class="premium-task-card completed-state" style="animation-delay: ${i * 0.1}s;"`)).join('');
         }
-        
         if (othersCompleted.length > 0) {
             html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-3); padding: 24px 16px 8px; border-top: 1px solid var(--bd-color); margin-top:12px; text-transform:uppercase; letter-spacing:0.04em;">Tasks Completed by Others</div>`;
             html += othersCompleted.map((t, i) => {
@@ -846,19 +836,6 @@ function buildProfile() {
   if (d) d.innerHTML = html;
   if (m) m.innerHTML = html;
 }
-
-window.setTaskTab = function(tab, btn) {
-    window.taskTab = tab;
-    document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
-    if (btn) { 
-        btn.classList.add('on'); 
-    } else {
-        document.querySelectorAll('.ftab').forEach(b => {
-            if (b.getAttribute('onclick').includes(tab)) b.classList.add('on');
-        });
-    }
-    window.renderTasksList();
-};
 
 window.doAcceptTask = async function(id) {
   const taskEl = document.getElementById('task-' + id);
