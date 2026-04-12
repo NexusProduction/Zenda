@@ -341,503 +341,404 @@
 <script type="module">
 import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
 import { requireAuth, logout, getCurrentUser } from './auth.js';
-import { listenNotifications, markAllRead as markAllReadFn, markNotificationRead } from './notifications.js';
+import { listenNotifications, markAllRead as markAllReadFn, markNotificationRead, addNotification } from './notifications.js';
 import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined } from './tasks.js';
 import { listenCompanyStaff, getAssignableStaff, createStaff, updateUserProfile, deleteStaffMember } from './staff.js';
-import { getInstalledApps, listenInstalledApps, APP_REGISTRY } from './apps.js';
+import { getInstalledApps, listenInstalledApps, installApp, uninstallApp, renderAppLibrary, APP_REGISTRY } from './apps.js';
 import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
-import { showToast, setButtonLoading, getInitials, avatarColor, formatRole, copyToClipboard, saveSession } from './utils.js';
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { showToast, setButtonLoading, getInitials, avatarColor, formatRole, roleBadgeClass, copyToClipboard, saveSession } from './utils.js';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { sendOTP, verifyUserOTP } from './otp.js';
 
-// ── GLOBAL STUBS ──
-window.searchStaff  = function(v) {};
-window.clearCSErr   = function(el) {};
-window.copyToClipboard = copyToClipboard;
-window.showToast    = showToast;
+// ATTACH GLOBAL STUBS SO ONINPUT HANDLERS DON'T CRASH
+window.searchStaff = function(v) {};
+window.clearCSErr  = function(el) {};
+window.copyToClipboard = copyToClipboard; 
+window.showToast = showToast;
 
-// ── STATE ──
-// BUG 2+3+4 FIX: All shared state lives on window so every function reads fresh data
-window.CU                  = null;
-window.myTasks             = [];
-window.assignedByMeTasks   = [];
-window.taskTab             = 'pending';  // ← BUG 2 FIX: exposed on window
+let CU = null, myTasks = [], assignedByMeTasks = [], allStaff = [];
+let _profileBuilt = false;
+let newRole = 'manager', newCanvas = null, newStaffData = null;
+let editField = null, taskTab = 'pending', staffSearchVal = '';
+let deleteTargetUid = null, deleteTargetEmail = '', deleteTargetPwd = '', deleteConfirmStr = '';
+let pendingDeclineId = null, pendingDeclineTitle = '';
+let mainAreaChart = null;
+let unsubs = [];
 
-let allStaff       = [];
-let _profileBuilt  = false;
-let staffSearchVal = '';
-let deleteTargetUid = null, deleteConfirmStr = '';
-let pendingDeclineId = null;
-let mainAreaChart  = null;
-let unsubs         = [];
-
-// ── HELPERS ──
-// BUG 1 extra: all helpers defined first so callbacks can always find them
-
-function esc(s = '') {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function setBadge(id, count) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = count > 99 ? '99+' : count;
-  el.classList.toggle('hidden', count <= 0);
-}
-
-function setDot(id, show) {
-  const el = document.getElementById(id);
-  if (el) el.classList.toggle('show', show);
-}
-
-function ago(iso) {
-  if (!iso) return '';
-  const d = Date.now() - new Date(iso);
-  if (d < 60000)    return 'just now';
-  if (d < 3600000)  return Math.floor(d / 60000) + 'm ago';
-  if (d < 86400000) return Math.floor(d / 3600000) + 'h ago';
-  const days = Math.floor(d / 86400000);
-  if (days < 30)    return days + 'd ago';
-  return Math.floor(days / 30) + 'mo ago';
-}
-
-function format12hr(t) {
-  if (!t) return '';
-  const [h, m] = t.split(':').map(Number);
-  return `${((h % 12) || 12)}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-}
-
-function last7() {
-  const out = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    out.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }), date: d.toDateString() });
-  }
-  return out;
-}
-
-// ── INIT ──
+// ──────────────────────────────────────────────
+// INIT & SETUP
+// ──────────────────────────────────────────────
 async function init() {
-  try {
-    await requireAuth('login.html');
-    const cu = await getCurrentUser();
-    if (!cu) { window.location.href = 'login.html'; return; }
-    // BUG 3 FIX: sync CU to window immediately
-    window.CU = cu;
-    saveSession(cu);
-    window.CU._notifyList = window.CU.notifyApps || [];
-    setupUI();
-    buildProfile();
-    subscribeAll();
-  } catch (e) {
-    console.error('Init Error:', e);
-  } finally {
-    hideLoader();
-  }
+    try {
+        await requireAuth('login.html');
+        CU = await getCurrentUser();
+        if (!CU) { window.location.href = 'login.html'; return; }
+        saveSession(CU);
+        CU._notifyList = CU.notifyApps || [];
+        setupUI();
+        buildProfile();
+        subscribeAll();
+    } catch (e) {
+        console.error("Init Error:", e);
+    } finally {
+        hideLoader();
+    }
 }
 
 function hideLoader() {
-  const el = document.getElementById('loading-overlay');
-  if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }
+    const el = document.getElementById('loading-overlay');
+    if (el) {
+        el.style.opacity = '0'; 
+        setTimeout(() => el.remove(), 400);
+    }
 }
 
-// ── SETUP UI ──
 function setupUI() {
-  const { name, role } = window.CU;
-  const col = avatarColor(name);
-  const ini = getInitials(name);
-  const localLogo = localStorage.getItem('zenda_logo_' + window.CU.uid);
-  const avatarSrc = localLogo || window.CU.avatarData || null;
+    const { name, role } = CU;
+    const col = avatarColor(name);
+    const ini = getInitials(name);
 
-  if (avatarSrc) {
-    window.CU.avatarData = avatarSrc;
-    setAvatar('topbar-avatar', ini, col, 32, avatarSrc);
-    setAvatar('bn-avatar', ini, col, 24, avatarSrc);
-  } else {
-    const topAv = document.getElementById('topbar-avatar');
-    if (topAv) { topAv.textContent = ini; topAv.style.background = col + '22'; topAv.style.color = col; }
-    const bnAv = document.getElementById('bn-avatar');
-    if (bnAv) { bnAv.textContent = ini; bnAv.style.background = col + '22'; bnAv.style.color = col; }
-  }
+    const localLogo = localStorage.getItem('zenda_logo_' + CU.uid);
+    const avatarSrc = localLogo || CU.avatarData || null;
+    
+    if (avatarSrc) {
+        CU.avatarData = avatarSrc;
+        setAvatar('topbar-avatar', ini, col, 32, avatarSrc);
+        setAvatar('bn-avatar', ini, col, 24, avatarSrc);
+    } else {
+        const topAv = document.getElementById('topbar-avatar');
+        if (topAv) { topAv.textContent = ini; topAv.style.background = col + '22'; topAv.style.color = col; }
+        const bnAv = document.getElementById('bn-avatar');
+        if (bnAv) { bnAv.textContent = ini; bnAv.style.background = col + '22'; bnAv.style.color = col; }
+    }
 
-  document.getElementById('topbar-name').textContent = (name || 'User').split(' ')[0];
+    document.getElementById('topbar-name').textContent = (name || 'User').split(' ')[0];
+    
+    if (CU.companyId) {
+        getDoc(doc(db, 'companies', CU.companyId)).then(s => {
+            if (s.exists()) {
+                const compData = s.data();
+                document.getElementById('topbar-company').textContent = compData.name;
+                let isPremium = compData.isPremium === true;
+                if (isPremium && compData.subscriptionExpiry) {
+                    const expiryDate = new Date(compData.subscriptionExpiry);
+                    if (new Date() > expiryDate) isPremium = false; 
+                }
+                CU.isPremium = isPremium;
+                const upgBtn = document.getElementById('globalUpgradeBtn');
+                if (upgBtn) {
+                    if (isPremium === false) { upgBtn.classList.remove('hidden'); } 
+                    else { upgBtn.classList.add('hidden'); }
+                }
+            }
+        }).catch(err => console.error(err));
+    }
 
-  if (window.CU.companyId) {
-    getDoc(doc(db, 'companies', window.CU.companyId)).then(s => {
-      if (s.exists()) {
-        const cd = s.data();
-        document.getElementById('topbar-company').textContent = cd.name;
-        let isPremium = cd.isPremium === true;
-        if (isPremium && cd.subscriptionExpiry && new Date() > new Date(cd.subscriptionExpiry)) isPremium = false;
-        window.CU.isPremium = isPremium;
-        const upgBtn = document.getElementById('globalUpgradeBtn');
-        if (upgBtn) { isPremium ? upgBtn.classList.add('hidden') : upgBtn.classList.remove('hidden'); }
-      }
-    }).catch(console.error);
-  }
+    const h = new Date().getHours();
+    const g = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+    document.getElementById('home-greeting').textContent = `Good ${g}, ${(name || 'User').split(' ')[0]}`;
+    document.getElementById('home-sub').textContent = { owner:'Overview of your company and team', manager:'Your team tasks and activity', staff:'Your assignments and progress' }[role] || '';
+    
+    // Explicitly clearing "Tasks for Teddy" text
+    const tasksSub = document.getElementById('tasks-sub');
+    if (tasksSub) tasksSub.textContent = '';
 
-  const h = new Date().getHours();
-  const g = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
-  document.getElementById('home-greeting').textContent = `Good ${g}, ${(name || 'User').split(' ')[0]}`;
-  document.getElementById('home-sub').textContent = { owner: 'Overview of your company and team', manager: 'Your team tasks and activity', staff: 'Your assignments and progress' }[role] || '';
-  const tasksSub = document.getElementById('tasks-sub');
-  if (tasksSub) tasksSub.textContent = `Tasks for ${(name || 'User').split(' ')[0]}`;
+    const canAssign = role === 'owner' || role === 'manager';
+    const isOwner = role === 'owner';
+    const canSeeStaff = role === 'owner' || role === 'manager';
 
-  const canAssign  = role === 'owner' || role === 'manager';
-  const isOwner    = role === 'owner';
-  const canSeeStaff = role === 'owner' || role === 'manager';
-
-  if (canAssign) {
-    document.getElementById('bn-assign')?.classList.remove('hidden');
-    document.getElementById('assign-top-btn')?.classList.remove('hidden');
-    document.getElementById('assign-tasks-btn')?.classList.remove('hidden');
-    document.getElementById('tab-by-me')?.classList.remove('hidden');
-  }
-  const tabRow = document.getElementById('task-tab-row');
-  if (tabRow) {
-      if (isOwner) {
-          tabRow.innerHTML = `
-              <button class="ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
-              <button class="ftab" onclick="window.setTaskTab('done',this)">Done</button>
-          `;
-          window.taskTab = 'assigned-by-me';
-      } else {
-          tabRow.innerHTML = `
-              <button class="ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button>
-              <button class="ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
-              <button class="ftab" onclick="window.setTaskTab('done',this)">Done</button>
-          `;
-          window.taskTab = 'assigned-to-me';
-      }
-  }
-  if (canSeeStaff) {
-    document.getElementById('nav-staff')?.classList.remove('hidden');
-    document.getElementById('team-label')?.classList.remove('hidden');
-    document.getElementById('bn-staff-btn')?.classList.remove('hidden');
-  }
-  if (isOwner) {
-    const btn = document.getElementById('add-staff-btn');
-    if (btn) btn.style.display = 'flex';
-  }
-  if (role === 'staff' || role === 'manager') {
-    document.getElementById('charts-row')?.classList.remove('hidden');
-    initCharts();
-  }
-  const rTtl = document.getElementById('recent-ttl');
-  if (rTtl) rTtl.textContent = canAssign ? 'Recent Tasks' : 'My Tasks';
+    if (canAssign) {
+        document.getElementById('nav-assign')?.classList.remove('hidden');
+        document.getElementById('bn-assign')?.classList.remove('hidden');
+        document.getElementById('assign-top-btn')?.classList.remove('hidden');
+        document.getElementById('assign-tasks-btn')?.classList.remove('hidden');
+        document.getElementById('tab-by-me')?.classList.remove('hidden');
+    }
+    
+    if (!isOwner) {
+        document.getElementById('tab-to-me')?.classList.remove('hidden');
+    } else {
+        document.getElementById('tab-to-me')?.classList.add('hidden');
+        const byMe = document.getElementById('tab-by-me');
+        if (byMe) byMe.classList.add('on');
+        taskTab = 'pending';
+    }
+    
+    if (canSeeStaff) {
+        document.getElementById('nav-staff')?.classList.remove('hidden');
+        document.getElementById('team-label')?.classList.remove('hidden');
+        document.getElementById('bn-staff-btn')?.classList.remove('hidden');
+    }
+    
+    if (isOwner) {
+        const btn = document.getElementById('add-staff-btn');
+        if(btn) btn.style.display = 'flex';
+    }
+    
+    if (role === 'staff' || role === 'manager') {
+        document.getElementById('charts-row')?.classList.remove('hidden');
+        initCharts();
+    }
+    
+    const rTtl = document.getElementById('recent-ttl');
+    if(rTtl) rTtl.textContent = canAssign ? 'Recent Tasks' : 'My Tasks';
 }
 
 function setAvatar(id, initials, color, size, dataUrl) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.style.width = size + 'px'; el.style.height = size + 'px'; el.style.fontSize = (size * 0.38) + 'px';
-  if (dataUrl) { el.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
-  else { el.textContent = initials; el.style.background = color + '22'; el.style.color = color; }
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.style.fontSize = (size * 0.38) + 'px';
+    if (dataUrl) {
+        el.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    } else {
+        el.textContent = initials;
+        el.style.background = color + '22';
+        el.style.color = color;
+    }
 }
 
-// ── SUBSCRIBE ALL ──
-// BUG 1 FIX: Clean single subscribeAll with no duplicate nesting
-function subscribeAll() {
-  const { uid, companyId, role } = window.CU;
-  const canSeeStaff = role === 'owner' || role === 'manager';
-  const canAssign   = role === 'owner' || role === 'manager';
-
-  unsubs.push(listenNotifications(uid, (items, unread) => {
-    renderNotifPanel(items);
-    setBadge('notif-badge', unread);
-  }));
-
-  // BUG 4 FIX: window.myTasks updated every time tasks change
-  unsubs.push(listenMyTasks(uid, tasks => {
-    window.myTasks = tasks;
-    const pending = tasks.filter(t => t.status === 'pending').length;
-    setBadge('task-badge-side', pending);
-    setDot('bn-task-dot', pending > 0);
-    renderRecentTasks();
-    renderTasksList();
-    updateProgressRing();
-    // BUG 5 FIX: call via window. since they're defined as window.* below
-    if (role === 'staff' || role === 'manager') { updateCharts(tasks); renderNonOwnerStats(tasks); }
-    if (role === 'owner') renderOwnerStats();
-  }));
-
-  if (canAssign) {
-    // BUG 4 FIX: window.assignedByMeTasks updated every time
-    unsubs.push(listenAssignedByMe(uid, tasks => {
-      window.assignedByMeTasks = tasks;
-      if (role === 'owner') renderOwnerStats();
-      renderRecentTasks();
-      renderTasksList();
-    }));
-  }
-
-  if (canSeeStaff && companyId) {
-    unsubs.push(listenCompanyStaff(companyId, staff => {
-      allStaff = staff;
-      if (role === 'owner') renderOwnerStats();
-      // BUG 6 FIX: call as local function, not window.renderStaffCards
-      renderStaffCards(staff);
-      buildAssignSelect(staff);
-      const nonOwner = staff.filter(s => s.role !== 'owner');
-      const sc = document.getElementById('staff-count-sub');
-      if (sc) sc.textContent = `${nonOwner.length} member${nonOwner.length !== 1 ? 's' : ''}`;
-    }));
-  } else if (companyId) {
-    getAssignableStaff(companyId, uid).then(s => { allStaff = s; }).catch(console.error);
-  }
-
-  unsubs.push(listenInstalledApps(uid, ids => buildAppsGrid(ids)));
-}
-
-// ── PROGRESS RING ──
-// ── STATS ──
-// BUG 5 FIX: defined as plain functions (not window.*) so callbacks can call them directly
-function renderOwnerStats() {
-  const staff = allStaff.filter(s => s.role !== 'owner');
-  const all   = [...window.myTasks, ...window.assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-  const pending = all.filter(t => t.status === 'pending').length;
-  const done    = all.filter(t => t.status === 'done').length;
-  const el = document.getElementById('stats-grid');
-  if (!el) return;
-  el.innerHTML = `
-    <div class="stat-card anim-stagger" onclick="window.showView('staff')">
-      <div class="sc-top"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val">${staff.length}</div></div>
-      <div class="sc-ico bg-blue-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div>
-    </div>
-    <div class="stat-card anim-stagger" onclick="window.setTaskTab('pending',null);window.showView('tasks')">
-      <div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending Tasks</div><div class="sc-val">${pending}</div></div>
-      <div class="sc-ico bg-amber-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
-    </div>
-    <div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')">
-      <div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${done}</div></div>
-      <div class="sc-ico bg-green-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div></div>
-    </div>`;
-}
-
-function renderNonOwnerStats(tasks) {
-  const pending = tasks.filter(t => t.status === 'pending').length;
-  const done    = tasks.filter(t => t.status === 'done').length;
-  const isManager = window.CU.role === 'manager';
-  const el = document.getElementById('stats-grid');
-  if (!el) return;
-  el.innerHTML = isManager ? `
-    <div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')">
-      <div class="sc-top"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val">${pending}</div></div>
-      <div class="sc-ico bg-amber-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
-    </div>
-    <div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')">
-      <div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${done}</div></div>
-      <div class="sc-ico bg-green-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div></div>
-    </div>
-    <div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')">
-      <div class="sc-top"><div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val">${window.assignedByMeTasks.length}</div></div>
-      <div class="sc-ico bg-blue-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div>
-    </div>` : `
-    <div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')">
-      <div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${pending}</div></div>
-      <div class="sc-ico bg-amber-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
-    </div>
-    <div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')">
-      <div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${done}</div></div>
-      <div class="sc-ico bg-green-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div></div>
-    </div>`;
-}
-
-// ── CHARTS ──
-function initCharts() {
-  const canvas = document.getElementById('main-area-chart');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-  gradient.addColorStop(0, 'rgba(79,70,229,0.25)');
-  gradient.addColorStop(1, 'rgba(79,70,229,0.0)');
-  mainAreaChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-      datasets: [{ label:'Completed Tasks', data:[0,0,0,0,0,0,0], borderColor:'#4F46E5', backgroundColor:gradient, borderWidth:3, fill:true, tension:0.4, pointBackgroundColor:'#FFFFFF', pointBorderColor:'#4F46E5', pointBorderWidth:2, pointRadius:4 }]
-    },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ x:{grid:{display:false}}, y:{beginAtZero:true, grid:{color:'#F1F5F9'}, border:{display:false}} } }
-  });
-}
-
-function updateCharts(tasks) {
-  if (!mainAreaChart) return;
-  const days = last7();
-  mainAreaChart.data.labels = days.map(d => d.label);
-  mainAreaChart.data.datasets[0].data = days.map(day => tasks.filter(t => t.status === 'done' && t.completedAt && new Date(t.completedAt).toDateString() === day.date).length);
-  mainAreaChart.update();
-}
-
-// ── TASK CARDS ──
-function renderTaskCard(task, showActions) {
-  const isToMe    = task.assignedTo === window.CU?.uid;
-  const isPending = task.status === 'pending';
-  const isDone    = task.status === 'done';
-  let priorityClass = task.priority === 'High' ? 'priority-high' : task.priority === 'Medium' ? 'priority-medium' : '';
-  const cardClass = `premium-task-card ${priorityClass}${isDone ? ' completed-state' : ''}`;
-  const checkIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-  const assigneeIni = task.assignedToName ? task.assignedToName.charAt(0).toUpperCase() : 'T';
-  return `
-  <div class="${cardClass}" id="task-${task.id}">
-    <div class="${isDone ? 'card-checkbox done' : 'card-checkbox'}" ${isPending && isToMe ? `onclick="window.doAcceptTask('${task.id}')"` : ''}>
-      ${isDone ? checkIcon : ''}
-    </div>
-    <div class="card-content-wrap">
-      <div class="${isDone ? 'card-title done' : 'card-title'}">${esc(task.title || 'Untitled Task')}</div>
-      <div class="card-meta-strip">
-        <div style="display:flex;gap:8px;align-items:center;">
-          ${task.dueDate ? `<div class="card-time-block"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${esc(task.dueDate)}</div>` : ''}
-          ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay);color:var(--tx-2);">${task.priority}</span>` : ''}
-        </div>
-        <div class="card-avatar-stack"><div class="av bg-blue-soft" style="width:24px;height:24px;font-size:10px;">${assigneeIni}</div></div>
-      </div>
-    </div>
-  </div>`;
-}
-
-// ── RECENT TASKS ──
-function renderRecentTasks() {
-  const el = document.getElementById('recent-tasks');
-  if (!el) return;
-  const all = [...window.myTasks, ...window.assignedByMeTasks]
-    .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    .slice(0, 3);
-  if (!all.length) { el.innerHTML = `<div class="empty" style="padding:36px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No recent tasks</div></div>`; return; }
-  el.innerHTML = '<div class="task-list-wrapper">' + all.map((t, i) => renderTaskCard(t, false).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay:${i * 0.1}s;"`)).join('') + '</div>';
-}
-
-// ── TASKS LIST ──
-function renderTasksList() {
-  const el = document.getElementById('tasks-list');
-  if (!el) return;
-
-  // BUG 2 FIX: read from window.taskTab (not local taskTab)
-  let list = [];
-  const tab = window.taskTab;
-  if      (tab === 'pending')         list = window.myTasks.filter(t => t.status === 'pending');
-  else if (tab === 'done')            list = window.myTasks.filter(t => t.status === 'done');
-  else if (tab === 'assigned-to-me')  list = window.myTasks.filter(t => t.assignedTo === window.CU?.uid);
-  else if (tab === 'assigned-by-me')  list = window.assignedByMeTasks;
-  else                                list = window.myTasks;
-
-  const seen = new Set();
-  list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
-
-  // Calendar strip
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const today = new Date();
-  let strip = '<div class="mobile-week-strip">';
-  for (let i = -2; i <= 4; i++) {
-    const d = new Date(); d.setDate(today.getDate() + i);
-    strip += `<div class="date-bubble ${i === 0 ? 'active' : ''}"><span class="date-day">${days[d.getDay()]}</span><span class="date-num">${d.getDate()}</span></div>`;
-  }
-  strip += '</div>';
-
-  if (!list.length) {
-    el.innerHTML = strip + `<div class="empty" style="padding:60px 20px;"><div style="width:80px;height:80px;background:var(--bg-overlay);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg></div><div style="font-size:1.1rem;font-weight:700;color:var(--tx-1);">You're all caught up!</div><div style="font-size:0.9rem;color:var(--tx-3);margin-top:6px;">No tasks match this filter.</div></div>`;
-    return;
-  }
-  el.innerHTML = strip + '<div class="task-list-wrapper">' + list.map((t, i) => renderTaskCard(t, true).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay:${i * 0.1}s;"`)).join('') + '</div>';
-}
-
-// ── STAFF CARDS ──
-// BUG 6 FIX: plain function so both the listener callback AND searchStaff can call it directly
-function renderStaffCards(staff) {
-  const el = document.getElementById('staff-cards-list');
-  if (!el) return;
-  const searchQ = staffSearchVal.trim().toLowerCase();
-  const nonOwner = searchQ
-    ? staff.filter(s => s.role !== 'owner' && (s.name + s.email + (s.designation || '')).toLowerCase().includes(searchQ))
-    : staff.filter(s => s.role !== 'owner');
-  if (!nonOwner.length) { el.innerHTML = `<div class="empty"><div class="empty-ico">👥</div><div class="empty-ttl">No staff yet</div></div>`; return; }
-  el.innerHTML = nonOwner.map(s => {
-    const ini = getInitials(s.name);
-    return `<div class="team-card anim-stagger">
-      <div class="team-card-top">
-        <div class="avatar-wrap"><div class="av lg-av bg-blue-soft">${ini}</div><div class="online-indicator"></div></div>
-        ${window.CU?.role === 'owner' ? `<button class="more-btn" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId || ''}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>` : ''}
-      </div>
-      <h4 class="team-name">${esc(s.name)}</h4>
-      <p class="team-role">${esc(s.designation || formatRole(s.role))}</p>
-      <div class="team-card-actions">
-        ${window.CU?.role === 'owner' || window.CU?.role === 'manager' ? `<button class="btn btn-primary w-full" onclick="window.quickAssign('${s.uid}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Assign</button>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── APPS GRID ──
-function buildAppsGrid(ids) {
-  const el = document.getElementById('apps-grid');
-  if (!el) return;
-  el.innerHTML = `
-    <div class="app-squircle-wrap" onclick="window.openApp('calendar')"><div class="app-squircle bg-grad-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><span class="app-name">Calendar</span></div>
-    <div class="app-squircle-wrap" onclick="window.openApp('inventory')"><div class="app-squircle bg-grad-orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><span class="app-name">Inventory</span></div>
-    <div class="app-squircle-wrap" onclick="window.openApp('expenses')"><div class="app-squircle bg-grad-purple"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><span class="app-name">Expenses</span></div>
-    <div class="app-squircle-wrap" onclick="window.openAppLib()"><div class="app-squircle bg-gray"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div><span class="app-name">More Apps</span></div>`;
-}
-
-window.openApp = function(appId) {
-  const map = { calendar:'calendar.html', inventory:'inventory.html', expenses:'expenses.html' };
-  const file = map[appId];
-  if (file) window.location.href = file + (window.CU?.uid ? '?uid=' + window.CU.uid : '');
-  else window.showToast('App not found!', 'error');
+// Daily Overview Functional Ring
+window.updateProgressRing = function() {
+    const ring = document.querySelector('.progress-ring__circle');
+    const pctText = document.getElementById('progress-percent');
+    if(!ring || !pctText) return;
+    
+    const allRelevantTasks = [...(myTasks||[]), ...(assignedByMeTasks||[])]
+        .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+        
+    const done = allRelevantTasks.filter(t => t.status === 'done').length;
+    const total = allRelevantTasks.length;
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    
+    const circumference = 24 * 2 * Math.PI; // Circle Math
+    const offset = circumference - (pct / 100) * circumference;
+    ring.style.strokeDasharray = circumference;
+    ring.style.strokeDashoffset = offset;
+    pctText.textContent = `${pct}%`;
+    
+    const sub = document.getElementById('task-header-sub');
+    if(sub) sub.textContent = `${done} of ${total} tasks completed`;
 };
 
-// ── NOTIFICATIONS ──
-function renderNotifPanel(items) {
-  const el = document.getElementById('notif-body');
-  if (!el) return;
-  if (!items.length) { el.innerHTML = `<div class="empty"><div class="empty-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl">No notifications</div></div>`; return; }
-  el.innerHTML = items.map(n => `
-    <div style="padding:12px;border-bottom:1px solid var(--bd-color);cursor:pointer;" onclick="window.markNotifRead('${esc(n.id)}')">
-      <div style="font-size:0.85rem;color:var(--tx-1);font-weight:${n.read ? '500' : '700'};">${esc(n.message)}</div>
-      <div style="font-size:0.75rem;color:var(--tx-3);margin-top:4px;">${ago(n.createdAt)}</div>
-    </div>`).join('');
-}
+function updateProgressRing() { window.updateProgressRing(); }
 
-// ── PROFILE ──
-function buildProfile() {
-  if (!window.CU) return;
-  const { name, email, role, designation, uniqueId } = window.CU;
-  const html = `
-    <div style="text-align:center;padding:20px 16px;border-bottom:1px solid var(--bd-color);">
-      <div class="av lg-av bg-blue-soft" style="margin:0 auto 10px;width:64px;height:64px;font-size:1.5rem;">${getInitials(name)}</div>
-      <div style="font-size:15px;font-weight:700;">${esc(name)}</div>
-      <div style="font-size:12px;color:var(--tx-3);margin-bottom:8px">${esc(email)}</div>
-    </div>
-    <div style="padding:16px;">
-      <div style="margin-bottom:12px;display:flex;justify-content:space-between;">
-        <span style="font-size:0.85rem;color:var(--tx-2);font-weight:600;">Unique ID</span>
-        <span style="font-size:0.85rem;font-family:var(--f-mono);">${uniqueId}</span>
-      </div>
-      <button class="btn btn-ghost w-full" onclick="window.handleLogout()" style="margin-top:24px;">Sign Out</button>
-    </div>`;
-  const d = document.getElementById('profile-body-desktop');
-  const m = document.getElementById('profile-body-mobile');
-  if (d) d.innerHTML = html;
-  if (m) m.innerHTML = html;
-}
+function subscribeAll() {
+    const { uid, companyId, role } = CU;
+    const canSeeStaff = role === 'owner' || role === 'manager';
+    const canAssign = role === 'owner' || role === 'manager';
 
-// ── TASK ACTIONS ──
-window.setTaskTab = function(tab, btn) {
-    window.taskTab = tab;
-    document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
-    if (btn) { 
-        btn.classList.add('on'); 
-    } else {
-        document.querySelectorAll('.ftab').forEach(b => {
-            if (b.getAttribute('onclick').includes(tab)) b.classList.add('on');
-        });
+    unsubs.push(listenNotifications(uid, (items, unread) => {
+        renderNotifPanel(items);
+        setBadge('notif-badge', unread);
+    }));
+
+    unsubs.push(listenMyTasks(uid, tasks => {
+        myTasks = tasks;
+        const pending = tasks.filter(t => t.status === 'pending').length;
+        setBadge('task-badge-side', pending);
+        setDot('bn-task-dot', pending > 0);
+        window.renderRecentTasks();
+        window.renderTasksList();
+        window.updateProgressRing();
+        if (role === 'staff' || role === 'manager') {
+            updateCharts(tasks);
+            renderNonOwnerStats(tasks);
+        }
+        if (role === 'owner') renderOwnerStats();
+    }));
+
+    if (canAssign) {
+        unsubs.push(listenAssignedByMe(uid, tasks => {
+            assignedByMeTasks = tasks;
+            if (role === 'owner') renderOwnerStats();
+            window.renderRecentTasks();
+            window.renderTasksList();
+            window.updateProgressRing();
+        }));
     }
-    window.renderTasksList();
+
+    if (canSeeStaff && companyId) {
+        unsubs.push(listenCompanyStaff(companyId, staff => {
+            allStaff = staff;
+            if (role === 'owner') renderOwnerStats();
+            renderStaffCards(staff);
+            buildAssignSelect(staff);
+            const nonOwner = staff.filter(s => s.role !== 'owner');
+            const sc = document.getElementById('staff-count-sub');
+            if(sc) sc.textContent = `${nonOwner.length} member${nonOwner.length !== 1 ? 's' : ''}`;
+        }));
+    } else if (companyId) {
+        getAssignableStaff(companyId, uid).then(s => { allStaff = s; }).catch(err => console.error(err));
+    }
+
+    unsubs.push(listenInstalledApps(uid, ids => buildAppsGrid(ids)));
+}
+
+// ──────────────────────────────────────────────
+// DATA RENDERING
+// ──────────────────────────────────────────────
+window.renderOwnerStats = function() {
+    const staff = allStaff.filter(s => s.role !== 'owner');
+    const allUniqueTasks = [...myTasks, ...assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+    const pending = allUniqueTasks.filter(t => t.status === 'pending').length;
+    const done = allUniqueTasks.filter(t => t.status === 'done').length;
+    
+    const el = document.getElementById('stats-grid');
+    if(!el) return;
+    el.innerHTML = `
+        <div class="stat-card anim-stagger" onclick="window.showView('staff')">
+            <div class="sc-top">
+                <div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val">${staff.length}</div></div>
+                <div class="sc-ico bg-blue-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            </div>
+        </div>
+        <div class="stat-card anim-stagger" onclick="window.setTaskTab('pending',null);window.showView('tasks')">
+            <div class="sc-top">
+                <div class="sc-info"><div class="sc-lbl">Pending Tasks</div><div class="sc-val">${pending}</div></div>
+                <div class="sc-ico bg-amber-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            </div>
+        </div>
+        <div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')">
+            <div class="sc-top">
+                <div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${done}</div></div>
+                <div class="sc-ico bg-green-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            </div>
+        </div>
+    `;
+};
+
+window.renderNonOwnerStats = function(tasks) {
+    const pending = tasks.filter(t => t.status === 'pending').length;
+    const done = tasks.filter(t => t.status === 'done').length;
+    const isManager = CU.role === 'manager';
+    
+    const el = document.getElementById('stats-grid');
+    if(!el) return;
+    el.innerHTML = isManager ? `
+        <div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')">
+            <div class="sc-top">
+                <div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val">${pending}</div></div>
+                <div class="sc-ico bg-amber-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            </div>
+        </div>
+        <div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')">
+            <div class="sc-top">
+                <div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${done}</div></div>
+                <div class="sc-ico bg-green-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            </div>
+        </div>
+        <div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')">
+            <div class="sc-top">
+                <div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val">${assignedByMeTasks.length}</div></div>
+                <div class="sc-ico bg-blue-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            </div>
+        </div>` : `
+        <div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')">
+            <div class="sc-top">
+                <div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${pending}</div></div>
+                <div class="sc-ico bg-amber-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            </div>
+        </div>
+        <div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')">
+            <div class="sc-top">
+                <div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${done}</div></div>
+                <div class="sc-ico bg-green-soft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            </div>
+        </div>`;
+};
+
+window.initCharts = function() {
+    const canvas = document.getElementById('main-area-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+    gradient.addColorStop(0, 'rgba(79, 70, 229, 0.25)'); 
+    gradient.addColorStop(1, 'rgba(79, 70, 229, 0.0)');
+
+    mainAreaChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Completed Tasks',
+                data: [0, 0, 0, 0, 0, 0, 0],
+                borderColor: '#4F46E5', backgroundColor: gradient, borderWidth: 3, fill: true, tension: 0.4,
+                pointBackgroundColor: '#FFFFFF', pointBorderColor: '#4F46E5', pointBorderWidth: 2, pointRadius: 4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, animation: { y: { duration: 1000 } }, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#F1F5F9' }, border: { display: false } } } }
+    });
+};
+
+function last7() {
+    const out = [];
+    for (let i = 6; i >= 0; i--) { 
+        const d = new Date(); d.setDate(d.getDate() - i); 
+        out.push({ label: d.toLocaleDateString('en-US', {weekday:'short'}), date: d.toDateString() }); 
+    }
+    return out;
+}
+
+window.updateCharts = function(tasks) {
+    if (!mainAreaChart) return;
+    const days = last7();
+    mainAreaChart.data.labels = days.map(d => d.label);
+    mainAreaChart.data.datasets[0].data = days.map(day => tasks.filter(t => t.status === 'done' && t.completedAt && new Date(t.completedAt).toDateString() === day.date).length);
+    mainAreaChart.update();
+};
+
+window.renderTaskCard = function(task, showActions) {
+    const isToMe = task.assignedTo === CU?.uid;
+    const isPending = task.status === 'pending';
+    const isDone = task.status === 'done';
+    
+    let priorityClass = '';
+    if(task.priority === 'High') priorityClass = 'priority-high';
+    if(task.priority === 'Medium') priorityClass = 'priority-medium';
+
+    const checkboxClass = isDone ? 'card-checkbox done' : 'card-checkbox';
+    const titleClass = isDone ? 'card-title done' : 'card-title';
+    const cardStateClass = isDone ? `premium-task-card completed-state ${priorityClass}` : `premium-task-card ${priorityClass}`;
+    
+    const checkIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    
+    const assigneeName = task.assignedToName || 'Team Member';
+    const assigneeIni = assigneeName.charAt(0).toUpperCase();
+
+    return `
+    <div class="${cardStateClass}" id="task-${task.id}">
+        <div class="${checkboxClass}" ${isPending && isToMe ? `onclick="window.doAcceptTask('${task.id}')"` : ''}>
+            ${isDone ? checkIcon : ''}
+        </div>
+        <div class="card-content-wrap">
+            <div class="${titleClass}">${esc(task.title || 'Untitled Task')}</div>
+            <div class="card-meta-strip">
+                <div style="display:flex; gap:8px; align-items:center;">
+                    ${task.dueDate ? `
+                    <div class="card-time-block">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        ${esc(task.dueDate)}
+                    </div>` : ''}
+                    ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2);">${task.priority}</span>` : ''}
+                </div>
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <div class="av bg-blue-soft text-blue" style="width:24px; height:24px; font-size:0.7rem; border-radius:50%;">${assigneeIni}</div>
+                        <span style="font-size:0.85rem; font-weight:600; color:var(--tx-2);">${esc(assigneeName)}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
 };
 
 window.renderRecentTasks = function() {
     const el = document.getElementById('recent-tasks');
     if(!el) return;
-    const allUniqueTasks = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])]
+    const allUniqueTasks = [...(myTasks||[]), ...(assignedByMeTasks||[])]
         .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
         .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         
@@ -849,7 +750,6 @@ window.renderRecentTasks = function() {
     
     const listHTML = tasks.map((t, index) => {
         const html = window.renderTaskCard(t, false);
-        // Inject left/right margins specifically for recent tasks widget
         return html.replace('class="premium-task-card', `class="premium-task-card" style="margin: 0 16px; animation-delay: ${index * 0.1}s;"`);
     }).join('');
     
@@ -861,11 +761,11 @@ window.renderTasksList = function() {
     if (!el) return;
     
     let list = [];
-    if (window.taskTab === 'pending') list = window.myTasks.filter(t => t.status === 'pending');
-    else if (window.taskTab === 'done') list = window.myTasks.filter(t => t.status === 'done');
-    else if (window.taskTab === 'assigned-to-me') list = window.myTasks.filter(t => t.assignedTo === window.CU?.uid);
-    else if (window.taskTab === 'assigned-by-me') list = window.assignedByMeTasks;
-    else list = window.myTasks;
+    if (taskTab === 'pending') list = myTasks.filter(t => t.status === 'pending');
+    else if (taskTab === 'done') list = myTasks.filter(t => t.status === 'done');
+    else if (taskTab === 'assigned-to-me') list = myTasks.filter(t => t.assignedTo === CU?.uid);
+    else if (taskTab === 'assigned-by-me') list = assignedByMeTasks;
+    else list = myTasks;
     
     const seen = new Set();
     list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
@@ -890,95 +790,104 @@ window.renderTasksList = function() {
     el.innerHTML = '<div class="task-list-wrapper">' + listHTML + '</div>';
 };
 
-window.renderTasksList = function() {
-    const el = document.getElementById('tasks-list');
+window.renderStaffCards = function(staff) {
+    const el = document.getElementById('staff-cards-list');
     if (!el) return;
+    const searchQ = (staffSearchVal || '').trim().toLowerCase();
     
-    let list = [];
-    
-    // Map tasks directly based on the new Role-based tabs
-    if (window.taskTab === 'assigned-to-me') list = window.myTasks.filter(t => t.assignedTo === window.CU?.uid && t.status !== 'done');
-    else if (window.taskTab === 'assigned-by-me') list = window.assignedByMeTasks.filter(t => t.status !== 'done');
-    else if (window.taskTab === 'done') list = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])].filter(t => t.status === 'done');
-    else list = window.myTasks;
-    
-    const seen = new Set();
-    list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
-
-    // Apply Native Date Filter
-    const dateFilterEl = document.getElementById('task-date-filter');
-    const selectedDate = dateFilterEl ? dateFilterEl.value : '';
-    if (selectedDate) {
-        list = list.filter(t => t.dueDate === selectedDate);
-    }
-
-    if (!list.length) {
-        el.innerHTML = `
-        <div class="empty" style="padding:60px 20px;">
-            <div style="width:80px; height:80px; background:var(--bg-overlay); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg>
-            </div>
-            <div style="font-size:1.1rem; font-weight:700; color:var(--tx-1);">You're all caught up!</div>
-            <div style="font-size:0.9rem; color:var(--tx-3); margin-top:6px;">No tasks match this filter right now.</div>
-        </div>`;
+    const nonOwner = searchQ
+        ? staff.filter(s => s.role !== 'owner' && (s.name + s.email + (s.designation||'')).toLowerCase().includes(searchQ))
+        : staff.filter(s => s.role !== 'owner');
+        
+    if (!nonOwner.length) {
+        el.innerHTML = `<div class="empty"><div class="empty-ico">👥</div><div class="empty-ttl">No staff yet</div></div>`;
         return;
     }
     
-    // Render distinct sections if in "Done" tab
-    if (window.taskTab === 'done') {
-        const iCompleted = list.filter(t => t.assignedTo === window.CU?.uid);
-        const othersCompleted = list.filter(t => t.assignedTo !== window.CU?.uid);
-        
-        let html = '<div class="task-list-wrapper">';
-        
-        if (iCompleted.length > 0) {
-            html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-2); padding: 8px 16px 4px; text-transform:uppercase; letter-spacing:0.04em;">Tasks I Completed</div>`;
-            html += iCompleted.map((t, index) => window.renderTaskCard(t, false).replace('class="premium-task-card completed-state', `class="premium-task-card completed-state" style="animation-delay: ${index * 0.1}s;"`)).join('');
-        }
-        
-        if (othersCompleted.length > 0) {
-            html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-3); padding: 24px 16px 8px; border-top: 1px solid var(--bd-color); margin-top:12px; text-transform:uppercase; letter-spacing:0.04em;">Tasks Others Completed</div>`;
-            html += othersCompleted.map((t, index) => {
-                let cardHTML = window.renderTaskCard(t, false);
-                return cardHTML.replace('class="premium-task-card completed-state', `class="premium-task-card completed-state" style="opacity: 0.6; background: var(--bg-overlay); animation-delay: ${index * 0.1}s;"`);
-            }).join('');
-        }
-        html += '</div>';
-        el.innerHTML = html;
+    el.innerHTML = nonOwner.map(s => {
+        const ini = getInitials(s.name);
+        return `
+        <div class="team-card anim-stagger">
+            <div class="team-card-top">
+                <div class="avatar-wrap">
+                    <div class="av lg-av bg-blue-soft">${ini}</div>
+                    <div class="online-indicator"></div>
+                </div>
+                ${CU.role === 'owner' ? `<button class="more-btn" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId||''}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>` : ''}
+            </div>
+            <h4 class="team-name">${esc(s.name)}</h4>
+            <p class="team-role">${esc(s.designation || formatRole(s.role))}</p>
+            <div class="team-card-actions">
+                ${CU.role === 'owner' || CU.role === 'manager' ? `<button class="btn btn-primary w-full" onclick="window.quickAssign('${s.uid}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Assign</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+};
+
+window.buildAppsGrid = function() {
+    const el = document.getElementById('apps-grid');
+    if (!el) return;
+    el.innerHTML = `
+    <div class="app-squircle-wrap" onclick="window.openApp('calendar')">
+        <div class="app-squircle bg-grad-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <span class="app-name">Calendar</span>
+    </div>
+    <div class="app-squircle-wrap" onclick="window.openApp('inventory')">
+        <div class="app-squircle bg-grad-orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+        <span class="app-name">Inventory</span>
+    </div>
+    <div class="app-squircle-wrap" onclick="window.openApp('expenses')">
+        <div class="app-squircle bg-grad-purple"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <span class="app-name">Expenses</span>
+    </div>
+    <div class="app-squircle-wrap" onclick="window.openAppLib()">
+        <div class="app-squircle bg-gray"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div>
+        <span class="app-name">More Apps</span>
+    </div>
+    `;
+};
+
+window.openApp = function(appId) {
+    const appMap = {
+        'calendar': 'calendar.html',
+        'inventory': 'inventory.html',
+        'expenses': 'expenses.html'
+    };
+    const file = appMap[appId];
+    if (file) {
+        window.location.href = file + (CU?.uid ? '?uid=' + CU.uid : '');
     } else {
-        // Standard render for active tasks
-        const listHTML = list.map((t, index) => {
-            return window.renderTaskCard(t, true).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay: ${index * 0.1}s;"`);
-        }).join('');
-        el.innerHTML = '<div class="task-list-wrapper">' + listHTML + '</div>';
+        window.showToast('App not found!', 'error');
     }
 };
 
-window.updateProgressRing = function() {
-    const ring = document.querySelector('.progress-ring__circle');
-    const pctText = document.getElementById('progress-percent');
-    if(!ring || !pctText) return;
-    
-    // Calculate all relevant tasks
-    const allRelevantTasks = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])]
-        .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-        
-    const done = allRelevantTasks.filter(t => t.status === 'done').length;
-    const total = allRelevantTasks.length;
-    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-    
-    // Update SVG stroke offset for ring animation
-    const circumference = 24 * 2 * Math.PI; 
-    const offset = circumference - (pct / 100) * circumference;
-    ring.style.strokeDashoffset = offset;
-    pctText.textContent = `${pct}%`;
-    
-    const sub = document.getElementById('task-header-sub');
-    if(sub) sub.textContent = `${done} of ${total} tasks completed`;
-};
+function renderNotifPanel(items) {
+  const el = document.getElementById('notif-body');
+  if (!items.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl">No notifications</div></div>`;
+    return;
+  }
+  el.innerHTML = items.map(n => `
+    <div class="ni-item" style="padding: 12px; border-bottom: 1px solid var(--bd-color); cursor: pointer;" onclick="window.markNotifRead('${esc(n.id)}')">
+      <div style="font-size: 0.85rem; color: var(--tx-1); font-weight: ${n.read ? '500' : '700'};">${esc(n.message)}</div>
+      <div style="font-size: 0.75rem; color: var(--tx-3); margin-top: 4px;">${ago(n.createdAt)}</div>
+    </div>
+  `).join('');
+}
 
-// Ensure original local call routes to the global window version
-function updateProgressRing() { window.updateProgressRing(); }
+// ──────────────────────────────────────────────
+// ACTIONS & MODALS
+// ──────────────────────────────────────────────
+window.setTaskTab = function(tab, btn) {
+    taskTab = tab;
+    document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
+    if (btn) { btn.classList.add('on'); }
+    else {
+        const map = { 'assigned-to-me':'tab-to-me', 'assigned-by-me':'tab-by-me', 'pending':'tab-pending', 'done':'tab-done' };
+        if (map[tab]) document.getElementById(map[tab])?.classList.add('on');
+    }
+    window.renderTasksList();
+};
 
 window.doAcceptTask = async function(id) {
     const taskEl = document.getElementById('task-' + id);
@@ -993,8 +902,8 @@ window.doAcceptTask = async function(id) {
         taskEl.classList.add('completed-state');
     }
     
-    // Optimistically update the daily overview ring instantly
-    const taskObj = (window.myTasks||[]).find(t => t.id === id);
+    // Optimistic progress ring update
+    const taskObj = (myTasks||[]).find(t => t.id === id);
     if (taskObj) taskObj.status = 'done';
     window.updateProgressRing();
 
@@ -1002,7 +911,6 @@ window.doAcceptTask = async function(id) {
         await markTaskDone(id);
         window.showToast('Task completed', 'success');
     } catch(e) {
-        // Revert UI if Firebase fails
         if (taskObj) taskObj.status = 'pending';
         window.updateProgressRing();
         if (taskEl) {
@@ -1017,187 +925,250 @@ window.doAcceptTask = async function(id) {
 };
 
 window.openDeclineModal = function(id, title) {
-  pendingDeclineId = id;
-  document.getElementById('decline-task-title').textContent = title;
-  document.getElementById('decline-reason').value = '';
-  document.getElementById('decline-modal').classList.remove('hidden');
+    pendingDeclineId = id;
+    pendingDeclineTitle = title;
+    document.getElementById('decline-task-title').textContent = title;
+    document.getElementById('decline-reason').value = '';
+    document.getElementById('decline-modal').classList.remove('hidden');
 };
 
 window.confirmDecline = async function() {
-  const reason = document.getElementById('decline-reason').value.trim();
-  const btn = document.getElementById('confirm-decline-btn');
-  setButtonLoading(btn, true);
-  try {
-    await markTaskDeclined(pendingDeclineId, reason);
-    window.closeModal('decline-modal');
-    window.showToast('Task declined.', '');
-  } catch(e) { window.showToast(e.message, 'error'); }
-  setButtonLoading(btn, false, 'Decline Task');
+    const reason = document.getElementById('decline-reason').value.trim();
+    const btn = document.getElementById('confirm-decline-btn');
+    setButtonLoading(btn, true);
+    try {
+        await markTaskDeclined(pendingDeclineId, reason);
+        window.closeModal('decline-modal');
+        window.showToast('Task declined.', '');
+    } catch(e) { window.showToast(e.message, 'error'); }
+    setButtonLoading(btn, false, 'Decline Task');
 };
 
-// ── ASSIGN ──
+window.searchStaff = function(v) {
+    staffSearchVal = (v || '').toLowerCase();
+    window.renderStaffCards(allStaff);
+};
+
 function buildAssignSelect(staff) {
-  const sel = document.getElementById('assign-to');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">Select team member…</option>' +
-    staff.filter(s => s.uid !== window.CU?.uid).map(s => `<option value="${s.uid}">${esc(s.name)}</option>`).join('');
+    const sel = document.getElementById('assign-to');
+    if(!sel) return;
+    const list = staff.filter(s => s.uid !== CU.uid);
+    sel.innerHTML = '<option value="">Select team member…</option>' + list.map(s => `<option value="${s.uid}">${esc(s.name)}</option>`).join('');
 }
 
 window.quickAssign = function(staffUid) {
-  window.openAssignModal();
-  setTimeout(() => { const sel = document.getElementById('assign-to'); if (sel) sel.value = staffUid; }, 50);
+    window.openAssignModal();
+    setTimeout(() => {
+        const sel = document.getElementById('assign-to');
+        if (sel) sel.value = staffUid;
+    }, 50);
 };
 
 window.handleAssign = async function() {
-  const to    = document.getElementById('assign-to').value;
-  const title = document.getElementById('task-title').value.trim();
-  const desc  = document.getElementById('task-desc').value.trim();
-  const date  = document.getElementById('task-date').value;
-  const time  = document.getElementById('task-time').value;
-  const priority = document.getElementById('task-priority')?.value || 'Medium';
-  if (!to)    { window.showToast('Select a team member.', 'error'); return; }
-  if (!title) { window.showToast('Enter a task title.', 'error'); return; }
-  const btn = document.getElementById('assign-btn');
-  setButtonLoading(btn, true);
-  try {
-    const assignee = allStaff.find(s => s.uid === to);
-    await assignTask({ title, description:desc, assignedTo:to, assignedToName:assignee?.name || 'Team Member', assignedBy:window.CU?.uid, assignedByName:window.CU?.name, companyId:window.CU?.companyId, dueDate:date||null, dueTime:time||null, priority });
-    window.closeModal('assign-modal');
-    window.showToast(`Assigned to ${assignee?.name}!`, 'success');
-  } catch(e) { window.showToast(e.message, 'error'); }
-  setButtonLoading(btn, false, 'Assign Task');
+    const to = document.getElementById('assign-to').value;
+    const title = document.getElementById('task-title').value.trim();
+    const desc = document.getElementById('task-desc').value.trim();
+    const date = document.getElementById('task-date').value;
+    const time = document.getElementById('task-time').value;
+    const priorityEl = document.getElementById('task-priority');
+    const priority = priorityEl ? priorityEl.value : 'Medium';
+
+    if (!to) { window.showToast('Select a team member.', 'error'); return; }
+    if (!title) { window.showToast('Enter a task title.', 'error'); return; }
+    
+    const btn = document.getElementById('assign-btn');
+    setButtonLoading(btn, true);
+    try {
+        const assignee = allStaff.find(s => s.uid === to);
+        await assignTask({ 
+            title, 
+            description: desc, 
+            assignedTo: to, 
+            assignedToName: assignee?.name || 'Team Member', 
+            assignedBy: CU.uid, 
+            assignedByName: CU.name, 
+            companyId: CU.companyId, 
+            dueDate: date || null, 
+            dueTime: time || null, 
+            priority: priority 
+        });
+        window.closeModal('assign-modal');
+        window.showToast(`Assigned to ${assignee?.name}!`, 'success');
+    } catch(e) { window.showToast(e.message, 'error'); }
+    setButtonLoading(btn, false, 'Assign Task');
 };
 
-// ── STAFF MANAGEMENT ──
-window.searchStaff = function(v) {
-  staffSearchVal = (v || '').toLowerCase();
-  renderStaffCards(allStaff);  // BUG 6 FIX: calls local function, not window.
-};
+function buildProfile() {
+    if (!CU) return;
+    const { name, email, role, designation, uniqueId } = CU;
+    const html = `
+        <div style="text-align:center;padding:20px 16px;border-bottom:1px solid var(--bd-color);">
+            <div id="pf-avatar" class="av lg-av bg-blue-soft text-blue" style="margin:0 auto 10px;">${getInitials(name)}</div>
+            <div style="font-size:15px;font-weight:700;">${esc(name)}</div>
+            <div style="font-size:12px;color:var(--tx-3);margin-bottom:8px">${esc(email)}</div>
+            <span class="status-pill badge-green">${esc(designation || formatRole(role))}</span>
+        </div>
+        <div style="padding:16px;">
+            <div style="margin-bottom: 12px; display: flex; justify-content: space-between;">
+                <span style="font-size:0.85rem;color:var(--tx-2);font-weight:600;">Unique ID</span>
+                <span style="font-size:0.85rem;font-family:var(--f-mono);">${uniqueId}</span>
+            </div>
+            <button class="btn btn-ghost w-full" onclick="window.handleLogout()" style="margin-top:24px;">Sign Out</button>
+        </div>
+    `;
+    const desktopEl = document.getElementById('profile-body-desktop');
+    const mobileEl  = document.getElementById('profile-body-mobile');
+    if (desktopEl) desktopEl.innerHTML = html;
+    if (mobileEl)  mobileEl.innerHTML  = html;
+}
 
-window.openDeleteModal = function(uid, name, email, uniqueId) {
-  deleteTargetUid = uid; deleteConfirmStr = name;
-  document.getElementById('del-name-display').textContent = name;
-  document.getElementById('del-confirm-hint').textContent = name;
-  document.getElementById('del-confirm-input').value = '';
-  document.getElementById('del-confirm-btn').disabled = true;
-  window.openModal('delete-modal');
-};
-
-window.checkDelConfirm = function() {
-  const val = document.getElementById('del-confirm-input').value;
-  const btn = document.getElementById('del-confirm-btn');
-  const match = val === deleteConfirmStr;
-  btn.disabled = !match; btn.style.opacity = match ? '1' : '0.5'; btn.style.cursor = match ? 'pointer' : 'not-allowed';
-};
-
-window.confirmDelete = async function() {
-  if (!deleteTargetUid) return;
-  const btn = document.getElementById('del-confirm-btn');
-  btn.textContent = 'Deleting…'; btn.disabled = true;
-  try {
-    await deleteStaffMember(deleteTargetUid, '', '');
-    window.closeModal('delete-modal');
-    window.showToast('Staff member deleted.', 'success');
-    deleteTargetUid = null;
-  } catch(e) { window.showToast('Error: ' + e.message, 'error'); }
-};
-
-window.handleCreateStaff = async function() {
-  const name     = document.getElementById('cs-name').value.trim();
-  const email    = document.getElementById('cs-email').value.trim();
-  const desig    = document.getElementById('cs-designation').value.trim();
-  const password = document.getElementById('cs-password').value.trim();
-  if (!name || !email || !desig || password.length < 6) { window.showToast('Please fill all fields correctly.', 'error'); return; }
-  const btn = document.getElementById('create-staff-btn');
-  setButtonLoading(btn, true);
-  try {
-    const cSnap = await getDoc(doc(db, 'companies', window.CU.companyId));
-    const companyName = cSnap.exists() ? cSnap.data().name : 'Company';
-    const result = await createStaff({ name, email, password, role:'staff', companyId:window.CU.companyId, companyName, createdBy:window.CU.uid, designation:desig });
-    document.getElementById('created-card-section').classList.remove('hidden');
-    document.getElementById('cred-box').innerHTML = `<strong>Email:</strong> ${esc(email)}<br><strong>Password:</strong> ${esc(password)}<br><strong>Unique ID:</strong> ${result.uniqueId}`;
-    window.showToast(`${name} added!`, 'success');
-    btn.disabled = true;
-  } catch(e) { window.showToast(e.message, 'error'); setButtonLoading(btn, false, 'Create Staff Member & Generate Card →'); }
-};
-
-window.resetCreateStaff = function() {
-  ['cs-name','cs-email','cs-designation','cs-password'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-  document.getElementById('created-card-section')?.classList.add('hidden');
-  const btn = document.getElementById('create-staff-btn');
-  if (btn) { btn.disabled = false; btn.textContent = 'Create Staff Member & Generate Card →'; }
-};
-
-window.togglePwd = function(id, btn) {
-  const inp = document.getElementById(id);
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-};
-
-window.clearCSErr = function(inp) { inp.classList.remove('err'); const e = document.getElementById('err-' + inp.id); if (e) e.textContent = ''; };
-
-// ── NAVIGATION ──
 window.showView = function(v) {
-  ['home','tasks','staff'].forEach(n => {
-    const el = document.getElementById('view-' + n);
-    if (el) { const hide = n !== v; el.classList.toggle('hidden', hide); }
-    document.getElementById('nav-' + n)?.classList.toggle('active', n === v);
-  });
-  const bnMap = { home:'bn-home', tasks:'bn-tasks', staff:'bn-staff-btn' };
-  Object.values(bnMap).forEach(id => document.getElementById(id)?.classList.remove('active'));
-  if (bnMap[v]) document.getElementById(bnMap[v])?.classList.add('active');
-  if (v === 'tasks') renderTasksList();
+    ['home','tasks','staff'].forEach(n => {
+        const el = document.getElementById('view-' + n);
+        if(el) {
+            const hide = n !== v;
+            el.classList.toggle('hidden', hide);
+            if(!hide) {
+                el.querySelectorAll('.anim-stagger').forEach((c)=>{
+                    c.style.animation = 'none';
+                    requestAnimationFrame(()=>{ c.style.animation = ''; });
+                });
+            }
+        }
+        document.getElementById('nav-' + n)?.classList.toggle('active', n === v);
+    });
+    ['home','tasks','staff'].forEach(n => {
+         const bn = document.getElementById('bn-' + (n==='staff'?'staff-btn':n));
+         if(bn) bn.classList.toggle('active', n === v);
+    });
+    if (v === 'tasks') { window.renderTasksList(); }
 };
 
 window.togglePanel = function(id) {
-  const panel = document.getElementById(id);
-  const overlay = document.getElementById('panel-overlay');
-  if (!panel) return;
-  const isOpen = panel.classList.contains('open');
-  window.closeAllPanels();
-  if (!isOpen) { panel.classList.add('open'); overlay.classList.add('visible'); }
+    const panel = document.getElementById(id);
+    const overlay = document.getElementById('panel-overlay');
+    if(!panel) return;
+    const isOpen = panel.classList.contains('open');
+    window.closeAllPanels();
+    if (!isOpen) { panel.classList.add('open'); overlay.classList.add('visible'); }
 };
 
 window.closeAllPanels = function() {
-  document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
-  document.getElementById('profile-side-panel')?.classList.remove('open');
-  document.getElementById('profile-page-mobile')?.classList.remove('open');
-  document.getElementById('panel-overlay')?.classList.remove('visible');
+    document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+    document.getElementById('profile-side-panel')?.classList.remove('open');
+    document.getElementById('profile-page-mobile')?.classList.remove('open');
+    document.getElementById('panel-overlay')?.classList.remove('visible');
 };
 
 window.openProfile = function() {
-  if (!_profileBuilt) { buildProfile(); _profileBuilt = true; }
-  if (window.innerWidth >= 769) {
-    document.getElementById('profile-side-panel')?.classList.add('open');
-    document.getElementById('panel-overlay')?.classList.add('visible');
-  } else { document.getElementById('profile-page-mobile')?.classList.add('open'); }
+    if (!_profileBuilt) { buildProfile(); _profileBuilt = true; }
+    if (window.innerWidth >= 769) {
+        document.getElementById('profile-side-panel')?.classList.add('open');
+        document.getElementById('panel-overlay')?.classList.add('visible');
+    } else {
+        document.getElementById('profile-page-mobile')?.classList.add('open');
+    }
 };
 
-window.closeProfile      = window.closeAllPanels;
-window.openAppLib        = function() { window.open('app-library.html' + (window.CU?.uid ? '?uid=' + window.CU.uid : ''), '_blank'); };
+window.closeProfile = window.closeAllPanels;
+
+window.openAppLib = function() {
+    window.open('app-library.html' + (CU?.uid ? '?uid=' + CU.uid : ''), '_blank');
+};
+
 window.openCreateStaffPage = function() { document.getElementById('create-staff-page')?.classList.add('open'); };
-window.closeFullpage     = function(id) { document.getElementById(id)?.classList.remove('open'); };
-window.openModal         = function(id) { document.getElementById(id)?.classList.remove('hidden'); window.closeAllPanels(); };
-window.closeModal        = function(id) { document.getElementById(id)?.classList.add('hidden'); };
-window.openAssignModal   = function() { window.openModal('assign-modal'); };
-window.openFilterModal   = function() { window.openModal('filter-modal'); };
+window.closeFullpage = function(id) { document.getElementById(id)?.classList.remove('open'); };
+window.openModal = function(id) { document.getElementById(id)?.classList.remove('hidden'); window.closeAllPanels(); };
+window.closeModal = function(id) { document.getElementById(id)?.classList.add('hidden'); };
+window.openAssignModal = function() { window.openModal('assign-modal'); };
+window.openFilterModal = function() { window.openModal('filter-modal'); };
 
-window.markNotifRead = async function(id) { try { await markNotificationRead(window.CU?.uid, id); } catch(e) {} };
-window.markAllRead   = async function() {
-  try {
-    await markAllReadFn(window.CU?.uid);
-    const nb = document.getElementById('notif-body');
-    if (nb) nb.innerHTML = `<div class="empty"><div class="empty-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl">No notifications</div></div>`;
-    document.getElementById('notif-badge')?.classList.add('hidden');
-    window.showToast('All read', 'success');
-  } catch(e) { console.error(e); }
+window.openDeleteModal = function(uid, name, email, uniqueId) {
+    deleteTargetUid = uid; deleteConfirmStr = name;
+    document.getElementById('del-name-display').textContent = name;
+    document.getElementById('del-confirm-hint').textContent = name;
+    document.getElementById('del-confirm-input').value = '';
+    document.getElementById('del-confirm-btn').disabled = true;
+    window.openModal('delete-modal');
 };
 
-window.handleLogout = async function() {
-  unsubs.forEach(f => f?.());
-  sessionStorage.clear();
-  localStorage.removeItem('zenda_session');
-  await logout();
-  window.location.href = 'login.html';
+window.checkDelConfirm = function() {
+    const val = document.getElementById('del-confirm-input').value;
+    const btn = document.getElementById('del-confirm-btn');
+    const match = val === deleteConfirmStr;
+    btn.disabled = !match; 
+    btn.style.opacity = match ? '1' : '0.5'; 
+    btn.style.cursor = match ? 'pointer' : 'not-allowed';
+};
+
+window.confirmDelete = async function() {
+    if (!deleteTargetUid) return;
+    const btn = document.getElementById('del-confirm-btn');
+    btn.textContent = 'Deleting…'; btn.disabled = true;
+    try {
+        await deleteStaffMember(deleteTargetUid, '', '');
+        window.closeModal('delete-modal');
+        window.showToast('Staff member deleted.', 'success');
+    } catch(e) { window.showToast('Error: ' + e.message, 'error'); }
+};
+
+window.handleLogout = async function() { 
+    unsubs.forEach(f => f?.()); 
+    sessionStorage.clear();
+    localStorage.removeItem('zenda_session');
+    await logout(); 
+    window.location.href = 'login.html';
+};
+
+window.handleCreateStaff = async function() {
+    const name = document.getElementById('cs-name').value.trim();
+    const email = document.getElementById('cs-email').value.trim();
+    const desig = document.getElementById('cs-designation').value.trim();
+    const password = document.getElementById('cs-password').value.trim();
+    
+    if (!name || !email || !desig || password.length < 6) {
+        window.showToast('Please fill all fields correctly.', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('create-staff-btn');
+    setButtonLoading(btn, true);
+    try {
+        const cSnap = await getDoc(doc(db, 'companies', CU.companyId));
+        const companyName = cSnap.exists() ? cSnap.data().name : 'Company';
+        const result = await createStaff({ name, email, password, role: 'staff', companyId: CU.companyId, companyName, createdBy: CU.uid, designation: desig });
+        
+        document.getElementById('created-card-section').classList.remove('hidden');
+        document.getElementById('cred-box').innerHTML = `<strong>Email:</strong> ${email}<br><strong>Pass:</strong> ${password}<br><strong>UID:</strong> ${result.uniqueId}`;
+        window.showToast(`${name} added!`, 'success');
+        btn.disabled = true;
+    } catch(e) {
+        window.showToast(e.message, 'error');
+        setButtonLoading(btn, false, 'Create Staff Member & Generate Card →');
+    }
+};
+
+window.resetCreateStaff = function() {
+    ['cs-name','cs-email','cs-designation','cs-password'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    document.getElementById('created-card-section')?.classList.add('hidden');
+    const csBtn = document.getElementById('create-staff-btn');
+    if(csBtn) csBtn.disabled = false;
+};
+
+window.markNotifRead = async function(id) { try { await markNotificationRead(CU?.uid, id); } catch(e) {} };
+window.markAllRead = async function() { 
+    try {
+        await markAllReadFn(CU.uid); 
+        const notifBody = document.getElementById('notif-body');
+        if (notifBody) {
+            notifBody.innerHTML = `<div class="empty"><div class="empty-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl">No notifications</div></div>`;
+        }
+        const badge = document.getElementById('notif-badge');
+        if (badge) badge.classList.add('hidden');
+        window.showToast('All read', 'success'); 
+    } catch(e) {
+        console.error(e);
+    }
 };
 
 window.addEventListener('DOMContentLoaded', init);
