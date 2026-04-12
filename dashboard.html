@@ -149,20 +149,6 @@
         </div>
       </div>
 
-      <div class="task-header-widget" id="task-progress-widget" style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-raised); padding:16px 20px; border-radius:var(--r-lg); box-shadow:var(--sh-1); border:1px solid var(--bd-color); margin-bottom:20px;">
-          <div class="thw-text">
-              <h2 id="task-header-title" style="font-size:1.2rem; font-weight:800; color:var(--tx-1); margin-bottom:4px;">Daily Overview</h2>
-              <p id="task-header-sub" style="font-size:0.85rem; color:var(--tx-3); font-weight:500;">Loading tasks...</p>
-          </div>
-          <div class="progress-ring-container" style="position:relative; width:56px; height:56px;">
-              <svg class="progress-ring" width="56" height="56" style="transform:rotate(-90deg);">
-                  <circle stroke="#E2E8F0" stroke-width="5" fill="transparent" r="24" cx="28" cy="28"/>
-                  <circle class="progress-ring__circle" stroke="#4F46E5" stroke-width="5" stroke-linecap="round" fill="transparent" r="24" cx="28" cy="28" style="stroke-dasharray:150.796; stroke-dashoffset:150.796; transition:stroke-dashoffset 0.8s cubic-bezier(0.34,1.56,0.64,1);"/>
-              </svg>
-              <div class="progress-ring-text" id="progress-percent" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:0.85rem; font-weight:800; color:var(--ac);">0%</div>
-          </div>
-      </div>
-
       <div class="ftabs" id="task-tab-row" style="margin-bottom: 16px;"></div>
 
       <div id="tasks-list"></div>
@@ -648,9 +634,15 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     const isPending = task.status === 'pending';
     const isDone = task.status === 'done';
     
-    // Check if overdue
-    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && isPending;
-    const isDeclined = task.status === 'declined' || isOverdue;
+    // Proper Overdue Logic (ignores tasks due later today)
+    let isOverdue = false;
+    if (task.dueDate && isPending) {
+        const dDate = new Date(task.dueDate);
+        dDate.setHours(23, 59, 59, 999);
+        isOverdue = dDate.getTime() < Date.now();
+    }
+    const isDeclined = task.status === 'declined';
+    const isDeclinedOrOverdue = isDeclined || isOverdue;
     
     let priorityClass = '';
     if(task.priority === 'High') priorityClass = 'priority-high';
@@ -660,6 +652,7 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     const cardStateClass = isDone ? `premium-task-card completed-state ${priorityClass}` : `premium-task-card ${priorityClass}`;
     
     const assigneeName = task.assignedToName || 'Team Member';
+    const assigneeFirstName = assigneeName.split(' ')[0];
     const assigneeIni = assigneeName.charAt(0).toUpperCase();
 
     // Generate a dynamic soft background color based on the initial letter
@@ -667,7 +660,7 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     const charCode = assigneeIni.charCodeAt(0) || 0;
     const bgCol = colors[charCode % colors.length];
 
-    // Left Element is always the clean colored Avatar (Checkbox is completely removed)
+    // Left Avatar
     const leftElement = `
         <div class="av" style="width:42px; height:42px; font-size:1.2rem; font-weight:800; border-radius:50%; flex-shrink:0; background:${bgCol}1A; color:${bgCol}; border: 1px solid ${bgCol}33;">
             ${assigneeIni}
@@ -692,8 +685,16 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
         </div>
     `;
 
-    // Action Buttons (Only shows if task is assigned to you, pending, and not overdue/declined)
-    const actionButtons = (isPending && !isDeclined && showActions && isToMe) 
+    // Dynamic Status Badge
+    let statusBadge = '';
+    if (isDeclined) {
+        statusBadge = `<span class="priority-tag" style="background:var(--red-l); color:var(--red); padding: 4px 10px; font-size: 0.65rem;">Declined by ${esc(assigneeFirstName)}</span>`;
+    } else if (isOverdue) {
+        statusBadge = `<span class="priority-tag" style="background:var(--red-l); color:var(--red); padding: 4px 10px; font-size: 0.65rem;">Overdue</span>`;
+    }
+
+    // Action Buttons
+    const actionButtons = (isPending && !isDeclinedOrOverdue && showActions && isToMe) 
         ? `<div style="display:flex; gap:8px; align-items:center; margin-top: 4px;">
              <button style="padding: 6px 14px; border-radius:8px; border:none; background:var(--green-l); color:var(--green-h); font-weight:700; font-size:0.75rem; cursor:pointer; box-shadow:0 2px 4px rgba(16,185,129,0.1);" onclick="window.doAcceptTask('${task.id}')">✓ Done</button>
              <button style="padding: 6px 14px; border-radius:8px; border:none; background:var(--red-l); color:var(--red); font-weight:700; font-size:0.75rem; cursor:pointer; box-shadow:0 2px 4px rgba(239,68,68,0.1);" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g, '&quot;')}')">✗ Decline</button>
@@ -704,7 +705,6 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     <div class="${cardStateClass}" id="task-${task.id}">
         ${leftElement}
         <div class="card-content-wrap" style="gap: 6px; width: 100%;">
-            
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
                 <div class="${titleClass}" style="flex: 1; min-width: 200px;">${esc(task.title || 'Untitled Task')}</div>
                 <div class="card-time-block" style="padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; margin-left: auto;">
@@ -712,12 +712,11 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
                     ${esc(dateDisplayStr)}
                 </div>
             </div>
-            
             <div class="card-meta-strip" style="margin-top:2px;">
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     ${assigneeBadge}
                     ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2); padding: 4px 10px; font-size: 0.65rem;">${task.priority}</span>` : ''}
-                    ${isDeclined && !isDone ? `<span class="priority-tag" style="background:var(--red-l); color:var(--red); padding: 4px 10px; font-size: 0.65rem;">Declined / Overdue</span>` : ''}
+                    ${statusBadge}
                 </div>
                 ${actionButtons}
             </div>
@@ -764,10 +763,15 @@ window.renderTasksList = function() {
     if (!el) return;
     
     let list = [];
-    const now = new Date();
+    const now = Date.now();
     
-    // Logic to determine if task is overdue
-    const isOverdue = (t) => t.dueDate && new Date(t.dueDate) < now && t.status === 'pending';
+    // Strict Overdue logic (ignores tasks due later today)
+    const isOverdue = (t) => {
+        if (!t.dueDate || t.status !== 'pending') return false;
+        const dDate = new Date(t.dueDate);
+        dDate.setHours(23, 59, 59, 999);
+        return dDate.getTime() < now;
+    };
     const isDeclinedOrOverdue = (t) => t.status === 'declined' || isOverdue(t);
     const isActive = (t) => t.status === 'pending' && !isOverdue(t);
 
@@ -781,6 +785,13 @@ window.renderTasksList = function() {
     // Remove duplicates
     const seen = new Set();
     list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
+
+    // Apply Native Date Filter
+    const dateFilterEl = document.getElementById('task-date-filter');
+    const selectedDate = dateFilterEl ? dateFilterEl.value : '';
+    if (selectedDate) {
+        list = list.filter(t => t.dueDate === selectedDate);
+    }
 
     if (!list.length) {
         el.innerHTML = `
@@ -808,7 +819,7 @@ window.renderTasksList = function() {
             html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-3); padding: 24px 16px 8px; border-top: 1px solid var(--bd-color); margin-top:12px; text-transform:uppercase; letter-spacing:0.04em;">Team Tasks</div>`;
             html += othersProcessed.map((t, i) => {
                 let cardHTML = window.renderTaskCard(t, false);
-                return cardHTML.replace('class="premium-task-card', `class="premium-task-card" style="opacity: 0.75; background: var(--bg-overlay); animation-delay: ${i * 0.1}s;"`);
+                return cardHTML.replace('class="premium-task-card', `class="premium-task-card" style="opacity: 0.85; background: var(--bg-overlay); animation-delay: ${i * 0.1}s;"`);
             }).join('');
         }
         html += '</div>';
