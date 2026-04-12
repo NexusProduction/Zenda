@@ -622,59 +622,53 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     if(task.priority === 'High') priorityClass = 'priority-high';
     if(task.priority === 'Medium') priorityClass = 'priority-medium';
 
-    const checkboxClass = isDone ? 'card-checkbox done' : 'card-checkbox';
     const titleClass = isDone ? 'card-title done' : 'card-title';
     const cardStateClass = isDone ? `premium-task-card completed-state ${priorityClass}` : `premium-task-card ${priorityClass}`;
     
-    const checkIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
     const assigneeName = task.assignedToName || 'Team Member';
     const assigneeIni = assigneeName.charAt(0).toUpperCase();
 
-    // RECENT TASKS: Only show Avatar on the left, no duplicate name, no checkbox.
-    if (isRecent) {
-        return `
-        <div class="${cardStateClass}">
-            <div class="av bg-blue-soft text-blue" style="width:36px; height:36px; font-size:1rem; border-radius:50%; flex-shrink:0;">${assigneeIni}</div>
-            <div class="card-content-wrap">
-                <div class="${titleClass}">${esc(task.title || 'Untitled Task')}</div>
-                <div class="card-meta-strip">
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <span style="font-size:0.85rem; font-weight:700; color:var(--tx-2);">${esc(assigneeName)}</span>
-                        ${task.dueDate ? `<div class="card-time-block" style="padding: 2px 8px; font-size: 0.75rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${esc(task.dueDate)}</div>` : ''}
-                        ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2); padding: 2px 8px; font-size: 0.65rem;">${task.priority}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    }
+    // Generate a dynamic soft background color based on the initial letter
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+    const charCode = assigneeIni.charCodeAt(0) || 0;
+    const bgCol = colors[charCode % colors.length];
 
-    // MY TASKS: Checkbox on the left, Avatar + Name on the right
+    // Left Element is now ALWAYS the colored Avatar (Checkbox is removed completely)
+    const leftElement = `
+        <div class="av" style="width:40px; height:40px; font-size:1.15rem; font-weight:800; border-radius:50%; flex-shrink:0; background:${bgCol}1A; color:${bgCol}; border: 1px solid ${bgCol}33;">
+            ${assigneeIni}
+        </div>
+    `;
+
+    // Meta Left: Full Name -> Due Date -> Priority
+    const metaLeft = `
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap;">
+            <span style="font-size:0.85rem; font-weight:800; color:var(--tx-1);">${esc(assigneeName)}</span>
+            ${task.dueDate ? `
+            <div class="card-time-block" style="padding: 2px 8px; font-size: 0.75rem;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                ${esc(task.dueDate)}
+            </div>` : ''}
+            ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2); padding: 2px 8px; font-size: 0.65rem;">${task.priority}</span>` : ''}
+        </div>
+    `;
+
+    // Meta Right: Action Buttons (Only shows if task is assigned to you and is pending)
+    const metaRight = (isPending && showActions && isToMe) 
+        ? `<div style="display:flex; gap:8px; align-items:center; margin-top: 4px;">
+             <button style="padding: 6px 12px; border-radius:8px; border:none; background:var(--green-l); color:var(--green-h); font-weight:700; font-size:0.75rem; cursor:pointer;" onclick="window.doAcceptTask('${task.id}')">✓ Done</button>
+             <button style="padding: 6px 12px; border-radius:8px; border:none; background:var(--red-l); color:var(--red); font-weight:700; font-size:0.75rem; cursor:pointer;" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g, '&quot;')}')">✗ Decline</button>
+           </div>`
+        : ``;
+
     return `
     <div class="${cardStateClass}" id="task-${task.id}">
-        <div class="${checkboxClass}" ${isPending && isToMe ? `onclick="window.doAcceptTask('${task.id}')"` : ''}>
-            ${isDone ? checkIcon : ''}
-        </div>
-        <div class="card-content-wrap">
+        ${leftElement}
+        <div class="card-content-wrap" style="gap: 4px;">
             <div class="${titleClass}">${esc(task.title || 'Untitled Task')}</div>
-            <div class="card-meta-strip">
-                <div style="display:flex; gap:8px; align-items:center;">
-                    ${task.dueDate ? `
-                    <div class="card-time-block">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        ${esc(task.dueDate)}
-                    </div>` : ''}
-                    ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2);">${task.priority}</span>` : ''}
-                </div>
-                <div style="display:flex; gap:12px; align-items:center;">
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        <div class="av bg-blue-soft text-blue" style="width:24px; height:24px; font-size:0.7rem; border-radius:50%;">${assigneeIni}</div>
-                        <span style="font-size:0.85rem; font-weight:600; color:var(--tx-2);">${esc(assigneeName)}</span>
-                    </div>
-                    ${isPending && showActions && isToMe ? `
-                    <button style="width:32px; height:32px; border-radius:10px; border:1px solid var(--red-l); background:transparent; color:var(--red); display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g, '&quot;')}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>` : ''}
-                </div>
+            <div class="card-meta-strip" style="margin-top:2px;">
+                ${metaLeft}
+                ${metaRight}
             </div>
         </div>
     </div>`;
@@ -841,14 +835,37 @@ function buildProfile() {
 }
 
 window.doAcceptTask = async function(id) {
-  const taskEl = document.getElementById('task-' + id);
-  if (taskEl) {
-    const cb = taskEl.querySelector('.card-checkbox');
-    const ti = taskEl.querySelector('.card-title');
-    if (cb) { cb.classList.add('done'); cb.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`; }
-    if (ti) ti.classList.add('done');
-    taskEl.classList.add('completed-state');
-  }
+    const taskEl = document.getElementById('task-' + id);
+    if (taskEl) {
+        const ti = taskEl.querySelector('.card-title');
+        if (ti) ti.classList.add('done');
+        taskEl.classList.add('completed-state');
+        
+        // Hide the buttons immediately for immediate feedback
+        const buttons = taskEl.querySelectorAll('button');
+        buttons.forEach(b => b.style.display = 'none');
+    }
+    
+    const taskObj = (window.myTasks||[]).find(t => t.id === id);
+    if (taskObj) taskObj.status = 'done';
+    window.updateProgressRing();
+
+    try {
+        await markTaskDone(id);
+        window.showToast('Task completed! 🎉', 'success');
+    } catch(e) {
+        if (taskObj) taskObj.status = 'pending';
+        window.updateProgressRing();
+        if (taskEl) {
+            taskEl.classList.remove('completed-state');
+            const ti = taskEl.querySelector('.card-title');
+            if (ti) ti.classList.remove('done');
+            const buttons = taskEl.querySelectorAll('button');
+            buttons.forEach(b => b.style.display = 'block');
+        }
+        window.showToast(e.message, 'error');
+    }
+};
   
   const taskObj = (window.myTasks||[]).find(t => t.id === id);
   if (taskObj) taskObj.status = 'done';
