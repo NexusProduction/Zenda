@@ -33,6 +33,13 @@
     #create-staff-page { width: 100%; border-radius: 0; }
     .expandable-search.active input { width: 180px; }
 }
+
+/* 1. Fix Toast Fade Out */
+.toast.out { animation: toastOut 0.3s forwards; }
+
+/* 2. Reduce Top Padding of Sidebar Overview */
+.sidebar-nav { padding-top: 8px !important; }
+.sidebar-section-label:first-child { margin-top: 8px !important; }
 </style>
 </head>
 <body>
@@ -392,7 +399,7 @@ window.taskTab             = 'pending';
 let allStaff       = [];
 let _profileBuilt  = false;
 let staffSearchVal = '';
-let deleteTargetUid = null, deleteConfirmStr = '';
+let deleteTargetUid = null, deleteConfirmStr = '', deleteTargetEmail = '', deleteTargetPwd = '';
 let pendingDeclineId = null;
 let mainAreaChart  = null;
 let unsubs         = [];
@@ -860,14 +867,14 @@ window.renderStaffCards = function(staff) {
     const ini = getInitials(s.name);
     const emailHtml = isOwner ? `<div class="team-email"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>${esc(s.email)}</div>` : '';
 
-    const actionHtml = isOwner ? `
-      <button class="btn-delete-big" title="Remove Staff" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${s.uniqueId || ''}')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          <line x1="10" y1="11" x2="10" y2="17"></line>
-          <line x1="14" y1="11" x2="14" y2="17"></line>
-        </svg>
+    const isManager = window.CU?.role === 'manager';
+    // Owner can delete anyone. Managers can only delete 'staff', not other managers.
+    const canDelete = isOwner || (isManager && s.role === 'staff');
+
+    // Pass passwordHint to openDeleteModal so Firebase Auth can be completely wiped
+    const actionHtml = canDelete ? `
+      <button class="btn-delete-big" title="Remove Staff" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${esc(s.passwordHint || '')}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
       </button>
     ` : '';
 
@@ -1029,8 +1036,11 @@ window.searchStaff = function(v) {
   window.renderStaffCards(allStaff);  
 };
 
-window.openDeleteModal = function(uid, name, email, uniqueId) {
-  deleteTargetUid = uid; deleteConfirmStr = name;
+window.openDeleteModal = function(uid, name, email, password) {
+  deleteTargetUid = uid; 
+  deleteConfirmStr = name;
+  deleteTargetEmail = email;
+  deleteTargetPwd = password;
   document.getElementById('del-name-display').textContent = name;
   document.getElementById('del-confirm-hint').textContent = name;
   document.getElementById('del-confirm-input').value = '';
@@ -1050,11 +1060,16 @@ window.confirmDelete = async function() {
   const btn = document.getElementById('del-confirm-btn');
   btn.textContent = 'Deleting…'; btn.disabled = true;
   try {
-    await deleteStaffMember(deleteTargetUid, '', '');
+    // Passing email and password completely removes them from Firebase Auth
+    await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd);
     window.closeModal('delete-modal');
-    window.showToast('Staff member deleted.', 'success');
+    window.showToast('Staff member deleted successfully.', 'success');
     deleteTargetUid = null;
-  } catch(e) { window.showToast('Error: ' + e.message, 'error'); }
+  } catch(e) { 
+    window.showToast('Error: ' + e.message, 'error'); 
+    btn.textContent = 'Delete'; 
+    btn.disabled = false;
+  }
 };
 
 window.openCreateStaffPage = function() { 
