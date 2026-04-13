@@ -778,7 +778,7 @@
 import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
 import { requireAuth, logout, getCurrentUser } from './auth.js';
 import { listenNotifications, markAllRead as markAllReadFn, markNotificationRead } from './notifications.js';
-import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined, deleteTask } from './tasks.js';
+import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined } from './tasks.js';
 import { listenCompanyStaff, getAssignableStaff, createStaff, updateUserProfile, deleteStaffMember } from './staff.js';
 import { getInstalledApps, listenInstalledApps, APP_REGISTRY } from './apps.js';
 import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
@@ -1465,7 +1465,10 @@ window.executeTaskDelete = async function() {
   if (taskEl) { taskEl.style.opacity = '0.4'; taskEl.style.pointerEvents = 'none'; }
   
   try {
-    await deleteTask(deleteTaskTargetId);
+    // Dynamically import the delete function so it doesn't crash the page
+    const { deleteTask: dt } = await import('./tasks.js');
+    await dt(deleteTaskTargetId);
+    
     if (taskEl) taskEl.remove();
     window.closeModal('delete-task-modal');
     window.showToast('Task deleted.', 'success');
