@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="dashboard.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text x='16' y='23' font-size='22' font-family='sans-serif' font-weight='900' fill='white' text-anchor='middle'>Z</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- EmailJS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <style>
 /* ==========================================================================
@@ -21,23 +23,86 @@
 .expandable-search .search-icon-btn { background: var(--bg-raised); border: 1px solid var(--bd-color); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: absolute; left: 0; z-index: 2; transition: all 0.3s; color: var(--tx-2); box-shadow: var(--sh-1); }
 .expandable-search.active .search-icon-btn { border: none; background: transparent; box-shadow: none; left: 6px; width: 32px; height: 32px; color: var(--ac); }
 
-/* Perfect Square Trash Bin Button */
+/* Square Trash Bin Button */
 .btn-delete-big { background: var(--red-l); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--r-sm); width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; }
 .btn-delete-big:hover { background: var(--red); color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25); }
 
-/* 60% Curved Panel Overlay */
-#create-staff-page { width: 60%; left: auto; right: 0; border-top-left-radius: 32px; border-bottom-left-radius: 32px; box-shadow: -10px 0 50px rgba(15, 23, 42, 0.2); background: linear-gradient(145deg, #ffffff, #F8FAFC); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); transform: translateX(100%); }
+/* 60% Panel — SMOOTH SLIDE (no bounce) */
+#create-staff-page {
+  width: 60%;
+  left: auto;
+  right: 0;
+  border-top-left-radius: 32px;
+  border-bottom-left-radius: 32px;
+  box-shadow: -10px 0 50px rgba(15, 23, 42, 0.2);
+  background: linear-gradient(145deg, #ffffff, #F8FAFC);
+  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth, no bounce */
+  transform: translateX(110%);
+}
 #create-staff-page.open { transform: translateX(0); }
+
 .panel-overlay.visible { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 
-/* Toast Out Animation Fix & Padding tweaks */
+/* Fix modal-overlay hidden */
+.modal-overlay.hidden { display: none !important; }
+
+/* Delete modal rounded corners */
+#delete-modal .modal { border-radius: 20px !important; overflow: hidden; }
+#delete-modal .btn { border-radius: 12px !important; padding: 12px 16px !important; min-height: 44px; font-weight: 600 !important; }
+
+/* Staff empty state centred */
+.team-grid { min-height: 400px; }
+.team-grid .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 360px;
+  padding: 40px;
+  text-align: center;
+}
+
+/* Toast animation */
 .toast.out { animation: toastOut 0.3s forwards; }
 .sidebar-nav { padding-top: 8px !important; }
 .sidebar-section-label:first-child { margin-top: 8px !important; }
 
+/* ===== TASK CARD — date bottom on mobile ===== */
+.card-date-top   { display: flex; align-items: center; gap: 4px; }
+.card-date-bottom { display: none; align-items: center; gap: 6px; font-size: 0.73rem; color: var(--tx-3); font-weight: 500; margin-top: 6px; }
+.card-date-bottom svg { flex-shrink:0; }
+
+/* Declined: always show date in meta row, hide top date */
+.task-declined .card-date-top  { display: none !important; }
+.task-declined .card-date-bottom { display: flex !important; }
+
+/* Bottom-nav Assign Work button */
+#bn-assign {
+  background: var(--ac) !important;
+  color: white !important;
+  border-radius: 14px !important;
+  padding: 6px 18px !important;
+  border: none !important;
+  font-weight: 700 !important;
+  font-size: 0.78rem !important;
+  flex-direction: row !important;
+  gap: 6px !important;
+  min-width: 110px !important;
+  box-shadow: 0 4px 14px rgba(79,70,229,0.35) !important;
+  height: auto !important;
+}
+#bn-assign span.bn-label { display: inline !important; font-size: 0.78rem !important; }
+#bn-assign svg { flex-shrink: 0; }
+
+/* Fix button loading (text disappear) */
+.btn[disabled], .btn.loading { min-width: 100px; min-height: 40px; position: relative; }
+
 @media (max-width: 768px) {
-    #create-staff-page { width: 100%; border-radius: 0; }
-    .expandable-search.active input { width: 180px; }
+  #create-staff-page { width: 100%; border-radius: 0; }
+  .expandable-search.active input { width: 180px; }
+  .card-date-top { display: none !important; }
+  .card-date-bottom { display: flex !important; }
 }
 </style>
 </head>
@@ -168,6 +233,7 @@
       </div>
     </div>
 
+    <!-- MY TASKS VIEW — date filter REMOVED -->
     <div id="view-tasks" class="hidden fade-in-section">
       <div class="page-hdr" style="margin-bottom: 16px;">
         <div style="width: 100%;">
@@ -178,12 +244,6 @@
               </button>
           </div>
         </div>
-      </div>
-
-      <div style="padding: 0 0 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-         <label style="font-size: 0.85rem; font-weight: 600; color: var(--tx-2);">Filter Date:</label>
-         <input type="date" id="task-date-filter" class="form-input" style="width: auto; padding: 8px 12px; border-radius: 8px; min-width: 140px; box-shadow: var(--sh-1);" onchange="window.renderTasksList()">
-         <button class="btn-subtle" style="padding: 8px 12px; font-size: 0.8rem; border-radius: 8px; border: none; box-shadow: var(--sh-1);" onclick="document.getElementById('task-date-filter').value=''; window.renderTasksList()">Clear</button>
       </div>
 
       <div class="ftabs" id="task-tab-row" style="margin-bottom: 16px;"></div>
@@ -217,6 +277,7 @@
   </main>
 </div>
 
+<!-- BOTTOM NAV — Assign Work is now a full labeled button -->
 <nav class="bottom-nav" id="bottom-nav">
   <div class="bn-items">
     <button class="bn-item active" id="bn-home" onclick="window.showView('home')">
@@ -228,11 +289,13 @@
       <span class="bn-dot" id="bn-task-dot"></span>
       <span>Tasks</span>
     </button>
-    <button class="bn-item hidden dock-action-btn" id="bn-assign" onclick="window.openAssignModal()">
-      <div class="dock-action-inner">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
+
+    <!-- FULL ASSIGN WORK BUTTON (no floating circle) -->
+    <button class="bn-item hidden" id="bn-assign" onclick="window.openAssignModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span class="bn-label">Assign Work</span>
     </button>
+
     <button class="bn-item hidden" id="bn-staff-btn" onclick="window.showView('staff')">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span>Team</span>
@@ -281,6 +344,7 @@
   <div class="fp-body" id="profile-body-mobile"></div>
 </div>
 
+<!-- ADD STAFF PANEL — smooth slide, no bounce -->
 <div class="fullpage" id="create-staff-page" style="z-index: 1000;">
   <div class="fp-hdr" style="background: transparent; border-bottom: none; padding: 32px 40px 16px;">
     <button class="fp-back" onclick="window.closeFullpage('create-staff-page')" style="background: white; box-shadow: var(--sh-1); border: 1px solid var(--bd-color);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button>
@@ -303,7 +367,7 @@
         <div class="form-section-title" style="font-weight: 800; color: var(--tx-1); margin-bottom: 20px; font-size: 1rem;">Login Password</div>
         <div class="form-group"><label class="form-label">Password * (min. 6 characters)</label><div class="pwd-wrap" style="position: relative;"><input class="form-input" id="cs-password" type="password" placeholder="Set their login password" oninput="window.clearCSErr(this)" style="padding-right: 40px;"><button type="button" class="pwd-toggle" onclick="window.togglePwd('cs-password',this)" style="position: absolute; right: 10px; top: 12px; background: none; border: none; cursor: pointer; color: var(--tx-3);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div><div class="form-err" id="err-cs-password"></div></div>
       </div>
-      <button class="btn btn-primary w-full" id="create-staff-btn" onclick="window.initiateCreateStaff()" style="margin-top: 24px; padding: 14px; font-size: 1.05rem; border-radius: 12px; box-shadow: var(--sh-2);">Verify Email & Create Staff →</button>
+      <button class="btn btn-primary w-full" id="create-staff-btn" onclick="window.initiateCreateStaff()" style="margin-top: 24px; padding: 14px; font-size: 1.05rem; border-radius: 12px; box-shadow: var(--sh-2);">Verify Email &amp; Create Staff →</button>
     </div>
 
     <div id="staff-otp-container" class="hidden" style="margin-top: 24px; background: white; border-radius: 16px; padding: 40px; border: 1px solid var(--bd-color); box-shadow: var(--sh-2); text-align: center; animation: slideInUp 0.4s ease;">
@@ -315,17 +379,30 @@
         <div class="form-group" style="max-width: 280px; margin: 0 auto 24px;">
             <input class="form-input" id="cs-otp-input" type="text" placeholder="------" style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5em; font-weight: 800;" maxlength="6">
         </div>
-        <button class="btn btn-primary w-full" id="verify-staff-btn" onclick="window.finalizeCreateStaff()" style="max-width: 280px; padding: 14px; border-radius: 12px; font-size: 1.05rem;">Verify & Confirm</button>
-        <button class="btn btn-ghost w-full" onclick="window.cancelCreateStaff()" style="max-width: 280px; margin-top: 12px; border:none;">Cancel & Edit Details</button>
+        <button class="btn btn-primary w-full" id="verify-staff-btn" onclick="window.finalizeCreateStaff()" style="max-width: 280px; padding: 14px; border-radius: 12px; font-size: 1.05rem;">Verify &amp; Confirm</button>
+        <button class="btn btn-ghost w-full" onclick="window.cancelCreateStaff()" style="max-width: 280px; margin-top: 12px; border:none;">Cancel &amp; Edit Details</button>
     </div>
 
+    <!-- CREATED SUCCESS CARD — Done + Download buttons -->
     <div id="created-card-section" class="hidden created-wrap" style="margin-top: 24px; padding: 40px; background: white; border-radius: 16px; border: 2px solid var(--green); box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15); text-align: center; animation: modalIn 0.4s ease;">
       <div style="width: 72px; height: 72px; background: var(--green-l); color: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
       <h3 style="font-size: 1.5rem; font-weight: 800; color: var(--tx-1);">Staff Member Created!</h3>
+      <p style="font-size:0.9rem; color:var(--tx-3); margin-top:4px;" id="email-sent-note"></p>
       <div id="cred-box" class="cred-box" style="text-align: left; background: #F8FAFC; padding: 20px; border-radius: 12px; margin-top: 24px; font-size: 0.95rem; border: 1px dashed var(--bd-color); color: var(--tx-2); line-height: 1.8;"></div>
-      <button class="btn btn-primary w-full" style="margin-top:32px; font-weight: 700; padding: 14px; border-radius:12px;" onclick="window.resetCreateStaff()">+ Add Another Member</button>
+
+      <!-- Done + Download -->
+      <div style="display:flex; gap:12px; margin-top:32px; flex-wrap:wrap;">
+        <button class="btn btn-ghost" style="flex:1; min-width:120px; font-weight:700; padding:14px; border-radius:12px; border:1.5px solid var(--bd-color);" onclick="window.doneCreateStaff()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Done
+        </button>
+        <button class="btn btn-primary" style="flex:1; min-width:140px; font-weight:700; padding:14px; border-radius:12px;" onclick="window.downloadStaffCard()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Card
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -356,12 +433,29 @@
   </div>
 </div>
 
+<!-- DELETE MODAL — improved border-radius & layout -->
 <div class="modal-overlay hidden" id="delete-modal">
-  <div class="modal" style="max-width:440px">
-    <div class="modal-hdr"><div class="modal-ttl" style="color:var(--red)">Remove Staff</div><button class="modal-close" onclick="window.closeModal('delete-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-    <div style="margin-bottom: 24px; font-size: 0.9rem; color: var(--tx-2);">This will permanently delete <strong id="del-name-display"></strong>. Type <strong id="del-confirm-hint" style="color:var(--red);font-family:var(--f-mono);"></strong> to confirm.</div>
-    <input class="form-input" id="del-confirm-input" type="text" placeholder="Type to confirm…" oninput="window.checkDelConfirm()" style="margin-bottom: 24px;">
-    <div style="display:flex;gap:8px"><button class="btn btn-ghost w-full" onclick="window.closeModal('delete-modal')">Cancel</button><button class="btn btn-danger w-full" id="del-confirm-btn" disabled onclick="window.confirmDelete()" style="opacity: 0.5; cursor: not-allowed;">Delete</button></div>
+  <div class="modal" style="max-width:440px; border-radius:20px; overflow:hidden;">
+    <div class="modal-hdr" style="border-radius:0;">
+      <div class="modal-ttl" style="color:var(--red)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle; margin-right:6px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        Remove Staff
+      </div>
+      <button class="modal-close" onclick="window.closeModal('delete-modal')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding: 0 24px 4px; font-size: 0.9rem; color: var(--tx-2); line-height:1.6;">
+      This will permanently delete <strong id="del-name-display"></strong> and revoke their access.<br>
+      Type <strong id="del-confirm-hint" style="color:var(--red);font-family:var(--f-mono);"></strong> to confirm.
+    </div>
+    <div style="padding:16px 24px 24px;">
+      <input class="form-input" id="del-confirm-input" type="text" placeholder="Type name to confirm…" oninput="window.checkDelConfirm()" style="margin-bottom:20px; border-radius:10px;">
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost w-full" style="border-radius:12px; padding:12px; font-weight:600;" onclick="window.closeModal('delete-modal')">Cancel</button>
+        <button class="btn btn-danger w-full" style="border-radius:12px; padding:12px; font-weight:700;" id="del-confirm-btn" disabled onclick="window.confirmDelete()" style="opacity: 0.5;">Delete</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -385,7 +479,7 @@ import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12
 import { sendOTP, verifyUserOTP } from './otp.js';
 
 // Global stubs
-window.searchStaff  = function(v) {};
+window.searchStaff  = function(v) { staffSearchVal = v; window.renderStaffCards(allStaff); };
 window.clearCSErr   = function(el) {};
 window.copyToClipboard = copyToClipboard;
 window.showToast    = showToast;
@@ -403,6 +497,7 @@ let deleteTargetUid = null, deleteConfirmStr = '', deleteTargetEmail = '', delet
 let pendingDeclineId = null;
 let mainAreaChart  = null;
 let unsubs         = [];
+let _lastCreatedStaff = {}; // Store last created staff for download
 
 // Helpers
 function esc(s = '') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -413,9 +508,148 @@ function last7() { const out = []; for (let i = 6; i >= 0; i--) { const d = new 
 function formatDateIN(dateInput) {
     if (!dateInput) return '';
     const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return dateInput; 
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${d.getDate().toString().padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    if (isNaN(d.getTime())) return dateInput;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// ===== CANVAS DOWNLOAD: Staff Credential Card =====
+function drawRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+window.downloadStaffCard = function() {
+  const { name, email, password, uniqueId } = _lastCreatedStaff;
+  if (!name) { window.showToast('No card to download.', 'error'); return; }
+
+  const scale = 2;
+  const W = 540, H = 310;
+  const canvas = document.createElement('canvas');
+  canvas.width = W * scale;
+  canvas.height = H * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  // White card background
+  ctx.fillStyle = '#FFFFFF';
+  drawRoundRect(ctx, 0, 0, W, H, 20);
+  ctx.fill();
+
+  // Gradient header bar
+  const grad = ctx.createLinearGradient(0, 0, W, 0);
+  grad.addColorStop(0, '#4F46E5');
+  grad.addColorStop(1, '#7C3AED');
+  ctx.fillStyle = grad;
+  drawRoundRect(ctx, 0, 0, W, 96, 20);
+  ctx.fill();
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 76, W, 20); // Fix corners at bottom of header
+
+  // Z Logo box
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  drawRoundRect(ctx, 22, 18, 48, 48, 10);
+  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 30px "Plus Jakarta Sans", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Z', 46, 52);
+
+  // Zenda brand text
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 20px "Plus Jakarta Sans", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Zenda', 82, 48);
+
+  // Subtitle
+  ctx.fillStyle = 'rgba(255,255,255,0.72)';
+  ctx.font = '13px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('Staff Access Credentials', 82, 68);
+
+  // Staff name
+  ctx.fillStyle = '#0F172A';
+  ctx.font = 'bold 22px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(name, 30, 130);
+
+  // Horizontal rule
+  ctx.strokeStyle = '#E2E8F0';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(30, 144); ctx.lineTo(W - 30, 144); ctx.stroke();
+
+  // Fields
+  const fields = [
+    { label: 'EMAIL', value: email },
+    { label: 'PASSWORD', value: password },
+    { label: 'ZENDA ID', value: uniqueId }
+  ];
+  fields.forEach((f, i) => {
+    const y = 174 + i * 38;
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '10px "DM Mono", monospace';
+    ctx.fillText(f.label, 30, y);
+    ctx.fillStyle = '#1E293B';
+    ctx.font = '600 14px "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(f.value, 130, y);
+  });
+
+  // Footer
+  ctx.fillStyle = '#F8FAFC';
+  ctx.fillRect(0, H - 36, W, 36);
+  ctx.strokeStyle = '#E2E8F0';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, H - 36); ctx.lineTo(W, H - 36); ctx.stroke();
+  ctx.fillStyle = '#94A3B8';
+  ctx.font = '11px "Plus Jakarta Sans", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🔒 Keep this confidential  •  Generated by Zenda', W / 2, H - 12);
+
+  // Border
+  ctx.strokeStyle = '#E2E8F0';
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, 0.75, 0.75, W - 1.5, H - 1.5, 20);
+  ctx.stroke();
+
+  // Download
+  const link = document.createElement('a');
+  link.download = `${(name || 'staff').replace(/\s+/g,'_')}_Zenda_Credentials.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  window.showToast('Card downloaded! 📥', 'success');
+};
+
+// ===== EMAIL SENDER =====
+async function sendStaffCredentialsEmail(toEmail, toName, password, uniqueId, companyName) {
+  try {
+    if (typeof emailjs !== 'undefined' && EMAILJS_CONFIG && EMAILJS_CONFIG.publicKey) {
+      emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey });
+      await emailjs.send(
+        EMAILJS_CONFIG.serviceId || 'default_service',
+        EMAILJS_CONFIG.staffTemplateId || EMAILJS_CONFIG.templateId || 'template_staff_welcome',
+        {
+          to_email: toEmail,
+          to_name: toName,
+          staff_email: toEmail,
+          staff_password: password,
+          staff_id: uniqueId,
+          company_name: companyName,
+          login_url: window.location.origin + '/login.html'
+        }
+      );
+      return true;
+    }
+  } catch (e) {
+    console.warn('EmailJS send failed:', e);
+  }
+  return false;
 }
 
 // Init
@@ -481,8 +715,8 @@ function setupUI() {
   document.getElementById('home-greeting').textContent = `Good ${g}, ${(name || 'User').split(' ')[0]}`;
   document.getElementById('home-sub').textContent = { owner: 'Overview of your company and team', manager: 'Your team tasks and activity', staff: 'Your assignments and progress' }[role] || '';
   
-  const canAssign = role === 'owner' || role === 'manager';
-  const isOwner   = role === 'owner';
+  const canAssign   = role === 'owner' || role === 'manager';
+  const isOwner     = role === 'owner';
   const canSeeStaff = role === 'owner' || role === 'manager';
 
   if (canAssign) {
@@ -491,25 +725,23 @@ function setupUI() {
     document.getElementById('assign-tasks-btn')?.classList.remove('hidden');
   }
   
-  // Set up Tabs dynamically based on role
+  // Set up Tabs based on role
   const tabRow = document.getElementById('task-tab-row');
   if (tabRow) {
-      if (isOwner) {
-          tabRow.innerHTML = `
-              <button class="ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
-              <button class="ftab" onclick="window.setTaskTab('done',this)">Done</button>
-              <button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>
-          `;
-          window.taskTab = 'assigned-by-me';
-      } else {
-          tabRow.innerHTML = `
-              <button class="ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button>
-              <button class="ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
-              <button class="ftab" onclick="window.setTaskTab('done',this)">Done</button>
-              <button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>
-          `;
-          window.taskTab = 'assigned-to-me';
-      }
+    if (isOwner) {
+      tabRow.innerHTML = `
+        <button class="ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
+        <button class="ftab" onclick="window.setTaskTab('done',this)">Done</button>
+        <button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`;
+      window.taskTab = 'assigned-by-me';
+    } else {
+      tabRow.innerHTML = `
+        <button class="ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button>
+        <button class="ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
+        <button class="ftab" onclick="window.setTaskTab('done',this)">Done</button>
+        <button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`;
+      window.taskTab = 'assigned-to-me';
+    }
   }
 
   if (canSeeStaff) {
@@ -582,7 +814,6 @@ function subscribeAll() {
   unsubs.push(listenInstalledApps(uid, ids => buildAppsGrid(ids)));
 }
 
-
 function renderOwnerStats() {
   const staff = allStaff.filter(s => s.role !== 'owner');
   const all   = [...window.myTasks, ...window.assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
@@ -606,8 +837,8 @@ function renderOwnerStats() {
 }
 
 function renderNonOwnerStats(tasks) {
-  const pending = tasks.filter(t => t.status === 'pending').length;
-  const done    = tasks.filter(t => t.status === 'done').length;
+  const pending  = tasks.filter(t => t.status === 'pending').length;
+  const done     = tasks.filter(t => t.status === 'done').length;
   const isManager = window.CU.role === 'manager';
   const el = document.getElementById('stats-grid');
   if (!el) return;
@@ -659,129 +890,133 @@ function updateCharts(tasks) {
   mainAreaChart.update();
 }
 
+// ===== TASK CARD — Declined: no priority, date at bottom; Mobile: date at bottom =====
 window.renderTaskCard = function(task, showActions, isRecent = false) {
-    const isToMe = task.assignedTo === window.CU?.uid;
+    const isToMe    = task.assignedTo === window.CU?.uid;
     const isPending = task.status === 'pending';
-    const isDone = task.status === 'done';
-    
-    // Strict Overdue Logic
+    const isDone    = task.status === 'done';
+    const isDeclined = task.status === 'declined';
+
+    // Overdue check
     let isOverdue = false;
     if (task.dueDate && isPending) {
         const dDate = new Date(task.dueDate);
         dDate.setHours(23, 59, 59, 999);
         isOverdue = dDate.getTime() < Date.now();
     }
-    const isDeclined = task.status === 'declined';
     const isDeclinedOrOverdue = isDeclined || isOverdue;
-    
+
     let priorityClass = '';
-    if(task.priority === 'High') priorityClass = 'priority-high';
-    if(task.priority === 'Medium') priorityClass = 'priority-medium';
+    if (task.priority === 'High')   priorityClass = 'priority-high';
+    if (task.priority === 'Medium') priorityClass = 'priority-medium';
 
-    const titleClass = isDone ? 'card-title done' : 'card-title';
-    const cardStateClass = isDone ? `premium-task-card completed-state ${priorityClass}` : `premium-task-card ${priorityClass}`;
-    
-    const assigneeName = task.assignedToName || 'Team Member';
-    const assigneeFirstName = assigneeName.split(' ')[0];
-    const assigneeIni = assigneeName.charAt(0).toUpperCase();
+    const titleClass    = isDone ? 'card-title done' : 'card-title';
+    const cardStateClass = isDone
+        ? `premium-task-card completed-state ${priorityClass}`
+        : `premium-task-card ${isDeclined ? 'task-declined' : ''} ${priorityClass}`;
 
-    // Generate a dynamic soft background color based on the initial letter
-    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-    const charCode = assigneeIni.charCodeAt(0) || 0;
-    const bgCol = colors[charCode % colors.length];
+    const assigneeName       = task.assignedToName || 'Team Member';
+    const assigneeIni        = (assigneeName.charAt(0) || '?').toUpperCase();
+    const colors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6'];
+    const bgCol  = colors[assigneeIni.charCodeAt(0) % colors.length];
 
-    // Left Element is always the clean colored Avatar
     const leftElement = `
-        <div class="av" style="width:42px; height:42px; font-size:1.2rem; font-weight:800; border-radius:50%; flex-shrink:0; background:${bgCol}1A; color:${bgCol}; border: 1px solid ${bgCol}33;">
-            ${assigneeIni}
-        </div>
-    `;
+      <div class="av" style="width:42px;height:42px;font-size:1.2rem;font-weight:800;border-radius:50%;flex-shrink:0;background:${bgCol}1A;color:${bgCol};border:1px solid ${bgCol}33;">
+        ${assigneeIni}
+      </div>`;
 
-    // Format Dates (Assigned Date - Due Date/Done Date)
     const assignedDateStr = formatDateIN(task.createdAt || Date.now());
     let dateDisplayStr = assignedDateStr;
-    
     if (isDone && task.completedAt) {
         dateDisplayStr = `${assignedDateStr} — ${formatDateIN(task.completedAt)}`;
     } else if (task.dueDate) {
         dateDisplayStr = `${assignedDateStr} — ${formatDateIN(task.dueDate)}`;
     }
 
-    // Clean badge for the user's full name (No circles)
-    const assigneeBadge = `
-        <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:600; color:var(--tx-2); background:var(--bg-overlay); padding:4px 10px; border-radius:8px; border:1px solid var(--bd-color);">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            ${esc(assigneeName)}
-        </div>
-    `;
+    const timeIconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
 
-    // Dynamic Status Badge
+    // Date shown at top-right on desktop; bottom on mobile / always for declined
+    const dateTopHTML = `
+      <div class="card-time-block card-date-top" style="padding:4px 10px;font-size:0.75rem;white-space:nowrap;">
+        ${timeIconSvg} ${esc(dateDisplayStr)}
+      </div>`;
+
+    const dateBottomHTML = `
+      <div class="card-date-bottom">
+        ${timeIconSvg} ${esc(dateDisplayStr)}
+      </div>`;
+
+    const assigneeBadge = `
+      <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:600;color:var(--tx-2);background:var(--bg-overlay);padding:4px 10px;border-radius:8px;border:1px solid var(--bd-color);">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        ${esc(assigneeName)}
+      </div>`;
+
+    // Priority badge — hidden when declined
+    const priorityBadge = (!isDeclined && task.priority)
+        ? `<span class="priority-tag" style="background:var(--bg-overlay);color:var(--tx-2);padding:4px 10px;font-size:0.65rem;">${task.priority}</span>`
+        : '';
+
     let statusBadge = '';
     if (isDeclined) {
-        statusBadge = `<span class="priority-tag" style="background:var(--red-l); color:var(--red); padding: 4px 10px; font-size: 0.65rem;">Declined by ${esc(assigneeFirstName)}</span>`;
+        statusBadge = `<span class="priority-tag" style="background:var(--red-l);color:var(--red);padding:4px 10px;font-size:0.65rem;">Declined</span>`;
     } else if (isOverdue) {
-        statusBadge = `<span class="priority-tag" style="background:var(--red-l); color:var(--red); padding: 4px 10px; font-size: 0.65rem;">Overdue</span>`;
+        statusBadge = `<span class="priority-tag" style="background:var(--red-l);color:var(--red);padding:4px 10px;font-size:0.65rem;">Overdue</span>`;
     }
 
-    // Action Buttons
-    const actionButtons = (isPending && !isDeclinedOrOverdue && showActions && isToMe) 
-        ? `<div style="display:flex; gap:8px; align-items:center; margin-top: 4px;">
-             <button style="padding: 6px 14px; border-radius:8px; border:none; background:var(--green-l); color:var(--green-h); font-weight:700; font-size:0.75rem; cursor:pointer; box-shadow:0 2px 4px rgba(16,185,129,0.1);" onclick="window.doAcceptTask('${task.id}')">✓ Done</button>
-             <button style="padding: 6px 14px; border-radius:8px; border:none; background:var(--red-l); color:var(--red); font-weight:700; font-size:0.75rem; cursor:pointer; box-shadow:0 2px 4px rgba(239,68,68,0.1);" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g, '&quot;')}')">✗ Decline</button>
+    const actionButtons = (isPending && !isDeclinedOrOverdue && showActions && isToMe)
+        ? `<div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+             <button style="padding:6px 14px;border-radius:8px;border:none;background:var(--green-l);color:var(--green-h);font-weight:700;font-size:0.75rem;cursor:pointer;" onclick="window.doAcceptTask('${task.id}')">✓ Done</button>
+             <button style="padding:6px 14px;border-radius:8px;border:none;background:var(--red-l);color:var(--red);font-weight:700;font-size:0.75rem;cursor:pointer;" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">✗ Decline</button>
            </div>`
-        : ``;
+        : '';
 
     return `
-    <div class="${cardStateClass}" id="task-${task.id}">
-        ${leftElement}
-        <div class="card-content-wrap" style="gap: 6px; width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
-                <div class="${titleClass}" style="flex: 1; min-width: 200px;">${esc(task.title || 'Untitled Task')}</div>
-                <div class="card-time-block" style="padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; margin-left: auto;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    ${esc(dateDisplayStr)}
-                </div>
-            </div>
-            <div class="card-meta-strip" style="margin-top:2px;">
-                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    ${assigneeBadge}
-                    ${task.priority ? `<span class="priority-tag" style="background:var(--bg-overlay); color:var(--tx-2); padding: 4px 10px; font-size: 0.65rem;">${task.priority}</span>` : ''}
-                    ${statusBadge}
-                </div>
-                ${actionButtons}
-            </div>
+    <div class="${cardStateClass.trim()}" id="task-${task.id}">
+      ${leftElement}
+      <div class="card-content-wrap" style="gap:6px;width:100%;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+          <div class="${titleClass}" style="flex:1;min-width:180px;">${esc(task.title || 'Untitled Task')}</div>
+          ${dateTopHTML}
         </div>
+        <div class="card-meta-strip" style="margin-top:2px;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            ${assigneeBadge}
+            ${priorityBadge}
+            ${statusBadge}
+          </div>
+          ${dateBottomHTML}
+          ${actionButtons}
+        </div>
+      </div>
     </div>`;
 };
 
 window.renderRecentTasks = function() {
     const el = document.getElementById('recent-tasks');
-    if(!el) return;
-    const allUniqueTasks = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])]
+    if (!el) return;
+    const allUnique = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])]
         .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
-        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-        
-    const tasks = allUniqueTasks.slice(0, 3);
-    if (!tasks.length) { 
-        el.innerHTML = `<div class="empty" style="padding:36px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No recent tasks</div></div>`; 
-        return; 
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+        .slice(0, 3);
+
+    if (!allUnique.length) {
+        el.innerHTML = `<div class="empty" style="padding:36px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No recent tasks</div></div>`;
+        return;
     }
-    
-    const listHTML = tasks.map((t, index) => {
-        const html = window.renderTaskCard(t, false, true); // isRecent = true
-        return html.replace('class="premium-task-card', `class="premium-task-card" style="margin: 0 16px; animation-delay: ${index * 0.1}s;"`);
-    }).join('');
-    
-    el.innerHTML = '<div class="task-list-wrapper" style="padding-bottom: 16px;">' + listHTML + '</div>';
+    const listHTML = allUnique.map((t, i) =>
+        window.renderTaskCard(t, false, true).replace('class="premium-task-card', `class="premium-task-card" style="margin:0 16px;animation-delay:${i*0.1}s;"`)
+    ).join('');
+    el.innerHTML = '<div class="task-list-wrapper" style="padding-bottom:16px;">' + listHTML + '</div>';
 };
 
 window.setTaskTab = function(tab, btn) {
     window.taskTab = tab;
     document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
-    if (btn) { 
-        btn.classList.add('on'); 
+    if (btn) {
+        btn.classList.add('on');
     } else {
-        const targetBtn = Array.from(document.querySelectorAll('.ftab')).find(b => b.getAttribute('onclick').includes(tab));
+        const targetBtn = Array.from(document.querySelectorAll('.ftab')).find(b => b.getAttribute('onclick')?.includes(tab));
         if (targetBtn) targetBtn.classList.add('on');
     }
     window.renderTasksList();
@@ -790,131 +1025,115 @@ window.setTaskTab = function(tab, btn) {
 window.renderTasksList = function() {
     const el = document.getElementById('tasks-list');
     if (!el) return;
-    
+
     let list = [];
     const now = Date.now();
-    
-    // Strict Overdue logic (ignores tasks due later today)
+
     const isOverdue = (t) => {
         if (!t.dueDate || t.status !== 'pending') return false;
-        const dDate = new Date(t.dueDate);
-        dDate.setHours(23, 59, 59, 999);
+        const dDate = new Date(t.dueDate); dDate.setHours(23,59,59,999);
         return dDate.getTime() < now;
     };
     const isDeclinedOrOverdue = (t) => t.status === 'declined' || isOverdue(t);
     const isActive = (t) => t.status === 'pending' && !isOverdue(t);
 
-    // Filter into correct tabs
-    if (window.taskTab === 'assigned-to-me') list = window.myTasks.filter(t => t.assignedTo === window.CU?.uid && isActive(t));
+    if (window.taskTab === 'assigned-to-me')   list = window.myTasks.filter(t => t.assignedTo === window.CU?.uid && isActive(t));
     else if (window.taskTab === 'assigned-by-me') list = window.assignedByMeTasks.filter(t => isActive(t));
-    else if (window.taskTab === 'done') list = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])].filter(t => t.status === 'done');
-    else if (window.taskTab === 'declined') list = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])].filter(t => isDeclinedOrOverdue(t));
+    else if (window.taskTab === 'done')         list = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])].filter(t => t.status === 'done');
+    else if (window.taskTab === 'declined')     list = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])].filter(t => isDeclinedOrOverdue(t));
     else list = window.myTasks;
-    
-    // Remove duplicates
+
+    // Dedup
     const seen = new Set();
     list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
-
-    // Apply Native Date Filter
-    const dateFilterEl = document.getElementById('task-date-filter');
-    const selectedDate = dateFilterEl ? dateFilterEl.value : '';
-    if (selectedDate) {
-        list = list.filter(t => t.dueDate === selectedDate);
-    }
 
     if (!list.length) {
         el.innerHTML = `
         <div class="empty" style="padding:60px 20px;">
-            <div style="width:80px; height:80px; background:var(--bg-overlay); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg>
-            </div>
-            <div style="font-size:1.1rem; font-weight:700; color:var(--tx-1);">You're all caught up!</div>
-            <div style="font-size:0.9rem; color:var(--tx-3); margin-top:6px;">No tasks match this filter right now.</div>
+          <div style="width:80px;height:80px;background:var(--bg-overlay);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg>
+          </div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--tx-1);">You're all caught up!</div>
+          <div style="font-size:0.9rem;color:var(--tx-3);margin-top:6px;">No tasks match this filter right now.</div>
         </div>`;
         return;
     }
-    
-    // Render distinct sections if in "Done" or "Declined" tab
+
     if (window.taskTab === 'done' || window.taskTab === 'declined') {
-        const iProcessed = list.filter(t => t.assignedTo === window.CU?.uid);
-        const othersProcessed = list.filter(t => t.assignedTo !== window.CU?.uid);
-        
+        const mine   = list.filter(t => t.assignedTo === window.CU?.uid);
+        const others = list.filter(t => t.assignedTo !== window.CU?.uid);
         let html = '<div class="task-list-wrapper">';
-        if (iProcessed.length > 0) {
-            html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-2); padding: 8px 16px 4px; text-transform:uppercase; letter-spacing:0.04em;">My Tasks</div>`;
-            html += iProcessed.map((t, i) => window.renderTaskCard(t, false).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay: ${i * 0.1}s;"`)).join('');
+        if (mine.length > 0) {
+            html += `<div style="font-size:0.85rem;font-weight:700;color:var(--tx-2);padding:8px 16px 4px;text-transform:uppercase;letter-spacing:.04em;">My Tasks</div>`;
+            html += mine.map((t,i) => window.renderTaskCard(t,false).replace('class="premium-task-card',`class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join('');
         }
-        if (othersProcessed.length > 0) {
-            html += `<div style="font-size:0.85rem; font-weight:700; color:var(--tx-3); padding: 24px 16px 8px; border-top: 1px solid var(--bd-color); margin-top:12px; text-transform:uppercase; letter-spacing:0.04em;">Team Tasks</div>`;
-            html += othersProcessed.map((t, i) => {
-                let cardHTML = window.renderTaskCard(t, false);
-                return cardHTML.replace('class="premium-task-card', `class="premium-task-card" style="opacity: 0.85; background: var(--bg-overlay); animation-delay: ${i * 0.1}s;"`);
-            }).join('');
+        if (others.length > 0) {
+            html += `<div style="font-size:0.85rem;font-weight:700;color:var(--tx-3);padding:24px 16px 8px;border-top:1px solid var(--bd-color);margin-top:12px;text-transform:uppercase;letter-spacing:.04em;">Team Tasks</div>`;
+            html += others.map((t,i) => window.renderTaskCard(t,false).replace('class="premium-task-card',`class="premium-task-card" style="opacity:.85;background:var(--bg-overlay);animation-delay:${i*.1}s;"`)).join('');
         }
         html += '</div>';
         el.innerHTML = html;
     } else {
-        const listHTML = list.map((t, index) => {
-            return window.renderTaskCard(t, true).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay: ${index * 0.1}s;"`);
-        }).join('');
-        el.innerHTML = '<div class="task-list-wrapper">' + listHTML + '</div>';
+        el.innerHTML = '<div class="task-list-wrapper">' +
+            list.map((t,i) => window.renderTaskCard(t,true).replace('class="premium-task-card',`class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join('') +
+            '</div>';
     }
 };
 
 window.renderStaffCards = function(staff) {
   const el = document.getElementById('staff-cards-list');
   if (!el) return;
-  const searchQ = (typeof staffSearchVal !== 'undefined' ? staffSearchVal : '').trim().toLowerCase();
-  
-  const nonOwner = searchQ
-    ? staff.filter(s => s.role !== 'owner' && (s.name + s.email + (s.designation || '')).toLowerCase().includes(searchQ))
-    : staff.filter(s => s.role !== 'owner');
-    
-  if (!nonOwner.length) { 
-      el.innerHTML = `<div class="empty"><div class="empty-ico">👥</div><div class="empty-ttl">No staff found</div></div>`; 
-      return; 
+  const q = staffSearchVal.trim().toLowerCase();
+  const nonOwner = staff.filter(s => s.role !== 'owner' && (!q || (s.name + s.email + (s.designation||'')).toLowerCase().includes(q)));
+
+  if (!nonOwner.length) {
+    // Centred empty state
+    el.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;text-align:center;gap:12px;">
+        <div style="width:72px;height:72px;background:var(--bg-overlay);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--tx-1);">No staff found</div>
+        <div style="font-size:0.9rem;color:var(--tx-3);">Add your first team member to get started.</div>
+      </div>`;
+    return;
   }
-  
-  const isOwner = window.CU?.role === 'owner';
+
+  const isOwner   = window.CU?.role === 'owner';
   const isManager = window.CU?.role === 'manager';
-  
+
   el.innerHTML = nonOwner.map(s => {
     const ini = getInitials(s.name);
-    
+
     const emailHtml = isOwner ? `
       <div class="team-email">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
         ${esc(s.email)}
-      </div>
-    ` : '';
+      </div>` : '';
 
     const canDelete = isOwner || (isManager && s.role === 'staff');
-
-    // Square Trash Bin Action Button
     const actionHtml = canDelete ? `
-      <button class="btn-delete-big" title="Remove Staff" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${esc(s.passwordHint || '')}')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <button class="btn-delete-big" title="Remove Staff" onclick="window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${esc(s.passwordHint||'')}')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <polyline points="3 6 5 6 21 6"></polyline>
           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           <line x1="10" y1="11" x2="10" y2="17"></line>
           <line x1="14" y1="11" x2="14" y2="17"></line>
         </svg>
-      </button>
-    ` : '';
+      </button>` : '';
 
     const assignBtnHtml = (isOwner || isManager) ? `
-      <button class="btn-text" style="font-size: 12px; padding: 4px 12px;" onclick="window.quickAssign('${s.uid}')">Assign Task</button>
-    ` : '';
+      <button class="btn-text" style="font-size:12px;padding:4px 12px;" onclick="window.quickAssign('${s.uid}')">Assign Task</button>` : '';
 
     return `
     <div class="team-card anim-stagger">
       <div class="team-card-top">
         <div class="team-profile-info">
-            <div class="team-av">${ini}</div>
-            <div class="team-text-block">
-                <div class="team-name">${esc(s.name)}</div>
-                <div class="team-role">${esc(s.designation || formatRole(s.role))}</div>
-            </div>
+          <div class="team-av">${ini}</div>
+          <div class="team-text-block">
+            <div class="team-name">${esc(s.name)}</div>
+            <div class="team-role">${esc(s.designation || formatRole(s.role))}</div>
+          </div>
         </div>
         ${actionHtml}
       </div>
@@ -950,14 +1169,14 @@ function renderNotifPanel(items) {
   if (!items.length) { el.innerHTML = `<div class="empty"><div class="empty-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl">No notifications</div></div>`; return; }
   el.innerHTML = items.map(n => `
     <div style="padding:12px;border-bottom:1px solid var(--bd-color);cursor:pointer;" onclick="window.markNotifRead('${esc(n.id)}')">
-      <div style="font-size:0.85rem;color:var(--tx-1);font-weight:${n.read ? '500' : '700'};">${esc(n.message)}</div>
+      <div style="font-size:0.85rem;color:var(--tx-1);font-weight:${n.read?'500':'700'};">${esc(n.message)}</div>
       <div style="font-size:0.75rem;color:var(--tx-3);margin-top:4px;">${ago(n.createdAt)}</div>
     </div>`).join('');
 }
 
 function buildProfile() {
   if (!window.CU) return;
-  const { name, email, role, designation, uniqueId } = window.CU;
+  const { name, email, role, uniqueId } = window.CU;
   const html = `
     <div style="text-align:center;padding:20px 16px;border-bottom:1px solid var(--bd-color);">
       <div class="av lg-av bg-blue-soft" style="margin:0 auto 10px;width:64px;height:64px;font-size:1.5rem;">${getInitials(name)}</div>
@@ -983,13 +1202,10 @@ window.doAcceptTask = async function(id) {
     const ti = taskEl.querySelector('.card-title');
     if (ti) ti.classList.add('done');
     taskEl.classList.add('completed-state');
-    const buttons = taskEl.querySelectorAll('button');
-    buttons.forEach(b => b.style.display = 'none');
+    taskEl.querySelectorAll('button').forEach(b => b.style.display = 'none');
   }
-  
   const taskObj = (window.myTasks||[]).find(t => t.id === id);
   if (taskObj) taskObj.status = 'done';
-
   try {
     await markTaskDone(id);
     window.showToast('Task completed! 🎉', 'success');
@@ -997,10 +1213,8 @@ window.doAcceptTask = async function(id) {
     if (taskObj) taskObj.status = 'pending';
     if (taskEl) {
       taskEl.classList.remove('completed-state');
-      const ti = taskEl.querySelector('.card-title');
-      if (ti) ti.classList.remove('done');
-      const buttons = taskEl.querySelectorAll('button');
-      buttons.forEach(b => b.style.display = 'block');
+      const ti = taskEl.querySelector('.card-title'); if (ti) ti.classList.remove('done');
+      taskEl.querySelectorAll('button').forEach(b => b.style.display = 'block');
     }
     window.showToast(e.message, 'error');
   }
@@ -1038,11 +1252,11 @@ window.quickAssign = function(staffUid) {
 };
 
 window.handleAssign = async function() {
-  const to    = document.getElementById('assign-to').value;
-  const title = document.getElementById('task-title').value.trim();
-  const desc  = document.getElementById('task-desc').value.trim();
-  const date  = document.getElementById('task-date').value;
-  const time  = document.getElementById('task-time').value;
+  const to       = document.getElementById('assign-to').value;
+  const title    = document.getElementById('task-title').value.trim();
+  const desc     = document.getElementById('task-desc').value.trim();
+  const date     = document.getElementById('task-date').value;
+  const time     = document.getElementById('task-time').value;
   const priority = document.getElementById('task-priority')?.value || 'Medium';
   if (!to)    { window.showToast('Select a team member.', 'error'); return; }
   if (!title) { window.showToast('Enter a task title.', 'error'); return; }
@@ -1050,7 +1264,7 @@ window.handleAssign = async function() {
   setButtonLoading(btn, true);
   try {
     const assignee = allStaff.find(s => s.uid === to);
-    await assignTask({ title, description:desc, assignedTo:to, assignedToName:assignee?.name || 'Team Member', assignedBy:window.CU?.uid, assignedByName:window.CU?.name, companyId:window.CU?.companyId, dueDate:date||null, dueTime:time||null, priority });
+    await assignTask({ title, description:desc, assignedTo:to, assignedToName:assignee?.name||'Team Member', assignedBy:window.CU?.uid, assignedByName:window.CU?.name, companyId:window.CU?.companyId, dueDate:date||null, dueTime:time||null, priority });
     window.closeModal('assign-modal');
     window.showToast(`Assigned to ${assignee?.name}!`, 'success');
   } catch(e) { window.showToast(e.message, 'error'); }
@@ -1058,22 +1272,26 @@ window.handleAssign = async function() {
 };
 
 window.openDeleteModal = function(uid, name, email, password) {
-  deleteTargetUid = uid; 
+  deleteTargetUid  = uid;
   deleteConfirmStr = name;
   deleteTargetEmail = email;
-  deleteTargetPwd = password;
-  document.getElementById('del-name-display').textContent = name;
-  document.getElementById('del-confirm-hint').textContent = name;
-  document.getElementById('del-confirm-input').value = '';
-  document.getElementById('del-confirm-btn').disabled = true;
+  deleteTargetPwd   = password;
+  document.getElementById('del-name-display').textContent    = name;
+  document.getElementById('del-confirm-hint').textContent    = name;
+  document.getElementById('del-confirm-input').value         = '';
+  const btn = document.getElementById('del-confirm-btn');
+  btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed';
+  btn.textContent = 'Delete';
   window.openModal('delete-modal');
 };
 
 window.checkDelConfirm = function() {
-  const val = document.getElementById('del-confirm-input').value;
-  const btn = document.getElementById('del-confirm-btn');
+  const val   = document.getElementById('del-confirm-input').value;
+  const btn   = document.getElementById('del-confirm-btn');
   const match = val === deleteConfirmStr;
-  btn.disabled = !match; btn.style.opacity = match ? '1' : '0.5'; btn.style.cursor = match ? 'pointer' : 'not-allowed';
+  btn.disabled = !match;
+  btn.style.opacity = match ? '1' : '0.5';
+  btn.style.cursor  = match ? 'pointer' : 'not-allowed';
 };
 
 window.confirmDelete = async function() {
@@ -1082,112 +1300,144 @@ window.confirmDelete = async function() {
   btn.textContent = 'Deleting…'; btn.disabled = true;
   try {
     await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd);
-    window.closeModal('delete-modal');
-    window.showToast('Staff member deleted successfully.', 'success');
+    // Close modal immediately and forcefully
+    const modal = document.getElementById('delete-modal');
+    if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+    window.showToast('Staff member removed successfully.', 'success');
     deleteTargetUid = null;
-  } catch(e) { 
-    window.showToast('Error: ' + e.message, 'error'); 
-    btn.textContent = 'Delete'; 
-    btn.disabled = false;
+    // Re-show after a tick (in case listener re-triggers)
+    setTimeout(() => { if (modal) modal.style.display = ''; }, 100);
+  } catch(e) {
+    window.showToast('Error: ' + e.message, 'error');
+    btn.textContent = 'Delete'; btn.disabled = false;
+    window.checkDelConfirm();
   }
 };
 
-window.openCreateStaffPage = function() { 
-    document.getElementById('create-staff-page')?.classList.add('open'); 
-    document.getElementById('panel-overlay')?.classList.add('visible');
+window.openCreateStaffPage = function() {
+  document.getElementById('create-staff-page')?.classList.add('open');
+  document.getElementById('panel-overlay')?.classList.add('visible');
 };
-window.closeFullpage = function(id) { 
-    document.getElementById(id)?.classList.remove('open'); 
-    if(id === 'create-staff-page') document.getElementById('panel-overlay')?.classList.remove('visible');
+
+window.closeFullpage = function(id) {
+  document.getElementById(id)?.classList.remove('open');
+  if (id === 'create-staff-page') {
+    document.getElementById('panel-overlay')?.classList.remove('visible');
+  }
 };
 
 window.initiateCreateStaff = async function() {
-    const name     = document.getElementById('cs-name').value.trim();
-    const email    = document.getElementById('cs-email').value.trim();
-    const desig    = document.getElementById('cs-designation').value.trim();
-    const password = document.getElementById('cs-password').value.trim();
-    
-    if (!name || !email || !desig || password.length < 6) { 
-        window.showToast('Please fill all fields correctly (Password min 6 chars).', 'error'); 
-        return; 
-    }
-    
-    const btn = document.getElementById('create-staff-btn');
-    setButtonLoading(btn, true, 'Sending Verification Code...');
-    
-    try {
-        await sendOTP(email);
-        document.getElementById('otp-sent-email').textContent = email;
-        document.getElementById('staff-form-container').classList.add('hidden');
-        document.getElementById('staff-otp-container').classList.remove('hidden');
-        window.showToast('Verification code sent to ' + email, 'success');
-    } catch(e) {
-        window.showToast(e.message || 'Failed to send OTP', 'error');
-    } finally {
-        setButtonLoading(btn, false, 'Verify Email & Create Staff →');
-    }
+  const name     = document.getElementById('cs-name').value.trim();
+  const email    = document.getElementById('cs-email').value.trim();
+  const desig    = document.getElementById('cs-designation').value.trim();
+  const password = document.getElementById('cs-password').value.trim();
+
+  if (!name || !email || !desig || password.length < 6) {
+    window.showToast('Please fill all fields correctly (Password min 6 chars).', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('create-staff-btn');
+  setButtonLoading(btn, true, 'Sending Verification Code...');
+
+  try {
+    await sendOTP(email);
+    document.getElementById('otp-sent-email').textContent = email;
+    document.getElementById('staff-form-container').classList.add('hidden');
+    document.getElementById('staff-otp-container').classList.remove('hidden');
+    window.showToast('Verification code sent to ' + email, 'success');
+  } catch(e) {
+    window.showToast(e.message || 'Failed to send OTP', 'error');
+  } finally {
+    setButtonLoading(btn, false, 'Verify Email & Create Staff →');
+  }
 };
 
 window.finalizeCreateStaff = async function() {
-    const name     = document.getElementById('cs-name').value.trim();
-    const email    = document.getElementById('cs-email').value.trim();
-    const desig    = document.getElementById('cs-designation').value.trim();
-    const password = document.getElementById('cs-password').value.trim();
-    const otpCode  = document.getElementById('cs-otp-input').value.trim();
-    
-    if(otpCode.length < 6) { window.showToast('Enter the full 6-digit code.', 'error'); return; }
-    
-    const btn = document.getElementById('verify-staff-btn');
-    setButtonLoading(btn, true, 'Verifying...');
-    
-    try {
-        await verifyUserOTP(email, otpCode);
-        
-        const cSnap = await getDoc(doc(db, 'companies', window.CU.companyId));
-        const companyName = cSnap.exists() ? cSnap.data().name : 'Company';
-        
-        const result = await createStaff({ name, email, password, role:'staff', companyId:window.CU.companyId, companyName, createdBy:window.CU.uid, designation:desig });
-        
-        document.getElementById('staff-otp-container').classList.add('hidden');
-        document.getElementById('created-card-section').classList.remove('hidden');
-        document.getElementById('cred-box').innerHTML = `
-            <strong style="color:var(--tx-1)">Name:</strong> ${esc(name)}<br>
-            <strong style="color:var(--tx-1)">Email:</strong> ${esc(email)}<br>
-            <strong style="color:var(--tx-1)">Password:</strong> ${esc(password)}<br>
-            <strong style="color:var(--tx-1)">Zenda ID:</strong> ${result.uniqueId}
-        `;
-        window.showToast(`${name} added to your team!`, 'success');
-    } catch(e) {
-        window.showToast(e.message || 'Invalid Code. Try again.', 'error');
-    } finally {
-        setButtonLoading(btn, false, 'Verify & Confirm');
+  const name     = document.getElementById('cs-name').value.trim();
+  const email    = document.getElementById('cs-email').value.trim();
+  const desig    = document.getElementById('cs-designation').value.trim();
+  const password = document.getElementById('cs-password').value.trim();
+  const otpCode  = document.getElementById('cs-otp-input').value.trim();
+
+  if (otpCode.length < 6) { window.showToast('Enter the full 6-digit code.', 'error'); return; }
+
+  const btn = document.getElementById('verify-staff-btn');
+  setButtonLoading(btn, true, 'Verifying...');
+
+  try {
+    await verifyUserOTP(email, otpCode);
+
+    const cSnap = await getDoc(doc(db, 'companies', window.CU.companyId));
+    const companyName = cSnap.exists() ? cSnap.data().name : 'Company';
+
+    const result = await createStaff({ name, email, password, role:'staff', companyId:window.CU.companyId, companyName, createdBy:window.CU.uid, designation:desig });
+
+    // Store for download
+    _lastCreatedStaff = { name, email, password, uniqueId: result.uniqueId };
+
+    // Show success
+    document.getElementById('staff-otp-container').classList.add('hidden');
+    document.getElementById('created-card-section').classList.remove('hidden');
+    document.getElementById('cred-box').innerHTML = `
+      <strong style="color:var(--tx-1)">Name:</strong> ${esc(name)}<br>
+      <strong style="color:var(--tx-1)">Email:</strong> ${esc(email)}<br>
+      <strong style="color:var(--tx-1)">Password:</strong> ${esc(password)}<br>
+      <strong style="color:var(--tx-1)">Zenda ID:</strong> ${result.uniqueId}`;
+
+    // Send credentials email
+    const emailNote = document.getElementById('email-sent-note');
+    const emailSent = await sendStaffCredentialsEmail(email, name, password, result.uniqueId, companyName);
+    if (emailNote) {
+      emailNote.textContent = emailSent
+        ? `📧 Credentials sent to ${email}`
+        : `💡 Download the card below and share credentials manually.`;
     }
+
+    window.showToast(`${name} added to your team!`, 'success');
+  } catch(e) {
+    window.showToast(e.message || 'Invalid Code. Try again.', 'error');
+  } finally {
+    setButtonLoading(btn, false, 'Verify & Confirm');
+  }
+};
+
+window.doneCreateStaff = function() {
+  window.closeFullpage('create-staff-page');
+  setTimeout(() => window.resetCreateStaff(), 400); // Reset after slide-out
 };
 
 window.cancelCreateStaff = function() {
-    document.getElementById('staff-otp-container').classList.add('hidden');
-    document.getElementById('staff-form-container').classList.remove('hidden');
-    document.getElementById('cs-otp-input').value = '';
+  document.getElementById('staff-otp-container').classList.add('hidden');
+  document.getElementById('staff-form-container').classList.remove('hidden');
+  document.getElementById('cs-otp-input').value = '';
 };
 
 window.resetCreateStaff = function() {
-    ['cs-name','cs-email','cs-designation','cs-password','cs-otp-input'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-    document.getElementById('created-card-section')?.classList.add('hidden');
-    document.getElementById('staff-otp-container')?.classList.add('hidden');
-    document.getElementById('staff-form-container')?.classList.remove('hidden');
+  ['cs-name','cs-email','cs-designation','cs-password','cs-otp-input'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('created-card-section')?.classList.add('hidden');
+  document.getElementById('staff-otp-container')?.classList.add('hidden');
+  document.getElementById('staff-form-container')?.classList.remove('hidden');
+  const note = document.getElementById('email-sent-note');
+  if (note) note.textContent = '';
+  _lastCreatedStaff = {};
 };
 
-window.togglePwd = function(id, btn) {
+window.togglePwd = function(id) {
   const inp = document.getElementById(id);
   inp.type = inp.type === 'password' ? 'text' : 'password';
 };
 
-window.clearCSErr = function(inp) { inp.classList.remove('err'); const e = document.getElementById('err-' + inp.id); if (e) e.textContent = ''; };
+window.clearCSErr = function(inp) {
+  inp.classList.remove('err');
+  const e = document.getElementById('err-' + inp.id); if (e) e.textContent = '';
+};
 
 window.showView = function(v) {
   ['home','tasks','staff'].forEach(n => {
-    const el = document.getElementById('view-' + n);
-    if (el) { const hide = n !== v; el.classList.toggle('hidden', hide); }
+    document.getElementById('view-' + n)?.classList.toggle('hidden', n !== v);
     document.getElementById('nav-' + n)?.classList.toggle('active', n === v);
   });
   const bnMap = { home:'bn-home', tasks:'bn-tasks', staff:'bn-staff-btn' };
@@ -1218,18 +1468,19 @@ window.openProfile = function() {
   if (window.innerWidth >= 769) {
     document.getElementById('profile-side-panel')?.classList.add('open');
     document.getElementById('panel-overlay')?.classList.add('visible');
-  } else { document.getElementById('profile-page-mobile')?.classList.add('open'); }
+  } else {
+    document.getElementById('profile-page-mobile')?.classList.add('open');
+  }
 };
 
-window.closeProfile      = window.closeAllPanels;
-window.openAppLib        = function() { window.open('app-library.html' + (window.CU?.uid ? '?uid=' + window.CU.uid : ''), '_blank'); };
-window.openModal         = function(id) { document.getElementById(id)?.classList.remove('hidden'); window.closeAllPanels(); };
-window.closeModal        = function(id) { document.getElementById(id)?.classList.add('hidden'); };
-window.openAssignModal   = function() { window.openModal('assign-modal'); };
-window.openFilterModal   = function() { window.openModal('filter-modal'); };
+window.closeProfile    = window.closeAllPanels;
+window.openAppLib      = function() { window.open('app-library.html' + (window.CU?.uid ? '?uid=' + window.CU.uid : ''), '_blank'); };
+window.openModal       = function(id) { const el = document.getElementById(id); if(el) { el.classList.remove('hidden'); el.style.display = ''; } window.closeAllPanels(); };
+window.closeModal      = function(id) { const el = document.getElementById(id); if(el) { el.classList.add('hidden'); el.style.display = 'none'; } };
+window.openAssignModal = function() { window.openModal('assign-modal'); };
 
 window.markNotifRead = async function(id) { try { await markNotificationRead(window.CU?.uid, id); } catch(e) {} };
-window.markAllRead   = async function() {
+window.markAllRead = async function() {
   try {
     await markAllReadFn(window.CU?.uid);
     const nb = document.getElementById('notif-body');
@@ -1247,33 +1498,40 @@ window.handleLogout = async function() {
   window.location.href = 'login.html';
 };
 
-// Close expanding search bar when clicking outside of it
+// Close search bar when clicking outside
 document.addEventListener('click', function(e) {
-    const searchWrap = document.getElementById('staff-search-wrap');
-    if (searchWrap && searchWrap.classList.contains('active')) {
-        if (!searchWrap.contains(e.target)) {
-            searchWrap.classList.remove('active');
-        }
-    }
+  const sw = document.getElementById('staff-search-wrap');
+  if (sw && sw.classList.contains('active') && !sw.contains(e.target)) {
+    sw.classList.remove('active');
+  }
 });
 
-// Start App Fallback
+// Start
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-    init();
+  init();
 }
 </script>
 
 <script>
-    setTimeout(() => {
-        const loader = document.getElementById('loading-overlay');
-        if (loader && loader.style.opacity !== '0') {
-            console.error("Zenda Error: Firebase module failed to load. Check 'firebase-config.js' export names.");
-            loader.style.opacity = '0';
-            setTimeout(() => loader.remove(), 400);
-        }
-    }, 4000);
+// Safety loader timeout
+setTimeout(() => {
+  const loader = document.getElementById('loading-overlay');
+  if (loader && loader.style.opacity !== '0') {
+    loader.style.opacity = '0';
+    setTimeout(() => loader.remove(), 400);
+  }
+}, 4000);
+
+// Fix closeModal to also set display:none for reliability
+(function patchCloseModal() {
+  const origClose = window.closeModal;
+  window.closeModal = function(id) {
+    const el = document.getElementById(id);
+    if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
+  };
+})();
 </script>
 </body>
 </html>
