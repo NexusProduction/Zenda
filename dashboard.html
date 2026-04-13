@@ -16,6 +16,11 @@
    ZENDA DASHBOARD — COMPLETE STYLE OVERRIDES & RESPONSIVENESS
    ========================================================================== */
 
+/* Make all borders slightly darker and more visible globally */
+:root {
+  --bd-color: #CBD5E1 !important; 
+}
+
 /* Universal Box Sizing to prevent width overflow */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -60,7 +65,7 @@
 
 /* ── Modal fixes ── */
 .modal-overlay.hidden { display: none !important; }
-#delete-modal .modal { border-radius: 20px !important; overflow: hidden; }
+#delete-modal .modal, #delete-task-modal .modal { border-radius: 20px !important; overflow: hidden; }
 
 /* ── Toast ── */
 .toast.out { animation: toastOut 0.3s forwards; }
@@ -70,6 +75,11 @@
 /* ── Button min size ── */
 .btn { min-height: 38px; }
 .btn[disabled], .btn.loading { min-width: 100px; position: relative; }
+
+/* ── Fine-tuning Text Margins & Input Radii ── */
+.page-ttl, .page-sub { margin-left: 8px !important; }
+.sc-info { margin-left: 8px !important; }
+.form-input, .zenda-select, textarea.form-input { border-radius: 10px !important; }
 
 /* ── Staff page header improvements ── */
 #view-staff .page-hdr {
@@ -250,19 +260,7 @@
   margin-right: 12px !important;
   width: auto !important;
 }
-/* ── Fine-tuning Text Margins & Input Radii ── */
-.page-ttl, .page-sub { 
-  margin-left: 8px !important; 
-}
-.sc-info { 
-  margin-left: 8px !important; 
-}
-.form-input, .zenda-select, textarea.form-input { 
-  border-radius: 10px !important; 
-}
 
-/* ── TABLET VIEW (769px – 1024px) ── */
-   
 /* ── TABLET VIEW (769px – 1024px) ── */
 @media (min-width: 769px) and (max-width: 1024px) {
   .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -276,6 +274,10 @@
 
 /* ── DESKTOP (1025px+) ── */
 @media (min-width: 1025px) {
+  .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
   .content-row {
     flex-direction: row;
     gap: 20px;
@@ -400,7 +402,7 @@
   #assign-top-btn, #assign-tasks-btn, #assign-tasks-btn-full { display: none !important; }
   .topbar-right .profile-btn { display: none !important; }
 
-/* 7. Staff Page Fixes */
+  /* 7. Staff Page Fixes */
   #create-staff-page { width: 100%; border-radius: 0; }
   #view-staff .page-hdr { flex-direction: row !important; align-items: center !important; justify-content: space-between !important; gap: 8px !important; }
   .staff-header-actions { width: auto !important; justify-content: flex-end !important; margin: 0 !important; }
@@ -411,10 +413,6 @@
   #task-tab-row::-webkit-scrollbar { display: none; }
   .bn-item span:not(.bn-dot) { font-size: 9px; }
   .tasks-page-hdr { flex-direction: row; align-items: center; }
-}
-   /* Make all borders slightly darker and more visible globally */
-:root {
-  --bd-color: #CBD5E1 !important; 
 }
 </style>
 </head>
@@ -775,6 +773,7 @@
 </div>
 
 <div id="toast-container"></div>
+
 <script type="module">
 import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
 import { requireAuth, logout, getCurrentUser } from './auth.js';
@@ -1260,7 +1259,7 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     </div>` : '';
 
   const isAssignedByMe = task.assignedBy === window.CU?.uid;
-const deleteBtn = (showActions && isAssignedByMe && isPending && !isToMe) ? `
+  const deleteBtn = (showActions && isAssignedByMe && isPending && !isToMe) ? `
     <button style="padding:4px 10px;border-radius:8px;border:1px solid rgba(239,68,68,0.25);background:var(--red-l);color:var(--red);font-weight:600;font-size:0.72rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;" onclick="window.openDeleteTaskModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       Delete
@@ -1359,8 +1358,6 @@ window.renderTasksList = function() {
 window.renderStaffCards = function(staff) {
   const el = document.getElementById('staff-cards-list');
   if (!el) return;
-  const isOwner   = window.CU?.role === 'owner';
-  const isManager = window.CU?.role === 'manager';
   
   const nonOwner = staff.filter(s => s.role !== 'owner');
 
@@ -1375,6 +1372,9 @@ window.renderStaffCards = function(staff) {
       </div>`;
     return;
   }
+
+  const isOwner   = window.CU?.role === 'owner';
+  const isManager = window.CU?.role === 'manager';
 
   el.innerHTML = nonOwner.map(s => {
     const ini = getInitials(s.name);
