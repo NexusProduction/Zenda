@@ -798,7 +798,22 @@ import { getInstalledApps, listenInstalledApps, APP_REGISTRY } from './apps.js';
 import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
 import { showToast, setButtonLoading, getInitials, avatarColor, formatRole, copyToClipboard, saveSession } from './utils.js';
 import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined, deleteTask } from './tasks.js';
 import { sendOTP, verifyUserOTP } from './otp.js';
+
+// ── Safe button loader (prevents text disappearing) ──
+function loadBtn(btn, loading, restoreText) {
+  if (!btn) return;
+  if (loading) {
+    btn._origHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span style="width:15px;height:15px;border:2.5px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;display:inline-block;animation:spin .6s linear infinite;vertical-align:middle;"></span>`;
+  } else {
+    btn.disabled = false;
+    if (restoreText) btn.textContent = restoreText;
+    else if (btn._origHTML) btn.innerHTML = btn._origHTML;
+  }
+}
 
 window.clearCSErr   = function(el) {};
 window.copyToClipboard = copyToClipboard;
@@ -935,7 +950,8 @@ function setupUI() {
 
   const h = new Date().getHours();
   const g = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
-  document.getElementById('home-greeting').textContent = `Good ${g}, ${(name||'User').split(' ')[0]}`;
+  const fn = (name || 'User').split(' ')[0];
+  document.getElementById('home-greeting').innerHTML = `Good ${g}, <span class="greeting-name">${esc(fn)}</span>`;
   document.getElementById('home-sub').textContent = { owner:'Overview of your company and team', manager:'Your team tasks and activity', staff:'Your assignments and progress' }[role] || '';
 
   const canAssign   = role === 'owner' || role === 'manager';
@@ -1272,24 +1288,28 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
       <button style="padding:6px 14px;border-radius:8px;border:none;background:var(--red-l);color:var(--red);font-weight:700;font-size:0.75rem;cursor:pointer;box-shadow:0 2px 4px rgba(239,68,68,0.1);" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">✗ Decline</button>
     </div>` : '';
 
+  // Delete button placed INLINE with task title
   const isAssignedByMe = task.assignedBy === window.CU?.uid;
   const deleteBtn = (showActions && isAssignedByMe && isPending && !isToMe) ? `
-    <button style="padding:4px 10px;border-radius:8px;border:1px solid rgba(239,68,68,0.25);background:var(--red-l);color:var(--red);font-weight:600;font-size:0.72rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;" onclick="window.openDeleteTaskModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    <button class="task-delete-inline" onclick="window.openDeleteTaskModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
       Delete
     </button>` : '';
 
   return `
   <div class="${cardStateClass.trim()}" id="task-${task.id}">
     ${leftElement}
-    <div class="card-content-wrap" style="gap:6px;width:100%;min-width:0;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-        <div class="${titleClass}" style="flex:1;min-width:0;">${esc(task.title || 'Untitled Task')}</div>
+    <div class="card-content-wrap" style="gap:5px;width:100%;min-width:0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;">
+          <div class="${titleClass}" style="min-width:0;">${esc(task.title || 'Untitled Task')}</div>
+          ${deleteBtn}
+        </div>
         ${dateTopHTML}
       </div>
       <div class="card-meta-strip" style="margin-top:2px;">
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-          ${assigneeBadge}${deleteBtn}${priorityBadge}${statusBadge}
+          ${assigneeBadge}${priorityBadge}${statusBadge}
         </div>
         ${dateBottomHTML}
         ${actionButtons}
@@ -1472,26 +1492,21 @@ window.openDeleteTaskModal = function(id, title) {
 window.executeTaskDelete = async function() {
   if (!deleteTaskTargetId) return;
   const btn = document.getElementById('del-task-confirm-btn');
-  btn.textContent = 'Deleting…';
-  btn.disabled = true;
+  loadBtn(btn, true);
   
-  const taskEl = document.getElementById('task-' + deleteTaskTargetId);
-  if (taskEl) { taskEl.style.opacity = '0.4'; taskEl.style.pointerEvents = 'none'; }
+  const tEl = document.getElementById('task-' + deleteTaskTargetId);
+  if (tEl) { tEl.style.opacity = '.4'; tEl.style.pointerEvents = 'none'; }
   
   try {
-    // Dynamically import the delete function so it doesn't crash the page
-    const { deleteTask: dt } = await import('./tasks.js');
-    await dt(deleteTaskTargetId);
-    
-    if (taskEl) taskEl.remove();
+    await deleteTask(deleteTaskTargetId);
+    if (tEl) tEl.remove();
     window.closeModal('delete-task-modal');
     window.showToast('Task deleted.', 'success');
   } catch(e) {
-    if (taskEl) { taskEl.style.opacity = '1'; taskEl.style.pointerEvents = ''; }
-    window.showToast('Could not delete task: ' + e.message, 'error');
+    if (tEl) { tEl.style.opacity = '1'; tEl.style.pointerEvents = ''; }
+    window.showToast('Could not delete: ' + e.message, 'error');
   } finally {
-    btn.textContent = 'Delete Task';
-    btn.disabled = false;
+    loadBtn(btn, false, 'Delete Task');
     deleteTaskTargetId = null;
   }
 };
@@ -1646,7 +1661,7 @@ window.finalizeCreateStaff = async function() {
     const cSnap = await getDoc(doc(db,'companies',window.CU.companyId));
     const companyName = cSnap.exists() ? cSnap.data().name : 'Company';
     const result = await createStaff({ name, email, password, role:'staff', companyId:window.CU.companyId, companyName, createdBy:window.CU.uid, designation:desig });
-    _lastCreatedStaff = { name, email, password, uniqueId: result.uniqueId };
+    _lastCreatedStaff = { name, email, password: pwd, uniqueId: result.uniqueId, designation: desig };
     document.getElementById('staff-otp-container').classList.add('hidden');
     document.getElementById('created-card-section').classList.remove('hidden');
     document.getElementById('cred-box').innerHTML = `<strong style="color:var(--tx-1)">Name:</strong> ${esc(name)}<br><strong style="color:var(--tx-1)">Email:</strong> ${esc(email)}<br><strong style="color:var(--tx-1)">Password:</strong> ${esc(password)}<br><strong style="color:var(--tx-1)">Zenda ID:</strong> ${result.uniqueId}`;
