@@ -281,21 +281,34 @@
   .card-date-top    { display: none !important; }
   .card-date-bottom { display: flex !important; }
 
-  /* Stats grid — Total Staff full width, other two 50/50 */
+  /* Stats grid — Total Staff full width, Pending + Completed half/half */
   .stats-grid {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
-  .stat-card:first-child {
-    grid-column: 1 / -1; /* Full width */
+  /* First card (Total Staff) — full width */
+  .stats-grid .stat-card:first-child {
+    grid-column: 1 / -1;
+  }
+  /* Second and third cards — each half width (default, no change needed) */
+  .stats-grid .stat-card:nth-child(2),
+  .stats-grid .stat-card:nth-child(3) {
+    grid-column: span 1;
   }
 
   /* Apps above recent tasks on mobile */
   .apps-wrap-order  { order: 0; }
   .recent-wrap-order { order: 1; }
 
-  /* Hide top Assign Task button on mobile */
-  #assign-top-btn { display: none !important; }
+  /* Hide top Assign Task button on mobile *//* Hide assign button in topbar area on mobile */
+  #assign-top-btn,
+  .page-hdr #assign-top-btn { 
+    display: none !important; 
+  }
+  /* Also hide from topbar-right if it leaked there */
+  .topbar-right .btn-primary {
+    display: none !important;
+  }
 
   /* Hide old icon assign btn in tasks page */
   #assign-tasks-btn { display: none !important; }
@@ -311,6 +324,23 @@
 
   /* Bottom nav items smaller */
   .bn-item span:not(.bn-dot) { font-size: 9px; }
+   
+}
+   @media (max-width: 768px) {
+  /* existing rules ... */
+
+  /* Fix recent task horizontal overflow */
+  #recent-tasks,
+  #recent-tasks .task-list-wrapper,
+  .premium-task-card {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  /* Remove the left/right margin on recent task cards on mobile */
+  #recent-tasks .premium-task-card {
+    margin: 0 0 8px 0 !important;
+  }
 }
 </style>
 </head>
@@ -1225,7 +1255,7 @@ window.renderRecentTasks = function() {
         return;
     }
     const listHTML = allUnique.map((t, i) =>
-        window.renderTaskCard(t, false, true).replace('class="premium-task-card', `class="premium-task-card" style="margin:0 16px;animation-delay:${i*0.1}s;"`)
+        window.renderTaskCard(t, false, true).replace('class="premium-task-card', `class="premium-task-card" style="margin:0;animation-delay:${i*0.1}s;"`)
     ).join('');
     el.innerHTML = '<div class="task-list-wrapper" style="padding-bottom:16px;">' + listHTML + '</div>';
 };
