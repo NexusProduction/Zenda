@@ -1304,49 +1304,81 @@ window.renderStaffCards = function(staff) {
   }).join('');
 };
 
+// ── Full app registry (must match app-library.html APPS array) ──
+const APP_REGISTRY_DASH = {
+  calculator: {
+    label: 'Calculator',
+    cls: 'bg-grad-blue',
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="3"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="12" y1="6" x2="12" y2="18"/></svg>`
+  },
+  calendar: {
+    label: 'Calendar',
+    cls: 'bg-grad-blue',
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`
+  },
+  inventory: {
+    label: 'Inventory',
+    cls: 'bg-grad-orange',
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`
+  },
+  expenses: {
+    label: 'Expenses',
+    cls: 'bg-grad-purple',
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`
+  },
+};
+
+// Maximum app icons shown before "View All" button appears
+const DASH_MAX_APPS = 3;
+
 function buildAppsGrid(ids) {
   const el = document.getElementById('apps-grid');
   if (!el) return;
 
-  // Core always-shown apps
-  const coreApps = [
-    { id:'calendar', label:'Calendar', cls:'bg-grad-blue', icon:`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>` },
-    { id:'inventory', label:'Inventory', cls:'bg-grad-orange', icon:`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>` },
-    { id:'expenses', label:'Expenses', cls:'bg-grad-purple', icon:`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>` },
-  ];
+  // 'calculator' is always shown (built-in default)
+  const allIds = ['calculator', ...((ids || []).filter(id => id !== 'calculator'))];
+  const visibleIds = allIds.slice(0, DASH_MAX_APPS);
+  const hasMore    = allIds.length > DASH_MAX_APPS;
 
-  const MAX_SHOW = 3;
-  const totalInstalled = (ids || []).length + coreApps.length;
-  const showViewAll = totalInstalled > MAX_SHOW;
-
-  let html = coreApps.map(a => `
-    <div class="app-squircle-wrap" onclick="window.openApp('${a.id}')">
-      <div class="app-squircle ${a.cls}">${a.icon}</div>
-      <span class="app-name">${a.label}</span>
-    </div>`).join('');
-
-  if (showViewAll) {
-    html += `
-    <div class="app-squircle-wrap" onclick="window.openAppLib()">
-      <div class="app-squircle bg-gray" style="position:relative;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-      </div>
-      <span class="app-name" style="color:var(--ac);font-weight:700;">View All</span>
+  let html = visibleIds.map(id => {
+    const app = APP_REGISTRY_DASH[id];
+    if (!app) return ''; // unknown app — skip
+    return `
+    <div class="app-squircle-wrap" onclick="window.openApp('${id}')">
+      <div class="app-squircle ${app.cls}">${app.icon}</div>
+      <span class="app-name">${app.label}</span>
     </div>`;
-  }
+  }).join('');
+
+  // "View All" tile — shown when more than DASH_MAX_APPS apps installed
+  html += `
+  <div class="app-squircle-wrap" onclick="window.openAppLib()">
+    <div class="app-squircle bg-gray">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+      </svg>
+    </div>
+    <span class="app-name" style="color:var(--ac);font-weight:700;">
+      ${hasMore ? `+${allIds.length - DASH_MAX_APPS} More` : 'App Library'}
+    </span>
+  </div>`;
 
   el.innerHTML = html;
-
-  // Update the header "App Library" link visibility
-  const appHdr = el.closest('.content-card')?.querySelector('.btn-text');
-  if (appHdr) appHdr.style.display = showViewAll ? '' : 'none';
 }
-
 window.openApp = function(appId) {
-  const map = { calendar:'calendar.html', inventory:'inventory.html', expenses:'expenses.html' };
+  // Keep in sync with app-library.html APPS array
+  const map = {
+    calculator: 'calculator.html',
+    calendar:   'calendar.html',
+    inventory:  'inventory.html',
+    expenses:   'expenses.html',
+  };
   const file = map[appId];
-  if (file) window.location.href = file + (window.CU?.uid ? '?uid=' + window.CU.uid : '');
-  else window.showToast('App not found!', 'error');
+  if (file) {
+    window.location.href = file + (window.CU?.uid ? '?uid=' + window.CU.uid : '');
+  } else {
+    window.showToast('App not found!', 'error');
+  }
 };
 
 function renderNotifPanel(items) {
