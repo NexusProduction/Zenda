@@ -412,6 +412,10 @@
   .bn-item span:not(.bn-dot) { font-size: 9px; }
   .tasks-page-hdr { flex-direction: row; align-items: center; }
 }
+   /* Make all borders slightly darker and more visible globally */
+:root {
+  --bd-color: #CBD5E1 !important; 
+}
 </style>
 </head>
 <body>
@@ -738,6 +742,29 @@
     </div>
   </div>
 </div>
+<div class="modal-overlay hidden" id="delete-task-modal">
+  <div class="modal" style="max-width:440px;border-radius:20px;overflow:hidden;">
+    <div class="modal-hdr" style="border-radius:0;">
+      <div class="modal-ttl" style="color:var(--red)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle;margin-right:6px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        Delete Task
+      </div>
+      <button class="modal-close" onclick="window.closeModal('delete-task-modal')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding: 16px 24px; font-size: 0.95rem; color: var(--tx-2); line-height:1.6;">
+      Are you sure you want to delete <strong id="del-task-name-display" style="color:var(--tx-1);"></strong>?<br>
+      This action cannot be undone.
+    </div>
+    <div style="padding:0 24px 24px;">
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <button class="btn btn-ghost w-full" style="border-radius:12px;padding:12px;font-weight:600;" onclick="window.closeModal('delete-task-modal')">Cancel</button>
+        <button class="btn btn-danger w-full" style="border-radius:12px;padding:12px;font-weight:700;" id="del-task-confirm-btn" onclick="window.executeTaskDelete()">Delete Task</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="fullpage" id="app-store-page">
   <div class="fp-hdr"><button class="fp-back" onclick="window.closeFullpage('app-store-page')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button><div class="fp-ttl">App Library</div></div>
@@ -745,12 +772,11 @@
 </div>
 
 <div id="toast-container"></div>
-
 <script type="module">
 import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
 import { requireAuth, logout, getCurrentUser } from './auth.js';
 import { listenNotifications, markAllRead as markAllReadFn, markNotificationRead } from './notifications.js';
-import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined } from './tasks.js';
+import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined, deleteTask } from './tasks.js';
 import { listenCompanyStaff, getAssignableStaff, createStaff, updateUserProfile, deleteStaffMember } from './staff.js';
 import { getInstalledApps, listenInstalledApps, APP_REGISTRY } from './apps.js';
 import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
@@ -771,6 +797,7 @@ let allStaff        = [];
 let _profileBuilt   = false;
 let deleteTargetUid = null, deleteConfirmStr = '', deleteTargetEmail = '', deleteTargetPwd = '';
 let pendingDeclineId = null;
+let deleteTaskTargetId = null;
 let mainAreaChart   = null;
 let unsubs          = [];
 let _lastCreatedStaff = {};
@@ -1230,8 +1257,8 @@ window.renderTaskCard = function(task, showActions, isRecent = false) {
     </div>` : '';
 
   const isAssignedByMe = task.assignedBy === window.CU?.uid;
-  const deleteBtn = (showActions && isAssignedByMe && isPending && !isToMe) ? `
-    <button style="padding:4px 10px;border-radius:8px;border:1px solid rgba(239,68,68,0.25);background:var(--red-l);color:var(--red);font-weight:600;font-size:0.72rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;" onclick="window.confirmDeleteTask('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+const deleteBtn = (showActions && isAssignedByMe && isPending && !isToMe) ? `
+    <button style="padding:4px 10px;border-radius:8px;border:1px solid rgba(239,68,68,0.25);background:var(--red-l);color:var(--red);font-weight:600;font-size:0.72rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;" onclick="window.openDeleteTaskModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       Delete
     </button>` : '';
@@ -1419,18 +1446,33 @@ function buildProfile() {
   if (m) m.innerHTML = html;
 }
 
-window.confirmDeleteTask = async function(id, title) {
-  if (!confirm(`Delete task "${title}"? This cannot be undone.`)) return;
-  const taskEl = document.getElementById('task-' + id);
+window.openDeleteTaskModal = function(id, title) {
+  deleteTaskTargetId = id;
+  document.getElementById('del-task-name-display').textContent = title;
+  window.openModal('delete-task-modal');
+};
+
+window.executeTaskDelete = async function() {
+  if (!deleteTaskTargetId) return;
+  const btn = document.getElementById('del-task-confirm-btn');
+  btn.textContent = 'Deleting…';
+  btn.disabled = true;
+  
+  const taskEl = document.getElementById('task-' + deleteTaskTargetId);
   if (taskEl) { taskEl.style.opacity = '0.4'; taskEl.style.pointerEvents = 'none'; }
+  
   try {
-    const { deleteTask: dt } = await import('./tasks.js');
-    await dt(id);
+    await deleteTask(deleteTaskTargetId);
     if (taskEl) taskEl.remove();
+    window.closeModal('delete-task-modal');
     window.showToast('Task deleted.', 'success');
   } catch(e) {
     if (taskEl) { taskEl.style.opacity = '1'; taskEl.style.pointerEvents = ''; }
     window.showToast('Could not delete task: ' + e.message, 'error');
+  } finally {
+    btn.textContent = 'Delete Task';
+    btn.disabled = false;
+    deleteTaskTargetId = null;
   }
 };
 
