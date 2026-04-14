@@ -65,7 +65,8 @@ export async function login(email, password) {
     
     // SECURITY NOTIFICATION ARCHITECTURE: Write the login alert
     try {
-        await addDoc(collection(db, 'users', user.uid, 'notifications'), {
+        await addDoc(collection(db, 'notifications', user.uid, 'items'), {
+            createdAt: new Date().toISOString(),
             type: 'security_login',
             message: 'Your account was accessed from a new device.',
             createdAt: Date.now(),
