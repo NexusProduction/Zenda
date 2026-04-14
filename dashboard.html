@@ -126,7 +126,7 @@
     /* ── Add left/right margin ONLY to Recent Tasks bars ── */
     #recent-tasks .premium-task-card { margin-left: 12px !important; margin-right: 12px !important; width: auto !important; }
 
-    /* ── NOTIFICATION DROPDOWN PANEL ── */
+    /* ── TOP 1% NOTIFICATION UI REDESIGN ── */
     .notification-panel {
       position: absolute;
       top: 70px;
@@ -146,39 +146,73 @@
       pointer-events: none;
     }
     .notif-card {
-      padding: 20px;
-      border-bottom: 1px solid #F8FAFC;
+      padding: 16px 20px;
+      border-bottom: 1px solid #F1F5F9;
+      display: flex;
+      gap: 16px;
+      transition: background 0.2s, opacity 0.3s ease, transform 0.3s ease;
+      align-items: flex-start;
+    }
+    .notif-card:hover { background: #F8FAFC; }
+    .notif-card:last-child { border-bottom: none; }
+    
+    .notif-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .notif-icon.security { background: #FEF2F2; color: #EF4444; }
+    .notif-icon.task { background: #E0E7FF; color: #3A57E8; }
+    .notif-icon.general { background: #F1F5F9; color: #64748B; }
+
+    .notif-content-wrap {
+      flex: 1;
+      min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      gap: 4px;
     }
-    .notif-card:last-child { border-bottom: none; }
-    .notif-content strong {
+    .notif-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .notif-title {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 14px;
+      font-size: 0.9rem;
       color: #0F172A;
-      font-weight: 600;
-      letter-spacing: -0.01em;
+      font-weight: 700;
+      margin: 0;
+      line-height: 1.2;
     }
-    .notif-content p {
-      font-size: 13px;
+    .notif-time {
+      font-size: 0.7rem;
+      color: #94A3B8;
+      font-family: var(--f-mono);
+      white-space: nowrap;
+    }
+    .notif-body {
+      font-size: 0.8rem;
       color: #64748B;
-      margin-top: 4px;
-      margin-bottom: 0;
+      margin: 0;
+      line-height: 1.4;
     }
+
     .notif-actions {
       display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 12px;
+      gap: 8px;
       margin-top: 8px;
     }
     .notif-actions button {
-      padding: 8px 24px;
-      border-radius: 100px;
-      font-size: 12px;
-      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
       cursor: pointer;
       border: none;
       transition: all 0.2s ease;
@@ -189,10 +223,11 @@
     .btn-secondary:hover { background: #E2E8F0; }
     .btn-danger { background: #FEF2F2; color: #EF4444; }
     .btn-danger:hover { background: #FEE2E2; }
+    
     .deny-container { display: flex; gap: 8px; margin-top: 8px; }
-    .deny-input { flex: 1; padding: 8px 16px; border-radius: 16px; border: 1px solid #E2E8F0; font-size: 12px; outline: none; }
+    .deny-input { flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid #E2E8F0; font-size: 12px; outline: none; }
     .deny-input:focus { border-color: #3A57E8; }
-    .btn-submit { background: #3A57E8; color: white; border-radius: 16px; border: none; padding: 0 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .btn-submit { background: #3A57E8; color: white; border-radius: 8px; border: none; padding: 0 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
 
     /* ════════════════════════════   TABLET (769–1024px)════════════════════════════ */
     @media (min-width: 769px) and (max-width: 1024px) {
@@ -222,12 +257,7 @@
       #assign-tasks-btn { display: none !important; }
 
       /* PC TEAM CARD CENTERING */
-      .team-card {
-        flex-direction: column !important;
-        align-items: center !important;
-        text-align: center !important;
-        padding: 24px 16px !important;
-      }
+      .team-card { flex-direction: column !important; align-items: center !important; text-align: center !important; padding: 24px 16px !important; }
       .team-card-top { flex-direction: column !important; justify-content: center !important; gap: 12px; width: 100%; margin-bottom: 12px !important; }
       .team-profile-info { flex-direction: column !important; gap: 8px !important; }
       .team-text-block { align-items: center !important; }
@@ -416,31 +446,43 @@
   </div>
 
   <template id="tpl-security">
-    <div class="notif-card alert" data-id="">
-      <div class="notif-content">
-        <strong>New Login Detected</strong>
-        <p>Your account was accessed from a new device.</p>
+    <div class="notif-card" data-id="">
+      <div class="notif-icon security">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       </div>
-      <div class="notif-actions">
-        <button class="btn-primary" onclick="window.dismissAlert(this)">OK</button>
-        <button class="btn-secondary" onclick="window.location.href='login.html'">Reset Password</button>
+      <div class="notif-content-wrap">
+        <div class="notif-header">
+          <h4 class="notif-title">New Login Detected</h4>
+          <span class="notif-time">Just now</span>
+        </div>
+        <p class="notif-body">Your account was accessed from a new device.</p>
+        <div class="notif-actions">
+          <button class="btn-secondary" onclick="window.dismissAlert(this)">Dismiss</button>
+          <button class="btn-primary" onclick="window.location.href='login.html'">Secure Account</button>
+        </div>
       </div>
     </div>
   </template>
 
   <template id="tpl-task">
-    <div class="notif-card task" data-id="" data-task-id="" data-sender-id="">
-      <div class="notif-content">
-        <strong>New Task Assigned</strong>
-        <p class="task-title"></p>
+    <div class="notif-card" data-id="" data-task-id="" data-sender-id="">
+      <div class="notif-icon task">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       </div>
-      <div class="notif-actions">
-        <button class="btn-primary" onclick="window.acceptTaskNotif(this)">Accept</button>
-        <button class="btn-danger" onclick="window.showDenyInput(this)">Deny</button>
-      </div>
-      <div class="deny-container hidden">
-        <input type="text" class="deny-input" placeholder="Reason (max 10 words)" maxlength="60">
-        <button class="btn-submit" onclick="window.submitDeny(this)">Send</button>
+      <div class="notif-content-wrap">
+        <div class="notif-header">
+          <h4 class="notif-title">Task Update</h4>
+          <span class="notif-time">Just now</span>
+        </div>
+        <p class="notif-body task-title">...</p>
+        <div class="notif-actions">
+          <button class="btn-secondary" style="color:#EF4444; background:#FEF2F2;" onclick="window.showDenyInput(this)">Deny</button>
+          <button class="btn-primary" onclick="window.acceptTaskNotif(this)">Accept</button>
+        </div>
+        <div class="deny-container hidden">
+          <input type="text" class="deny-input" placeholder="Reason (max 10 words)" maxlength="60">
+          <button class="btn-submit" onclick="window.submitDeny(this)">Send</button>
+        </div>
       </div>
     </div>
   </template>
@@ -655,6 +697,19 @@
     </div>
   </div>
 
+  <div class="modal-overlay hidden" id="decline-modal">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-hdr">
+        <div class="modal-ttl">Decline Task</div><button class="modal-close" onclick="window.closeModal('decline-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div style="padding:16px 20px;">
+        <div style="background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.15);border-radius:8px;padding:12px;margin-bottom:16px;font-size:.85rem;color:var(--tx-2)">Task: <strong id="decline-task-title"></strong></div>
+        <div class="form-group" style="margin-bottom:24px"><label class="form-label" style="margin-bottom:4px;display:block;">Reason <span style="color:var(--tx-3);font-weight:400">(optional)</span></label><textarea class="form-input" id="decline-reason" placeholder="Let them know why you're declining…" style="min-height:80px;"></textarea></div>
+        <div style="display:flex;gap:8px"><button class="btn btn-ghost w-full" style="border-radius:10px;" onclick="window.closeModal('decline-modal')">Cancel</button><button class="btn btn-danger w-full" style="border-radius:10px;" id="confirm-decline-btn" onclick="window.confirmDecline()">Decline Task</button></div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay hidden" id="delete-modal">
     <div class="modal" style="max-width:440px;border-radius:20px;overflow:hidden;">
       <div class="modal-hdr">
@@ -689,7 +744,7 @@
     import { listenCompanyStaff, getAssignableStaff, createStaff, deleteStaffMember } from './staff.js';
     import { listenInstalledApps } from './apps.js';
     import { showToast, getInitials, avatarColor, formatRole, copyToClipboard, saveSession } from './utils.js';
-    import { doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { sendOTP, verifyUserOTP } from './otp.js';
 
     // ── Safe button loader (prevents text disappearing) ──
@@ -817,7 +872,7 @@
       const cs = role === 'owner' || role === 'manager';
       const ca = role === 'owner' || role === 'manager';
       
-      unsubs.push(listenNotifications(uid, (it, u) => { renderNotifs(it); setBadge('notif-badge', u); }));
+      unsubs.push(listenNotifications(uid, (it, u) => { window.renderNotifs(it); setBadge('notif-badge', u); setBadge('notif-count-badge', u); }));
       
       unsubs.push(listenMyTasks(uid, tasks => { window.myTasks = tasks; const p = tasks.filter(t => t.status === 'pending').length; setBadge('task-badge-side', p); setDot('bn-task-dot', p > 0); window.renderRecentTasks(); window.renderTasksList(); if (role === 'staff' || role === 'manager') { updateCharts(tasks); renderNonOwnerStats(tasks); } if (role === 'owner') renderOwnerStats(); }));
       
@@ -914,7 +969,6 @@
         const cD = isO || (isMgr && s.role === 'staff');
         const dH = cD ? `<button class="btn-delete-big" style="z-index: 2; position: relative;" title="Remove Staff" onclick="event.stopPropagation(); window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${esc(s.passwordHint||'')}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : '';
         const aH = (isO || isMgr) ? `<button class="btn-text" style="font-size:12px;padding:4px 12px; z-index: 2; position: relative;" onclick="event.stopPropagation(); window.quickAssign('${s.uid}')">Assign Task</button>` : '';
-        
         const sData = encodeURIComponent(JSON.stringify({uid: s.uid, name: s.name, email: s.email, designation: s.designation, role: s.role, pwd: s.passwordHint, created: s.createdAt, uniqueId: s.uniqueId}));
 
         return `<div class="team-card anim-stagger" style="cursor:pointer;" onclick="window.viewStaffDetails('${sData}')"><div class="team-card-top"><div class="team-profile-info"><div class="team-av">${ini}</div><div class="team-text-block"><div class="team-name">${esc(s.name)}</div><div class="team-role">${esc(s.designation||formatRole(s.role))}</div></div></div>${dH}</div><div class="team-card-actions" style="justify-content: space-between;">${eH}${aH}</div></div>`;
@@ -953,7 +1007,7 @@
       const el = document.getElementById('notif-body');
       if (!el) return;
       if (!items.length) { 
-        el.innerHTML = `<div class="empty" style="padding:40px 20px; text-align:center;"><div class="empty-ico" style="margin-bottom:10px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl" style="color:#64748B; font-size:14px;">No notifications</div></div>`; 
+        el.innerHTML = `<div class="empty" style="padding:40px 20px; text-align:center;"><div class="empty-ico" style="margin-bottom:10px; display:flex; justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl" style="color:#64748B; font-size:14px;">No notifications</div></div>`; 
         return; 
       }
       
@@ -976,7 +1030,14 @@
           const div = document.createElement('div');
           div.className = 'notif-card';
           div.dataset.id = n.id;
-          div.innerHTML = `<div class="notif-content"><strong style="font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;color:#0F172A;">Notification</strong><p style="font-size:13px;color:#64748B;margin-top:4px;">${esc(n.message)}</p></div><div class="notif-actions" style="display:flex;justify-content:center;gap:12px;margin-top:8px;"><button class="btn-primary" style="padding:8px 24px;border-radius:100px;font-size:12px;font-weight:600;border:none;cursor:pointer;" onclick="window.dismissAlert(this)">OK</button></div>`;
+          const timeStr = ago(n.createdAt);
+          div.innerHTML = `
+            <div class="notif-icon general"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+            <div class="notif-content-wrap">
+              <div class="notif-header"><h4 class="notif-title">Notification</h4><span class="notif-time">${timeStr}</span></div>
+              <p class="notif-body">${esc(n.message)}</p>
+              <div class="notif-actions"><button class="btn-secondary" onclick="window.dismissAlert(this)">Mark as Read</button></div>
+            </div>`;
           el.appendChild(div);
         }
       });
@@ -993,15 +1054,12 @@
       }
     };
 
-    // Override closeAllPanels to also close dropdown cleanly
     const oldCloseAllPanels = window.closeAllPanels;
     window.closeAllPanels = function(skipDropdown = false) {
       document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open')); 
       ['profile-side-panel', 'profile-page-mobile', 'create-staff-page'].forEach(id => document.getElementById(id)?.classList.remove('open')); 
       document.getElementById('panel-overlay')?.classList.remove('visible');
-      if (!skipDropdown) {
-         document.getElementById('notificationDropdown')?.classList.add('hidden');
-      }
+      if (!skipDropdown) { document.getElementById('notificationDropdown')?.classList.add('hidden'); }
     };
 
     window.dismissAlert = async function(btn) {
@@ -1010,7 +1068,9 @@
       btn.textContent = "Done!";
       card.style.opacity = '0.5';
       setTimeout(() => card.remove(), 300);
-      try { await markNotificationRead(window.CU?.uid, id); } catch(e) {}
+      try {
+        await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' });
+      } catch(e) { console.error("Error marking read:", e); }
     };
 
     window.acceptTaskNotif = async function(btn) {
@@ -1019,7 +1079,9 @@
       btn.textContent = "Accepted!";
       card.style.opacity = '0.5';
       setTimeout(() => card.remove(), 300);
-      try { await markNotificationRead(window.CU?.uid, id); } catch(e) {}
+      try {
+        await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' });
+      } catch(e) { console.error("Error marking read:", e); }
     };
 
     window.showDenyInput = function(btn) {
@@ -1045,22 +1107,9 @@
       btn.textContent = "Sending...";
       
       try {
-        const { updateDoc, doc, addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        if (taskId) {
-            await updateDoc(doc(db, 'tasks', taskId), { status: 'declined', reason: input });
-        }
-        if (managerId) {
-            await addDoc(collection(db, 'users', managerId, 'notifications'), {
-              type: 'task_update',
-              message: `Task denied. Reason: ${input}`,
-              taskId: taskId,
-              createdAt: Date.now(),
-              read: false
-            });
-        }
-        if (notifId) {
-            await markNotificationRead(window.CU?.uid, notifId);
-        }
+        if (taskId) { await updateDoc(doc(db, 'tasks', taskId), { status: 'declined', reason: input }); }
+        if (managerId) { await addDoc(collection(db, 'users', managerId, 'notifications'), { type: 'task_update', message: `Task denied. Reason: ${input}`, taskId: taskId, createdAt: Date.now(), read: false }); }
+        if (notifId) { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' }); }
         
         btn.textContent = "Done!";
         card.style.opacity = '0.5';
@@ -1077,7 +1126,6 @@
 
     window.openDeleteTaskModal = function(id, title) { deleteTaskTargetId = id; document.getElementById('del-task-name-display').textContent = title; window.openModal('delete-task-modal'); };
     
-    // FIX: Using direct Firestore delete Doc to prevent crashing on missing imports
     window.executeTaskDelete = async function() {
       if (!deleteTaskTargetId) return;
       const btn = document.getElementById('del-task-confirm-btn');
@@ -1159,12 +1207,10 @@
     };
 
     window.openProfile = function() { if (!_profileBuilt) { buildProfile(); _profileBuilt = true; } if (window.innerWidth >= 769) { document.getElementById('profile-side-panel')?.classList.add('open'); document.getElementById('panel-overlay')?.classList.add('visible'); } else { document.getElementById('profile-page-mobile')?.classList.add('open'); } };
-    window.closeProfile = window.closeAllPanels;
     window.openAppLib = function() { window.open('app-library.html' + (window.CU?.uid ? '?uid=' + window.CU.uid : ''), '_blank'); };
-    window.openModal = function(id) { const el = document.getElementById(id); if (el) { el.classList.remove('hidden'); el.style.display = ''; } window.closeAllPanels(); };
+    window.openModal = function(id) { const el = document.getElementById(id); if (el) { el.classList.remove('hidden'); el.style.display = ''; } window.closeAllPanels(true); };
     window.closeModal = function(id) { const el = document.getElementById(id); if (el) { el.classList.add('hidden'); el.style.display = 'none'; } };
     window.openAssignModal = function() { window.openModal('assign-modal'); };
-    window.markNotifRead = async function(id) { try { await markNotificationRead(window.CU?.uid, id); } catch (e) {} };
     window.markAllRead = async function() { try { await markAllReadFn(window.CU?.uid); document.getElementById('notif-badge')?.classList.add('hidden'); document.getElementById('notif-count-badge').textContent = ''; showToast('All marked read', 'success'); } catch (e) { console.error(e); } };
     window.handleLogout = async function() { unsubs.forEach(f => f?.()); sessionStorage.clear(); localStorage.removeItem('zenda_session'); await logout(); location.href = 'login.html'; };
 
