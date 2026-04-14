@@ -11,454 +11,474 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <style>
-    /* =========================================
-       ZENDA DASHBOARD — ALL FIXES
-       ========================================= */
     *, *::before, *::after { box-sizing: border-box; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    :root {
-      --bd-color: #CBD5E1 !important; 
+    @keyframes bellShake {
+      0%,100% { transform: rotate(0deg); }
+      15%     { transform: rotate(18deg); }
+      30%     { transform: rotate(-14deg); }
+      45%     { transform: rotate(10deg); }
+      60%     { transform: rotate(-6deg); }
+      75%     { transform: rotate(4deg); }
     }
-
-    /* ── Content & Chart Header Padding Fix ── */
-    .chart-hdr, .content-hdr {
-      padding: 15px 20px !important;
-      border-bottom: 1px solid var(--bg-overlay);
+    @keyframes notifSlideIn {
+      from { opacity: 0; transform: translateX(16px); }
+      to   { opacity: 1; transform: translateX(0); }
     }
+    @keyframes notifOut {
+      from { opacity: 1; transform: translateX(0); max-height: 120px; margin-bottom: 0; }
+      to   { opacity: 0; transform: translateX(20px); max-height: 0; margin-bottom: 0; padding: 0; }
+    }
+    @keyframes toastOut { from{opacity:1;} to{opacity:0;transform:translateX(14px);} }
 
-    /* ── Accent name in greeting ── */
+    :root { --bd-color: #CBD5E1 !important; }
+
+    /* ── Chart / content headers ── */
+    .chart-hdr, .content-hdr { padding: 15px 20px !important; border-bottom: 1px solid var(--bg-overlay); }
+
     .greeting-name { color: var(--ac); font-weight: 800; }
-
-    /* ── Fine-tuning Text Margins & Input Radii ── */
     .page-ttl, .page-sub { margin-left: 6px !important; }
     .sc-info { margin-left: 6px !important; }
-    
-    /* ── Beautiful Visible Form Inputs ── */
-    .form-input, .zenda-select, textarea.form-input { 
-      border-radius: 10px !important; 
+
+    /* ── Inputs ── */
+    .form-input, .zenda-select, textarea.form-input {
+      border-radius: 10px !important;
       border: 1px solid var(--bd-color) !important;
       background: var(--bg-raised) !important;
       padding: 8px 12px !important;
-      font-family: inherit;
-      width: 100%;
-      font-size: 0.85rem;
+      font-family: inherit; width: 100%; font-size: 0.85rem;
     }
     .form-input:focus, .zenda-select:focus, textarea.form-input:focus {
       border-color: #3A57E8 !important;
-      box-shadow: 0 0 0 3px rgba(58, 87, 232, 0.15) !important;
+      box-shadow: 0 0 0 3px rgba(58,87,232,.15) !important;
     }
 
     /* ── Staff header ── */
     .staff-header-actions { display: flex; align-items: center; gap: 12px; justify-content: flex-end; }
-    
-    /* ── Staff delete btn ── */
-    .btn-delete-big { background: #FEF2F2; color: #EF4444; border: 1px solid rgba(239,68,68,.2); border-radius: 8px; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; flex-shrink: 0; }
-    .btn-delete-big:hover { background: #EF4444; color: white; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,.25); }
+    .btn-delete-big { background:#FEF2F2;color:#EF4444;border:1px solid rgba(239,68,68,.2);border-radius:8px;width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0; }
+    .btn-delete-big:hover { background:#EF4444;color:white;transform:translateY(-1px);box-shadow:0 4px 12px rgba(239,68,68,.25); }
 
     /* ── Add Staff panel ── */
-    #create-staff-page { width: 60%; left: auto; right: 0; border-top-left-radius: 32px; border-bottom-left-radius: 32px; box-shadow: -10px 0 50px rgba(15,23,42,.2); background: linear-gradient(145deg,#fff,#F8FAFC); transition: transform .38s cubic-bezier(.4,0,.2,1); transform: translateX(110%); }
-    #create-staff-page.open { transform: translateX(0); }
-    .panel-overlay.visible { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    #create-staff-page { width:60%;left:auto;right:0;border-top-left-radius:32px;border-bottom-left-radius:32px;box-shadow:-10px 0 50px rgba(15,23,42,.2);background:linear-gradient(145deg,#fff,#F8FAFC);transition:transform .38s cubic-bezier(.4,0,.2,1);transform:translateX(110%); }
+    #create-staff-page.open { transform:translateX(0); }
+    .panel-overlay.visible { backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px); }
 
     /* ── Modals ── */
-    .modal-overlay.hidden { display: none !important; }
-    .modal { border: 1px solid var(--bd-color) !important; border-radius: 20px !important; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.08) !important; }
+    .modal-overlay.hidden { display:none !important; }
+    .modal { border:1px solid var(--bd-color) !important;border-radius:20px !important;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.08) !important; }
 
-    /* ── Toast / sidebar ── */
-    .toast.out { animation: toastOut .3s forwards; }
-    .sidebar-nav { padding-top: 8px !important; }
-    .sidebar-section-label:first-child { margin-top: 8px !important; }
-    .btn { min-height: 38px; }
-    .btn[disabled], .btn.loading { min-width: 80px; position: relative; }
+    /* ── Toast ── */
+    .toast.out { animation:toastOut .3s forwards; }
+    .sidebar-nav { padding-top:8px !important; }
+    .sidebar-section-label:first-child { margin-top:8px !important; }
+    .btn { min-height:38px; }
 
-    /* ── Staff cards — compact ── */
-    .team-card { padding: 14px 16px !important; border-radius: 14px !important; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
-    .team-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
-    .team-card-top { margin-bottom: 8px !important; display: flex; align-items: center; justify-content: space-between; }
-    .team-profile-info { display: flex; align-items: center; gap: 12px; }
-    .team-av { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .team-text-block { display: flex; flex-direction: column; justify-content: center; }
-    .team-card-actions { padding-top: 10px !important; margin-top: 6px !important; border-top: 1px solid var(--bd-color); display: flex; justify-content: space-between; align-items: center;}
+    /* ── Staff cards ── */
+    .team-card { padding:14px 16px !important;border-radius:14px !important;transition:transform 0.2s,box-shadow 0.2s;position:relative; }
+    .team-card:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.06); }
+    .team-card-top { margin-bottom:8px !important;display:flex;align-items:center;justify-content:space-between; }
+    .team-profile-info { display:flex;align-items:center;gap:12px; }
+    .team-av { display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+    .team-text-block { display:flex;flex-direction:column;justify-content:center; }
+    .team-card-actions { padding-top:10px !important;margin-top:6px !important;border-top:1px solid var(--bd-color);display:flex;justify-content:space-between;align-items:center; }
 
-    /* ── Task card dates & layout ── */
-    .premium-task-card { margin-bottom: 10px !important; width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; box-sizing: border-box !important;}
-    .card-date-top { display: flex; align-items: center; gap: 4px; }
-    .card-date-bottom { display: none; align-items: center; gap: 5px; font-size: .72rem; color: var(--tx-3); font-weight: 500; margin-top: 5px; }
-    .card-date-bottom svg { flex-shrink: 0; }
-    .task-declined .card-date-top { display: none !important; }
-    .task-declined .card-date-bottom { display: flex !important; }
+    /* ── Task cards ── */
+    .premium-task-card { margin-bottom:10px !important;width:100% !important;margin-left:0 !important;margin-right:0 !important;box-sizing:border-box !important; }
+    .card-date-top { display:flex;align-items:center;gap:4px; }
+    .card-date-bottom { display:none;align-items:center;gap:5px;font-size:.72rem;color:var(--tx-3);font-weight:500;margin-top:5px; }
+    .card-date-bottom svg { flex-shrink:0; }
+    .task-declined .card-date-top { display:none !important; }
+    .task-declined .card-date-bottom { display:flex !important; }
 
-    /* ── Delete inline button in task title row ── */
-    .task-delete-inline { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 7px; border: 1px solid rgba(239,68,68,.25); background: #FEF2F2; color: #EF4444; font-size: .7rem; font-weight: 700; cursor: pointer; flex-shrink: 0; white-space: nowrap; transition: all .18s; line-height: 1.4; margin-left: 8px; }
-    .task-delete-inline:hover { background: #EF4444; color: #fff; border-color: #EF4444; }
+    .task-delete-inline { display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:7px;border:1px solid rgba(239,68,68,.25);background:#FEF2F2;color:#EF4444;font-size:.7rem;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;transition:all .18s;line-height:1.4;margin-left:8px; }
+    .task-delete-inline:hover { background:#EF4444;color:#fff;border-color:#EF4444; }
 
-    /* ── My Tasks header ── */
-    .tasks-page-hdr { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 12px; padding: 0 4px; }
-    .tasks-page-hdr h1 { margin: 0; }
+    .tasks-page-hdr { display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:12px;padding:0 4px; }
+    .tasks-page-hdr h1 { margin:0; }
 
-    /* ── Assign Task button (desktop) ── */
-    #assign-tasks-btn-full { display: flex; align-items: center; gap: 8px; background: #3A57E8; color: white; border: none; border-radius: 100px; padding: 10px 20px; font-size: .875rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(58, 87, 232, 0.3); transition: all .2s; white-space: nowrap; flex-shrink: 0; }
-    #assign-tasks-btn-full:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(58, 87, 232, 0.4); }
+    #assign-tasks-btn-full { display:flex;align-items:center;gap:8px;background:#3A57E8;color:white;border:none;border-radius:100px;padding:10px 20px;font-size:.875rem;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(58,87,232,0.3);transition:all .2s;white-space:nowrap;flex-shrink:0; }
+    #assign-tasks-btn-full:hover { transform:translateY(-1px);box-shadow:0 6px 18px rgba(58,87,232,0.4); }
 
-    /* ── Bottom nav FAB (Desktop hidden usually) ── */
-    #bn-assign { display: none !important; }
+    #bn-assign { display:none !important; }
 
     /* ── Stats grid ── */
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .sc-ico { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0 !important; }
-    .sc-ico svg { flex-shrink: 0 !important; min-width: 24px; min-height: 24px; }
-    .sc-info { flex: 1; min-width: 0; }
-    .sc-info .sc-lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stats-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:14px; }
+    .sc-ico { width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0 !important; }
+    .sc-ico svg { flex-shrink:0 !important;min-width:24px;min-height:24px; }
+    .sc-info { flex:1;min-width:0; }
+    .sc-info .sc-lbl { white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 
     /* ── Content / apps ── */
-    .content-row { display: flex; flex-direction: column; gap: 16px; }
-    .apps-wrap-order { order: 0; }
-    .recent-wrap-order { order: 1; }
-    .apps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-content: flex-start; padding: 4px 2px; }
-    .app-squircle { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px; transition: transform .2s cubic-bezier(.34,1.56,.64,1); box-shadow: 0 2px 8px rgba(0,0,0,.1); }
-    .app-squircle-wrap:hover .app-squircle { transform: scale(1.08) rotate(-4deg); }
-    .app-squircle-wrap { display: flex; flex-direction: column; align-items: center; cursor: pointer; padding: 4px 2px; }
-    .app-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: .72rem; font-weight: 600; color: var(--tx-2); text-align: center; line-height: 1.2; }
-    .app-viewall-tile { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px; background: linear-gradient(135deg,#EEF2FF,#E0E7FF); border: 2px dashed #A5B4FC; transition: all .2s; }
-    .app-squircle-wrap:hover .app-viewall-tile { background: linear-gradient(135deg,#E0E7FF,#C7D2FE); border-color: var(--ac); }
+    .content-row { display:flex;flex-direction:column;gap:16px; }
+    .apps-wrap-order { order:0; }
+    .recent-wrap-order { order:1; }
+    .apps-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-content:flex-start;padding:4px 2px; }
+    .app-squircle { width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;transition:transform .2s cubic-bezier(.34,1.56,.64,1);box-shadow:0 2px 8px rgba(0,0,0,.1); }
+    .app-squircle-wrap:hover .app-squircle { transform:scale(1.08) rotate(-4deg); }
+    .app-squircle-wrap { display:flex;flex-direction:column;align-items:center;cursor:pointer;padding:4px 2px; }
+    .app-name { font-family:'Plus Jakarta Sans',sans-serif;font-size:.72rem;font-weight:600;color:var(--tx-2);text-align:center;line-height:1.2; }
+    .app-viewall-tile { width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);border:2px dashed #A5B4FC;transition:all .2s; }
+    .app-squircle-wrap:hover .app-viewall-tile { background:linear-gradient(135deg,#E0E7FF,#C7D2FE);border-color:var(--ac); }
 
-    /* ── Add left/right margin ONLY to Recent Tasks bars ── */
-    #recent-tasks .premium-task-card { margin-left: 12px !important; margin-right: 12px !important; width: auto !important; }
+    #recent-tasks .premium-task-card { margin-left:12px !important;margin-right:12px !important;width:auto !important; }
 
-    /* ── TOP 1% NOTIFICATION UI REDESIGN ── */
+    /* ══════════════════════════════════════════
+       NOTIFICATION PANEL — PREMIUM REDESIGN
+    ══════════════════════════════════════════ */
     .notification-panel {
       position: absolute;
       top: 70px;
       right: 20px;
-      width: 380px;
+      width: 400px;
       background: #FFFFFF;
       border-radius: 24px;
-      box-shadow: 0 12px 48px rgba(15, 23, 42, 0.08);
-      border: 1px solid rgba(226, 232, 240, 0.6);
+      box-shadow: 0 12px 48px rgba(15,23,42,0.1);
+      border: 1px solid rgba(226,232,240,0.6);
       z-index: 1000;
       overflow: hidden;
       transition: opacity 0.2s ease, transform 0.2s ease;
+      transform-origin: top right;
     }
     .notification-panel.hidden {
       opacity: 0;
-      transform: translateY(-10px);
+      transform: scale(0.95) translateY(-8px);
       pointer-events: none;
     }
-    .notif-card {
+
+    /* Notification panel header */
+    .notif-panel-header {
       padding: 16px 20px;
       border-bottom: 1px solid #F1F5F9;
       display: flex;
-      gap: 16px;
-      transition: background 0.2s, opacity 0.3s ease, transform 0.3s ease;
+      justify-content: space-between;
+      align-items: center;
+      background: #FAFBFF;
+    }
+    .notif-panel-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1rem;
+      color: #0F172A;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .notif-panel-header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .notif-unread-badge {
+      background: #EF4444;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      min-width: 22px;
+      text-align: center;
+    }
+    .notif-mark-all-btn {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #3A57E8;
+      background: #EEF2FF;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      white-space: nowrap;
+    }
+    .notif-mark-all-btn:hover { background: #E0E7FF; }
+
+    /* Notification body */
+    .notif-panel-body {
+      max-height: 380px;
+      overflow-y: auto;
+    }
+    .notif-panel-body::-webkit-scrollbar { width: 4px; }
+    .notif-panel-body::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 99px; }
+
+    /* Notification empty state */
+    .notif-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      gap: 10px;
+      text-align: center;
+    }
+    .notif-empty-icon {
+      width: 52px;
+      height: 52px;
+      background: #F1F5F9;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+    .notif-empty-title { font-size: 0.9rem; font-weight: 700; color: #0F172A; }
+    .notif-empty-sub { font-size: 0.8rem; color: #94A3B8; font-weight: 500; line-height: 1.5; }
+
+    /* Notification cards */
+    .notif-card {
+      padding: 14px 18px;
+      border-bottom: 1px solid #F8FAFC;
+      display: flex;
+      gap: 13px;
+      transition: background 0.15s, opacity 0.3s, transform 0.3s;
       align-items: flex-start;
+      animation: notifSlideIn 0.28s cubic-bezier(.22,1,.36,1) both;
     }
     .notif-card:hover { background: #F8FAFC; }
     .notif-card:last-child { border-bottom: none; }
-    
+    .notif-card.dismissing {
+      animation: notifOut 0.3s cubic-bezier(.4,0,.2,1) forwards;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
     .notif-icon {
-      width: 42px;
-      height: 42px;
+      width: 40px;
+      height: 40px;
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
     }
-    .notif-icon.security { background: #FEF2F2; color: #EF4444; }
-    .notif-icon.task { background: #E0E7FF; color: #3A57E8; }
-    .notif-icon.general { background: #F1F5F9; color: #64748B; }
+    .notif-icon.security { background:#FEF2F2;color:#EF4444; }
+    .notif-icon.task     { background:#E0E7FF;color:#3A57E8; }
+    .notif-icon.general  { background:#F1F5F9;color:#64748B; }
 
-    .notif-content-wrap {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+    .notif-content-wrap { flex:1;min-width:0;display:flex;flex-direction:column;gap:3px; }
+    .notif-header { display:flex;justify-content:space-between;align-items:flex-start;gap:8px; }
+    .notif-title { font-family:'Plus Jakarta Sans',sans-serif;font-size:.875rem;color:#0F172A;font-weight:700;margin:0;line-height:1.2; }
+    .notif-time { font-size:.68rem;color:#94A3B8;font-family:'DM Mono',monospace;white-space:nowrap; }
+    .notif-body { font-size:.78rem;color:#64748B;margin:0;line-height:1.45; }
+
+    .notif-actions { display:flex;gap:7px;margin-top:8px; }
+    .notif-actions button { padding:5px 14px;border-radius:8px;font-size:.72rem;font-weight:700;cursor:pointer;border:none;transition:all 0.15s;font-family:'Plus Jakarta Sans',sans-serif; }
+    .btn-primary-sm  { background:#3A57E8;color:white; }
+    .btn-primary-sm:hover  { background:#2A41C7; }
+    .btn-secondary-sm { background:#F1F5F9;color:#475569; }
+    .btn-secondary-sm:hover { background:#E2E8F0; }
+    .btn-danger-sm   { background:#FEF2F2;color:#EF4444; }
+    .btn-danger-sm:hover   { background:#FEE2E2; }
+
+    .deny-container { display:flex;gap:7px;margin-top:8px; }
+    .deny-input { flex:1;padding:7px 11px;border-radius:8px;border:1px solid #E2E8F0;font-size:12px;outline:none; }
+    .deny-input:focus { border-color:#3A57E8; }
+    .btn-submit-sm { background:#3A57E8;color:white;border-radius:8px;border:none;padding:0 14px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s;font-family:'Plus Jakarta Sans',sans-serif; }
+
+    /* ── Bell animation ── */
+    .notif-bell-ringing {
+      animation: bellShake 0.6s ease-in-out;
+      color: #F59E0B !important;
     }
-    .notif-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 8px;
-    }
-    .notif-title {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 0.9rem;
-      color: #0F172A;
-      font-weight: 700;
-      margin: 0;
-      line-height: 1.2;
-    }
-    .notif-time {
-      font-size: 0.7rem;
-      color: #94A3B8;
-      font-family: var(--f-mono);
-      white-space: nowrap;
-    }
-    .notif-body {
-      font-size: 0.8rem;
-      color: #64748B;
-      margin: 0;
-      line-height: 1.4;
+    .icon-btn.notif-active {
+      background: #FEF3C7 !important;
+      border-color: #F59E0B !important;
+      color: #D97706 !important;
     }
 
-    .notif-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .notif-actions button {
-      padding: 6px 16px;
-      border-radius: 8px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-      transition: all 0.2s ease;
-    }
-    .btn-primary { background: #3A57E8; color: white; }
-    .btn-primary:hover { background: #2A41C7; }
-    .btn-secondary { background: #F1F5F9; color: #475569; }
-    .btn-secondary:hover { background: #E2E8F0; }
-    .btn-danger { background: #FEF2F2; color: #EF4444; }
-    .btn-danger:hover { background: #FEE2E2; }
-    
-    .deny-container { display: flex; gap: 8px; margin-top: 8px; }
-    .deny-input { flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid #E2E8F0; font-size: 12px; outline: none; }
-    .deny-input:focus { border-color: #3A57E8; }
-    .btn-submit { background: #3A57E8; color: white; border-radius: 8px; border: none; padding: 0 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    /* ── Bottom nav active state for notifications ── */
+    .bn-item.notif-nav-active { color: #3A57E8 !important; }
+    .bn-item.notif-nav-active svg { stroke: #3A57E8 !important; fill: none !important; }
 
-    /* ════════════════════════════   TABLET (769–1024px)════════════════════════════ */
-    @media (min-width: 769px) and (max-width: 1024px) {
-      .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
-      .team-card { padding: 12px 14px !important; }
-      .content-row { flex-direction: row; flex-wrap: wrap; }
-      .content-row .content-card { flex: 1; min-width: 280px; }
-      .apps-wrap-order { order: 1; }
-      .recent-wrap-order { order: 0; }
-      #create-staff-page { width: 75%; }
+    /* ── Tablet (769–1024px) ── */
+    @media (min-width:769px) and (max-width:1024px) {
+      .stats-grid { grid-template-columns:repeat(3,1fr);gap:12px; }
+      .team-card { padding:12px 14px !important; }
+      .content-row { flex-direction:row;flex-wrap:wrap; }
+      .content-row .content-card { flex:1;min-width:280px; }
+      .apps-wrap-order { order:1; }
+      .recent-wrap-order { order:0; }
+      #create-staff-page { width:75%; }
     }
 
-    /* ════════════════════════════   DESKTOP (1025px+)════════════════════════════ */
-    @media (min-width: 1025px) {
-      .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left: 16px; padding-right: 16px; }
-      .content-row { flex-direction: row; gap: 20px; align-items: flex-start; }
-      .recent-wrap-order { order: 0; flex: 1.6; height: 440px; min-height: 440px; max-height: 440px; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0 !important; }
-      #recent-tasks { flex: 1; overflow-y: auto; scrollbar-width: none; padding: 0 4px; }
-      #recent-tasks::-webkit-scrollbar { display: none; }
-      #recent-tasks .task-list-wrapper { padding-bottom: 4px !important; }
-
-      .apps-wrap-order { order: 1; flex: 1; height: 440px; min-height: 440px; max-height: 440px; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0 !important; }
-      .apps-wrap .apps-grid { align-content: flex-start; overflow-y: auto; scrollbar-width: none; padding: 4px 2px; }
-      .apps-wrap .apps-grid::-webkit-scrollbar { display: none; }
-
-      #assign-tasks-btn-full { display: flex !important; }
-      #assign-tasks-btn { display: none !important; }
-
-      /* PC TEAM CARD CENTERING */
-      .team-card { flex-direction: column !important; align-items: center !important; text-align: center !important; padding: 24px 16px !important; }
-      .team-card-top { flex-direction: column !important; justify-content: center !important; gap: 12px; width: 100%; margin-bottom: 12px !important; }
-      .team-profile-info { flex-direction: column !important; gap: 8px !important; }
-      .team-text-block { align-items: center !important; }
-      .team-card-actions { flex-direction: column !important; gap: 12px; align-items: center !important; border-top: none !important; padding-top: 0 !important; width: 100%; justify-content: center !important; }
-      .team-email { justify-content: center !important; }
-      .btn-delete-big { position: absolute; top: 12px; right: 12px; }
+    /* ── Desktop (1025px+) ── */
+    @media (min-width:1025px) {
+      .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left:16px;padding-right:16px; }
+      .content-row { flex-direction:row;gap:20px;align-items:flex-start; }
+      .recent-wrap-order { order:0;flex:1.6;height:440px;min-height:440px;max-height:440px;overflow:hidden;display:flex;flex-direction:column;padding-bottom:0 !important; }
+      #recent-tasks { flex:1;overflow-y:auto;scrollbar-width:none;padding:0 4px; }
+      #recent-tasks::-webkit-scrollbar { display:none; }
+      #recent-tasks .task-list-wrapper { padding-bottom:4px !important; }
+      .apps-wrap-order { order:1;flex:1;height:440px;min-height:440px;max-height:440px;overflow:hidden;display:flex;flex-direction:column;padding-bottom:0 !important; }
+      .apps-wrap .apps-grid { align-content:flex-start;overflow-y:auto;scrollbar-width:none;padding:4px 2px; }
+      .apps-wrap .apps-grid::-webkit-scrollbar { display:none; }
+      #assign-tasks-btn-full { display:flex !important; }
+      #assign-tasks-btn { display:none !important; }
+      .team-card { flex-direction:column !important;align-items:center !important;text-align:center !important;padding:24px 16px !important; }
+      .team-card-top { flex-direction:column !important;justify-content:center !important;gap:12px;width:100%;margin-bottom:12px !important; }
+      .team-profile-info { flex-direction:column !important;gap:8px !important; }
+      .team-text-block { align-items:center !important; }
+      .team-card-actions { flex-direction:column !important;gap:12px;align-items:center !important;border-top:none !important;padding-top:0 !important;width:100%;justify-content:center !important; }
+      .team-email { justify-content:center !important; }
+      .btn-delete-big { position:absolute;top:12px;right:12px; }
     }
 
-    /* ════════════════════════════   MOBILE (≤768px) STRICT RESPONSIVENESS FIX ════════════════════════════ */
-    @media (max-width: 768px) {
-      html, body { max-width: 100vw !important; overflow-x: hidden !important; }
-      .app-body, .main-content { width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; min-width: 0; padding-left: 0 !important; padding-right: 0 !important; }
-      
-      .page-hdr { padding-left: 12px !important; padding-right: 12px !important; }
-      .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; padding-left: 12px !important; padding-right: 12px !important; }
-      .stats-grid .stat-card:first-child { grid-column: 1 / -1 !important; }
-      .apps-wrap-order { order: 0; }
-      .recent-wrap-order { order: 1; }
-      
-      /* My Apps Padding Fix */
-      .apps-wrap { padding: 10px 14px 8px 14px !important; }
-      .apps-wrap .content-hdr { padding-bottom: 8px !important; margin-bottom: 18px !important; }
+    /* ── Mobile (≤768px) ── */
+    @media (max-width:768px) {
+      html, body { max-width:100vw !important;overflow-x:hidden !important; }
+      .app-body, .main-content { width:100% !important;max-width:100vw !important;overflow-x:hidden !important;min-width:0;padding-left:0 !important;padding-right:0 !important; }
 
-      .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left: 12px !important; padding-right: 12px !important; width: 100% !important; box-sizing: border-box !important;}
-      .content-card { padding: 16px !important; width: 100% !important; margin: 0 !important; box-sizing: border-box !important;}
-      
-      #recent-tasks { width: 100% !important; padding: 0 !important; overflow: hidden !important; }
-      #recent-tasks .premium-task-card { width: 100% !important; margin: 0 0 10px 0 !important; box-sizing: border-box !important; }
-      
-      .apps-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; width: 100% !important; padding: 0 !important; }
-      .app-squircle, .app-viewall-tile { width: 48px !important; height: 48px !important; border-radius: 14px !important; margin: 0 auto 6px !important; }
-      .app-squircle svg { width: 22px !important; height: 22px !important; }
-      .app-name { font-size: .65rem !important; word-wrap: break-word; }
-      
-      .card-date-top { display: none !important; }
-      .card-date-bottom { display: flex !important; }
-      
-      #assign-top-btn { display: none !important; }
-      
-      /* Show Assign Task on My Tasks Page Mobile */
-      #assign-tasks-btn-full { display: flex !important; padding: 7px 12px !important; font-size: 0.75rem !important; border-radius: 8px !important; gap: 4px !important; }
-      #assign-tasks-btn-full svg { width: 14px; height: 14px; }
-      
-      .topbar-right .profile-btn { display: none !important; }
-      .tasks-page-hdr { padding-left: 12px !important; padding-right: 12px !important; }
-      
-      /* Add Staff Mobile Redesign */
-      #create-staff-page { width: 100% !important; border-radius: 24px 24px 0 0 !important; top: 40px !important; height: calc(100vh - 40px) !important; border-top: 1px solid var(--bd-color) !important; box-shadow: 0 -10px 40px rgba(0,0,0,0.15) !important; }
-      #create-staff-page .fp-hdr { padding: 24px 20px 16px !important; }
-      #create-staff-page .fp-body { padding: 0 20px 30px !important; }
-      #create-staff-page .form-section { padding: 18px !important; border-radius: 16px !important; }
-      #create-staff-page .form-row { grid-template-columns: 1fr !important; gap: 16px !important; }
+      .page-hdr { padding-left:12px !important;padding-right:12px !important; }
+      .stats-grid { grid-template-columns:1fr 1fr !important;gap:10px !important;padding-left:12px !important;padding-right:12px !important; }
+      .stats-grid .stat-card:first-child { grid-column:1 / -1 !important; }
+      .apps-wrap-order { order:0; }
+      .recent-wrap-order { order:1; }
+      .apps-wrap { padding:10px 14px 8px 14px !important; }
+      .apps-wrap .content-hdr { padding-bottom:8px !important;margin-bottom:18px !important; }
 
-      #view-staff .page-hdr { flex-direction: row !important; align-items: center !important; justify-content: space-between !important; padding-left: 12px !important; padding-right: 12px !important; }
-      .staff-header-actions { width: auto !important; margin: 0 !important; }
-      .team-card { padding: 12px !important; border-radius: 12px !important; }
-      
-      #task-tab-row { overflow-x: auto; scrollbar-width: none; white-space: nowrap; padding-bottom: 4px; padding-left: 12px !important;}
-      #task-tab-row::-webkit-scrollbar { display: none; }
+      .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left:12px !important;padding-right:12px !important;width:100% !important;box-sizing:border-box !important; }
+      .content-card { padding:16px !important;width:100% !important;margin:0 !important;box-sizing:border-box !important; }
 
-      /* ── FLOATING PILL BOTTOM NAV REDESIGN ── */
+      #recent-tasks { width:100% !important;padding:0 !important;overflow:hidden !important; }
+      #recent-tasks .premium-task-card { width:100% !important;margin:0 0 10px 0 !important;box-sizing:border-box !important; }
+
+      .apps-grid { grid-template-columns:repeat(4,1fr) !important;gap:8px !important;width:100% !important;padding:0 !important; }
+      .app-squircle, .app-viewall-tile { width:48px !important;height:48px !important;border-radius:14px !important;margin:0 auto 6px !important; }
+      .app-squircle svg { width:22px !important;height:22px !important; }
+      .app-name { font-size:.65rem !important;word-wrap:break-word; }
+
+      .card-date-top { display:none !important; }
+      .card-date-bottom { display:flex !important; }
+
+      #assign-top-btn { display:none !important; }
+      #assign-tasks-btn-full { display:flex !important;padding:7px 12px !important;font-size:0.75rem !important;border-radius:8px !important;gap:4px !important; }
+      #assign-tasks-btn-full svg { width:14px;height:14px; }
+
+      .topbar-right .profile-btn { display:none !important; }
+      .tasks-page-hdr { padding-left:12px !important;padding-right:12px !important; }
+
+      #create-staff-page { width:100% !important;border-radius:24px 24px 0 0 !important;top:40px !important;height:calc(100vh - 40px) !important;border-top:1px solid var(--bd-color) !important;box-shadow:0 -10px 40px rgba(0,0,0,0.15) !important; }
+      #create-staff-page .fp-hdr { padding:24px 20px 16px !important; }
+      #create-staff-page .fp-body { padding:0 20px 30px !important; }
+      #create-staff-page .form-section { padding:18px !important;border-radius:16px !important; }
+      #create-staff-page .form-row { grid-template-columns:1fr !important;gap:16px !important; }
+
+      #view-staff .page-hdr { flex-direction:row !important;align-items:center !important;justify-content:space-between !important;padding-left:12px !important;padding-right:12px !important; }
+      .staff-header-actions { width:auto !important;margin:0 !important; }
+      .team-card { padding:12px !important;border-radius:12px !important; }
+
+      #task-tab-row { overflow-x:auto;scrollbar-width:none;white-space:nowrap;padding-bottom:4px;padding-left:12px !important; }
+      #task-tab-row::-webkit-scrollbar { display:none; }
+
+      /* Notification panel full-width on mobile */
+      .notification-panel { width:calc(100% - 24px);right:12px;left:12px;top:72px;border-radius:18px; }
+
+      /* ── FLOATING PILL BOTTOM NAV ── */
       .bottom-nav {
-        position: fixed !important;
-        bottom: 24px !important;
-        left: 16px !important;
-        right: 16px !important;
-        height: 68px !important;
-        background: #ffffff !important;
-        border-radius: 32px !important;
-        box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.08) !important;
-        display: flex !important;
-        align-items: center !important;
-        padding: 0 12px !important;
-        z-index: 999 !important;
-        border: 1px solid rgba(226, 232, 240, 0.6) !important;
+        position:fixed !important;
+        bottom:24px !important;
+        left:16px !important;
+        right:16px !important;
+        height:68px !important;
+        background:#ffffff !important;
+        border-radius:32px !important;
+        box-shadow:0px 8px 24px rgba(0,0,0,0.08) !important;
+        display:flex !important;
+        align-items:center !important;
+        padding:0 12px !important;
+        z-index:999 !important;
+        border:1px solid rgba(226,232,240,0.6) !important;
       }
-      .bn-items {
-        display: flex !important;
-        width: 100% !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-      }
-      .bn-item {
-        flex: 1 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 4px !important;
-        color: #A0AEC0 !important;
-        background: transparent !important;
-        border: none !important;
-        min-height: 44px !important;
-        cursor: pointer !important;
-      }
-      .bn-item span:not(.bn-dot) {
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
-        font-size: 11px !important;
-        font-weight: 500 !important;
-      }
-      
-      /* Solid blue icon for active state */
-      .bn-item.active {
-        color: #3A57E8 !important;
-      }
-      .bn-item.active svg {
-        stroke: #3A57E8 !important;
-        fill: #3A57E8 !important;
-      }
-      .bn-item:not(.active) svg {
-        stroke: #A0AEC0 !important;
-        fill: none !important;
-      }
-      
-      /* ── THE CENTER (+) ACTION BUTTON ── */
-      #bn-assign {
-        display: flex !important;
-        flex: 0 0 56px !important;
-        transform: translateY(-20px) !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        height: auto !important;
-      }
-      .fab-inner {
-        width: 56px !important;
-        height: 56px !important;
-        border-radius: 50% !important;
-        background: #3A57E8 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        box-shadow: 0 8px 16px rgba(58, 87, 232, 0.3) !important;
-      }
-      .fab-inner svg {
-        stroke: #ffffff !important;
-        fill: none !important;
-        width: 24px !important; 
-        height: 24px !important;
-      }
-      #bn-assign span { display: none !important; }
+      .bn-items { display:flex !important;width:100% !important;justify-content:space-between !important;align-items:center !important; }
+      .bn-item { flex:1 !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;gap:4px !important;color:#A0AEC0 !important;background:transparent !important;border:none !important;min-height:44px !important;cursor:pointer !important; }
+      .bn-item span:not(.bn-dot) { font-family:'Plus Jakarta Sans',sans-serif !important;font-size:11px !important;font-weight:500 !important; }
+      .bn-item.active { color:#3A57E8 !important; }
+      .bn-item.active svg { stroke:#3A57E8 !important;fill:#3A57E8 !important; }
+      .bn-item:not(.active) svg { stroke:#A0AEC0 !important;fill:none !important; }
 
-      /* Push content up so the floating nav doesn't hide anything */
-      .app-body, .main-content {
-        padding-bottom: 110px !important; 
-      }
-      
-      .notification-panel { width: calc(100% - 32px); right: 16px; left: 16px; top: 80px; }
+      /* Bell icon in bottom nav when notification panel open */
+      .bn-item.notif-nav-active { color:#D97706 !important; }
+      .bn-item.notif-nav-active svg { stroke:#D97706 !important;fill:none !important; }
+
+      #bn-assign { display:flex !important;flex:0 0 56px !important;transform:translateY(-20px) !important;margin:0 !important;padding:0 !important;height:auto !important; }
+      .fab-inner { width:56px !important;height:56px !important;border-radius:50% !important;background:#3A57E8 !important;display:flex !important;align-items:center !important;justify-content:center !important;box-shadow:0 8px 16px rgba(58,87,232,0.3) !important; }
+      .fab-inner svg { stroke:#ffffff !important;fill:none !important;width:24px !important;height:24px !important; }
+      #bn-assign span { display:none !important; }
+      .app-body, .main-content { padding-bottom:110px !important; }
     }
   </style>
 </head>
 <body>
+  <!-- LOADER -->
   <div id="loading-overlay" class="loader-overlay" style="position:fixed;inset:0;background:var(--bg-base,#f8fafc);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s">
     <div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;color:var(--tx-1)">
-      <div style="width:36px;height:36px;border-radius:8px;overflow:hidden;"><svg width="36" height="36" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#4F46E5"/><text x="16" y="23" font-size="22" font-family="sans-serif" font-weight="900" fill="white" text-anchor="middle">Z</text></svg></div> Zenda
+      <div style="width:36px;height:36px;border-radius:8px;overflow:hidden;"><svg width="36" height="36" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#4F46E5"/><text x="16" y="23" font-size="22" font-family="sans-serif" font-weight="900" fill="white" text-anchor="middle">Z</text></svg></div>
+      Zenda
     </div>
     <div style="width:20px;height:20px;border:2px solid rgba(79,70,229,.2);border-top-color:var(--ac);border-radius:50%;animation:spin .65s linear infinite"></div>
   </div>
+
   <div class="panel-overlay" id="panel-overlay" onclick="window.closeAllPanels()"></div>
-  
+
+  <!-- TOPBAR -->
   <header class="topbar">
     <div class="topbar-left">
       <div class="topbar-logo" onclick="window.showView('home')">
-        <div class="topbar-logo-icon" style="background:transparent;border-radius:0;width:32px;height:32px;"><svg width="100%" height="100%" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#4F46E5"/><text x="16" y="23" font-size="22" font-family="sans-serif" font-weight="900" fill="white" text-anchor="middle">Z</text></svg></div> <span id="topbar-logo-text">Zenda</span>
+        <div class="topbar-logo-icon" style="background:transparent;border-radius:0;width:32px;height:32px;"><svg width="100%" height="100%" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#4F46E5"/><text x="16" y="23" font-size="22" font-family="sans-serif" font-weight="900" fill="white" text-anchor="middle">Z</text></svg></div>
+        <span id="topbar-logo-text">Zenda</span>
       </div>
       <div class="topbar-company" id="topbar-company"></div>
     </div>
     <div class="topbar-right">
       <button id="globalUpgradeBtn" class="btn btn-primary hidden" onclick="window.location.href='subscription.html'" style="padding:6px 12px;font-size:.8rem;background:linear-gradient(135deg,#F59E0B,#D97706);box-shadow:0 4px 12px rgba(245,158,11,.3);">👑 Upgrade</button>
       <button class="icon-btn" id="notif-btn" onclick="window.toggleNotifDropdown()" title="Notifications">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transition:color .3s">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
         <span class="notif-badge hidden" id="notif-badge">0</span>
       </button>
       <button class="profile-btn" onclick="window.openProfile()">
-        <div class="av" id="topbar-avatar" style="width:32px;height:32px;font-size:12px;"></div> <span class="profile-btn-name" id="topbar-name"></span>
+        <div class="av" id="topbar-avatar" style="width:32px;height:32px;font-size:12px;"></div>
+        <span class="profile-btn-name" id="topbar-name"></span>
       </button>
     </div>
   </header>
 
+  <!-- NOTIFICATION DROPDOWN -->
   <div id="notificationDropdown" class="notification-panel hidden">
-    <div class="panel-header" style="padding: 16px 20px; border-bottom: 1px solid var(--bd-color); display: flex; justify-content: space-between; align-items: center;">
-      <h4 style="margin: 0; font-size: 1rem; color: var(--tx-1); font-weight:700;">Notifications</h4>
-      <span class="badge" id="notif-count-badge" style="background: #EF4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">0</span>
-    </div>
-    <div class="panel-body" id="notif-body" style="max-height: 350px; overflow-y: auto;">
+    <div class="notif-panel-header">
+      <div class="notif-panel-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Notifications
       </div>
+      <div class="notif-panel-header-right">
+        <span class="notif-unread-badge" id="notif-count-badge" style="display:none">0</span>
+        <button class="notif-mark-all-btn" id="notif-mark-all-btn" onclick="window.markAllNotifs()">Mark all read</button>
+      </div>
+    </div>
+    <div class="notif-panel-body" id="notif-body">
+      <div class="notif-empty-state">
+        <div class="notif-empty-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <div class="notif-empty-title">No notifications</div>
+        <div class="notif-empty-sub">You're all caught up!<br>New alerts will appear here.</div>
+      </div>
+    </div>
   </div>
 
+  <!-- NOTIFICATION TEMPLATES -->
   <template id="tpl-security">
     <div class="notif-card" data-id="">
       <div class="notif-icon security">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       </div>
       <div class="notif-content-wrap">
-        <div class="notif-header">
-          <h4 class="notif-title">New Login Detected</h4>
-          <span class="notif-time">Just now</span>
-        </div>
+        <div class="notif-header"><h4 class="notif-title">New Login Detected</h4><span class="notif-time">Just now</span></div>
         <p class="notif-body">Your account was accessed from a new device.</p>
         <div class="notif-actions">
-          <button class="btn-secondary" onclick="window.dismissAlert(this)">Dismiss</button>
-          <button class="btn-primary" onclick="window.location.href='login.html'">Secure Account</button>
+          <button class="btn-secondary-sm" onclick="window.dismissAlert(this)">Dismiss</button>
+          <button class="btn-primary-sm" onclick="window.location.href='login.html'">Secure Account</button>
         </div>
       </div>
     </div>
@@ -467,39 +487,58 @@
   <template id="tpl-task">
     <div class="notif-card" data-id="" data-task-id="" data-sender-id="">
       <div class="notif-icon task">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       </div>
       <div class="notif-content-wrap">
-        <div class="notif-header">
-          <h4 class="notif-title">Task Update</h4>
-          <span class="notif-time">Just now</span>
-        </div>
+        <div class="notif-header"><h4 class="notif-title">Task Assigned</h4><span class="notif-time">Just now</span></div>
         <p class="notif-body task-title">...</p>
         <div class="notif-actions">
-          <button class="btn-secondary" style="color:#EF4444; background:#FEF2F2;" onclick="window.showDenyInput(this)">Deny</button>
-          <button class="btn-primary" onclick="window.acceptTaskNotif(this)">Accept</button>
+          <button class="btn-danger-sm" onclick="window.showDenyInput(this)">Deny</button>
+          <button class="btn-primary-sm" onclick="window.acceptTaskNotif(this)">Accept</button>
         </div>
         <div class="deny-container hidden">
           <input type="text" class="deny-input" placeholder="Reason (max 10 words)" maxlength="60">
-          <button class="btn-submit" onclick="window.submitDeny(this)">Send</button>
+          <button class="btn-submit-sm" onclick="window.submitDeny(this)">Send</button>
         </div>
       </div>
     </div>
   </template>
 
   <div class="app-body">
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
       <nav class="sidebar-nav">
         <div class="sidebar-section-label">Overview</div>
-        <div class="sidebar-item active" id="nav-home" onclick="window.showView('home')"><span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></span><span class="sidebar-item-text">Dashboard</span></div>
-        <div class="sidebar-item" id="nav-tasks" onclick="window.showView('tasks')"><span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span class="sidebar-item-text">My Tasks</span><span class="sidebar-badge hidden" id="task-badge-side">0</span></div>
-        <div class="sidebar-item hidden" id="nav-assign" onclick="window.openAssignModal()"><span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></span><span class="sidebar-item-text">Assign Work</span></div>
+        <div class="sidebar-item active" id="nav-home" onclick="window.showView('home')">
+          <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></span>
+          <span class="sidebar-item-text">Dashboard</span>
+        </div>
+        <div class="sidebar-item" id="nav-tasks" onclick="window.showView('tasks')">
+          <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          <span class="sidebar-item-text">My Tasks</span>
+          <span class="sidebar-badge hidden" id="task-badge-side">0</span>
+        </div>
+        <div class="sidebar-item hidden" id="nav-assign" onclick="window.openAssignModal()">
+          <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></span>
+          <span class="sidebar-item-text">Assign Work</span>
+        </div>
         <div class="sidebar-section-label hidden" id="team-label">Management</div>
-        <div class="sidebar-item hidden" id="nav-staff" onclick="window.showView('staff')"><span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="sidebar-item-text">My Team</span></div>
+        <div class="sidebar-item hidden" id="nav-staff" onclick="window.showView('staff')">
+          <span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <span class="sidebar-item-text">My Team</span>
+        </div>
       </nav>
-      <div class="sidebar-footer"><button class="btn btn-ghost w-full" onclick="window.handleLogout()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Sign Out</button></div>
+      <div class="sidebar-footer">
+        <button class="btn btn-ghost w-full" onclick="window.handleLogout()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </button>
+      </div>
     </aside>
+
+    <!-- MAIN CONTENT -->
     <main class="main-content">
+      <!-- HOME VIEW -->
       <div id="view-home" class="fade-in-section">
         <div class="page-hdr">
           <div>
@@ -507,17 +546,15 @@
             <p class="page-sub" id="home-sub"></p>
           </div>
           <button class="btn btn-primary" id="assign-top-btn" onclick="window.openAssignModal()" style="display:none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Assign Task
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Assign Task
           </button>
         </div>
         <div class="stats-grid" id="stats-grid"></div>
         <div class="charts-row hidden" id="charts-row">
           <div class="chart-card">
             <div class="chart-hdr">
-              <div>
-                <div class="chart-ttl">Activity Overview</div>
-                <div class="chart-sub">Tasks completed over the last 7 days</div>
-              </div>
+              <div><div class="chart-ttl">Activity Overview</div><div class="chart-sub">Tasks completed over the last 7 days</div></div>
             </div>
             <div style="height:240px;position:relative;padding:0 16px;"><canvas id="main-area-chart"></canvas></div>
             <canvas id="bar-chart" class="hidden"></canvas>
@@ -535,16 +572,21 @@
           </div>
         </div>
       </div>
+
+      <!-- TASKS VIEW -->
       <div id="view-tasks" class="hidden fade-in-section">
         <div class="tasks-page-hdr">
           <h1 class="page-ttl" style="margin:0;">My Tasks</h1>
           <button class="btn btn-primary" id="assign-tasks-btn-full" onclick="window.openAssignModal()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Assign Task
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Assign Task
           </button>
         </div>
         <div class="ftabs" id="task-tab-row" style="margin-bottom:14px;"></div>
         <div id="tasks-list"></div>
       </div>
+
+      <!-- STAFF VIEW -->
       <div id="view-staff" class="hidden fade-in-section">
         <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd-color);padding-bottom:16px;margin-bottom:20px;">
           <div style="flex:1;min-width:0;">
@@ -553,7 +595,8 @@
           </div>
           <div class="staff-header-actions">
             <button class="btn btn-primary" id="add-staff-btn" onclick="window.openCreateStaffPage()" style="display:none;padding:10px 18px;font-size:.875rem;border-radius:10px;box-shadow:var(--sh-2);gap:6px;white-space:nowrap;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Staff
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Staff
             </button>
           </div>
         </div>
@@ -561,71 +604,80 @@
       </div>
     </main>
   </div>
-  
+
+  <!-- BOTTOM NAV -->
   <nav class="bottom-nav" id="bottom-nav">
     <div class="bn-items">
       <button class="bn-item active" id="bn-home" onclick="window.showView('home')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><polyline points="9 21 9 12 15 12 15 21"/></svg><span>Home</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><polyline points="9 21 9 12 15 12 15 21"/></svg>
+        <span>Home</span>
       </button>
       <button class="bn-item" id="bn-tasks" onclick="window.showView('tasks')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="bn-dot" id="bn-task-dot"></span><span>Tasks</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span class="bn-dot" id="bn-task-dot"></span>
+        <span>Tasks</span>
       </button>
-      
       <button class="bn-item center-action hidden" id="bn-assign" onclick="window.openAssignModal()" title="Assign Work">
         <div class="fab-inner">
-           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </div>
       </button>
-
+      <!-- NOTIFICATION button in bottom nav (mobile) -->
+      <button class="bn-item" id="bn-notif" onclick="window.toggleNotifDropdown()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="bn-dot" id="bn-notif-dot"></span>
+        <span>Alerts</span>
+      </button>
       <button class="bn-item hidden" id="bn-staff-btn" onclick="window.showView('staff')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Team</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Team</span>
       </button>
       <button class="bn-item" id="bn-profile" onclick="window.openProfile()">
-        <div class="av mini-av" id="bn-avatar" style="width:24px;height:24px;"></div><span>Me</span>
+        <div class="av mini-av" id="bn-avatar" style="width:24px;height:24px;"></div>
+        <span>Me</span>
       </button>
     </div>
   </nav>
 
+  <!-- PROFILE PANELS -->
   <div id="profile-page"></div>
-  <div class="profile-side-panel" id="profile-side-panel"><div class="sp-hdr"><div class="sp-ttl">My Profile</div><button class="modal-close" onclick="window.closeProfile()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="sp-body" id="profile-body-desktop"></div></div>
-  <div class="fullpage" id="profile-page-mobile"><div class="fp-hdr"><button class="fp-back" onclick="window.closeProfile()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button><div class="fp-ttl">My Profile</div></div><div class="fp-body" id="profile-body-mobile"></div></div>
-  
+  <div class="profile-side-panel" id="profile-side-panel">
+    <div class="sp-hdr"><div class="sp-ttl">My Profile</div><button class="modal-close" onclick="window.closeProfile()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="sp-body" id="profile-body-desktop"></div>
+  </div>
+  <div class="fullpage" id="profile-page-mobile">
+    <div class="fp-hdr"><button class="fp-back" onclick="window.closeProfile()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button><div class="fp-ttl">My Profile</div></div>
+    <div class="fp-body" id="profile-body-mobile"></div>
+  </div>
+
+  <!-- STAFF DETAIL MODAL -->
   <div class="modal-overlay hidden" id="staff-detail-modal">
-    <div class="modal" style="max-width:400px; padding:0; border-radius:20px; overflow:hidden; border:1px solid var(--bd-color) !important;">
-      <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); height: 100px; position: relative;">
-         <button class="modal-close" style="position:absolute; top:16px; right:16px; color:white; background:rgba(0,0,0,0.2);" onclick="window.closeModal('staff-detail-modal')">
-           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-         </button>
+    <div class="modal" style="max-width:400px;padding:0;border-radius:20px;overflow:hidden;border:1px solid var(--bd-color) !important;">
+      <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);height:100px;position:relative;">
+        <button class="modal-close" style="position:absolute;top:16px;right:16px;color:white;background:rgba(0,0,0,0.2);" onclick="window.closeModal('staff-detail-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-      <div style="padding: 0 24px 24px; position: relative; margin-top: -30px;">
-         <div id="sd-avatar" style="width:64px; height:64px; border-radius:12px; background:white; display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:800; border:4px solid white; box-shadow:var(--sh-1); margin-bottom:12px;"></div>
-         <h2 id="sd-name" style="margin:0; font-size:1.4rem; color:var(--tx-1);"></h2>
-         <div id="sd-role" style="font-size:0.9rem; color:var(--ac); font-weight:600; margin-bottom:16px;"></div>
-         <div style="background:var(--bg-overlay); border:1px solid var(--bd-color); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px;">
-           <div style="display:flex; justify-content:space-between; align-items:center;">
-             <span style="font-size:0.8rem; color:var(--tx-3); font-weight:600;">EMAIL</span>
-             <span id="sd-email" style="font-size:0.9rem; color:var(--tx-1); font-weight:600;"></span>
-           </div>
-           <div style="display:flex; justify-content:space-between; align-items:center;">
-             <span style="font-size:0.8rem; color:var(--tx-3); font-weight:600;">ZENDA ID</span>
-             <span id="sd-zenda-id" style="font-size:0.9rem; color:var(--tx-1); font-weight:600; font-family:var(--f-mono);"></span>
-           </div>
-           <div id="sd-password-row" style="display:flex; justify-content:space-between; align-items:center;">
-             <span style="font-size:0.8rem; color:var(--tx-3); font-weight:600;">PASSWORD</span>
-             <span id="sd-password" style="font-size:0.9rem; color:var(--tx-1); font-weight:600;"></span>
-           </div>
-           <div style="display:flex; justify-content:space-between; align-items:center;">
-             <span style="font-size:0.8rem; color:var(--tx-3); font-weight:600;">JOINED</span>
-             <span id="sd-joined" style="font-size:0.9rem; color:var(--tx-1); font-weight:600;"></span>
-           </div>
-         </div>
+      <div style="padding:0 24px 24px;position:relative;margin-top:-30px;">
+        <div id="sd-avatar" style="width:64px;height:64px;border-radius:12px;background:white;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;border:4px solid white;box-shadow:var(--sh-1);margin-bottom:12px;"></div>
+        <h2 id="sd-name" style="margin:0;font-size:1.4rem;color:var(--tx-1);"></h2>
+        <div id="sd-role" style="font-size:0.9rem;color:var(--ac);font-weight:600;margin-bottom:16px;"></div>
+        <div style="background:var(--bg-overlay);border:1px solid var(--bd-color);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.8rem;color:var(--tx-3);font-weight:600;">EMAIL</span><span id="sd-email" style="font-size:0.9rem;color:var(--tx-1);font-weight:600;"></span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.8rem;color:var(--tx-3);font-weight:600;">ZENDA ID</span><span id="sd-zenda-id" style="font-size:0.9rem;color:var(--tx-1);font-weight:600;font-family:var(--f-mono);"></span></div>
+          <div id="sd-password-row" style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.8rem;color:var(--tx-3);font-weight:600;">PASSWORD</span><span id="sd-password" style="font-size:0.9rem;color:var(--tx-1);font-weight:600;"></span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.8rem;color:var(--tx-3);font-weight:600;">JOINED</span><span id="sd-joined" style="font-size:0.9rem;color:var(--tx-1);font-weight:600;"></span></div>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- ADD STAFF PANEL -->
   <div class="fullpage" id="create-staff-page" style="z-index:1000;">
     <div class="fp-hdr" style="background:transparent;border-bottom:none;padding:32px 40px 16px;">
-      <button class="fp-back" onclick="window.closeFullpage('create-staff-page')" style="background:white;box-shadow:var(--sh-1);border:1px solid var(--bd-color);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button>
+      <button class="fp-back" onclick="window.closeFullpage('create-staff-page')" style="background:white;box-shadow:var(--sh-1);border:1px solid var(--bd-color);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back
+      </button>
       <div class="fp-ttl" style="font-size:1.6rem;font-weight:800;color:var(--ac);">Add Staff Member</div>
     </div>
     <div class="fp-body" style="max-width:100%;padding:0 40px 40px;">
@@ -642,17 +694,26 @@
         </div>
         <div class="form-section" style="margin-top:16px;background:white;border-radius:16px;padding:24px;border:1px solid var(--bd-color);box-shadow:var(--sh-1);">
           <div style="font-weight:800;color:var(--tx-1);margin-bottom:20px;font-size:1rem;">Login Password</div>
-          <div class="form-group"><label class="form-label" style="margin-bottom:4px;display:block;">Password * (min. 6 characters)</label>
-            <div style="position:relative;"><input class="form-input" id="cs-password" type="password" placeholder="Set their login password" oninput="window.clearCSErr(this)" style="padding-right:40px;"><button type="button" onclick="window.togglePwd('cs-password')" style="position:absolute;right:10px;top:10px;background:none;border:none;cursor:pointer;color:var(--tx-3);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <div class="form-group">
+            <label class="form-label" style="margin-bottom:4px;display:block;">Password * (min. 6 characters)</label>
+            <div style="position:relative;">
+              <input class="form-input" id="cs-password" type="password" placeholder="Set their login password" oninput="window.clearCSErr(this)" style="padding-right:40px;">
+              <button type="button" onclick="window.togglePwd('cs-password')" style="position:absolute;right:10px;top:10px;background:none;border:none;cursor:pointer;color:var(--tx-3);">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
             <div class="form-err" id="err-cs-password"></div>
           </div>
-        </div> <button class="btn btn-primary w-full" id="create-staff-btn" onclick="window.initiateCreateStaff()" style="margin-top:24px;padding:14px;font-size:1.05rem;border-radius:12px;box-shadow:var(--sh-2);">Verify Email &amp; Create Staff →</button>
+        </div>
+        <button class="btn btn-primary w-full" id="create-staff-btn" onclick="window.initiateCreateStaff()" style="margin-top:24px;padding:14px;font-size:1.05rem;border-radius:12px;box-shadow:var(--sh-2);">Verify Email &amp; Create Staff →</button>
       </div>
       <div id="staff-otp-container" class="hidden" style="margin-top:24px;background:white;border-radius:16px;padding:40px;border:1px solid var(--bd-color);box-shadow:var(--sh-2);text-align:center;">
         <div style="width:56px;height:56px;background:var(--ac-light);color:var(--ac);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
         <h3 style="font-size:1.4rem;font-weight:800;color:var(--tx-1);margin-bottom:8px;">Verify Staff Email</h3>
         <p style="font-size:.95rem;color:var(--tx-2);margin-bottom:32px;">We've sent a 6-digit code to <b id="otp-sent-email" style="color:var(--tx-1);"></b>.</p>
-        <div class="form-group" style="max-width:280px;margin:0 auto 24px;"><input class="form-input" id="cs-otp-input" type="text" placeholder="——————" style="text-align:center;font-size:1.5rem;letter-spacing:.5em;font-weight:800;" maxlength="6"></div> <button class="btn btn-primary w-full" id="verify-staff-btn" onclick="window.finalizeCreateStaff()" style="max-width:280px;padding:14px;border-radius:12px;font-size:1.05rem;">Verify &amp; Confirm</button> <button class="btn btn-ghost w-full" onclick="window.cancelCreateStaff()" style="max-width:280px;margin-top:12px;border:none;">Cancel &amp; Edit Details</button>
+        <div class="form-group" style="max-width:280px;margin:0 auto 24px;"><input class="form-input" id="cs-otp-input" type="text" placeholder="——————" style="text-align:center;font-size:1.5rem;letter-spacing:.5em;font-weight:800;" maxlength="6"></div>
+        <button class="btn btn-primary w-full" id="verify-staff-btn" onclick="window.finalizeCreateStaff()" style="max-width:280px;padding:14px;border-radius:12px;font-size:1.05rem;">Verify &amp; Confirm</button>
+        <button class="btn btn-ghost w-full" onclick="window.cancelCreateStaff()" style="max-width:280px;margin-top:12px;border:none;">Cancel &amp; Edit Details</button>
       </div>
       <div id="created-card-section" class="hidden" style="margin-top:24px;padding:40px;background:white;border-radius:16px;border:2px solid var(--green);box-shadow:0 10px 30px rgba(16,185,129,.15);text-align:center;">
         <div style="width:72px;height:72px;background:var(--green-l);color:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -660,48 +721,43 @@
         <p style="font-size:.9rem;color:var(--tx-3);margin:0 0 16px;" id="email-sent-note"></p>
         <div id="cred-box" style="text-align:left;background:#F8FAFC;padding:20px;border-radius:12px;font-size:.95rem;border:1px dashed var(--bd-color);color:var(--tx-2);line-height:1.9;"></div>
         <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">
-          <button class="btn btn-ghost" style="flex:1;min-width:120px;font-weight:700;padding:14px;border-radius:12px;border:1.5px solid var(--bd-color);" onclick="window.doneCreateStaff()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Done</button> <button class="btn btn-primary" id="download-card-btn" style="flex:1;min-width:140px;font-weight:700;padding:14px;border-radius:12px;" onclick="window.downloadStaffCard()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Card</button>
+          <button class="btn btn-ghost" style="flex:1;min-width:120px;font-weight:700;padding:14px;border-radius:12px;border:1.5px solid var(--bd-color);" onclick="window.doneCreateStaff()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Done</button>
+          <button class="btn btn-primary" id="download-card-btn" style="flex:1;min-width:140px;font-weight:700;padding:14px;border-radius:12px;" onclick="window.downloadStaffCard()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Card</button>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- ASSIGN MODAL -->
   <div class="modal-overlay hidden" id="assign-modal">
-    <div class="modal" style="max-width: 400px; width: 90%;">
-      <div class="modal-hdr" style="padding: 14px 16px; border-bottom: 1px solid var(--bd-color);">
-        <div class="modal-ttl" style="font-size: 1.1rem;">Assign Work</div>
+    <div class="modal" style="max-width:400px;width:90%;">
+      <div class="modal-hdr" style="padding:14px 16px;border-bottom:1px solid var(--bd-color);">
+        <div class="modal-ttl" style="font-size:1.1rem;">Assign Work</div>
         <button class="modal-close" onclick="window.closeModal('assign-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
-      <div style="padding: 16px;">
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label class="form-label" style="margin-bottom: 4px; display:block;">Assign To</label>
-          <select class="zenda-select form-input" id="assign-to"></select>
+      <div style="padding:16px;">
+        <div class="form-group" style="margin-bottom:12px;"><label class="form-label" style="margin-bottom:4px;display:block;">Assign To</label><select class="zenda-select form-input" id="assign-to"></select></div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="form-group"><label class="form-label" style="margin-bottom:4px;display:block;">Task Title *</label><input class="form-input" id="task-title" type="text" placeholder="e.g. Review Q3 report" maxlength="80"></div>
+          <div class="form-group"><label class="form-label" style="margin-bottom:4px;display:block;">Priority</label><select class="zenda-select form-input" id="task-priority"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option></select></div>
         </div>
-        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom: 12px;">
-          <div class="form-group"><label class="form-label" style="margin-bottom: 4px; display:block;">Task Title *</label><input class="form-input" id="task-title" type="text" placeholder="e.g. Review Q3 report" maxlength="80"></div>
-          <div class="form-group"><label class="form-label" style="margin-bottom: 4px; display:block;">Priority</label><select class="zenda-select form-input" id="task-priority"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option></select></div>
-        </div>
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label class="form-label" style="margin-bottom: 4px; display:block;">Description <span style="color:var(--tx-3);font-weight:400">(optional)</span></label>
-          <textarea class="form-input" id="task-desc" placeholder="Add details…" style="min-height: 60px;"></textarea>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom: 16px;">
-          <div class="form-group"><label class="form-label" style="margin-bottom: 4px; display:block;">Due Date</label><input class="form-input" id="task-date" type="date"></div>
-          <div class="form-group"><label class="form-label" style="margin-bottom: 4px; display:block;">Due Time</label><input class="form-input" id="task-time" type="time"></div>
+        <div class="form-group" style="margin-bottom:12px;"><label class="form-label" style="margin-bottom:4px;display:block;">Description <span style="color:var(--tx-3);font-weight:400">(optional)</span></label><textarea class="form-input" id="task-desc" placeholder="Add details…" style="min-height:60px;"></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div class="form-group"><label class="form-label" style="margin-bottom:4px;display:block;">Due Date</label><input class="form-input" id="task-date" type="date"></div>
+          <div class="form-group"><label class="form-label" style="margin-bottom:4px;display:block;">Due Time</label><input class="form-input" id="task-time" type="time"></div>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-ghost w-full" style="padding: 8px; border-radius: 10px;" onclick="window.closeModal('assign-modal')">Cancel</button>
-          <button class="btn btn-primary w-full" style="padding: 8px; border-radius: 10px;" id="assign-btn" onclick="window.handleAssign()">Assign Task</button>
+          <button class="btn btn-ghost w-full" style="padding:8px;border-radius:10px;" onclick="window.closeModal('assign-modal')">Cancel</button>
+          <button class="btn btn-primary w-full" style="padding:8px;border-radius:10px;" id="assign-btn" onclick="window.handleAssign()">Assign Task</button>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- DECLINE MODAL -->
   <div class="modal-overlay hidden" id="decline-modal">
     <div class="modal" style="max-width:420px">
-      <div class="modal-hdr">
-        <div class="modal-ttl">Decline Task</div><button class="modal-close" onclick="window.closeModal('decline-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-      </div>
+      <div class="modal-hdr"><div class="modal-ttl">Decline Task</div><button class="modal-close" onclick="window.closeModal('decline-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
       <div style="padding:16px 20px;">
         <div style="background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.15);border-radius:8px;padding:12px;margin-bottom:16px;font-size:.85rem;color:var(--tx-2)">Task: <strong id="decline-task-title"></strong></div>
         <div class="form-group" style="margin-bottom:24px"><label class="form-label" style="margin-bottom:4px;display:block;">Reason <span style="color:var(--tx-3);font-weight:400">(optional)</span></label><textarea class="form-input" id="decline-reason" placeholder="Let them know why you're declining…" style="min-height:80px;"></textarea></div>
@@ -710,10 +766,12 @@
     </div>
   </div>
 
+  <!-- DELETE STAFF MODAL -->
   <div class="modal-overlay hidden" id="delete-modal">
     <div class="modal" style="max-width:440px;border-radius:20px;overflow:hidden;">
       <div class="modal-hdr">
-        <div class="modal-ttl" style="color:var(--red)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle;margin-right:6px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Remove Staff</div><button class="modal-close" onclick="window.closeModal('delete-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <div class="modal-ttl" style="color:var(--red)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle;margin-right:6px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Remove Staff</div>
+        <button class="modal-close" onclick="window.closeModal('delete-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div style="padding:12px 24px 0;font-size:.9rem;color:var(--tx-2);line-height:1.6;">Permanently delete <strong id="del-name-display"></strong> and revoke access.<br>Type <strong id="del-confirm-hint" style="color:var(--red);font-family:var(--f-mono);"></strong> to confirm.</div>
       <div style="padding:14px 24px 24px;">
@@ -723,17 +781,24 @@
     </div>
   </div>
 
+  <!-- DELETE TASK MODAL -->
   <div class="modal-overlay hidden" id="delete-task-modal">
     <div class="modal" style="max-width:420px;border-radius:20px;overflow:hidden;">
       <div class="modal-hdr" style="padding:18px 20px;">
-        <div class="modal-ttl" style="color:var(--red);display:flex;align-items:center;gap:7px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete Task</div><button class="modal-close" onclick="window.closeModal('delete-task-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <div class="modal-ttl" style="color:var(--red);display:flex;align-items:center;gap:7px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete Task</div>
+        <button class="modal-close" onclick="window.closeModal('delete-task-modal')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div style="padding:4px 20px 14px;font-size:.92rem;color:var(--tx-2);line-height:1.55;">Delete <strong id="del-task-name-display" style="color:var(--tx-1);"></strong>?<br><span style="font-size:.82rem;color:var(--tx-3);">This cannot be undone.</span></div>
       <div style="padding:0 20px 20px;display:flex;gap:10px;"><button class="btn btn-ghost w-full" style="border-radius:12px;padding:11px;font-weight:600;" onclick="window.closeModal('delete-task-modal')">Cancel</button><button class="btn btn-danger w-full" style="border-radius:12px;padding:11px;font-weight:700;" id="del-task-confirm-btn" onclick="window.executeTaskDelete()">Delete Task</button></div>
     </div>
   </div>
 
-  <div class="fullpage" id="app-store-page"><div class="fp-hdr"><button class="fp-back" onclick="window.closeFullpage('app-store-page')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button><div class="fp-ttl">App Library</div></div><div class="fp-body" id="app-store-body"></div></div>
+  <!-- APP STORE PAGE -->
+  <div class="fullpage" id="app-store-page">
+    <div class="fp-hdr"><button class="fp-back" onclick="window.closeFullpage('app-store-page')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button><div class="fp-ttl">App Library</div></div>
+    <div class="fp-body" id="app-store-body"></div>
+  </div>
+
   <div id="toast-container"></div>
 
   <script type="module">
@@ -747,18 +812,11 @@
     import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { sendOTP, verifyUserOTP } from './otp.js';
 
-    // ── Safe button loader (prevents text disappearing) ──
+    // ── Helpers ──
     function loadBtn(btn, loading, restoreText) {
       if (!btn) return;
-      if (loading) {
-        btn._origHTML = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = `<span style="width:15px;height:15px;border:2.5px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;display:inline-block;animation:spin .6s linear infinite;vertical-align:middle;"></span>`;
-      } else {
-        btn.disabled = false;
-        if (restoreText) btn.textContent = restoreText;
-        else if (btn._origHTML) btn.innerHTML = btn._origHTML;
-      }
+      if (loading) { btn._origHTML = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<span style="width:15px;height:15px;border:2.5px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;display:inline-block;animation:spin .6s linear infinite;vertical-align:middle;"></span>`; }
+      else { btn.disabled = false; if (restoreText) btn.textContent = restoreText; else if (btn._origHTML) btn.innerHTML = btn._origHTML; }
     }
 
     window.copyToClipboard = copyToClipboard;
@@ -775,453 +833,507 @@
     let mainAreaChart = null;
     let unsubs = [];
     let _lastCreatedStaff = {};
+    let _notifPanelOpen = false;
+    let _prevUnreadCount = 0;
 
     function esc(s = '') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    function setBadge(id, n) { const el = document.getElementById(id); if (!el) return; el.textContent = n > 99 ? '99+' : n; el.classList.toggle('hidden', n <= 0); }
-    function setDot(id, show) { const el = document.getElementById(id); if (el) el.classList.toggle('show', show); }
-    function ago(iso) { if (!iso) return ''; const d = Date.now() - new Date(iso); if (d < 60000) return 'just now'; if (d < 3600000) return Math.floor(d / 60000) + 'm ago'; if (d < 86400000) return Math.floor(d / 3600000) + 'h ago'; return Math.floor(d / 86400000) + 'd ago'; }
-    function last7() { const o = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); o.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }), date: d.toDateString() }); } return o; }
-    function fmtDate(v) { if (!v) return ''; const d = new Date(v); if (isNaN(d)) return v; const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']; return `${String(d.getDate()).padStart(2,'0')} ${m[d.getMonth()]} ${d.getFullYear()}`; }
+    function setBadge(id, n) { const el=document.getElementById(id); if(!el) return; el.textContent=n>99?'99+':n; el.classList.toggle('hidden',n<=0); if(el.style) el.style.display=n>0?'':'none'; }
+    function setDot(id, show) { const el=document.getElementById(id); if(el) el.classList.toggle('show',show); }
+    function ago(iso) { if(!iso) return ''; const d=Date.now()-new Date(iso); if(d<60000) return 'just now'; if(d<3600000) return Math.floor(d/60000)+'m ago'; if(d<86400000) return Math.floor(d/3600000)+'h ago'; return Math.floor(d/86400000)+'d ago'; }
+    function last7() { const o=[]; for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);o.push({label:d.toLocaleDateString('en-US',{weekday:'short'}),date:d.toDateString()});} return o; }
+    function fmtDate(v) { if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return `${String(d.getDate()).padStart(2,'0')} ${m[d.getMonth()]} ${d.getFullYear()}`; }
+    function formatDateIN(ts) { if(!ts) return ''; return new Date(ts).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
 
     // ── Canvas card ──
-    function dRR(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r); ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r); ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r); ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath(); }
+    function dRR(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();}
 
     window.downloadStaffCard = function() {
-      const { name, email, password, uniqueId, designation } = _lastCreatedStaff;
-      if (!name) { showToast('No card to download.', 'error'); return; }
-      const sc = 2, W = 540, H = designation ? 340 : 310;
-      const cv = document.createElement('canvas'); cv.width = W * sc; cv.height = H * sc;
-      const c = cv.getContext('2d'); c.scale(sc, sc);
-      c.fillStyle = '#fff'; dRR(c, 0, 0, W, H, 20); c.fill();
-      const g = c.createLinearGradient(0, 0, W, 0); g.addColorStop(0, '#4F46E5'); g.addColorStop(1, '#7C3AED');
-      c.fillStyle = g; dRR(c, 0, 0, W, 96, 20); c.fill(); c.fillStyle = g; c.fillRect(0, 76, W, 20);
-      c.fillStyle = 'rgba(255,255,255,.15)'; dRR(c, 22, 18, 48, 48, 10); c.fill();
-      c.fillStyle = '#fff'; c.font = 'bold 30px "Plus Jakarta Sans",sans-serif'; c.textAlign = 'center'; c.fillText('Z', 46, 52);
-      c.fillStyle = '#fff'; c.font = 'bold 20px "Plus Jakarta Sans",sans-serif'; c.textAlign = 'left'; c.fillText('Zenda', 82, 48);
-      c.fillStyle = 'rgba(255,255,255,.72)'; c.font = '13px "Plus Jakarta Sans",sans-serif'; c.fillText('Staff Access Credentials', 82, 68);
-      c.fillStyle = '#0F172A'; c.font = 'bold 22px "Plus Jakarta Sans",sans-serif'; c.textAlign = 'left'; c.fillText(name, 30, 130);
-      if (designation) { c.fillStyle = '#6366F1'; c.font = '600 13px "Plus Jakarta Sans",sans-serif'; c.fillText(designation, 30, 150); }
-      const rl = designation ? 165 : 144;
-      c.strokeStyle = '#E2E8F0'; c.lineWidth = 1; c.beginPath(); c.moveTo(30, rl); c.lineTo(W - 30, rl); c.stroke();
-      [{ l: 'EMAIL', v: email }, { l: 'PASSWORD', v: password }, { l: 'ZENDA ID', v: uniqueId }].forEach((f, i) => {
-        const y = (designation ? 195 : 174) + i * 38;
-        c.fillStyle = '#94A3B8'; c.font = '10px "DM Mono",monospace'; c.textAlign = 'left'; c.fillText(f.l, 30, y);
-        c.fillStyle = '#1E293B'; c.font = '600 14px "Plus Jakarta Sans",sans-serif'; c.fillText(f.v, 130, y);
+      const {name,email,password,uniqueId,designation}=_lastCreatedStaff;
+      if(!name){showToast('No card to download.','error');return;}
+      const sc=2,W=540,H=designation?340:310;
+      const cv=document.createElement('canvas');cv.width=W*sc;cv.height=H*sc;
+      const c=cv.getContext('2d');c.scale(sc,sc);
+      c.fillStyle='#fff';dRR(c,0,0,W,H,20);c.fill();
+      const g=c.createLinearGradient(0,0,W,0);g.addColorStop(0,'#4F46E5');g.addColorStop(1,'#7C3AED');
+      c.fillStyle=g;dRR(c,0,0,W,96,20);c.fill();c.fillStyle=g;c.fillRect(0,76,W,20);
+      c.fillStyle='rgba(255,255,255,.15)';dRR(c,22,18,48,48,10);c.fill();
+      c.fillStyle='#fff';c.font='bold 30px "Plus Jakarta Sans",sans-serif';c.textAlign='center';c.fillText('Z',46,52);
+      c.fillStyle='#fff';c.font='bold 20px "Plus Jakarta Sans",sans-serif';c.textAlign='left';c.fillText('Zenda',82,48);
+      c.fillStyle='rgba(255,255,255,.72)';c.font='13px "Plus Jakarta Sans",sans-serif';c.fillText('Staff Access Credentials',82,68);
+      c.fillStyle='#0F172A';c.font='bold 22px "Plus Jakarta Sans",sans-serif';c.textAlign='left';c.fillText(name,30,130);
+      if(designation){c.fillStyle='#6366F1';c.font='600 13px "Plus Jakarta Sans",sans-serif';c.fillText(designation,30,150);}
+      const rl=designation?165:144;
+      c.strokeStyle='#E2E8F0';c.lineWidth=1;c.beginPath();c.moveTo(30,rl);c.lineTo(W-30,rl);c.stroke();
+      [{l:'EMAIL',v:email},{l:'PASSWORD',v:password},{l:'ZENDA ID',v:uniqueId}].forEach((f,i)=>{
+        const y=(designation?195:174)+i*38;
+        c.fillStyle='#94A3B8';c.font='10px "DM Mono",monospace';c.textAlign='left';c.fillText(f.l,30,y);
+        c.fillStyle='#1E293B';c.font='600 14px "Plus Jakarta Sans",sans-serif';c.fillText(f.v,130,y);
       });
-      c.fillStyle = '#F8FAFC'; c.fillRect(0, H - 36, W, 36);
-      c.strokeStyle = '#E2E8F0'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, H - 36); c.lineTo(W, H - 36); c.stroke();
-      c.fillStyle = '#94A3B8'; c.font = '11px "Plus Jakarta Sans",sans-serif'; c.textAlign = 'center'; c.fillText('🔒 Keep this confidential  •  Generated by Zenda', W / 2, H - 12);
-      c.strokeStyle = '#E2E8F0'; c.lineWidth = 1.5; dRR(c, .75, .75, W - 1.5, H - 1.5, 20); c.stroke();
-      const a = document.createElement('a');
-      a.download = `${(name||'staff').replace(/\s+/g,'_')}_Zenda_Credentials.png`;
-      a.href = cv.toDataURL('image/png'); a.click();
-      showToast('Card downloaded! 📥', 'success');
+      c.fillStyle='#F8FAFC';c.fillRect(0,H-36,W,36);
+      c.strokeStyle='#E2E8F0';c.lineWidth=1;c.beginPath();c.moveTo(0,H-36);c.lineTo(W,H-36);c.stroke();
+      c.fillStyle='#94A3B8';c.font='11px "Plus Jakarta Sans",sans-serif';c.textAlign='center';c.fillText('🔒 Keep this confidential  •  Generated by Zenda',W/2,H-12);
+      c.strokeStyle='#E2E8F0';c.lineWidth=1.5;dRR(c,.75,.75,W-1.5,H-1.5,20);c.stroke();
+      const a=document.createElement('a');a.download=`${(name||'staff').replace(/\s+/g,'_')}_Zenda_Credentials.png`;a.href=cv.toDataURL('image/png');a.click();
+      showToast('Card downloaded! 📥','success');
     };
 
-    async function sendCredEmail(toEmail, toName, pwd, uid2, company) {
-      try { if (typeof emailjs !== 'undefined' && EMAILJS_CONFIG?.publicKey) { emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey }); await emailjs.send(EMAILJS_CONFIG.serviceId || 'default_service', EMAILJS_CONFIG.staffTemplateId || 'template_staff_welcome', { to_email: toEmail, to_name: toName, staff_email: toEmail, staff_password: pwd, staff_id: uid2, company_name: company, login_url: location.origin + '/login.html' }); return true; } } catch (e) { console.warn('EmailJS:', e); } return false;
+    async function sendCredEmail(toEmail,toName,pwd,uid2,company){
+      try{if(typeof emailjs!=='undefined'&&EMAILJS_CONFIG?.publicKey){emailjs.init({publicKey:EMAILJS_CONFIG.publicKey});await emailjs.send(EMAILJS_CONFIG.serviceId||'default_service',EMAILJS_CONFIG.staffTemplateId||'template_staff_welcome',{to_email:toEmail,to_name:toName,staff_email:toEmail,staff_password:pwd,staff_id:uid2,company_name:company,login_url:location.origin+'/login.html'});return true;}}catch(e){console.warn('EmailJS:',e);}return false;
     }
 
     async function init() {
       try {
         await requireAuth('login.html');
         const cu = await getCurrentUser();
-        if (!cu) { location.href = 'login.html'; return; }
-        window.CU = cu; saveSession(cu); window.CU._notifyList = cu.notifyApps || [];
+        if (!cu) { location.href='login.html'; return; }
+        window.CU = cu; saveSession(cu); window.CU._notifyList = cu.notifyApps||[];
         setupUI(); buildProfile(); subscribeAll();
-      } catch (e) { console.error(e); } finally { hideLoader(); }
+      } catch(e) { console.error(e); } finally { hideLoader(); }
     }
 
-    function hideLoader() { const el = document.getElementById('loading-overlay'); if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); } }
+    function hideLoader() { const el=document.getElementById('loading-overlay'); if(el){el.style.opacity='0';setTimeout(()=>el.remove(),400);} }
 
     function setupUI() {
-      const { name, role } = window.CU;
-      const col = avatarColor(name), ini = getInitials(name);
-      const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
-      setAv('topbar-avatar', ini, col, 32, src); setAv('bn-avatar', ini, col, 24, src);
-      document.getElementById('topbar-name').textContent = (name || 'User').split(' ')[0];
-      
-      if (window.CU.companyId) { getDoc(doc(db, 'companies', window.CU.companyId)).then(s => { if (s.exists()) { const cd = s.data(); document.getElementById('topbar-company').textContent = cd.name; let ip = cd.isPremium === true; if (ip && cd.subscriptionExpiry && new Date() > new Date(cd.subscriptionExpiry)) ip = false; window.CU.isPremium = ip; const u = document.getElementById('globalUpgradeBtn'); if (u) { ip ? u.classList.add('hidden') : u.classList.remove('hidden'); } } }).catch(console.error); }
-      
-      const h = new Date().getHours(), g = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
-      const fn = (name || 'User').split(' ')[0];
-      document.getElementById('home-greeting').innerHTML = `Good ${g}, <span class="greeting-name">${esc(fn)}</span>`;
-      document.getElementById('home-sub').textContent = { owner: 'Overview of your company and team', manager: 'Your team tasks and activity', staff: 'Your assignments and progress' }[role] || '';
-      
-      const canAssign = role === 'owner' || role === 'manager';
-      const isOwner = role === 'owner';
-      const canSeeStaff = role === 'owner' || role === 'manager';
-      
-      if (canAssign) {
-        document.getElementById('bn-assign')?.classList.remove('hidden');
-        const a = document.getElementById('assign-top-btn'); if (a) a.style.display = '';
+      const {name,role}=window.CU;
+      const col=avatarColor(name),ini=getInitials(name);
+      const src=localStorage.getItem('zenda_logo_'+window.CU.uid)||window.CU.avatarData||null;
+      setAv('topbar-avatar',ini,col,32,src); setAv('bn-avatar',ini,col,24,src);
+      document.getElementById('topbar-name').textContent=(name||'User').split(' ')[0];
+
+      if(window.CU.companyId){getDoc(doc(db,'companies',window.CU.companyId)).then(s=>{if(s.exists()){const cd=s.data();document.getElementById('topbar-company').textContent=cd.name;let ip=cd.isPremium===true;if(ip&&cd.subscriptionExpiry&&new Date()>new Date(cd.subscriptionExpiry))ip=false;window.CU.isPremium=ip;const u=document.getElementById('globalUpgradeBtn');if(u){ip?u.classList.add('hidden'):u.classList.remove('hidden');}}}).catch(console.error);}
+
+      const h=new Date().getHours(),g=h<12?'morning':h<17?'afternoon':'evening';
+      const fn=(name||'User').split(' ')[0];
+      document.getElementById('home-greeting').innerHTML=`Good ${g}, <span class="greeting-name">${esc(fn)}</span>`;
+      document.getElementById('home-sub').textContent={owner:'Overview of your company and team',manager:'Your team tasks and activity',staff:'Your assignments and progress'}[role]||'';
+
+      const canAssign=role==='owner'||role==='manager';
+      const isOwner=role==='owner';
+      const canSeeStaff=role==='owner'||role==='manager';
+
+      if(canAssign){document.getElementById('bn-assign')?.classList.remove('hidden');const a=document.getElementById('assign-top-btn');if(a)a.style.display='';}
+
+      const tr=document.getElementById('task-tab-row');
+      if(tr){
+        if(isOwner){tr.innerHTML=`<button class="ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`;window.taskTab='assigned-by-me';}
+        else{tr.innerHTML=`<button class="ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button><button class="ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`;window.taskTab='assigned-to-me';}
       }
-      
-      const tr = document.getElementById('task-tab-row');
-      if (tr) { if (isOwner) { tr.innerHTML = `<button class="ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-by-me'; } else { tr.innerHTML = `<button class="ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button><button class="ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-to-me'; } }
-      
-      if (canSeeStaff) { document.getElementById('nav-staff')?.classList.remove('hidden'); document.getElementById('team-label')?.classList.remove('hidden'); document.getElementById('bn-staff-btn')?.classList.remove('hidden'); }
-      if (isOwner) { const b = document.getElementById('add-staff-btn'); if (b) b.style.display = 'flex'; }
-      if (role === 'staff' || role === 'manager') { document.getElementById('charts-row')?.classList.remove('hidden'); initCharts(); }
+
+      if(canSeeStaff){document.getElementById('nav-staff')?.classList.remove('hidden');document.getElementById('team-label')?.classList.remove('hidden');}
+      // Show team button in bottom nav only for staff-heavy views
+      if(canSeeStaff){document.getElementById('bn-staff-btn')?.classList.remove('hidden');}
+      if(isOwner){const b=document.getElementById('add-staff-btn');if(b)b.style.display='flex';}
+      if(role==='staff'||role==='manager'){document.getElementById('charts-row')?.classList.remove('hidden');initCharts();}
     }
 
-    function setAv(id, ini, col, sz, src) { const el = document.getElementById(id); if (!el) return; el.style.cssText = `width:${sz}px;height:${sz}px;font-size:${sz*.38}px;`; if (src) el.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; else { el.textContent = ini; el.style.background = col + '22'; el.style.color = col; } }
+    function setAv(id,ini,col,sz,src){const el=document.getElementById(id);if(!el)return;el.style.cssText=`width:${sz}px;height:${sz}px;font-size:${sz*.38}px;`;if(src)el.innerHTML=`<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;else{el.textContent=ini;el.style.background=col+'22';el.style.color=col;}}
 
+    // ── SUBSCRIPTIONS ──
     function subscribeAll() {
-      const { uid, companyId, role } = window.CU;
-      const cs = role === 'owner' || role === 'manager';
-      const ca = role === 'owner' || role === 'manager';
-      
-      unsubs.push(listenNotifications(uid, (it, u) => { window.renderNotifs(it); setBadge('notif-badge', u); setBadge('notif-count-badge', u); }));
-      
-      unsubs.push(listenMyTasks(uid, tasks => { window.myTasks = tasks; const p = tasks.filter(t => t.status === 'pending').length; setBadge('task-badge-side', p); setDot('bn-task-dot', p > 0); window.renderRecentTasks(); window.renderTasksList(); if (role === 'staff' || role === 'manager') { updateCharts(tasks); renderNonOwnerStats(tasks); } if (role === 'owner') renderOwnerStats(); }));
-      
-      if (ca) unsubs.push(listenAssignedByMe(uid, tasks => { window.assignedByMeTasks = tasks; if (role === 'owner') renderOwnerStats(); window.renderRecentTasks(); window.renderTasksList(); }));
-      
-      if (cs && companyId) unsubs.push(listenCompanyStaff(companyId, staff => { allStaff = staff; if (role === 'owner') renderOwnerStats(); window.renderStaffCards(staff); buildAssignSelect(staff); const n = staff.filter(s => s.role !== 'owner'); const sc = document.getElementById('staff-count-sub'); if (sc) sc.textContent = `${n.length} ${n.length!==1?'members':'member'}`; })); else if (companyId) getAssignableStaff(companyId, uid).then(s => { allStaff = s; }).catch(console.error);
-      
-      unsubs.push(listenInstalledApps(uid, ids => buildAppsGrid(ids)));
+      const {uid,companyId,role}=window.CU;
+      const cs=role==='owner'||role==='manager';
+      const ca=role==='owner'||role==='manager';
+
+      // ── Notifications listener with bell animation ──
+      unsubs.push(listenNotifications(uid,(items,unreadCount)=>{
+        // Bell animation when new notification arrives
+        if(unreadCount > _prevUnreadCount && _prevUnreadCount >= 0){
+          const bellBtn = document.getElementById('notif-btn');
+          const bellSvg = bellBtn?.querySelector('svg');
+          if(bellSvg){
+            bellSvg.style.color='#F59E0B';
+            bellSvg.style.animation='bellShake 0.6s ease-in-out';
+            setTimeout(()=>{
+              bellSvg.style.color='';
+              bellSvg.style.animation='';
+            }, 2000);
+          }
+          // Also animate bottom nav bell
+          const bnNotif = document.getElementById('bn-notif');
+          if(bnNotif){
+            bnNotif.style.color='#F59E0B';
+            setTimeout(()=>{ bnNotif.style.color=''; }, 2000);
+          }
+        }
+        _prevUnreadCount = unreadCount;
+
+        window.renderNotifs(items);
+        setBadge('notif-badge', unreadCount);
+        // Update count badge in panel header
+        const cb = document.getElementById('notif-count-badge');
+        if(cb){
+          if(unreadCount > 0){ cb.textContent=unreadCount>99?'99+':unreadCount; cb.style.display=''; }
+          else { cb.style.display='none'; }
+        }
+        // Update bottom nav dot
+        setDot('bn-notif-dot', unreadCount > 0);
+      }));
+
+      unsubs.push(listenMyTasks(uid,tasks=>{
+        window.myTasks=tasks;
+        const p=tasks.filter(t=>t.status==='pending').length;
+        setBadge('task-badge-side',p);setDot('bn-task-dot',p>0);
+        window.renderRecentTasks();window.renderTasksList();
+        if(role==='staff'||role==='manager'){updateCharts(tasks);renderNonOwnerStats(tasks);}
+        if(role==='owner') renderOwnerStats();
+      }));
+
+      if(ca) unsubs.push(listenAssignedByMe(uid,tasks=>{window.assignedByMeTasks=tasks;if(role==='owner')renderOwnerStats();window.renderRecentTasks();window.renderTasksList();}));
+
+      if(cs&&companyId) unsubs.push(listenCompanyStaff(companyId,staff=>{allStaff=staff;if(role==='owner')renderOwnerStats();window.renderStaffCards(staff);buildAssignSelect(staff);const n=staff.filter(s=>s.role!=='owner');const sc=document.getElementById('staff-count-sub');if(sc)sc.textContent=`${n.length} ${n.length!==1?'members':'member'}`;}));
+      else if(companyId) getAssignableStaff(companyId,uid).then(s=>{allStaff=s;}).catch(console.error);
+
+      unsubs.push(listenInstalledApps(uid,ids=>buildAppsGrid(ids)));
     }
 
-    function sIco(bg, c, p) { return `<div style="background:${bg};color:${c};border-radius:14px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${p}</svg></div>`; }
+    function sIco(bg,c,p){return `<div style="background:${bg};color:${c};border-radius:14px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${p}</svg></div>`;}
 
-    function renderOwnerStats() {
-      const staff = allStaff.filter(s => s.role !== 'owner');
-      const all = [...window.myTasks, ...window.assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-      const p = all.filter(t => t.status === 'pending').length, d = all.filter(t => t.status === 'done').length;
-      const el = document.getElementById('stats-grid'); if (!el) return;
-      el.innerHTML = `<div class="stat-card anim-stagger" onclick="window.showView('staff')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val">${staff.length}</div></div>${sIco('#E5EDFF','#0052FF','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#059669','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
-    }
+    function renderOwnerStats(){const staff=allStaff.filter(s=>s.role!=='owner');const all=[...window.myTasks,...window.assignedByMeTasks].filter((v,i,a)=>a.findIndex(t=>t.id===v.id)===i);const p=all.filter(t=>t.status==='pending').length,d=all.filter(t=>t.status==='done').length;const el=document.getElementById('stats-grid');if(!el)return;el.innerHTML=`<div class="stat-card anim-stagger" onclick="window.showView('staff')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val">${staff.length}</div></div>${sIco('#E5EDFF','#0052FF','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#059669','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;}
 
-    function renderNonOwnerStats(tasks) {
-      const p = tasks.filter(t => t.status === 'pending').length, d = tasks.filter(t => t.status === 'done').length;
-      const isMgr = window.CU.role === 'manager';
-      const el = document.getElementById('stats-grid'); if (!el) return;
-      el.innerHTML = isMgr ? `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#059669','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val">${window.assignedByMeTasks.length}</div></div>${sIco('#F3E8FF','#7C3AED','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}</div></div>` : `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#059669','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
-    }
+    function renderNonOwnerStats(tasks){const p=tasks.filter(t=>t.status==='pending').length,d=tasks.filter(t=>t.status==='done').length;const isMgr=window.CU.role==='manager';const el=document.getElementById('stats-grid');if(!el)return;el.innerHTML=isMgr?`<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#059669','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val">${window.assignedByMeTasks.length}</div></div>${sIco('#F3E8FF','#7C3AED','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}</div></div>`:`<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#059669','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;}
 
-    function initCharts() { const cv = document.getElementById('main-area-chart'); if (!cv) return; const c = cv.getContext('2d'); const gr = c.createLinearGradient(0, 0, 0, 240); gr.addColorStop(0, 'rgba(79,70,229,.25)'); gr.addColorStop(1, 'rgba(79,70,229,0)'); mainAreaChart = new Chart(c, { type: 'line', data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [{ label: 'Done', data: [0, 0, 0, 0, 0, 0, 0], borderColor: '#4F46E5', backgroundColor: gr, borderWidth: 3, fill: true, tension: .4, pointBackgroundColor: '#fff', pointBorderColor: '#4F46E5', pointBorderWidth: 2, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#F1F5F9' }, border: { display: false } } } } }); }
+    function initCharts(){const cv=document.getElementById('main-area-chart');if(!cv)return;const c=cv.getContext('2d');const gr=c.createLinearGradient(0,0,0,240);gr.addColorStop(0,'rgba(79,70,229,.25)');gr.addColorStop(1,'rgba(79,70,229,0)');mainAreaChart=new Chart(c,{type:'line',data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],datasets:[{label:'Done',data:[0,0,0,0,0,0,0],borderColor:'#4F46E5',backgroundColor:gr,borderWidth:3,fill:true,tension:.4,pointBackgroundColor:'#fff',pointBorderColor:'#4F46E5',pointBorderWidth:2,pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'#F1F5F9'},border:{display:false}}}}});}
+    function updateCharts(tasks){if(!mainAreaChart)return;const days=last7();mainAreaChart.data.labels=days.map(d=>d.label);mainAreaChart.data.datasets[0].data=days.map(day=>tasks.filter(t=>t.status==='done'&&t.completedAt&&new Date(t.completedAt).toDateString()===day.date).length);mainAreaChart.update();}
 
-    function updateCharts(tasks) { if (!mainAreaChart) return; const days = last7(); mainAreaChart.data.labels = days.map(d => d.label); mainAreaChart.data.datasets[0].data = days.map(day => tasks.filter(t => t.status === 'done' && t.completedAt && new Date(t.completedAt).toDateString() === day.date).length); mainAreaChart.update(); } 
-    
-    const APPS = { calculator: { label: 'Calculator', icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>', bg: 'linear-gradient(135deg,#6366F1,#4F46E5)' }, calendar: { label: 'Calendar', icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', bg: 'linear-gradient(135deg,#10B981,#059669)' }, inventory: { label: 'Inventory', icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>', bg: 'linear-gradient(135deg,#F59E0B,#D97706)' }, expenses: { label: 'Expenses', icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', bg: 'linear-gradient(135deg,#EF4444,#DC2626)' } };
+    const APPS={calculator:{label:'Calculator',icon:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>',bg:'linear-gradient(135deg,#6366F1,#4F46E5)'},calendar:{label:'Calendar',icon:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',bg:'linear-gradient(135deg,#10B981,#059669)'},inventory:{label:'Inventory',icon:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',bg:'linear-gradient(135deg,#F59E0B,#D97706)'},expenses:{label:'Expenses',icon:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',bg:'linear-gradient(135deg,#EF4444,#DC2626)'}};
 
-    function buildAppsGrid(ids) { const el = document.getElementById('apps-grid'); if (!el) return; const all = ['calculator', ...(ids || []).filter(i => i !== 'calculator')]; const vis = all.slice(0, 15), hm = all.length > 15; el.innerHTML = vis.map(id => { const a = APPS[id]; if (!a) return ''; return `<div class="app-squircle-wrap" onclick="window.openApp('${id}')"><div class="app-squircle" style="background:${a.bg}; display:flex; align-items:center; justify-content:center;">${a.icon}</div><span class="app-name">${a.label}</span></div>`; }).join('') + `<div class="app-squircle-wrap" onclick="window.openAppLib()"><div class="app-viewall-tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div><span class="app-name" style="color:var(--ac);font-weight:700;">${hm?'+'+(all.length-15)+' More':'View All'}</span></div>`; } window.openApp = function(id) { const m = { calculator: 'calculator.html', calendar: 'calendar.html', inventory: 'inventory.html', expenses: 'expenses.html' }; const f = m[id]; if (f) location.href = f + (window.CU?.uid ? '?uid=' + window.CU.uid : ''); else showToast('App not found!', 'error'); };
+    function buildAppsGrid(ids){const el=document.getElementById('apps-grid');if(!el)return;const all=['calculator',...(ids||[]).filter(i=>i!=='calculator')];const vis=all.slice(0,15),hm=all.length>15;el.innerHTML=vis.map(id=>{const a=APPS[id];if(!a)return'';return`<div class="app-squircle-wrap" onclick="window.openApp('${id}')"><div class="app-squircle" style="background:${a.bg};display:flex;align-items:center;justify-content:center;">${a.icon}</div><span class="app-name">${a.label}</span></div>`;}).join('')+`<div class="app-squircle-wrap" onclick="window.openAppLib()"><div class="app-viewall-tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div><span class="app-name" style="color:var(--ac);font-weight:700;">${hm?'+'+(all.length-15)+' More':'View All'}</span></div>`;}
+    window.openApp=function(id){const m={calculator:'calculator.html',calendar:'calendar.html',inventory:'inventory.html',expenses:'expenses.html'};const f=m[id];if(f)location.href=f+(window.CU?.uid?'?uid='+window.CU.uid:'');else showToast('App not found!','error');};
 
     // ── TASK CARD ──
-    window.renderTaskCard = function(task, showActions, isRecent = false) {
-      const isToMe = task.assignedTo === window.CU?.uid;
-      const isPending = task.status === 'pending';
-      const isDone = task.status === 'done';
-      const isDeclined = task.status === 'declined';
-      let isOverdue = false;
-      if (task.dueDate && isPending) { const d = new Date(task.dueDate); d.setHours(23, 59, 59, 999); isOverdue = d.getTime() < Date.now(); }
-      const isDO = isDeclined || isOverdue;
-      let pCls = ''; if (task.priority === 'High') pCls = 'priority-high'; if (task.priority === 'Medium') pCls = 'priority-medium';
-      const tCls = isDone ? 'card-title done' : 'card-title';
-      const cCls = `premium-task-card${isDone?' completed-state':''}${isDeclined?' task-declined':''} ${pCls}`.trim();
-      const aN = task.assignedToName || 'Team Member';
-      const aI = (aN.charAt(0) || '?').toUpperCase();
-      const cols = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-      const bgC = cols[aI.charCodeAt(0) % cols.length];
-      const av = `<div class="av" style="width:42px;height:42px;font-size:1.2rem;font-weight:800;border-radius:50%;flex-shrink:0;background:${bgC}1A;color:${bgC};border:1px solid ${bgC}33;">${aI}</div>`;
-      const dA = fmtDate(task.createdAt || Date.now());
-      let dD = dA; if (isDone && task.completedAt) dD = `${dA} — ${fmtDate(task.completedAt)}`; else if (task.dueDate) dD = `${dA} — ${fmtDate(task.dueDate)}`;
-      const clk = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-      const dTop = `<div class="card-time-block card-date-top" style="padding:4px 10px;font-size:.75rem;white-space:nowrap;flex-shrink:0;margin-left:auto;">${clk} ${esc(dD)}</div>`;
-      const dBot = `<div class="card-date-bottom">${clk} ${esc(dD)}</div>`;
-      const isAbm = task.assignedBy === window.CU?.uid;
-      const delBtn = (showActions && isAbm && isPending && !isToMe) ? `<button class="task-delete-inline" onclick="window.openDeleteTaskModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete</button>` : '';
-      const aBadge = `<div style="display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;color:var(--tx-2);background:var(--bg-overlay);padding:4px 10px;border-radius:8px;border:1px solid var(--bd-color);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${esc(aN)}</div>`;
-      const pBadge = (!isDeclined && task.priority) ? `<span class="priority-tag" style="background:var(--bg-overlay);color:var(--tx-2);padding:4px 10px;font-size:.65rem;">${task.priority}</span>` : '';
-      let sBadge = ''; if (isDeclined) sBadge = `<span class="priority-tag" style="background:var(--red-l);color:var(--red);padding:4px 10px;font-size:.65rem;">Declined</span>`; else if (isOverdue) sBadge = `<span class="priority-tag" style="background:var(--red-l);color:var(--red);padding:4px 10px;font-size:.65rem;">Overdue</span>`;
-      const actBtns = (isPending && !isDO && showActions && isToMe) ? `<div style="display:flex;gap:8px;margin-top:6px;"><button style="padding:6px 14px;border-radius:8px;border:none;background:var(--green-l);color:var(--green-h);font-weight:700;font-size:.75rem;cursor:pointer;" onclick="window.doAcceptTask('${task.id}')">✓ Done</button><button style="padding:6px 14px;border-radius:8px;border:none;background:var(--red-l);color:var(--red);font-weight:700;font-size:.75rem;cursor:pointer;" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">✗ Decline</button></div>` : '';
-      return `<div class="${cCls}" id="task-${task.id}">${av}<div class="card-content-wrap" style="gap:5px;width:100%;min-width:0;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;"><div class="${tCls}" style="min-width:0;">${esc(task.title||'Untitled Task')}</div></div>${dTop}</div><div class="card-meta-strip" style="margin-top:2px; justify-content: space-between;"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${aBadge}${pBadge}${sBadge}</div><div style="display:flex;align-items:center;gap:8px;">${dBot}${delBtn}</div>${actBtns}</div></div></div>`;
+    window.renderTaskCard=function(task,showActions,isRecent=false){
+      const isToMe=task.assignedTo===window.CU?.uid;
+      const isPending=task.status==='pending';
+      const isDone=task.status==='done';
+      const isDeclined=task.status==='declined';
+      let isOverdue=false;
+      if(task.dueDate&&isPending){const d=new Date(task.dueDate);d.setHours(23,59,59,999);isOverdue=d.getTime()<Date.now();}
+      const isDO=isDeclined||isOverdue;
+      let pCls='';if(task.priority==='High')pCls='priority-high';if(task.priority==='Medium')pCls='priority-medium';
+      const tCls=isDone?'card-title done':'card-title';
+      const cCls=`premium-task-card${isDone?' completed-state':''}${isDeclined?' task-declined':''} ${pCls}`.trim();
+      const aN=task.assignedToName||'Team Member';
+      const aI=(aN.charAt(0)||'?').toUpperCase();
+      const cols=['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6'];
+      const bgC=cols[aI.charCodeAt(0)%cols.length];
+      const av=`<div class="av" style="width:42px;height:42px;font-size:1.2rem;font-weight:800;border-radius:50%;flex-shrink:0;background:${bgC}1A;color:${bgC};border:1px solid ${bgC}33;">${aI}</div>`;
+      const dA=fmtDate(task.createdAt||Date.now());
+      let dD=dA;if(isDone&&task.completedAt)dD=`${dA} — ${fmtDate(task.completedAt)}`;else if(task.dueDate)dD=`${dA} — ${fmtDate(task.dueDate)}`;
+      const clk=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+      const dTop=`<div class="card-time-block card-date-top" style="padding:4px 10px;font-size:.75rem;white-space:nowrap;flex-shrink:0;margin-left:auto;">${clk} ${esc(dD)}</div>`;
+      const dBot=`<div class="card-date-bottom">${clk} ${esc(dD)}</div>`;
+      const isAbm=task.assignedBy===window.CU?.uid;
+      const delBtn=(showActions&&isAbm&&isPending&&!isToMe)?`<button class="task-delete-inline" onclick="window.openDeleteTaskModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete</button>`:'';
+      const aBadge=`<div style="display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;color:var(--tx-2);background:var(--bg-overlay);padding:4px 10px;border-radius:8px;border:1px solid var(--bd-color);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${esc(aN)}</div>`;
+      const pBadge=(!isDeclined&&task.priority)?`<span class="priority-tag" style="background:var(--bg-overlay);color:var(--tx-2);padding:4px 10px;font-size:.65rem;">${task.priority}</span>`:'';
+      let sBadge='';if(isDeclined)sBadge=`<span class="priority-tag" style="background:var(--red-l);color:var(--red);padding:4px 10px;font-size:.65rem;">Declined</span>`;else if(isOverdue)sBadge=`<span class="priority-tag" style="background:var(--red-l);color:var(--red);padding:4px 10px;font-size:.65rem;">Overdue</span>`;
+      const actBtns=(isPending&&!isDO&&showActions&&isToMe)?`<div style="display:flex;gap:8px;margin-top:6px;"><button style="padding:6px 14px;border-radius:8px;border:none;background:var(--green-l);color:var(--green-h);font-weight:700;font-size:.75rem;cursor:pointer;" onclick="window.doAcceptTask('${task.id}')">✓ Done</button><button style="padding:6px 14px;border-radius:8px;border:none;background:var(--red-l);color:var(--red);font-weight:700;font-size:.75rem;cursor:pointer;" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">✗ Decline</button></div>`:'';
+      return`<div class="${cCls}" id="task-${task.id}">${av}<div class="card-content-wrap" style="gap:5px;width:100%;min-width:0;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;"><div class="${tCls}" style="min-width:0;">${esc(task.title||'Untitled Task')}</div></div>${dTop}</div><div class="card-meta-strip" style="margin-top:2px;justify-content:space-between;"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${aBadge}${pBadge}${sBadge}</div><div style="display:flex;align-items:center;gap:8px;">${dBot}${delBtn}</div>${actBtns}</div></div></div>`;
     };
 
-    window.renderRecentTasks = function() { const el = document.getElementById('recent-tasks'); if (!el) return; const all = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 3); if (!all.length) { el.innerHTML = `<div class="empty" style="padding:36px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No recent tasks</div></div>`; return; } el.innerHTML = '<div class="task-list-wrapper" style="padding-bottom:8px;">' + all.map((t, i) => window.renderTaskCard(t, false, true).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join('') + '</div>'; };
-    window.setTaskTab = function(tab, btn) { window.taskTab = tab; document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on')); if (btn) btn.classList.add('on'); else { const b = Array.from(document.querySelectorAll('.ftab')).find(b => b.getAttribute('onclick')?.includes(tab)); if (b) b.classList.add('on'); } window.renderTasksList(); };
+    window.renderRecentTasks=function(){const el=document.getElementById('recent-tasks');if(!el)return;const all=[...(window.myTasks||[]),...(window.assignedByMeTasks||[])].filter((v,i,a)=>a.findIndex(t=>t.id===v.id)===i).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,3);if(!all.length){el.innerHTML=`<div class="empty" style="padding:36px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No recent tasks</div></div>`;return;}el.innerHTML='<div class="task-list-wrapper" style="padding-bottom:8px;">'+all.map((t,i)=>window.renderTaskCard(t,false,true).replace('class="premium-task-card',`class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join('')+'</div>';};
+    window.setTaskTab=function(tab,btn){window.taskTab=tab;document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');else{const b=Array.from(document.querySelectorAll('.ftab')).find(b=>b.getAttribute('onclick')?.includes(tab));if(b)b.classList.add('on');}window.renderTasksList();};
 
-    window.renderTasksList = function() {
-      const el = document.getElementById('tasks-list'); if (!el) return;
-      let list = []; const now = Date.now();
-      const isOv = (t) => { if (!t.dueDate || t.status !== 'pending') return false; const d = new Date(t.dueDate); d.setHours(23, 59, 59, 999); return d.getTime() < now; };
-      const isDO = (t) => t.status === 'declined' || isOv(t);
-      const isAct = (t) => t.status === 'pending' && !isOv(t);
-      if (window.taskTab === 'assigned-to-me') list = window.myTasks.filter(t => t.assignedTo === window.CU?.uid && isAct(t));
-      else if (window.taskTab === 'assigned-by-me') list = window.assignedByMeTasks.filter(t => isAct(t));
-      else if (window.taskTab === 'done') list = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])].filter(t => t.status === 'done');
-      else if (window.taskTab === 'declined') list = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])].filter(t => isDO(t));
-      else list = window.myTasks;
-      const seen = new Set(); list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
-      if (!list.length) { el.innerHTML = `<div class="empty" style="padding:60px 20px;"><div style="width:80px;height:80px;background:var(--bg-overlay);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg></div><div style="font-size:1.1rem;font-weight:700;color:var(--tx-1);">You're all caught up!</div><div style="font-size:.9rem;color:var(--tx-3);margin-top:6px;">No tasks match this filter.</div></div>`; return; }
-      if (window.taskTab === 'done' || window.taskTab === 'declined') { const mine = list.filter(t => t.assignedTo === window.CU?.uid), others = list.filter(t => t.assignedTo !== window.CU?.uid); let html = '<div class="task-list-wrapper">'; if (mine.length) { html += `<div style="font-size:.85rem;font-weight:700;color:var(--tx-2);padding:8px 16px 4px;text-transform:uppercase;letter-spacing:.04em;">My Tasks</div>`; html += mine.map((t, i) => window.renderTaskCard(t, false).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join(''); } if (others.length) { html += `<div style="font-size:.85rem;font-weight:700;color:var(--tx-3);padding:24px 16px 8px;border-top:1px solid var(--bd-color);margin-top:12px;text-transform:uppercase;letter-spacing:.04em;">Team Tasks</div>`; html += others.map((t, i) => window.renderTaskCard(t, false).replace('class="premium-task-card', `class="premium-task-card" style="opacity:.85;background:var(--bg-overlay);animation-delay:${i*.1}s;"`)).join(''); } html += '</div>'; el.innerHTML = html; } else el.innerHTML = '<div class="task-list-wrapper">' + list.map((t, i) => window.renderTaskCard(t, true).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join('') + '</div>';
+    window.renderTasksList=function(){
+      const el=document.getElementById('tasks-list');if(!el)return;
+      let list=[];const now=Date.now();
+      const isOv=(t)=>{if(!t.dueDate||t.status!=='pending')return false;const d=new Date(t.dueDate);d.setHours(23,59,59,999);return d.getTime()<now;};
+      const isDO=(t)=>t.status==='declined'||isOv(t);
+      const isAct=(t)=>t.status==='pending'&&!isOv(t);
+      if(window.taskTab==='assigned-to-me')list=window.myTasks.filter(t=>t.assignedTo===window.CU?.uid&&isAct(t));
+      else if(window.taskTab==='assigned-by-me')list=window.assignedByMeTasks.filter(t=>isAct(t));
+      else if(window.taskTab==='done')list=[...(window.myTasks||[]),...(window.assignedByMeTasks||[])].filter(t=>t.status==='done');
+      else if(window.taskTab==='declined')list=[...(window.myTasks||[]),...(window.assignedByMeTasks||[])].filter(t=>isDO(t));
+      else list=window.myTasks;
+      const seen=new Set();list=list.filter(t=>{if(seen.has(t.id))return false;seen.add(t.id);return true;});
+      if(!list.length){el.innerHTML=`<div class="empty" style="padding:60px 20px;"><div style="width:80px;height:80px;background:var(--bg-overlay);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg></div><div style="font-size:1.1rem;font-weight:700;color:var(--tx-1);">You're all caught up!</div><div style="font-size:.9rem;color:var(--tx-3);margin-top:6px;">No tasks match this filter.</div></div>`;return;}
+      if(window.taskTab==='done'||window.taskTab==='declined'){const mine=list.filter(t=>t.assignedTo===window.CU?.uid),others=list.filter(t=>t.assignedTo!==window.CU?.uid);let html='<div class="task-list-wrapper">';if(mine.length){html+=`<div style="font-size:.85rem;font-weight:700;color:var(--tx-2);padding:8px 16px 4px;text-transform:uppercase;letter-spacing:.04em;">My Tasks</div>`;html+=mine.map((t,i)=>window.renderTaskCard(t,false).replace('class="premium-task-card',`class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join('');}if(others.length){html+=`<div style="font-size:.85rem;font-weight:700;color:var(--tx-3);padding:24px 16px 8px;border-top:1px solid var(--bd-color);margin-top:12px;text-transform:uppercase;letter-spacing:.04em;">Team Tasks</div>`;html+=others.map((t,i)=>window.renderTaskCard(t,false).replace('class="premium-task-card',`class="premium-task-card" style="opacity:.85;background:var(--bg-overlay);animation-delay:${i*.1}s;"`)).join('');}html+='</div>';el.innerHTML=html;}
+      else el.innerHTML='<div class="task-list-wrapper">'+list.map((t,i)=>window.renderTaskCard(t,true).replace('class="premium-task-card',`class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join('')+'</div>';
     };
 
-    window.renderStaffCards = function(staff) {
-      const el = document.getElementById('staff-cards-list'); if (!el) return;
-      const list = staff.filter(s => s.role !== 'owner');
-      if (!list.length) { el.innerHTML = `<div style="grid-column: 1 / -1; width: 100%; display:flex;flex-direction:column;align-items:center;justify-content:center;height:50vh;text-align:center;gap:12px;"><div style="width:72px;height:72px;background:var(--bg-overlay);border-radius:50%;display:flex;align-items:center;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="font-size:1.1rem;font-weight:700;color:var(--tx-1);">No staff found</div><div style="font-size:.9rem;color:var(--tx-3);">Add your first team member to get started.</div></div>`; return; }
-      const isO = window.CU?.role === 'owner', isMgr = window.CU?.role === 'manager';
-      el.innerHTML = list.map(s => {
-        const ini = getInitials(s.name);
-        const eH = `<div class="team-email" style="font-size: 0.75rem !important; color: var(--tx-3); display: flex; align-items: center; gap: 4px; margin: 0 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>${esc(s.email)}</div>`;
-        const cD = isO || (isMgr && s.role === 'staff');
-        const dH = cD ? `<button class="btn-delete-big" style="z-index: 2; position: relative;" title="Remove Staff" onclick="event.stopPropagation(); window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${esc(s.passwordHint||'')}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : '';
-        const aH = (isO || isMgr) ? `<button class="btn-text" style="font-size:12px;padding:4px 12px; z-index: 2; position: relative;" onclick="event.stopPropagation(); window.quickAssign('${s.uid}')">Assign Task</button>` : '';
-        const sData = encodeURIComponent(JSON.stringify({uid: s.uid, name: s.name, email: s.email, designation: s.designation, role: s.role, pwd: s.passwordHint, created: s.createdAt, uniqueId: s.uniqueId}));
-
-        return `<div class="team-card anim-stagger" style="cursor:pointer;" onclick="window.viewStaffDetails('${sData}')"><div class="team-card-top"><div class="team-profile-info"><div class="team-av">${ini}</div><div class="team-text-block"><div class="team-name">${esc(s.name)}</div><div class="team-role">${esc(s.designation||formatRole(s.role))}</div></div></div>${dH}</div><div class="team-card-actions" style="justify-content: space-between;">${eH}${aH}</div></div>`;
+    // ── STAFF CARDS ──
+    window.renderStaffCards=function(staff){
+      const el=document.getElementById('staff-cards-list');if(!el)return;
+      const list=staff.filter(s=>s.role!=='owner');
+      if(!list.length){el.innerHTML=`<div style="grid-column:1/-1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;height:50vh;text-align:center;gap:12px;"><div style="width:72px;height:72px;background:var(--bg-overlay);border-radius:50%;display:flex;align-items:center;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="font-size:1.1rem;font-weight:700;color:var(--tx-1);">No staff found</div><div style="font-size:.9rem;color:var(--tx-3);">Add your first team member to get started.</div></div>`;return;}
+      const isO=window.CU?.role==='owner',isMgr=window.CU?.role==='manager';
+      el.innerHTML=list.map(s=>{
+        const ini=getInitials(s.name);
+        const eH=`<div class="team-email" style="font-size:0.75rem !important;color:var(--tx-3);display:flex;align-items:center;gap:4px;margin:0 !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>${esc(s.email)}</div>`;
+        const cD=isO||(isMgr&&s.role==='staff');
+        const dH=cD?`<button class="btn-delete-big" style="z-index:2;position:relative;" title="Remove Staff" onclick="event.stopPropagation();window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${esc(s.passwordHint||'')}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>`:'';
+        const aH=(isO||isMgr)?`<button class="btn-text" style="font-size:12px;padding:4px 12px;z-index:2;position:relative;" onclick="event.stopPropagation();window.quickAssign('${s.uid}')">Assign Task</button>`:'';
+        const sData=encodeURIComponent(JSON.stringify({uid:s.uid,name:s.name,email:s.email,designation:s.designation,role:s.role,pwd:s.passwordHint,created:s.createdAt,uniqueId:s.uniqueId}));
+        return`<div class="team-card anim-stagger" style="cursor:pointer;" onclick="window.viewStaffDetails('${sData}')"><div class="team-card-top"><div class="team-profile-info"><div class="team-av">${ini}</div><div class="team-text-block"><div class="team-name">${esc(s.name)}</div><div class="team-role">${esc(s.designation||formatRole(s.role))}</div></div></div>${dH}</div><div class="team-card-actions" style="justify-content:space-between;">${eH}${aH}</div></div>`;
       }).join('');
     };
-    
-    window.viewStaffDetails = function(dataStr) {
-      const s = JSON.parse(decodeURIComponent(dataStr));
-      const ini = getInitials(s.name);
-      const cols = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-      const bgC = cols[ini.charCodeAt(0) % cols.length];
-      
-      const av = document.getElementById('sd-avatar');
-      av.textContent = ini;
-      av.style.color = bgC;
-      
-      document.getElementById('sd-name').textContent = s.name;
-      document.getElementById('sd-role').textContent = s.designation || formatRole(s.role);
-      document.getElementById('sd-email').textContent = s.email;
-      document.getElementById('sd-zenda-id').textContent = s.uniqueId ? s.uniqueId : s.uid.substring(0, 8).toUpperCase();
-      document.getElementById('sd-joined').textContent = formatDateIN(s.created || Date.now());
-      
-      const isOwner = window.CU?.role === 'owner';
-      const pwdRow = document.getElementById('sd-password-row');
-      if (isOwner) {
-          pwdRow.style.display = 'flex';
-          document.getElementById('sd-password').textContent = s.pwd || '••••••';
-      } else {
-          pwdRow.style.display = 'none';
-      }
-      
+
+    window.viewStaffDetails=function(dataStr){
+      const s=JSON.parse(decodeURIComponent(dataStr));
+      const ini=getInitials(s.name);
+      const cols=['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6'];
+      const bgC=cols[ini.charCodeAt(0)%cols.length];
+      const av=document.getElementById('sd-avatar');av.textContent=ini;av.style.color=bgC;
+      document.getElementById('sd-name').textContent=s.name;
+      document.getElementById('sd-role').textContent=s.designation||formatRole(s.role);
+      document.getElementById('sd-email').textContent=s.email;
+      document.getElementById('sd-zenda-id').textContent=s.uniqueId?s.uniqueId:s.uid.substring(0,8).toUpperCase();
+      document.getElementById('sd-joined').textContent=formatDateIN(s.created||Date.now());
+      const isOwner=window.CU?.role==='owner';
+      const pwdRow=document.getElementById('sd-password-row');
+      if(isOwner){pwdRow.style.display='flex';document.getElementById('sd-password').textContent=s.pwd||'••••••';}
+      else{pwdRow.style.display='none';}
       window.openModal('staff-detail-modal');
     };
 
-    window.renderNotifs = function(items) {
-      const el = document.getElementById('notif-body');
-      if (!el) return;
-      if (!items.length) { 
-        el.innerHTML = `<div class="empty" style="padding:40px 20px; text-align:center;"><div class="empty-ico" style="margin-bottom:10px; display:flex; justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl" style="color:#64748B; font-size:14px;">No notifications</div></div>`; 
-        return; 
+    // ══════════════════════════════════════════
+    //  NOTIFICATION RENDERING — FIXED PATHS
+    // ══════════════════════════════════════════
+    window.renderNotifs=function(items){
+      const el=document.getElementById('notif-body');if(!el)return;
+
+      // Show/hide mark-all button
+      const markAllBtn=document.getElementById('notif-mark-all-btn');
+      if(markAllBtn)markAllBtn.style.display=items.length?'':'none';
+
+      if(!items.length){
+        el.innerHTML=`<div class="notif-empty-state"><div class="notif-empty-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="notif-empty-title">No notifications</div><div class="notif-empty-sub">You're all caught up!<br>New alerts will appear here.</div></div>`;
+        return;
       }
-      
-      el.innerHTML = '';
-      items.forEach(n => {
-        if (n.type === 'security_login') {
-          const tpl = document.getElementById('tpl-security').content.cloneNode(true);
-          const card = tpl.querySelector('.notif-card');
-          card.dataset.id = n.id;
+
+      el.innerHTML='';
+      items.forEach(n=>{
+        if(n.type==='security_login'){
+          const tpl=document.getElementById('tpl-security').content.cloneNode(true);
+          const card=tpl.querySelector('.notif-card');
+          card.dataset.id=n.id;
+          card.querySelector('.notif-time').textContent=ago(n.createdAt);
           el.appendChild(tpl);
-        } else if (n.type === 'task_received') {
-          const tpl = document.getElementById('tpl-task').content.cloneNode(true);
-          const card = tpl.querySelector('.notif-card');
-          card.dataset.id = n.id;
-          card.dataset.taskId = n.taskId || '';
-          card.dataset.senderId = n.senderId || '';
-          card.querySelector('.task-title').textContent = n.message || 'You have been assigned a new task.';
+        } else if(n.type==='task_received'||n.type==='task_assigned'){
+          const tpl=document.getElementById('tpl-task').content.cloneNode(true);
+          const card=tpl.querySelector('.notif-card');
+          card.dataset.id=n.id;
+          card.dataset.taskId=n.taskId||n.relatedId||'';
+          card.dataset.senderId=n.actorId||n.senderId||'';
+          card.querySelector('.task-title').textContent=n.message||'You have been assigned a new task.';
+          card.querySelector('.notif-time').textContent=ago(n.createdAt);
           el.appendChild(tpl);
         } else {
-          const div = document.createElement('div');
-          div.className = 'notif-card';
-          div.dataset.id = n.id;
-          const timeStr = ago(n.createdAt);
-          div.innerHTML = `
-            <div class="notif-icon general"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+          const div=document.createElement('div');
+          div.className='notif-card';
+          div.dataset.id=n.id;
+          div.innerHTML=`
+            <div class="notif-icon general"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
             <div class="notif-content-wrap">
-              <div class="notif-header"><h4 class="notif-title">Notification</h4><span class="notif-time">${timeStr}</span></div>
+              <div class="notif-header"><h4 class="notif-title">Notification</h4><span class="notif-time">${ago(n.createdAt)}</span></div>
               <p class="notif-body">${esc(n.message)}</p>
-              <div class="notif-actions"><button class="btn-secondary" onclick="window.dismissAlert(this)">Mark as Read</button></div>
+              <div class="notif-actions"><button class="btn-secondary-sm" onclick="window.dismissAlert(this)">Mark as Read</button></div>
             </div>`;
           el.appendChild(div);
         }
       });
     };
 
-    window.toggleNotifDropdown = function() {
-      const panel = document.getElementById('notificationDropdown');
-      panel.classList.toggle('hidden');
-      window.closeAllPanels(true);
-      if (!panel.classList.contains('hidden')) {
-        document.getElementById('panel-overlay').classList.add('visible');
+    // ── TOGGLE NOTIF PANEL ──
+    window.toggleNotifDropdown=function(){
+      const panel=document.getElementById('notificationDropdown');
+      _notifPanelOpen=!_notifPanelOpen;
+      panel.classList.toggle('hidden',!_notifPanelOpen);
+
+      // Update bottom nav bell highlight
+      const bnNotif=document.getElementById('bn-notif');
+      if(bnNotif) bnNotif.classList.toggle('notif-nav-active',_notifPanelOpen);
+
+      // Update topbar bell highlight
+      const notifBtn=document.getElementById('notif-btn');
+      if(notifBtn) notifBtn.classList.toggle('notif-active',_notifPanelOpen);
+
+      if(_notifPanelOpen){
+        document.getElementById('panel-overlay')?.classList.add('visible');
       } else {
-        document.getElementById('panel-overlay').classList.remove('visible');
+        document.getElementById('panel-overlay')?.classList.remove('visible');
       }
     };
 
-    const oldCloseAllPanels = window.closeAllPanels;
-    window.closeAllPanels = function(skipDropdown = false) {
-      document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open')); 
-      ['profile-side-panel', 'profile-page-mobile', 'create-staff-page'].forEach(id => document.getElementById(id)?.classList.remove('open')); 
+    window.closeAllPanels=function(skipDropdown=false){
+      document.querySelectorAll('.side-panel').forEach(p=>p.classList.remove('open'));
+      ['profile-side-panel','profile-page-mobile','create-staff-page'].forEach(id=>document.getElementById(id)?.classList.remove('open'));
       document.getElementById('panel-overlay')?.classList.remove('visible');
-      if (!skipDropdown) { document.getElementById('notificationDropdown')?.classList.add('hidden'); }
+      if(!skipDropdown){
+        document.getElementById('notificationDropdown')?.classList.add('hidden');
+        _notifPanelOpen=false;
+        document.getElementById('bn-notif')?.classList.remove('notif-nav-active');
+        document.getElementById('notif-btn')?.classList.remove('notif-active');
+      }
     };
 
-    window.dismissAlert = async function(btn) {
-      const card = btn.closest('.notif-card');
-      const id = card.dataset.id;
-      btn.textContent = "Done!";
-      card.style.opacity = '0.5';
-      setTimeout(() => card.remove(), 300);
-      try {
-        await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' });
-      } catch(e) { console.error("Error marking read:", e); }
+    // ══════════════════════════════════════════
+    //  DISMISS / ACCEPT — FIXED FIRESTORE PATH
+    //  Correct path: notifications/{uid}/items/{notifId}
+    // ══════════════════════════════════════════
+    window.dismissAlert=async function(btn){
+      const card=btn.closest('.notif-card');
+      const id=card.dataset.id;
+      // Animate out
+      card.classList.add('dismissing');
+      setTimeout(()=>card.remove(),300);
+      try{
+        // ✅ FIXED: correct path
+        await updateDoc(doc(db,'notifications',window.CU.uid,'items',id),{read:true,status:'read'});
+      }catch(e){console.error('Error marking read:',e);}
     };
 
-    window.acceptTaskNotif = async function(btn) {
-      const card = btn.closest('.notif-card');
-      const id = card.dataset.id;
-      btn.textContent = "Accepted!";
-      card.style.opacity = '0.5';
-      setTimeout(() => card.remove(), 300);
-      try {
-        await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' });
-      } catch(e) { console.error("Error marking read:", e); }
+    window.acceptTaskNotif=async function(btn){
+      const card=btn.closest('.notif-card');
+      const id=card.dataset.id;
+      card.classList.add('dismissing');
+      setTimeout(()=>card.remove(),300);
+      try{
+        // ✅ FIXED: correct path
+        await updateDoc(doc(db,'notifications',window.CU.uid,'items',id),{read:true,status:'read'});
+      }catch(e){console.error('Error marking read:',e);}
     };
 
-    window.showDenyInput = function(btn) {
-      const card = btn.closest('.notif-card');
+    window.showDenyInput=function(btn){
+      const card=btn.closest('.notif-card');
       card.querySelector('.notif-actions').classList.add('hidden');
       card.querySelector('.deny-container').classList.remove('hidden');
     };
 
-    window.submitDeny = async function(btn) {
-      const card = btn.closest('.notif-card');
-      const input = card.querySelector('.deny-input').value.trim();
-      const wordCount = input.split(/\s+/).filter(word => word.length > 0).length;
-      
-      if (wordCount === 0 || wordCount > 10) {
-        window.showToast("Please provide a reason between 1 and 10 words.", "error");
-        return;
-      }
-
-      const taskId = card.dataset.taskId; 
-      const managerId = card.dataset.senderId;
-      const notifId = card.dataset.id;
-      
-      btn.textContent = "Sending...";
-      
-      try {
-        if (taskId) { await updateDoc(doc(db, 'tasks', taskId), { status: 'declined', reason: input }); }
-        if (managerId) { await addDoc(collection(db, 'users', managerId, 'notifications'), { type: 'task_update', message: `Task denied. Reason: ${input}`, taskId: taskId, createdAt: Date.now(), read: false }); }
-        if (notifId) { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' }); }
-        
-        btn.textContent = "Done!";
-        card.style.opacity = '0.5';
-        setTimeout(() => card.remove(), 300);
-        window.showToast("Task denied.", "success");
-      } catch(e) {
-        console.error(e);
-        window.showToast("Error updating task.", "error");
-        btn.textContent = "Send";
-      }
+    window.submitDeny=async function(btn){
+      const card=btn.closest('.notif-card');
+      const input=card.querySelector('.deny-input').value.trim();
+      const wordCount=input.split(/\s+/).filter(w=>w.length>0).length;
+      if(wordCount===0||wordCount>10){window.showToast('Please provide a reason between 1 and 10 words.','error');return;}
+      const taskId=card.dataset.taskId;
+      const managerId=card.dataset.senderId;
+      const notifId=card.dataset.id;
+      btn.textContent='Sending...';
+      try{
+        if(taskId)await updateDoc(doc(db,'tasks',taskId),{status:'declined',reason:input});
+        if(managerId)await addDoc(collection(db,'notifications',managerId,'items'),{type:'task_update',message:`Task denied. Reason: ${input}`,taskId:taskId,actorId:window.CU.uid,actorName:window.CU.name,createdAt:new Date().toISOString(),read:false});
+        if(notifId){
+          // ✅ FIXED: correct path
+          await updateDoc(doc(db,'notifications',window.CU.uid,'items',notifId),{read:true,status:'read'});
+        }
+        card.classList.add('dismissing');
+        setTimeout(()=>card.remove(),300);
+        window.showToast('Task denied.','success');
+      }catch(e){console.error(e);window.showToast('Error updating task.','error');btn.textContent='Send';}
     };
 
-    function buildProfile() { if (!window.CU) return; const { name, email, uniqueId } = window.CU; const html = `<div style="text-align:center;padding:20px 16px;border-bottom:1px solid var(--bd-color);"><div class="av" style="margin:0 auto 10px;width:64px;height:64px;font-size:1.5rem;background:#E5EDFF;color:#0052FF;display:flex;align-items:center;justify-content:center;border-radius:50%;">${getInitials(name)}</div><div style="font-size:15px;font-weight:700;">${esc(name)}</div><div style="font-size:12px;color:var(--tx-3);margin-bottom:8px">${esc(email)}</div></div><div style="padding:16px;"><div style="margin-bottom:12px;display:flex;justify-content:space-between;"><span style="font-size:.85rem;color:var(--tx-2);font-weight:600;">Unique ID</span><span style="font-size:.85rem;font-family:var(--f-mono);">${uniqueId}</span></div><button class="btn btn-ghost w-full" onclick="window.handleLogout()" style="margin-top:24px;">Sign Out</button></div>`; const d = document.getElementById('profile-body-desktop'), m = document.getElementById('profile-body-mobile'); if (d) d.innerHTML = html; if (m) m.innerHTML = html; }
-
-    window.openDeleteTaskModal = function(id, title) { deleteTaskTargetId = id; document.getElementById('del-task-name-display').textContent = title; window.openModal('delete-task-modal'); };
-    
-    window.executeTaskDelete = async function() {
-      if (!deleteTaskTargetId) return;
-      const btn = document.getElementById('del-task-confirm-btn');
-      loadBtn(btn, true);
-      const tEl = document.getElementById('task-' + deleteTaskTargetId);
-      if (tEl) { tEl.style.opacity = '.4'; tEl.style.pointerEvents = 'none'; }
-      try {
-        await deleteDoc(doc(db, 'tasks', deleteTaskTargetId));
-        if (tEl) tEl.remove();
-        window.closeModal('delete-task-modal');
-        showToast('Task deleted.', 'success');
-      } catch (e) {
-        if (tEl) { tEl.style.opacity = '1'; tEl.style.pointerEvents = ''; }
-        showToast('Could not delete: ' + e.message, 'error');
-      } finally {
-        loadBtn(btn, false, 'Delete Task');
-        deleteTaskTargetId = null;
-      }
+    // ── MARK ALL READ ──
+    window.markAllNotifs=async function(){
+      try{
+        await markAllReadFn(window.CU?.uid);
+        _prevUnreadCount=0;
+        const cb=document.getElementById('notif-count-badge');
+        if(cb)cb.style.display='none';
+        document.getElementById('notif-badge')?.classList.add('hidden');
+        setDot('bn-notif-dot',false);
+        window.showToast('All notifications marked as read','success');
+      }catch(e){console.error(e);}
     };
 
-    window.doAcceptTask = async function(id) { const el = document.getElementById('task-' + id); if (el) { const ti = el.querySelector('.card-title'); if (ti) ti.classList.add('done'); el.classList.add('completed-state'); el.querySelectorAll('button').forEach(b => b.style.display = 'none'); } const obj = (window.myTasks || []).find(t => t.id === id); if (obj) obj.status = 'done'; try { await markTaskDone(id); showToast('Task completed! 🎉', 'success'); } catch (e) { if (obj) obj.status = 'pending'; if (el) { el.classList.remove('completed-state'); const ti = el.querySelector('.card-title'); if (ti) ti.classList.remove('done'); el.querySelectorAll('button').forEach(b => b.style.display = 'block'); } showToast(e.message, 'error'); } };
-    window.openDeclineModal = function(id, title) { pendingDeclineId = id; document.getElementById('decline-task-title').textContent = title; document.getElementById('decline-reason').value = ''; document.getElementById('decline-modal').classList.remove('hidden'); };
-    window.confirmDecline = async function() { const reason = document.getElementById('decline-reason').value.trim(); const btn = document.getElementById('confirm-decline-btn'); loadBtn(btn, true); try { await markTaskDeclined(pendingDeclineId, reason); window.closeModal('decline-modal'); showToast('Task declined.', ''); } catch (e) { showToast(e.message, 'error'); } loadBtn(btn, false, 'Decline Task'); };
+    window.markAllRead=window.markAllNotifs;
 
-    function buildAssignSelect(staff) { const sel = document.getElementById('assign-to'); if (!sel) return; sel.innerHTML = '<option value="">Select team member…</option>' + staff.filter(s => s.uid !== window.CU?.uid).map(s => `<option value="${s.uid}">${esc(s.name)}</option>`).join(''); }
-    window.quickAssign = function(uid) { window.openAssignModal(); setTimeout(() => { const s = document.getElementById('assign-to'); if (s) s.value = uid; }, 50); };
+    // ── PROFILE ──
+    function buildProfile(){if(!window.CU)return;const{name,email,uniqueId}=window.CU;const html=`<div style="text-align:center;padding:20px 16px;border-bottom:1px solid var(--bd-color);"><div class="av" style="margin:0 auto 10px;width:64px;height:64px;font-size:1.5rem;background:#E5EDFF;color:#0052FF;display:flex;align-items:center;justify-content:center;border-radius:50%;">${getInitials(name)}</div><div style="font-size:15px;font-weight:700;">${esc(name)}</div><div style="font-size:12px;color:var(--tx-3);margin-bottom:8px">${esc(email)}</div></div><div style="padding:16px;"><div style="margin-bottom:12px;display:flex;justify-content:space-between;"><span style="font-size:.85rem;color:var(--tx-2);font-weight:600;">Unique ID</span><span style="font-size:.85rem;font-family:var(--f-mono);">${uniqueId}</span></div><button class="btn btn-ghost w-full" onclick="window.handleLogout()" style="margin-top:24px;">Sign Out</button></div>`;const d=document.getElementById('profile-body-desktop'),m=document.getElementById('profile-body-mobile');if(d)d.innerHTML=html;if(m)m.innerHTML=html;}
 
-    window.handleAssign = async function() { const to = document.getElementById('assign-to').value, title = document.getElementById('task-title').value.trim(), desc = document.getElementById('task-desc').value.trim(), date = document.getElementById('task-date').value, time = document.getElementById('task-time').value, priority = document.getElementById('task-priority')?.value || 'Medium'; if (!to) { showToast('Select a team member.', 'error'); return; } if (!title) { showToast('Enter a task title.', 'error'); return; } const btn = document.getElementById('assign-btn'); loadBtn(btn, true); try { const a = allStaff.find(s => s.uid === to); await assignTask({ title, description: desc, assignedTo: to, assignedToName: a?.name || 'Team Member', assignedBy: window.CU?.uid, assignedByName: window.CU?.name, companyId: window.CU?.companyId, dueDate: date || null, dueTime: time || null, priority }); window.closeModal('assign-modal'); showToast(`Assigned to ${a?.name}!`, 'success'); } catch (e) { showToast(e.message, 'error'); } loadBtn(btn, false, 'Assign Task'); };
-
-    window.openDeleteModal = function(uid, name, email, pwd) { deleteTargetUid = uid; deleteConfirmStr = name; deleteTargetEmail = email; deleteTargetPwd = pwd; document.getElementById('del-name-display').textContent = name; document.getElementById('del-confirm-hint').textContent = name; document.getElementById('del-confirm-input').value = ''; const b = document.getElementById('del-confirm-btn'); b.disabled = true; b.style.opacity = '.5'; b.style.cursor = 'not-allowed'; b.textContent = 'Delete'; window.openModal('delete-modal'); };
-    window.checkDelConfirm = function() { const v = document.getElementById('del-confirm-input').value, b = document.getElementById('del-confirm-btn'), ok = v === deleteConfirmStr; b.disabled = !ok; b.style.opacity = ok ? '1' : '.5'; b.style.cursor = ok ? 'pointer' : 'not-allowed'; };
-
-    window.confirmDelete = async function() { if (!deleteTargetUid) return; const btn = document.getElementById('del-confirm-btn'); loadBtn(btn, true); try { await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd); const m = document.getElementById('delete-modal'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } showToast('Staff member removed.', 'success'); deleteTargetUid = null; setTimeout(() => { if (m) m.style.display = ''; }, 100); } catch (e) { showToast('Error: ' + e.message, 'error'); loadBtn(btn, false, 'Delete'); window.checkDelConfirm(); } };
-
-    window.openCreateStaffPage = function() { document.getElementById('create-staff-page')?.classList.add('open'); document.getElementById('panel-overlay')?.classList.add('visible'); };
-    window.closeFullpage = function(id) { document.getElementById(id)?.classList.remove('open'); if (id === 'create-staff-page') document.getElementById('panel-overlay')?.classList.remove('visible'); };
-
-    window.initiateCreateStaff = async function() {
-      const name = document.getElementById('cs-name').value.trim(), email = document.getElementById('cs-email').value.trim(), desig = document.getElementById('cs-designation').value.trim(), pwd = document.getElementById('cs-password').value.trim();
-      if (!name || !email || !desig || pwd.length < 6) { showToast('Fill all fields (password min 6 chars).', 'error'); return; }
-      const btn = document.getElementById('create-staff-btn');
-      loadBtn(btn, true);
-      try { await sendOTP(email); document.getElementById('otp-sent-email').textContent = email; document.getElementById('staff-form-container').classList.add('hidden'); document.getElementById('staff-otp-container').classList.remove('hidden'); showToast('Verification code sent to ' + email, 'success'); } catch (e) { showToast(e.message || 'Failed to send OTP', 'error'); } finally { loadBtn(btn, false, 'Verify Email & Create Staff →'); }
+    // ── DELETE TASK ──
+    window.openDeleteTaskModal=function(id,title){deleteTaskTargetId=id;document.getElementById('del-task-name-display').textContent=title;window.openModal('delete-task-modal');};
+    window.executeTaskDelete=async function(){
+      if(!deleteTaskTargetId)return;
+      const btn=document.getElementById('del-task-confirm-btn');loadBtn(btn,true);
+      const tEl=document.getElementById('task-'+deleteTaskTargetId);
+      if(tEl){tEl.style.opacity='.4';tEl.style.pointerEvents='none';}
+      try{await deleteDoc(doc(db,'tasks',deleteTaskTargetId));if(tEl)tEl.remove();window.closeModal('delete-task-modal');showToast('Task deleted.','success');}
+      catch(e){if(tEl){tEl.style.opacity='1';tEl.style.pointerEvents='';}showToast('Could not delete: '+e.message,'error');}
+      finally{loadBtn(btn,false,'Delete Task');deleteTaskTargetId=null;}
     };
 
-    window.finalizeCreateStaff = async function() {
-      const name = document.getElementById('cs-name').value.trim(), email = document.getElementById('cs-email').value.trim(), desig = document.getElementById('cs-designation').value.trim(), pwd = document.getElementById('cs-password').value.trim(), otp = document.getElementById('cs-otp-input').value.trim();
-      if (otp.length < 6) { showToast('Enter 6-digit code.', 'error'); return; }
-      const btn = document.getElementById('verify-staff-btn');
-      loadBtn(btn, true);
-      try {
-        await verifyUserOTP(email, otp);
-        const cSnap = await getDoc(doc(db, 'companies', window.CU.companyId));
-        const companyName = cSnap.exists() ? cSnap.data().name : 'Company';
-        const result = await createStaff({ name, email, password: pwd, role: 'staff', companyId: window.CU.companyId, companyName, designation: desig });
-        _lastCreatedStaff = { name, email, password: pwd, uniqueId: result.uniqueId, designation: desig };
+    window.doAcceptTask=async function(id){const el=document.getElementById('task-'+id);if(el){const ti=el.querySelector('.card-title');if(ti)ti.classList.add('done');el.classList.add('completed-state');el.querySelectorAll('button').forEach(b=>b.style.display='none');}const obj=(window.myTasks||[]).find(t=>t.id===id);if(obj)obj.status='done';try{await markTaskDone(id);showToast('Task completed! 🎉','success');}catch(e){if(obj)obj.status='pending';if(el){el.classList.remove('completed-state');const ti=el.querySelector('.card-title');if(ti)ti.classList.remove('done');el.querySelectorAll('button').forEach(b=>b.style.display='block');}showToast(e.message,'error');}};
+    window.openDeclineModal=function(id,title){pendingDeclineId=id;document.getElementById('decline-task-title').textContent=title;document.getElementById('decline-reason').value='';document.getElementById('decline-modal').classList.remove('hidden');};
+    window.confirmDecline=async function(){const reason=document.getElementById('decline-reason').value.trim();const btn=document.getElementById('confirm-decline-btn');loadBtn(btn,true);try{await markTaskDeclined(pendingDeclineId,reason);window.closeModal('decline-modal');showToast('Task declined.','');}catch(e){showToast(e.message,'error');}loadBtn(btn,false,'Decline Task');};
+
+    function buildAssignSelect(staff){const sel=document.getElementById('assign-to');if(!sel)return;sel.innerHTML='<option value="">Select team member…</option>'+staff.filter(s=>s.uid!==window.CU?.uid).map(s=>`<option value="${s.uid}">${esc(s.name)}</option>`).join('');}
+    window.quickAssign=function(uid){window.openAssignModal();setTimeout(()=>{const s=document.getElementById('assign-to');if(s)s.value=uid;},50);};
+
+    window.handleAssign=async function(){const to=document.getElementById('assign-to').value,title=document.getElementById('task-title').value.trim(),desc=document.getElementById('task-desc').value.trim(),date=document.getElementById('task-date').value,time=document.getElementById('task-time').value,priority=document.getElementById('task-priority')?.value||'Medium';if(!to){showToast('Select a team member.','error');return;}if(!title){showToast('Enter a task title.','error');return;}const btn=document.getElementById('assign-btn');loadBtn(btn,true);try{const a=allStaff.find(s=>s.uid===to);await assignTask({title,description:desc,assignedTo:to,assignedToName:a?.name||'Team Member',assignedBy:window.CU?.uid,assignedByName:window.CU?.name,companyId:window.CU?.companyId,dueDate:date||null,dueTime:time||null,priority});window.closeModal('assign-modal');showToast(`Assigned to ${a?.name}!`,'success');}catch(e){showToast(e.message,'error');}loadBtn(btn,false,'Assign Task');};
+
+    window.openDeleteModal=function(uid,name,email,pwd){deleteTargetUid=uid;deleteConfirmStr=name;deleteTargetEmail=email;deleteTargetPwd=pwd;document.getElementById('del-name-display').textContent=name;document.getElementById('del-confirm-hint').textContent=name;document.getElementById('del-confirm-input').value='';const b=document.getElementById('del-confirm-btn');b.disabled=true;b.style.opacity='.5';b.style.cursor='not-allowed';b.textContent='Delete';window.openModal('delete-modal');};
+    window.checkDelConfirm=function(){const v=document.getElementById('del-confirm-input').value,b=document.getElementById('del-confirm-btn'),ok=v===deleteConfirmStr;b.disabled=!ok;b.style.opacity=ok?'1':'.5';b.style.cursor=ok?'pointer':'not-allowed';};
+    window.confirmDelete=async function(){if(!deleteTargetUid)return;const btn=document.getElementById('del-confirm-btn');loadBtn(btn,true);try{await deleteStaffMember(deleteTargetUid,deleteTargetEmail,deleteTargetPwd);const m=document.getElementById('delete-modal');if(m){m.classList.add('hidden');m.style.display='none';}showToast('Staff member removed.','success');deleteTargetUid=null;setTimeout(()=>{if(m)m.style.display='';},100);}catch(e){showToast('Error: '+e.message,'error');loadBtn(btn,false,'Delete');window.checkDelConfirm();}};
+
+    // ── STAFF CREATION ──
+    window.openCreateStaffPage=function(){document.getElementById('create-staff-page')?.classList.add('open');document.getElementById('panel-overlay')?.classList.add('visible');};
+    window.closeFullpage=function(id){document.getElementById(id)?.classList.remove('open');if(id==='create-staff-page')document.getElementById('panel-overlay')?.classList.remove('visible');};
+
+    window.initiateCreateStaff=async function(){
+      const name=document.getElementById('cs-name').value.trim(),email=document.getElementById('cs-email').value.trim(),desig=document.getElementById('cs-designation').value.trim(),pwd=document.getElementById('cs-password').value.trim();
+      if(!name||!email||!desig||pwd.length<6){showToast('Fill all fields (password min 6 chars).','error');return;}
+      const btn=document.getElementById('create-staff-btn');loadBtn(btn,true);
+      try{const{sendOTP:sOTP}=await import('./otp.js');await sOTP(email);document.getElementById('otp-sent-email').textContent=email;document.getElementById('staff-form-container').classList.add('hidden');document.getElementById('staff-otp-container').classList.remove('hidden');showToast('Verification code sent to '+email,'success');}
+      catch(e){showToast(e.message||'Failed to send OTP','error');}
+      finally{loadBtn(btn,false,'Verify Email & Create Staff →');}
+    };
+
+    window.finalizeCreateStaff=async function(){
+      const name=document.getElementById('cs-name').value.trim(),email=document.getElementById('cs-email').value.trim(),desig=document.getElementById('cs-designation').value.trim(),pwd=document.getElementById('cs-password').value.trim(),otp=document.getElementById('cs-otp-input').value.trim();
+      if(otp.length<6){showToast('Enter 6-digit code.','error');return;}
+      const btn=document.getElementById('verify-staff-btn');loadBtn(btn,true);
+      try{
+        await verifyUserOTP(email,otp);
+        const cSnap=await getDoc(doc(db,'companies',window.CU.companyId));
+        const companyName=cSnap.exists()?cSnap.data().name:'Company';
+        const result=await createStaff({name,email,password:pwd,role:'staff',companyId:window.CU.companyId,companyName,designation:desig});
+        _lastCreatedStaff={name,email,password:pwd,uniqueId:result.uniqueId,designation:desig};
         document.getElementById('staff-otp-container').classList.add('hidden');
         document.getElementById('created-card-section').classList.remove('hidden');
-        document.getElementById('cred-box').innerHTML = `<strong>Name:</strong> ${esc(name)}<br><strong>Email:</strong> ${esc(email)}<br><strong>Password:</strong> ${esc(pwd)}<br><strong>Zenda ID:</strong> ${result.uniqueId}`;
-        const note = document.getElementById('email-sent-note');
-        const sent = await sendCredEmail(email, name, pwd, result.uniqueId, companyName);
-        if (note) note.textContent = sent ? `📧 Credentials sent to ${email}` : `💡 Download the card below and share credentials manually.`;
-        showToast(`${name} added to your team!`, 'success');
-      } catch (e) { showToast(e.message || 'Verification failed. Try again.', 'error'); } finally { loadBtn(btn, false, 'Verify & Confirm'); }
+        document.getElementById('cred-box').innerHTML=`<strong>Name:</strong> ${esc(name)}<br><strong>Email:</strong> ${esc(email)}<br><strong>Password:</strong> ${esc(pwd)}<br><strong>Zenda ID:</strong> ${result.uniqueId}`;
+        const note=document.getElementById('email-sent-note');
+        const sent=await sendCredEmail(email,name,pwd,result.uniqueId,companyName);
+        if(note)note.textContent=sent?`📧 Credentials sent to ${email}`:`💡 Download the card below and share credentials manually.`;
+        showToast(`${name} added to your team!`,'success');
+      }catch(e){showToast(e.message||'Verification failed. Try again.','error');}
+      finally{loadBtn(btn,false,'Verify & Confirm');}
     };
 
-    window.doneCreateStaff = function() { window.closeFullpage('create-staff-page'); setTimeout(() => window.resetCreateStaff(), 400); };
-    window.cancelCreateStaff = function() { document.getElementById('staff-otp-container').classList.add('hidden'); document.getElementById('staff-form-container').classList.remove('hidden'); document.getElementById('cs-otp-input').value = ''; };
-    window.resetCreateStaff = function() { ['cs-name', 'cs-email', 'cs-designation', 'cs-password', 'cs-otp-input'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; }); document.getElementById('created-card-section')?.classList.add('hidden'); document.getElementById('staff-otp-container')?.classList.add('hidden'); document.getElementById('staff-form-container')?.classList.remove('hidden'); const note = document.getElementById('email-sent-note'); if (note) note.textContent = ''; _lastCreatedStaff = {}; };
-    window.togglePwd = function(id) { const inp = document.getElementById(id); inp.type = inp.type === 'password' ? 'text' : 'password'; };
-    window.clearCSErr = function(inp) { inp.classList.remove('err'); const e = document.getElementById('err-' + inp.id); if (e) e.textContent = ''; };
+    window.doneCreateStaff=function(){window.closeFullpage('create-staff-page');setTimeout(()=>window.resetCreateStaff(),400);};
+    window.cancelCreateStaff=function(){document.getElementById('staff-otp-container').classList.add('hidden');document.getElementById('staff-form-container').classList.remove('hidden');document.getElementById('cs-otp-input').value='';};
+    window.resetCreateStaff=function(){['cs-name','cs-email','cs-designation','cs-password','cs-otp-input'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('created-card-section')?.classList.add('hidden');document.getElementById('staff-otp-container')?.classList.add('hidden');document.getElementById('staff-form-container')?.classList.remove('hidden');const note=document.getElementById('email-sent-note');if(note)note.textContent='';_lastCreatedStaff={};};
+    window.togglePwd=function(id){const inp=document.getElementById(id);inp.type=inp.type==='password'?'text':'password';};
+    window.clearCSErr=function(inp){inp.classList.remove('err');const e=document.getElementById('err-'+inp.id);if(e)e.textContent='';};
 
-    window.showView = function(v) {
-      ['home', 'tasks', 'staff'].forEach(n => { document.getElementById('view-' + n)?.classList.toggle('hidden', n !== v); document.getElementById('nav-' + n)?.classList.toggle('active', n === v); });
-      const bnMap = { home: 'bn-home', tasks: 'bn-tasks', staff: 'bn-staff-btn' };
-      Object.values(bnMap).forEach(id => document.getElementById(id)?.classList.remove('active'));
-      if (bnMap[v]) document.getElementById(bnMap[v])?.classList.add('active');
-      if (v === 'tasks') window.renderTasksList();
+    // ── VIEWS ──
+    window.showView=function(v){
+      ['home','tasks','staff'].forEach(n=>{document.getElementById('view-'+n)?.classList.toggle('hidden',n!==v);document.getElementById('nav-'+n)?.classList.toggle('active',n===v);});
+      const bnMap={home:'bn-home',tasks:'bn-tasks',staff:'bn-staff-btn'};
+      Object.values(bnMap).forEach(id=>document.getElementById(id)?.classList.remove('active'));
+      if(bnMap[v])document.getElementById(bnMap[v])?.classList.add('active');
+      if(v==='tasks')window.renderTasksList();
+      // Close notification panel when navigating
+      if(_notifPanelOpen){document.getElementById('notificationDropdown')?.classList.add('hidden');_notifPanelOpen=false;document.getElementById('bn-notif')?.classList.remove('notif-nav-active');document.getElementById('notif-btn')?.classList.remove('notif-active');}
     };
 
-    window.openProfile = function() { if (!_profileBuilt) { buildProfile(); _profileBuilt = true; } if (window.innerWidth >= 769) { document.getElementById('profile-side-panel')?.classList.add('open'); document.getElementById('panel-overlay')?.classList.add('visible'); } else { document.getElementById('profile-page-mobile')?.classList.add('open'); } };
-    window.openAppLib = function() { window.open('app-library.html' + (window.CU?.uid ? '?uid=' + window.CU.uid : ''), '_blank'); };
-    window.openModal = function(id) { const el = document.getElementById(id); if (el) { el.classList.remove('hidden'); el.style.display = ''; } window.closeAllPanels(true); };
-    window.closeModal = function(id) { const el = document.getElementById(id); if (el) { el.classList.add('hidden'); el.style.display = 'none'; } };
-    window.openAssignModal = function() { window.openModal('assign-modal'); };
-    window.markAllRead = async function() { try { await markAllReadFn(window.CU?.uid); document.getElementById('notif-badge')?.classList.add('hidden'); document.getElementById('notif-count-badge').textContent = ''; showToast('All marked read', 'success'); } catch (e) { console.error(e); } };
-    window.handleLogout = async function() { unsubs.forEach(f => f?.()); sessionStorage.clear(); localStorage.removeItem('zenda_session'); await logout(); location.href = 'login.html'; };
+    window.openProfile=function(){if(!_profileBuilt){buildProfile();_profileBuilt=true;}if(window.innerWidth>=769){document.getElementById('profile-side-panel')?.classList.add('open');document.getElementById('panel-overlay')?.classList.add('visible');}else{document.getElementById('profile-page-mobile')?.classList.add('open');}};
+    window.closeProfile=function(){document.getElementById('profile-side-panel')?.classList.remove('open');document.getElementById('profile-page-mobile')?.classList.remove('open');document.getElementById('panel-overlay')?.classList.remove('visible');};
+    window.openAppLib=function(){window.open('app-library.html'+(window.CU?.uid?'?uid='+window.CU.uid:''),'_blank');};
+    window.openModal=function(id){const el=document.getElementById(id);if(el){el.classList.remove('hidden');el.style.display='';}window.closeAllPanels(true);};
+    window.closeModal=function(id){const el=document.getElementById(id);if(el){el.classList.add('hidden');el.style.display='none';}};
+    window.openAssignModal=function(){window.openModal('assign-modal');};
+    window.handleLogout=async function(){unsubs.forEach(f=>f?.());sessionStorage.clear();localStorage.removeItem('zenda_session');await logout();location.href='login.html';};
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
     else init();
   </script>
+
   <script>
-    setTimeout(() => {
-      const l = document.getElementById('loading-overlay');
-      if (l && l.style.opacity !== '0') { l.style.opacity = '0'; setTimeout(() => l.remove(), 400); }
-    }, 4000);
+    // Fallback loader removal
+    setTimeout(()=>{
+      const l=document.getElementById('loading-overlay');
+      if(l&&l.style.opacity!=='0'){l.style.opacity='0';setTimeout(()=>l.remove(),400);}
+    },4000);
   </script>
 </body>
 </html>
