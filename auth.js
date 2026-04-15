@@ -11,8 +11,7 @@ import {
   setDoc, 
   getDoc,
   collection,
-  addDoc,
-  serverTimestamp
+  addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // Ensure Firebase has loaded the user state before allowing navigation
@@ -29,6 +28,15 @@ export function requireAuth(redirectUrl = 'login.html') {
         resolve(null);
       }
     }, reject);
+  });
+}
+
+// MISSING FUNCTION ADDED: Fast redirect if user is already logged in
+export function redirectIfLoggedIn(redirectUrl = 'dashboard.html') {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      window.location.href = redirectUrl;
+    }
   });
 }
 
@@ -65,8 +73,7 @@ export async function login(email, password) {
     
     // SECURITY NOTIFICATION ARCHITECTURE: Write the login alert
     try {
-        await addDoc(collection(db, 'notifications', user.uid, 'items'), {
-            createdAt: new Date().toISOString(),
+        await addDoc(collection(db, 'users', user.uid, 'notifications'), {
             type: 'security_login',
             message: 'Your account was accessed from a new device.',
             createdAt: Date.now(),
