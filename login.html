@@ -471,11 +471,13 @@ window.blastItem = function(e, wrapId) {
 
 <script type="module">
 import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
-import { signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { sendOTP, verifyUserOTP } from './otp.js';
 import { saveSession, isValidEmail } from './utils.js';
-import { redirectIfLoggedIn } from './auth.js';
+
+// FIXED IMPORT: We now import 'login' to trigger the security notification
+import { redirectIfLoggedIn, login } from './auth.js'; 
 
 // Fast redirect if already locally persisted
 redirectIfLoggedIn('dashboard.html');
@@ -521,8 +523,8 @@ window.doLogin = async () => {
     // Set Persistence based on Remember Me Toggle
     await setPersistence(auth, rememberChecked ? browserLocalPersistence : browserSessionPersistence);
     
-    // Auth handling irrespective of role
-    await signInWithEmailAndPassword(auth, email, pwd);
+    // FIXED: Calls custom login() from auth.js to trigger the Notification
+    await login(email, pwd);
     loginEmail = email;
     
     await sendOTP(email);
@@ -538,7 +540,7 @@ window.doLogin = async () => {
         go('v-otp');
         setupBoxes();
         startTimer();
-    }, 500); // Wait for the animation to finish before sliding to next view
+    }, 500); 
     
     toast('Security OTP sent to inbox','info');
     
@@ -575,11 +577,9 @@ window.verifyOTP = async () => {
         saveSession({uid:snap.docs[0].id, ...snap.docs[0].data()});
     }
     
-    // Add success animation to the Verify button
     btn.classList.add('btn-success');
     btn.innerHTML = 'Verified ✓';
     
-    // Play full screen success animation overlay slightly after button turns green
     setTimeout(() => {
         document.getElementById('success-overlay').classList.add('show');
     }, 400);
