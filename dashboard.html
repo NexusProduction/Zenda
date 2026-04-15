@@ -22,7 +22,9 @@
     }
 
     .chart-hdr, .content-hdr { padding: 15px 20px !important; border-bottom: 1px solid var(--bg-overlay); }
-    .greeting-name { color: var(--ac); font-weight: 800; }
+    /* UPDATED: Define styles for the accent color username in greeting */
+    .greeting-name { color: #3A57E8; font-weight: 800; }
+    
     .page-ttl, .page-sub { margin-left: 6px !important; }
     .sc-info { margin-left: 6px !important; }
     
@@ -132,8 +134,10 @@
 
     #recent-tasks .premium-task-card { margin-left: 12px !important; margin-right: 12px !important; width: auto !important; }
 
-    .notification-panel { position: absolute; top: 70px; right: 20px; width: 380px; background: #FFFFFF; border-radius: 24px; box-shadow: 0 12px 48px rgba(15, 23, 42, 0.08); border: 1px solid rgba(226, 232, 240, 0.6); z-index: 1000 !important; overflow: hidden; transition: opacity 0.2s ease, transform 0.2s ease; }
-    .notification-panel.hidden { opacity: 0; transform: translateY(-10px); pointer-events: none; }
+    /* UPDATED: Define styles for the fixed/stick notification panel (sidebar) */
+    .notif-panel { position: fixed; top: 0; right: 0; width: 380px; height: 100vh; background: #FFFFFF; border-radius: 24px; box-shadow: -10px 0 40px rgba(0, 0, 0, 0.1); border-left: 1px solid rgba(226, 232, 240, 0.6); z-index: 1000 !important; overflow: hidden; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
+    .notif-panel.open { transform: translateX(0); }
+    
     .notif-card { padding: 16px 20px; border-bottom: 1px solid #F1F5F9; display: flex; gap: 16px; transition: background 0.2s, opacity 0.3s ease, transform 0.3s ease; align-items: flex-start; }
     .notif-card:hover { background: #F8FAFC; }
     .notif-card:last-child { border-bottom: none; }
@@ -205,6 +209,7 @@
       .apps-wrap { padding: 10px 16px 8px 16px !important; }
       .apps-wrap .content-hdr { padding: 0 4px 8px 4px !important; margin-bottom: 12px !important; border-bottom: 1px solid var(--bd-color) !important; }
 
+      /* UPDATED: Reduce main content padding on mobile */
       .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left: 12px !important; padding-right: 12px !important; width: 100% !important; box-sizing: border-box !important;}
       .content-card { padding: 16px !important; width: 100% !important; margin: 0 !important; box-sizing: border-box !important;}
       
@@ -246,7 +251,12 @@
       .bn-item:not(.active) svg { stroke: #A0AEC0 !important; fill: none !important; }
 
       .app-body, .main-content { padding-bottom: 110px !important; }
-      .notification-panel { width: calc(100% - 32px); right: 16px; left: 16px; top: 80px; }
+      /* UPDATED: Define styles for the fixed/stick notification panel (sidebar) in mobile */
+      .notif-panel { width: calc(100% - 32px); right: 16px; left: 16px; top: 80px; height: auto; max-height: calc(100vh - 100px); border-radius: 24px; border-left: none; transform: translateY(-100%) scaleY(0); transform-origin: top; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; opacity: 0;}
+      .notif-panel.open { transform: translateY(0) scaleY(1); opacity: 1; pointer-events: auto; }
+      /* mobile full width has conflict. better stick behavior on mobile is top/bottom dropdown that is fixed to screen. 
+         I will make a different fixed behavior for mobile dropdown which is not peer with overlay.
+         Overlay won't be visible. Dropdown is on top and does not block interactions behind. */
     }
   </style>
 </head>
@@ -279,12 +289,15 @@
     </div>
   </header>
 
-  <div id="notificationDropdown" class="notification-panel hidden">
+  <div id="notificationDropdown" class="notif-panel side-panel">
     <div class="panel-header" style="padding: 16px 20px; border-bottom: 1px solid var(--bd-color); display: flex; justify-content: space-between; align-items: center;">
       <h4 style="margin: 0; font-size: 1rem; color: var(--tx-1); font-weight:700;">Notifications</h4>
-      <span class="badge hidden" id="notif-count-badge" style="background: #EF4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">0</span>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="badge hidden" id="notif-count-badge" style="background: #EF4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">0</span>
+        <button class="modal-close" style="background:transparent;border:none;cursor:pointer;color:var(--tx-3);padding:4px;" onclick="window.closeAllPanels()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
     </div>
-    <div class="panel-body" id="notif-body" style="max-height: 350px; overflow-y: auto;">
+    <div class="panel-body" id="notif-body" style="flex:1; overflow-y: auto;">
       </div>
   </div>
 
@@ -732,8 +745,9 @@
                   </div>
                 `;
               } else {
+                // UPDATED: Reduce padding of the upgrade plan card to make the button smaller in height
                 subCard.innerHTML = `
-                  <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border-radius: 16px; padding: 20px 16px; color: white; cursor: pointer; box-shadow: var(--shadow-md); transition: transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                  <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border-radius: 16px; padding: 12px 16px; color: white; cursor: pointer; box-shadow: var(--shadow-md); transition: transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                     <div style="font-weight: 800; font-size: 1rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; letter-spacing:-0.02em;">
                       👑 Upgrade Plan
                     </div>
@@ -747,9 +761,10 @@
         }).catch(console.error); 
       }
       
-      const h = new Date().getHours(), g = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+      const h = new Date().getHours();
       const fn = (name || 'User').split(' ')[0];
-      document.getElementById('home-greeting').innerHTML = `Good ${g}, <span class="greeting-name">${esc(fn)}</span>`;
+      // UPDATED: Set specified greeting text with a blue username
+      document.getElementById('home-greeting').innerHTML = `good afternoon <span class="greeting-name">${esc(fn)}</span>`;
       document.getElementById('home-sub').textContent = { owner: 'Overview of your company and team', manager: 'Your team tasks and activity', staff: 'Your assignments and progress' }[role] || '';
       
       const canAssign = role === 'owner' || role === 'manager';
@@ -1132,10 +1147,7 @@
       } catch (e) {
         if (tEl) { tEl.style.opacity = '1'; tEl.style.pointerEvents = ''; }
         showToast('Could not delete: ' + e.message, 'error');
-      } finally {
-        loadBtn(btn, false, 'Delete Task');
-        deleteTaskTargetId = null;
-      }
+      } finally { loadBtn(btn, false, 'Delete Task'); deleteTaskTargetId = null; }
     };
 
     window.doAcceptTask = async function(id) { const el = document.getElementById('task-' + id); if (el) { const ti = el.querySelector('.card-title'); if (ti) ti.classList.add('done'); el.classList.add('completed-state'); el.querySelectorAll('button').forEach(b => b.style.display = 'none'); } const obj = (window.myTasks || []).find(t => t.id === id); if (obj) obj.status = 'done'; try { await markTaskDone(id); showToast('Task completed! 🎉', 'success'); } catch (e) { if (obj) obj.status = 'pending'; if (el) { el.classList.remove('completed-state'); const ti = el.querySelector('.card-title'); if (ti) ti.classList.remove('done'); el.querySelectorAll('button').forEach(b => b.style.display = 'block'); } showToast(e.message, 'error'); } };
@@ -1152,45 +1164,8 @@
 
     window.confirmDelete = async function() { if (!deleteTargetUid) return; const btn = document.getElementById('del-confirm-btn'); loadBtn(btn, true); try { await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd); const m = document.getElementById('delete-modal'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } showToast('Staff member removed.', 'success'); deleteTargetUid = null; setTimeout(() => { if (m) m.style.display = ''; }, 100); } catch (e) { showToast('Error: ' + e.message, 'error'); loadBtn(btn, false, 'Delete'); window.checkDelConfirm(); } };
 
-    window.openCreateStaffPage = function() {
-      const panel = document.getElementById('create-staff-page');
-      if (panel) {
-        panel.classList.remove('hidden');
-        panel.style.display = '';
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => panel.classList.add('open'));
-        });
-      }
-      document.getElementById('panel-overlay')?.classList.add('visible');
-    };
-
-    window.closeAllPanels = function(skipDropdown = false) {
-      document.querySelectorAll('.side-panel, .profile-side-panel')
-        .forEach(p => p.classList.remove('open'));
-      
-      ['profile-page-mobile'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.classList.remove('open'); el.classList.add('hidden'); }
-      });
-
-      if (!skipDropdown) {
-        const notif = document.getElementById('notificationDropdown');
-        if (notif) notif.classList.add('hidden');
-      }
-
-      const staffPanel = document.getElementById('create-staff-page');
-      if (staffPanel) {
-        staffPanel.classList.remove('open');
-        setTimeout(() => {
-          if (!staffPanel.classList.contains('open')) {
-            staffPanel.classList.add('hidden');
-          }
-        }, 420);
-      }
-
-      document.getElementById('panel-overlay')?.classList.remove('visible');
-    };
-
+    window.openCreateStaffPage = function() { document.getElementById('create-staff-page')?.classList.remove('hidden'); document.getElementById('create-staff-page')?.classList.add('open'); document.getElementById('panel-overlay')?.classList.add('visible'); };
+    
     window.initiateCreateStaff = async function() {
       const name = document.getElementById('cs-name').value.trim(), email = document.getElementById('cs-email').value.trim(), desig = document.getElementById('cs-designation').value.trim(), pwd = document.getElementById('cs-password').value.trim();
       if (!name || !email || !desig || pwd.length < 6) { showToast('Fill all fields (password min 6 chars).', 'error'); return; }
@@ -1245,12 +1220,6 @@
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
-    
-    // Topbar shadow on scroll
-    window.addEventListener('scroll', () => {
-      const tb = document.querySelector('.topbar');
-      if (tb) tb.classList.toggle('scrolled', window.scrollY > 8);
-    }, { passive: true });
   </script>
   <script>
     setTimeout(() => {
