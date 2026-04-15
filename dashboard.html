@@ -47,6 +47,16 @@
     .form-input:focus, .zenda-select:focus, textarea.form-input:focus {
       border-color: #3A57E8 !important;
       box-shadow: 0 0 0 3px rgba(58, 87, 232, 0.15) !important;
+      outline: none;
+    }
+    
+    /* Readonly state for Profile */
+    .prof-input-readonly {
+      border-color: transparent !important;
+      background: transparent !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      pointer-events: none;
     }
 
     /* ── Staff header ── */
@@ -297,7 +307,6 @@
       .apps-wrap .apps-grid::-webkit-scrollbar { display: none; }
 
       #assign-tasks-btn-full { display: flex !important; }
-      #assign-tasks-btn { display: none !important; }
 
       /* PC TEAM CARD CENTERING */
       .team-card { flex-direction: column !important; align-items: center !important; text-align: center !important; padding: 24px 16px !important; }
@@ -320,11 +329,11 @@
       .apps-wrap-order { order: 0; }
       .recent-wrap-order { order: 1; }
       
-      /* ── Fix My Apps Padding (Tightened) ── */
-      .apps-wrap { padding: 6px 14px 4px 14px !important; }
-      .apps-wrap .content-hdr { padding: 10px 0 4px 0 !important; margin-bottom: 12px !important; border-bottom:none !important; }
+      /* My Apps Padding Aligned with Content Cards */
+      .apps-wrap { padding: 16px !important; }
+      .apps-wrap .content-hdr { padding: 0 0 8px 0 !important; margin-bottom: 12px !important; border-bottom: none !important; }
 
-      .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left: 12px !important; padding-right: 12px !important; width: 100% !important; box-sizing: border-box !important;}
+      .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left: 16px !important; padding-right: 16px !important; width: 100% !important; box-sizing: border-box !important;}
       .content-card { padding: 16px !important; width: 100% !important; margin: 0 !important; box-sizing: border-box !important;}
       
       #recent-tasks { width: 100% !important; padding: 0 !important; overflow: hidden !important; }
@@ -346,7 +355,7 @@
       #assign-tasks-btn-full svg { width: 14px; height: 14px; }
       
       .topbar-right .profile-btn { display: none !important; }
-      .tasks-page-hdr { padding-left: 12px !important; padding-right: 12px !important; }
+      .tasks-page-hdr { padding-left: 16px !important; padding-right: 16px !important; }
       
       /* Add Staff Mobile Redesign */
       #create-staff-page { width: 100% !important; border-radius: 24px 24px 0 0 !important; top: 40px !important; height: calc(100vh - 40px) !important; border-top: 1px solid var(--bd-color) !important; box-shadow: 0 -10px 40px rgba(0,0,0,0.15) !important; }
@@ -355,11 +364,11 @@
       #create-staff-page .form-section { padding: 18px !important; border-radius: 16px !important; }
       #create-staff-page .form-row { grid-template-columns: 1fr !important; gap: 16px !important; }
 
-      #view-staff .page-hdr { flex-direction: row !important; align-items: center !important; justify-content: space-between !important; padding-left: 12px !important; padding-right: 12px !important; }
+      #view-staff .page-hdr { flex-direction: row !important; align-items: center !important; justify-content: space-between !important; padding-left: 16px !important; padding-right: 16px !important; }
       .staff-header-actions { width: auto !important; margin: 0 !important; }
       .team-card { padding: 12px !important; border-radius: 12px !important; }
       
-      #task-tab-row { overflow-x: auto; scrollbar-width: none; white-space: nowrap; padding-bottom: 4px; padding-left: 12px !important;}
+      #task-tab-row { overflow-x: auto; scrollbar-width: none; white-space: nowrap; padding-bottom: 4px; padding-left: 16px !important;}
       #task-tab-row::-webkit-scrollbar { display: none; }
 
       /* ── 4-TAB FLOATING PILL BOTTOM NAV ── */
@@ -505,7 +514,7 @@
         <div class="sidebar-section-label hidden" id="team-label">Management</div>
         <div class="sidebar-item hidden" id="nav-staff" onclick="window.showView('staff')"><span class="sidebar-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="sidebar-item-text">My Team</span></div>
       </nav>
-      <div class="sidebar-footer"><button class="btn btn-ghost w-full" onclick="window.handleLogout()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Sign Out</button></div>
+      <div class="sidebar-footer" id="sidebar-footer" style="padding:16px;"></div>
     </aside>
     <main class="main-content">
       <div id="view-home" class="fade-in-section">
@@ -587,6 +596,7 @@
     </div>
   </nav>
 
+  <div id="profile-page"></div>
   <div class="profile-side-panel" id="profile-side-panel">
     <div class="sp-hdr">
       <div class="sp-ttl">My Profile</div>
@@ -853,7 +863,43 @@
       setAv('topbar-avatar', ini, col, 32, src); setAv('bn-avatar', ini, col, 24, src);
       document.getElementById('topbar-name').textContent = (name || 'User').split(' ')[0];
       
-      if (window.CU.companyId) { getDoc(doc(db, 'companies', window.CU.companyId)).then(s => { if (s.exists()) { const cd = s.data(); document.getElementById('topbar-company').textContent = cd.name; let ip = cd.isPremium === true; if (ip && cd.subscriptionExpiry && new Date() > new Date(cd.subscriptionExpiry)) ip = false; window.CU.isPremium = ip; const u = document.getElementById('globalUpgradeBtn'); if (u) { ip ? u.classList.add('hidden') : u.classList.remove('hidden'); } } }).catch(console.error); }
+      if (window.CU.companyId) { 
+        getDoc(doc(db, 'companies', window.CU.companyId)).then(s => { 
+          if (s.exists()) { 
+            const cd = s.data(); document.getElementById('topbar-company').textContent = cd.name; 
+            let ip = cd.isPremium === true; 
+            if (ip && cd.subscriptionExpiry && new Date() > new Date(cd.subscriptionExpiry)) ip = false; 
+            window.CU.isPremium = ip; 
+            const u = document.getElementById('globalUpgradeBtn'); if (u) { ip ? u.classList.add('hidden') : u.classList.remove('hidden'); }
+            
+            // Build Subscription Sidebar Card
+            const subCard = document.getElementById('sidebar-footer');
+            if (subCard) {
+              if (ip) {
+                const expDate = cd.subscriptionExpiry ? new Date(cd.subscriptionExpiry).toLocaleDateString() : 'Lifetime';
+                subCard.innerHTML = `
+                  <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); border-radius: 16px; padding: 16px; color: white; box-shadow: 0 4px 12px rgba(16,185,129,0.3);">
+                    <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                      Premium Active
+                    </div>
+                    <div style="font-size: 0.8rem; opacity: 0.9; font-weight:500;">Valid till ${expDate}</div>
+                  </div>
+                `;
+              } else {
+                subCard.innerHTML = `
+                  <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border-radius: 16px; padding: 16px; color: white; cursor: pointer; box-shadow: 0 4px 12px rgba(245,158,11,0.3); transition: transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                      👑 Upgrade Plan
+                    </div>
+                    <div style="font-size: 0.8rem; opacity: 0.9; font-weight:500;">Unlock all features</div>
+                  </div>
+                `;
+              }
+            }
+          } 
+        }).catch(console.error); 
+      }
       
       const h = new Date().getHours(), g = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
       const fn = (name || 'User').split(' ')[0];
@@ -1026,7 +1072,6 @@
         localStorage.setItem('zenda_logo_' + window.CU.uid, dataUrl);
         window.CU.avatarData = dataUrl;
         
-        // Update display instantly
         document.querySelectorAll('.prof-av-display').forEach(el => {
            el.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
         });
@@ -1037,6 +1082,18 @@
         updateDoc(doc(db, 'users', window.CU.uid), { avatarData: dataUrl });
       };
       reader.readAsDataURL(file);
+    };
+
+    window.enableProfileEdit = function(suffix) {
+        ['name', 'email'].forEach(f => {
+            const el = document.getElementById(`prof-${f}-${suffix}`);
+            if(el) {
+                el.removeAttribute('readonly');
+                el.classList.remove('prof-input-readonly');
+            }
+        });
+        document.getElementById(`btn-save-prof-${suffix}`).style.display = 'block';
+        document.getElementById(`prof-name-${suffix}`).focus();
     };
 
     window.saveProfileData = async function(suffix) {
@@ -1080,6 +1137,15 @@
                 window.showToast('No changes made.', 'info');
             }
             
+            ['name', 'email'].forEach(f => {
+                const el = document.getElementById(`prof-${f}-${suffix}`);
+                if(el) {
+                    el.setAttribute('readonly', 'true');
+                    el.classList.add('prof-input-readonly');
+                }
+            });
+            btn.style.display = 'none';
+
         } catch(e) {
             window.showToast('Error updating profile: ' + e.message, 'error');
         } finally {
@@ -1111,14 +1177,20 @@
               <div style="font-size:1.2rem;font-weight:800;color:var(--tx-1);">${esc(name)}</div>
               <div style="font-size:0.85rem;color:var(--tx-3);font-weight:600;margin-top:2px;">${roleStr}</div>
             </div>
-            <div style="padding:24px 20px; display:flex; flex-direction:column; gap:16px;">
+            <div style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem; font-weight:700; color:var(--tx-2);">Account Details</span>
+                <button class="btn-text" style="font-size:0.8rem; color:var(--ac); display:flex; align-items:center; gap:4px; padding:4px 8px; border-radius:6px; background:#EEF2FF;" onclick="window.enableProfileEdit('${suffix}')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Edit
+                </button>
+            </div>
+            <div style="padding:0 20px 24px; display:flex; flex-direction:column; gap:16px;">
                 <div class="form-group">
                     <label class="form-label" style="margin-bottom:6px; display:block; font-size:0.8rem; font-weight:700; color:var(--tx-2);">Full Name</label>
-                    <input type="text" id="prof-name-${suffix}" class="form-input" style="font-weight:600; font-size:0.95rem; padding:12px 14px;" value="${esc(name)}">
+                    <input type="text" id="prof-name-${suffix}" class="form-input prof-input-readonly" style="font-weight:600; font-size:0.95rem; transition:all 0.2s;" value="${esc(name)}" readonly>
                 </div>
                 <div class="form-group">
                     <label class="form-label" style="margin-bottom:6px; display:block; font-size:0.8rem; font-weight:700; color:var(--tx-2);">Email Address</label>
-                    <input type="email" id="prof-email-${suffix}" class="form-input" style="font-weight:600; font-size:0.95rem; padding:12px 14px;" value="${esc(email)}">
+                    <input type="email" id="prof-email-${suffix}" class="form-input prof-input-readonly" style="font-weight:600; font-size:0.95rem; transition:all 0.2s;" value="${esc(email)}" readonly>
                 </div>
                 <div class="form-group">
                     <label class="form-label" style="margin-bottom:6px; display:block; font-size:0.8rem; font-weight:700; color:var(--tx-2);">Zenda ID <span style="color:var(--tx-3);font-weight:500;">(Read-only)</span></label>
@@ -1127,9 +1199,8 @@
                         <button class="btn-text" style="padding:4px 8px; background:white; border-radius:6px; border:1px solid var(--bd-color); font-size:0.75rem;" onclick="window.copyToClipboard('${uniqueId}'); window.showToast('ID Copied!', 'success');">Copy</button>
                     </div>
                 </div>
-                <div style="margin-top:16px; display:flex; flex-direction:column; gap:10px;">
-                    <button class="btn btn-primary" id="btn-save-prof-${suffix}" style="border-radius:12px; padding:14px; font-size:0.95rem;" onclick="window.saveProfileData('${suffix}')">Save Changes</button>
-                    <button class="btn btn-ghost" style="border-radius:12px; padding:14px; font-size:0.95rem; color:#EF4444; background:#FEF2F2;" onclick="window.handleLogout()">Sign Out</button>
+                <div style="margin-top:8px;">
+                    <button class="btn btn-primary w-full" id="btn-save-prof-${suffix}" style="border-radius:12px; padding:14px; font-size:0.95rem; display:none;" onclick="window.saveProfileData('${suffix}')">Save Changes</button>
                 </div>
             </div>
           `;
@@ -1139,137 +1210,6 @@
       const m = document.getElementById('profile-body-mobile');
       if (d) d.innerHTML = getProfileHTML('desk');
       if (m) m.innerHTML = getProfileHTML('mob');
-    };
-
-    window.renderNotifs = function(items) {
-      const el = document.getElementById('notif-body');
-      if (!el) return;
-      
-      // CRITICAL FIX: Ensure read/dismissed notifications are filtered out immediately so they never return on reload
-      const activeNotifs = items.filter(n => n.status !== 'read' && n.read !== true);
-      
-      const topBadge = document.getElementById('notif-badge');
-      const innerBadge = document.getElementById('notif-count-badge');
-      
-      if (!activeNotifs.length) { 
-        el.innerHTML = `<div class="empty" style="padding:40px 20px; text-align:center;"><div class="empty-ico" style="margin-bottom:10px; display:flex; justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="empty-ttl" style="color:#64748B; font-size:14px;">No notifications</div></div>`; 
-        if (topBadge) { topBadge.classList.add('hidden'); topBadge.textContent = '0'; }
-        if (innerBadge) { innerBadge.classList.add('hidden'); innerBadge.textContent = '0'; }
-        return; 
-      }
-      
-      if (topBadge) { topBadge.classList.remove('hidden'); topBadge.textContent = activeNotifs.length; }
-      if (innerBadge) { innerBadge.classList.remove('hidden'); innerBadge.textContent = activeNotifs.length; }
-      
-      el.innerHTML = '';
-      activeNotifs.forEach(n => {
-        if (n.type === 'security_login') {
-          const tpl = document.getElementById('tpl-security').content.cloneNode(true);
-          const card = tpl.querySelector('.notif-card');
-          card.dataset.id = n.id;
-          el.appendChild(tpl);
-        } else if (n.type === 'task_received') {
-          const tpl = document.getElementById('tpl-task').content.cloneNode(true);
-          const card = tpl.querySelector('.notif-card');
-          card.dataset.id = n.id;
-          card.dataset.taskId = n.taskId || '';
-          card.dataset.senderId = n.senderId || '';
-          card.querySelector('.task-title').textContent = n.message || 'You have been assigned a new task.';
-          el.appendChild(tpl);
-        } else {
-          const div = document.createElement('div');
-          div.className = 'notif-card';
-          div.dataset.id = n.id;
-          const timeStr = ago(n.createdAt);
-          div.innerHTML = `
-            <div class="notif-icon general"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
-            <div class="notif-content-wrap">
-              <div class="notif-header"><h4 class="notif-title">Notification</h4><span class="notif-time">${timeStr}</span></div>
-              <p class="notif-body">${esc(n.message)}</p>
-              <div class="notif-actions"><button class="btn-secondary" onclick="window.dismissAlert(this)">Mark as Read</button></div>
-            </div>`;
-          el.appendChild(div);
-        }
-      });
-    };
-
-    window.toggleNotifDropdown = function() {
-      const panel = document.getElementById('notificationDropdown');
-      panel.classList.toggle('hidden');
-      window.closeAllPanels(true);
-      if (!panel.classList.contains('hidden')) {
-        document.getElementById('panel-overlay').classList.add('visible');
-      } else {
-        document.getElementById('panel-overlay').classList.remove('visible');
-      }
-    };
-
-    const oldCloseAllPanels = window.closeAllPanels;
-    window.closeAllPanels = function(skipDropdown = false) {
-      document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open')); 
-      ['profile-side-panel', 'profile-page-mobile', 'create-staff-page'].forEach(id => document.getElementById(id)?.classList.remove('open')); 
-      document.getElementById('panel-overlay')?.classList.remove('visible');
-      if (!skipDropdown) { document.getElementById('notificationDropdown')?.classList.add('hidden'); }
-    };
-
-    window.dismissAlert = async function(btn) {
-      const card = btn.closest('.notif-card');
-      const id = card.dataset.id;
-      btn.textContent = "Done!";
-      card.style.opacity = '0.5';
-      setTimeout(() => card.remove(), 300);
-      try {
-        await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' });
-      } catch(e) { console.error("Error marking read:", e); }
-    };
-
-    window.acceptTaskNotif = async function(btn) {
-      const card = btn.closest('.notif-card');
-      const id = card.dataset.id;
-      btn.textContent = "Accepted!";
-      card.style.opacity = '0.5';
-      setTimeout(() => card.remove(), 300);
-      try {
-        await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' });
-      } catch(e) { console.error("Error marking read:", e); }
-    };
-
-    window.showDenyInput = function(btn) {
-      const card = btn.closest('.notif-card');
-      card.querySelector('.notif-actions').classList.add('hidden');
-      card.querySelector('.deny-container').classList.remove('hidden');
-    };
-
-    window.submitDeny = async function(btn) {
-      const card = btn.closest('.notif-card');
-      const input = card.querySelector('.deny-input').value.trim();
-      const wordCount = input.split(/\s+/).filter(word => word.length > 0).length;
-      
-      if (wordCount === 0 || wordCount > 10) {
-        window.showToast("Please provide a reason between 1 and 10 words.", "error");
-        return;
-      }
-
-      const taskId = card.dataset.taskId; 
-      const managerId = card.dataset.senderId;
-      const notifId = card.dataset.id;
-      
-      btn.textContent = "Sending...";
-      
-      try {
-        if (taskId) { await updateDoc(doc(db, 'tasks', taskId), { status: 'declined', reason: input }); }
-        if (managerId) { await addDoc(collection(db, 'users', managerId, 'notifications'), { type: 'task_update', message: `Task denied. Reason: ${input}`, taskId: taskId, createdAt: Date.now(), read: false }); }
-        if (notifId) { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' }); }
-        
-        btn.textContent = "Done!";
-        card.style.opacity = '0.5';
-        setTimeout(() => card.remove(), 300);
-        window.showToast("Task denied.", "success");
-      } catch(e) {
-        console.error(e);
-        window.showToast("Error updating task.", "error");
-        btn.textContent = "Send";
-      }
     };
 
     window.openDeleteTaskModal = function(id, title) { deleteTaskTargetId = id; document.getElementById('del-task-name-display').textContent = title; window.openModal('delete-task-modal'); };
@@ -1356,12 +1296,10 @@
     };
 
     window.openProfile = function() { if (!_profileBuilt) { window.buildProfile(); _profileBuilt = true; } if (window.innerWidth >= 769) { document.getElementById('profile-side-panel')?.classList.add('open'); document.getElementById('panel-overlay')?.classList.add('visible'); } else { document.getElementById('profile-page-mobile')?.classList.add('open'); } };
-    window.closeProfile = window.closeAllPanels;
     window.openAppLib = function() { window.open('app-library.html' + (window.CU?.uid ? '?uid=' + window.CU.uid : ''), '_blank'); };
     window.openModal = function(id) { const el = document.getElementById(id); if (el) { el.classList.remove('hidden'); el.style.display = ''; } window.closeAllPanels(true); };
     window.closeModal = function(id) { const el = document.getElementById(id); if (el) { el.classList.add('hidden'); el.style.display = 'none'; } };
     window.openAssignModal = function() { window.openModal('assign-modal'); };
-    window.markAllRead = async function() { try { await markAllReadFn(window.CU?.uid); document.getElementById('notif-badge')?.classList.add('hidden'); document.getElementById('notif-count-badge').textContent = ''; showToast('All marked read', 'success'); } catch (e) { console.error(e); } };
     window.handleLogout = async function() { unsubs.forEach(f => f?.()); sessionStorage.clear(); localStorage.removeItem('zenda_session'); await logout(); location.href = 'login.html'; };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
