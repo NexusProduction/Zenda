@@ -230,7 +230,6 @@ a{text-decoration:none;color:inherit}
     .orbit-container { margin-top: -20px; transform: scale(0.7); } 
     
     /* Elegant bottom sheet */
-    /* Elegant bottom sheet */
     .left { padding:36px 28px 48px 28px; border-radius:40px 40px 0 0; background:var(--bg-surface); margin-top: 38vh; width: 100%; box-shadow: 0 -10px 40px rgba(0,0,0,0.06); min-height: 62vh;}
     
     /* Sticky Mobile Back Button */
@@ -244,7 +243,6 @@ a{text-decoration:none;color:inherit}
         -webkit-backdrop-filter: blur(8px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
-}
 }
 
 /* ── LOGIN CELEBRATION ANIMATIONS ── */
@@ -369,7 +367,6 @@ a{text-decoration:none;color:inherit}
   </div>
 
   <div class="right">
-    
     <div class="orbit-container">
         <div class="orbit-center">Z</div>
 
@@ -471,19 +468,22 @@ window.blastItem = function(e, wrapId) {
 
 <script type="module">
 import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
-import { sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { signInWithEmailAndPassword, signOut, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { sendOTP, verifyUserOTP } from './otp.js';
 import { saveSession, isValidEmail } from './utils.js';
+import { login } from './auth.js'; 
 
-// FIXED IMPORT: We now import 'login' to trigger the security notification
-import { redirectIfLoggedIn, login } from './auth.js'; 
-
-// Fast redirect if already locally persisted
-redirectIfLoggedIn('dashboard.html');
+// ── FIX: Only redirect if they are fully logged in AND not currently authenticating OTP ──
+onAuthStateChanged(auth, (user) => {
+    if (user && !window.isVerifyingOTP) {
+        window.location.href = 'dashboard.html';
+    }
+});
 
 if(EMAILJS_CONFIG.publicKey && EMAILJS_CONFIG.publicKey!=='YOUR_EMAILJS_PUBLIC_KEY'){try{emailjs.init({publicKey: EMAILJS_CONFIG.publicKey});}catch(e){console.error("EmailJS Init Error:", e);}}
 let loginEmail='', timerID=null;
+window.isVerifyingOTP = false;
 
 window.go = v => { document.querySelectorAll('[id^="v-"]').forEach(el=>el.style.display='none'); document.getElementById(v).style.display='block'; clearAllErrs(); };
 
@@ -502,7 +502,7 @@ window.clrErr = id => { document.getElementById(id)?.classList.remove('err'); co
 function showErr(id,msg){ document.getElementById(id)?.classList.add('err'); const e=document.getElementById('e-'+id); if(e){e.textContent=msg;e.classList.add('show');} }
 function clearAllErrs(){ document.querySelectorAll('.finp.err').forEach(e=>e.classList.remove('err')); document.querySelectorAll('.ferr').forEach(e=>{e.textContent='';}); }
 
-// UNIFIED LOGIN SYSTEM
+// ── SECURE TRUE-OTP LOGIN FLOW ──
 window.doLogin = async () => {
   clearAllErrs();
   let ok = true;
@@ -518,19 +518,23 @@ window.doLogin = async () => {
   if(!ok) return;
   
   btnLoad(btn,true);
+  window.isVerifyingOTP = true; // Tell the auth listener NOT to auto-redirect
   
   try {
-    // Set Persistence based on Remember Me Toggle
-    await setPersistence(auth, rememberChecked ? browserLocalPersistence : browserSessionPersistence);
+    // 1. Log them in temporarily just to check if the password is correct
+    await signInWithEmailAndPassword(auth, email, pwd);
     
-    // FIXED: Calls custom login() from auth.js to trigger the Notification
-    await login(email, pwd);
+    // 2. Immediately sign them out! This prevents bypass if they close the tab.
+    await signOut(auth);
+    
     loginEmail = email;
+    window.tempPwd = pwd; // Store securely in memory to perform real login later
+    window.tempRemember = rememberChecked;
     
+    // 3. Send the OTP
     await sendOTP(email);
     document.getElementById('otp-email-lbl').textContent = email;
     
-    // Left-to-right green fill animation on success
     btn.classList.add('btn-success');
     btn.innerHTML = 'Success ✓';
     
@@ -545,6 +549,7 @@ window.doLogin = async () => {
     toast('Security OTP sent to inbox','info');
     
   } catch(e) {
+    window.isVerifyingOTP = false; // Turn auto-redirect back on if they fail
     if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential') showErr('pwd', 'Wrong password.');
     else if(e.code==='auth/user-not-found') showErr('email','No account found.');
     else if(e.code==='auth/too-many-requests') showErr('pwd','Too many attempts. Try later.');
@@ -558,6 +563,8 @@ function getOTPVal(){ return Array.from(document.querySelectorAll('#otp-row .obo
 function startTimer(){ if(timerID) clearInterval(timerID); let s=60; const tv=document.getElementById('timer-val'),tt=document.getElementById('timer-txt'),rb=document.getElementById('resend-btn'); tt.style.display='inline'; rb.style.display='none'; tv.textContent=s+'s'; timerID=setInterval(()=>{ s--; tv.textContent=s+'s'; if(s<=0){ clearInterval(timerID); tt.style.display='none'; rb.style.display='inline'; } },1000); }
 
 window.resendOTP = async () => { try{ await sendOTP(loginEmail); setupBoxes(); startTimer(); toast('New code sent!','info'); }catch(e){toast('Failed to resend.','err');} };
+
+// ── VERIFY OTP & EXECUTE TRUE LOGIN ──
 window.verifyOTP = async () => {
   const otp = getOTPVal();
   if(otp.length !== 6){ toast('Enter all 6 digits.','err'); return; }
@@ -572,6 +579,14 @@ window.verifyOTP = async () => {
         btnLoad(btn,false,'Secure Sign In');
         return;
     }
+    
+    // OTP IS VALID! Now perform the real login and generate the security notification
+    await setPersistence(auth, window.tempRemember ? browserLocalPersistence : browserSessionPersistence);
+    await login(loginEmail, window.tempPwd); 
+    
+    // Clear sensitive data from memory
+    window.tempPwd = null;
+    
     const snap = await getDocs(query(collection(db,'users'),where('email','==',loginEmail)));
     if(!snap.empty) {
         saveSession({uid:snap.docs[0].id, ...snap.docs[0].data()});
