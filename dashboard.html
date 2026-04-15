@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Dashboard — Zenda</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="dashboard.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text x='16' y='23' font-size='22' font-family='sans-serif' font-weight='900' fill='white' text-anchor='middle'>Z</text></svg>">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <style>
     /* =========================================
-       ZENDA DASHBOARD — ALL FIXES
+       ZENDA DASHBOARD — INLINE FALLBACKS
        ========================================= */
     *, *::before, *::after { box-sizing: border-box; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -42,7 +42,6 @@
       outline: none;
     }
     
-    /* ── Profile Locked State ── */
     .prof-input-readonly {
       background: var(--bg-input) !important;
       color: var(--tx-2) !important;
@@ -56,7 +55,6 @@
     #create-staff-page { width: 60%; left: auto; right: 0; border-top-left-radius: 32px; border-bottom-left-radius: 32px; box-shadow: -10px 0 50px rgba(15,23,42,.2); background: linear-gradient(145deg,#fff,#F8FAFC); transition: transform .38s cubic-bezier(.4,0,.2,1); transform: translateX(110%); }
     #create-staff-page.open { transform: translateX(0); }
 
-    /* ── FIXED CLEAN DIMMING OVERLAY (No Blur) ── */
     .panel-overlay {
       position: fixed !important;
       inset: 0 !important;
@@ -184,7 +182,6 @@
       .apps-wrap .apps-grid::-webkit-scrollbar { display: none; }
 
       #assign-tasks-btn-full { display: flex !important; }
-      #bn-assign { display: none !important; }
 
       .team-card { flex-direction: column !important; align-items: center !important; text-align: center !important; padding: 24px 16px !important; }
       .team-card-top { flex-direction: column !important; justify-content: center !important; gap: 12px; width: 100%; margin-bottom: 12px !important; }
@@ -204,8 +201,8 @@
       .apps-wrap-order { order: 0; }
       .recent-wrap-order { order: 1; }
       
-      /* ── PERFECT ALIGNMENT: App Wrap Padding matched to Recent Tasks ── */
-      .apps-wrap { padding: 16px !important; }
+      /* My Apps Padding Fix */
+      .apps-wrap { padding: 10px 16px 8px 16px !important; }
       .apps-wrap .content-hdr { padding: 0 4px 8px 4px !important; margin-bottom: 12px !important; border-bottom: 1px solid var(--bd-color) !important; }
 
       .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left: 12px !important; padding-right: 12px !important; width: 100% !important; box-sizing: border-box !important;}
@@ -414,7 +411,7 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><polyline points="9 21 9 12 15 12 15 21"/></svg><span>Home</span>
       </button>
       <button class="bn-item" id="bn-tasks" onclick="window.showView('tasks')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="bn-dot" id="bn-task-dot"></span><span>Tasks</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="bn-dot hidden" id="bn-task-dot"></span><span>Tasks</span>
       </button>
       <button class="bn-item hidden" id="bn-staff-btn" onclick="window.showView('staff')">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Team</span>
@@ -688,6 +685,10 @@
       showToast('Card downloaded! 📥', 'success');
     };
 
+    async function sendCredEmail(toEmail, toName, pwd, uid2, company) {
+      try { if (typeof emailjs !== 'undefined' && EMAILJS_CONFIG?.publicKey) { emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey }); await emailjs.send(EMAILJS_CONFIG.serviceId || 'default_service', EMAILJS_CONFIG.staffTemplateId || 'template_staff_welcome', { to_email: toEmail, to_name: toName, staff_email: toEmail, staff_password: pwd, staff_id: uid2, company_name: company, login_url: location.origin + '/login.html' }); return true; } } catch (e) { console.warn('EmailJS:', e); } return false;
+    }
+
     async function init() {
       try {
         await requireAuth('login.html');
@@ -722,21 +723,21 @@
               if (ip) {
                 const expDate = cd.subscriptionExpiry ? new Date(cd.subscriptionExpiry).toLocaleDateString() : 'Lifetime';
                 subCard.innerHTML = `
-                  <div style="background: linear-gradient(135deg, #111827 0%, #1E293B 100%); border-radius: 16px; padding: 16px; color: white; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border:1px solid #334155;">
-                    <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; color: #FBBF24;">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 16px; padding: 20px 16px; color: white; box-shadow: var(--shadow-sm); border:1px solid rgba(255,255,255,0.1);">
+                    <div style="font-weight: 800; font-size: 1rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; color: #FBBF24; letter-spacing:-0.02em;">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                       Premium Active
                     </div>
-                    <div style="font-size: 0.8rem; color: #94A3B8; font-weight:500;">Valid till ${expDate}</div>
+                    <div style="font-size: 0.8rem; color: #94A3B8; font-weight:600;">Valid till ${expDate}</div>
                   </div>
                 `;
               } else {
                 subCard.innerHTML = `
-                  <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border-radius: 16px; padding: 16px; color: white; cursor: pointer; box-shadow: 0 4px 12px rgba(245,158,11,0.3); transition: transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                    <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                  <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border-radius: 16px; padding: 20px 16px; color: white; cursor: pointer; box-shadow: var(--shadow-md); transition: transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="font-weight: 800; font-size: 1rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; letter-spacing:-0.02em;">
                       👑 Upgrade Plan
                     </div>
-                    <div style="font-size: 0.8rem; opacity: 0.9; font-weight:500;">Unlock all features</div>
+                    <div style="font-size: 0.8rem; opacity: 0.9; font-weight:600;">Unlock all features</div>
                   </div>
                 `;
               }
@@ -758,11 +759,10 @@
       if (canAssign) {
         document.getElementById('bn-assign')?.classList.remove('hidden');
         const a = document.getElementById('assign-top-btn'); if (a) a.style.display = '';
-        const af = document.getElementById('assign-tasks-btn-full'); if (af) af.style.display = '';
       }
       
       const tr = document.getElementById('task-tab-row');
-      if (tr) { if (isOwner) { tr.innerHTML = `<button class="ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-by-me'; } else { tr.innerHTML = `<button class="ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button><button class="ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-to-me'; } }
+      if (tr) { if (isOwner) { tr.innerHTML = `<button class="btn btn-ghost ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn btn-ghost ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="btn btn-ghost ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-by-me'; } else { tr.innerHTML = `<button class="btn btn-ghost ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button><button class="btn btn-ghost ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn btn-ghost ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="btn btn-ghost ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-to-me'; } }
       
       if (canSeeStaff) { document.getElementById('nav-staff')?.classList.remove('hidden'); document.getElementById('team-label')?.classList.remove('hidden'); document.getElementById('bn-staff-btn')?.classList.remove('hidden'); }
       if (isOwner) { const b = document.getElementById('add-staff-btn'); if (b) b.style.display = 'flex'; }
@@ -794,14 +794,14 @@
       const all = [...window.myTasks, ...window.assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
       const p = all.filter(t => t.status === 'pending').length, d = all.filter(t => t.status === 'done').length;
       const el = document.getElementById('stats-grid'); if (!el) return;
-      el.innerHTML = `<div class="stat-card anim-stagger" onclick="window.showView('staff')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val">${staff.length}</div></div>${sIco('#E5EDFF','#0052FF','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#059669','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
+      el.innerHTML = `<div class="stat-card anim-stagger" onclick="window.showView('staff')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val">${staff.length}</div></div>${sIco('#E5EDFF','#4F46E5','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
     }
 
     function renderNonOwnerStats(tasks) {
       const p = tasks.filter(t => t.status === 'pending').length, d = tasks.filter(t => t.status === 'done').length;
       const isMgr = window.CU.role === 'manager';
       const el = document.getElementById('stats-grid'); if (!el) return;
-      el.innerHTML = isMgr ? `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#059669','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val">${window.assignedByMeTasks.length}</div></div>${sIco('#F3E8FF','#7C3AED','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}</div></div>` : `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#059669','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
+      el.innerHTML = isMgr ? `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val">${window.assignedByMeTasks.length}</div></div>${sIco('#F3E8FF','#4F46E5','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}</div></div>` : `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${p}</div></div>${sIco('#FEF3C7','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#D1FAE5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
     }
 
     function initCharts() { const cv = document.getElementById('main-area-chart'); if (!cv) return; const c = cv.getContext('2d'); const gr = c.createLinearGradient(0, 0, 0, 240); gr.addColorStop(0, 'rgba(79,70,229,.25)'); gr.addColorStop(1, 'rgba(79,70,229,0)'); mainAreaChart = new Chart(c, { type: 'line', data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [{ label: 'Done', data: [0, 0, 0, 0, 0, 0, 0], borderColor: '#4F46E5', backgroundColor: gr, borderWidth: 3, fill: true, tension: .4, pointBackgroundColor: '#fff', pointBorderColor: '#4F46E5', pointBorderWidth: 2, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#F1F5F9' }, border: { display: false } } } } }); }
@@ -838,12 +838,12 @@
       const delBtn = (showActions && isAbm && isPending && !isToMe) ? `<button class="task-delete-inline" onclick="window.openDeleteTaskModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete</button>` : '';
       const aBadge = `<div style="display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;color:var(--tx-2);background:var(--bg-overlay);padding:4px 10px;border-radius:8px;border:1px solid var(--bd-color);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${esc(aN)}</div>`;
       const pBadge = (!isDeclined && task.priority) ? `<span class="priority-tag" style="background:var(--bg-overlay);color:var(--tx-2);padding:4px 10px;font-size:.65rem;">${task.priority}</span>` : '';
-      let sBadge = ''; if (isDeclined) sBadge = `<span class="priority-tag" style="background:var(--red-l);color:var(--red);padding:4px 10px;font-size:.65rem;">Declined</span>`; else if (isOverdue) sBadge = `<span class="priority-tag" style="background:var(--red-l);color:var(--red);padding:4px 10px;font-size:.65rem;">Overdue</span>`;
-      const actBtns = (isPending && !isDO && showActions && isToMe) ? `<div style="display:flex;gap:8px;margin-top:6px;"><button style="padding:6px 14px;border-radius:8px;border:none;background:var(--green-l);color:var(--green-h);font-weight:700;font-size:.75rem;cursor:pointer;" onclick="window.doAcceptTask('${task.id}')">✓ Done</button><button style="padding:6px 14px;border-radius:8px;border:none;background:var(--red-l);color:var(--red);font-weight:700;font-size:.75rem;cursor:pointer;" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">✗ Decline</button></div>` : '';
+      let sBadge = ''; if (isDeclined) sBadge = `<span class="priority-tag" style="background:var(--danger-light);color:var(--danger);padding:4px 10px;font-size:.65rem;">Declined</span>`; else if (isOverdue) sBadge = `<span class="priority-tag" style="background:var(--danger-light);color:var(--danger);padding:4px 10px;font-size:.65rem;">Overdue</span>`;
+      const actBtns = (isPending && !isDO && showActions && isToMe) ? `<div style="display:flex;gap:8px;margin-top:6px;"><button class="btn btn-primary" style="padding:6px 14px;border-radius:8px;font-size:.75rem;" onclick="window.doAcceptTask('${task.id}')">✓ Done</button><button class="btn btn-danger" style="padding:6px 14px;border-radius:8px;font-size:.75rem;" onclick="window.openDeclineModal('${task.id}','${esc(task.title).replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">✗ Decline</button></div>` : '';
       return `<div class="${cCls}" id="task-${task.id}">${av}<div class="card-content-wrap" style="gap:5px;width:100%;min-width:0;"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;"><div class="${tCls}" style="min-width:0;">${esc(task.title||'Untitled Task')}</div></div>${dTop}</div><div class="card-meta-strip" style="margin-top:2px; justify-content: space-between;"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${aBadge}${pBadge}${sBadge}</div><div style="display:flex;align-items:center;gap:8px;">${dBot}${delBtn}</div>${actBtns}</div></div></div>`;
     };
 
-    window.renderRecentTasks = function() { const el = document.getElementById('recent-tasks'); if (!el) return; const all = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 3); if (!all.length) { el.innerHTML = `<div class="empty" style="padding:36px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No recent tasks</div></div>`; return; } el.innerHTML = '<div class="task-list-wrapper" style="padding-bottom:8px;">' + all.map((t, i) => window.renderTaskCard(t, false, true).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join('') + '</div>'; };
+    window.renderRecentTasks = function() { const el = document.getElementById('recent-tasks'); if (!el) return; const all = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 3); if (!all.length) { el.innerHTML = `<div class="empty" style="padding:36px 24px"><div class="empty-ico">📋</div><div class="empty-ttl">No recent tasks</div></div>`; return; } el.innerHTML = '<div class="task-list-wrapper" style="padding-bottom:8px;">' + all.map((t, i) => window.renderTaskCard(t, false, true).replace('class="premium-task-card', `class="premium-task-card anim-stagger" style="animation-delay:${i*.1}s;"`)).join('') + '</div>'; };
     window.setTaskTab = function(tab, btn) { window.taskTab = tab; document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on')); if (btn) btn.classList.add('on'); else { const b = Array.from(document.querySelectorAll('.ftab')).find(b => b.getAttribute('onclick')?.includes(tab)); if (b) b.classList.add('on'); } window.renderTasksList(); };
 
     window.renderTasksList = function() {
@@ -858,25 +858,23 @@
       else if (window.taskTab === 'declined') list = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])].filter(t => isDO(t));
       else list = window.myTasks;
       const seen = new Set(); list = list.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
-      if (!list.length) { el.innerHTML = `<div class="empty" style="padding:60px 20px;"><div style="width:80px;height:80px;background:var(--bg-overlay);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg></div><div style="font-size:1.1rem;font-weight:700;color:var(--tx-1);">You're all caught up!</div><div style="font-size:.9rem;color:var(--tx-3);margin-top:6px;">No tasks match this filter.</div></div>`; return; }
-      if (window.taskTab === 'done' || window.taskTab === 'declined') { const mine = list.filter(t => t.assignedTo === window.CU?.uid), others = list.filter(t => t.assignedTo !== window.CU?.uid); let html = '<div class="task-list-wrapper">'; if (mine.length) { html += `<div style="font-size:.85rem;font-weight:700;color:var(--tx-2);padding:8px 16px 4px;text-transform:uppercase;letter-spacing:.04em;">My Tasks</div>`; html += mine.map((t, i) => window.renderTaskCard(t, false).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join(''); } if (others.length) { html += `<div style="font-size:.85rem;font-weight:700;color:var(--tx-3);padding:24px 16px 8px;border-top:1px solid var(--bd-color);margin-top:12px;text-transform:uppercase;letter-spacing:.04em;">Team Tasks</div>`; html += others.map((t, i) => window.renderTaskCard(t, false).replace('class="premium-task-card', `class="premium-task-card" style="opacity:.85;background:var(--bg-overlay);animation-delay:${i*.1}s;"`)).join(''); } html += '</div>'; el.innerHTML = html; } else el.innerHTML = '<div class="task-list-wrapper">' + list.map((t, i) => window.renderTaskCard(t, true).replace('class="premium-task-card', `class="premium-task-card" style="animation-delay:${i*.1}s;"`)).join('') + '</div>';
+      if (!list.length) { el.innerHTML = `<div class="empty" style="padding:60px 20px;"><div style="width:80px;height:80px;background:var(--bg-raised);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5" stroke-linecap="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 12l3 3 5-5"/></svg></div><div style="font-size:1.1rem;font-weight:700;color:var(--tx-main);">You're all caught up!</div><div style="font-size:.9rem;color:var(--tx-muted);margin-top:6px;">No tasks match this filter.</div></div>`; return; }
+      if (window.taskTab === 'done' || window.taskTab === 'declined') { const mine = list.filter(t => t.assignedTo === window.CU?.uid), others = list.filter(t => t.assignedTo !== window.CU?.uid); let html = '<div class="task-list-wrapper">'; if (mine.length) { html += `<div style="font-size:.85rem;font-weight:700;color:var(--tx-muted);padding:8px 16px 4px;text-transform:uppercase;letter-spacing:.04em;">My Tasks</div>`; html += mine.map((t, i) => window.renderTaskCard(t, false).replace('class="premium-task-card', `class="premium-task-card anim-stagger" style="animation-delay:${i*.05}s;"`)).join(''); } if (others.length) { html += `<div style="font-size:.85rem;font-weight:700;color:var(--tx-3);padding:24px 16px 8px;border-top:1px solid var(--bd-subtle);margin-top:12px;text-transform:uppercase;letter-spacing:.04em;">Team Tasks</div>`; html += others.map((t, i) => window.renderTaskCard(t, false).replace('class="premium-task-card', `class="premium-task-card anim-stagger" style="opacity:.85;animation-delay:${i*.05}s;"`)).join(''); } html += '</div>'; el.innerHTML = html; } else el.innerHTML = '<div class="task-list-wrapper">' + list.map((t, i) => window.renderTaskCard(t, true).replace('class="premium-task-card', `class="premium-task-card anim-stagger" style="animation-delay:${i*.05}s;"`)).join('') + '</div>';
     };
 
     window.renderStaffCards = function(staff) {
       const el = document.getElementById('staff-cards-list'); if (!el) return;
       const list = staff.filter(s => s.role !== 'owner');
-      if (!list.length) { el.innerHTML = `<div style="grid-column: 1 / -1; width: 100%; display:flex;flex-direction:column;align-items:center;justify-content:center;height:50vh;text-align:center;gap:12px;"><div style="width:72px;height:72px;background:var(--bg-overlay);border-radius:50%;display:flex;align-items:center;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="font-size:1.1rem;font-weight:700;color:var(--tx-1);">No staff found</div><div style="font-size:.9rem;color:var(--tx-3);">Add your first team member to get started.</div></div>`; return; }
+      if (!list.length) { el.innerHTML = `<div style="grid-column: 1 / -1; width: 100%; display:flex;flex-direction:column;align-items:center;justify-content:center;height:50vh;text-align:center;gap:12px;"><div style="width:72px;height:72px;background:var(--bg-raised);border-radius:50%;display:flex;align-items:center;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="font-size:1.1rem;font-weight:700;color:var(--tx-main);">No staff found</div><div style="font-size:.9rem;color:var(--tx-muted);">Add your first team member to get started.</div></div>`; return; }
       const isO = window.CU?.role === 'owner', isMgr = window.CU?.role === 'manager';
-      el.innerHTML = list.map(s => {
+      el.innerHTML = list.map((s, i) => {
         const ini = getInitials(s.name);
-        const eH = `<div class="team-email" style="font-size: 0.75rem !important; color: var(--tx-3); display: flex; align-items: center; gap: 4px; margin: 0 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>${esc(s.email)}</div>`;
+        const eH = `<div class="team-email" style="font-size: 0.75rem !important; color: var(--tx-muted); display: flex; align-items: center; gap: 4px; margin: 0 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>${esc(s.email)}</div>`;
         const cD = isO || (isMgr && s.role === 'staff');
-        const dH = cD ? `<button class="btn-delete-big" style="z-index: 2; position: relative;" title="Remove Staff" onclick="event.stopPropagation(); window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${esc(s.passwordHint||'')}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : '';
-        const aH = (isO || isMgr) ? `<button class="btn-text" style="font-size:12px;padding:4px 12px; z-index: 2; position: relative;" onclick="event.stopPropagation(); window.quickAssign('${s.uid}')">Assign Task</button>` : '';
-        
+        const dH = cD ? `<button class="btn-delete-big" style="z-index: 2; position: relative;" title="Remove Staff" onclick="event.stopPropagation(); window.openDeleteModal('${s.uid}','${esc(s.name)}','${esc(s.email)}','${esc(s.passwordHint||'')}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : '';
+        const aH = (isO || isMgr) ? `<button class="btn btn-ghost" style="font-size:12px;padding:4px 12px; z-index: 2; position: relative;" onclick="event.stopPropagation(); window.quickAssign('${s.uid}')">Assign Task</button>` : '';
         const sData = encodeURIComponent(JSON.stringify({uid: s.uid, name: s.name, email: s.email, designation: s.designation, role: s.role, pwd: s.passwordHint, created: s.createdAt, uniqueId: s.uniqueId}));
-
-        return `<div class="team-card anim-stagger" style="cursor:pointer;" onclick="window.viewStaffDetails('${sData}')"><div class="team-card-top"><div class="team-profile-info"><div class="team-av">${ini}</div><div class="team-text-block"><div class="team-name">${esc(s.name)}</div><div class="team-role">${esc(s.designation||formatRole(s.role))}</div></div></div>${dH}</div><div class="team-card-actions" style="justify-content: space-between;">${eH}${aH}</div></div>`;
+        return `<div class="team-card anim-stagger" style="cursor:pointer; animation-delay:${i*.05}s;" onclick="window.viewStaffDetails('${sData}')"><div class="team-card-top"><div class="team-profile-info"><div class="team-av av" style="width:42px;height:42px;">${ini}</div><div class="team-text-block"><div class="team-name">${esc(s.name)}</div><div class="team-role">${esc(s.designation||formatRole(s.role))}</div></div></div>${dH}</div><div class="team-card-actions" style="justify-content: space-between;">${eH}${aH}</div></div>`;
       }).join('');
     };
     
@@ -897,13 +895,8 @@
       
       const isOwner = window.CU?.role === 'owner';
       const pwdRow = document.getElementById('sd-password-row');
-      if (isOwner) {
-          pwdRow.style.display = 'flex';
-          document.getElementById('sd-password').textContent = s.pwd || '••••••';
-      } else {
-          pwdRow.style.display = 'none';
-      }
-      
+      if (isOwner) { pwdRow.style.display = 'flex'; document.getElementById('sd-password').textContent = s.pwd || '••••••'; } 
+      else { pwdRow.style.display = 'none'; }
       window.openModal('staff-detail-modal');
     };
 
@@ -926,9 +919,12 @@
     window.enableProfileEdit = function(suffix) {
         ['name', 'email'].forEach(f => {
             const el = document.getElementById(`prof-${f}-${suffix}`);
-            if(el) { el.removeAttribute('readonly'); el.classList.remove('prof-input-readonly'); }
+            if(el) { 
+              el.removeAttribute('readonly'); 
+              el.classList.remove('prof-input-readonly'); 
+            }
         });
-        document.getElementById(`btn-save-prof-${suffix}`).style.display = 'block';
+        document.getElementById(`btn-save-prof-${suffix}`).style.display = 'flex';
         document.getElementById(`prof-name-${suffix}`).focus();
     };
 
@@ -988,7 +984,7 @@
                 await window.commitProfileUpdates();
             }
         } catch(e) { window.showToast(e.message, 'error'); } 
-        finally { loadBtn(btn, false, 'Verify'); }
+        finally { loadBtn(btn, false, 'Verify Code'); }
     };
 
     window.commitProfileUpdates = async function() {
@@ -1060,57 +1056,56 @@
       const expDateStr = window.CU.subscriptionExpiry ? new Date(window.CU.subscriptionExpiry).toLocaleDateString() : 'Lifetime';
       
       const prmBadge = window.CU.isPremium 
-         ? `<div style="margin: 16px auto 0; background: linear-gradient(135deg, #111827 0%, #1E293B 100%); border-radius: 12px; padding: 12px 16px; color: white; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border:1px solid #334155; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 200px;">
-              <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; color: #FBBF24;">
+         ? `<div style="margin: 16px auto 0; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 12px; padding: 12px 16px; color: white; box-shadow: var(--shadow-sm); border:1px solid rgba(255,255,255,0.1); display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 200px;">
+              <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; color: #FBBF24; letter-spacing:-0.02em;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                 Premium Active
               </div>
-              <div style="font-size: 0.8rem; color: #94A3B8; font-weight:500;">Valid till ${expDateStr}</div>
+              <div style="font-size: 0.8rem; color: #94A3B8; font-weight:600;">Valid till ${expDateStr}</div>
             </div>`
          : ``;
 
       function getProfileHTML(suffix) {
           return `
-            <div style="text-align:center;padding:24px 20px;border-bottom:1px solid var(--bd-color); background: linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%);">
-              <div style="position:relative; width:88px; height:88px; margin:0 auto 16px;">
-                  <div class="av prof-av-display" style="width:100%; height:100%; font-size:2.2rem; font-weight:800; border-radius:24px; background:${bgC}22; color:${bgC}; display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.06); border: 2px solid white;">
+            <div style="text-align:center;padding:32px 20px 24px;border-bottom:1px solid var(--bd-subtle); background: var(--bg-surface);">
+              <div style="position:relative; width:96px; height:96px; margin:0 auto 16px;">
+                  <div class="av prof-av-display" style="width:100%; height:100%; font-size:2.4rem; font-weight:800; border-radius:28px; background:${bgC}22; color:${bgC}; display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow: var(--shadow-md); border: 2px solid white;">
                       ${avContent}
                   </div>
-                  <label for="avatar-upload-${suffix}" style="position:absolute; bottom:-4px; right:-4px; background:var(--ac); color:white; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:2px solid white; box-shadow:var(--sh-1); transition:transform 0.2s;">
+                  <label for="avatar-upload-${suffix}" style="position:absolute; bottom:-4px; right:-4px; background:var(--ac); color:white; width:34px; height:34px; border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:2px solid white; box-shadow:var(--shadow-sm); transition:transform 0.2s;">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   </label>
                   <input type="file" id="avatar-upload-${suffix}" accept="image/*" style="display:none;" onchange="window.uploadAvatar(event, '${suffix}')">
               </div>
-              <div style="font-size:1.2rem;font-weight:800;color:var(--tx-1);">${esc(name)}</div>
-              <div style="font-size:0.85rem;color:var(--tx-3);font-weight:600;margin-top:2px;">${roleStr}</div>
+              <div style="font-size:1.4rem;font-weight:800;color:var(--tx-main); letter-spacing:-0.03em;">${esc(name)}</div>
+              <div style="font-size:0.85rem;color:var(--ac);font-weight:700;margin-top:4px;background:var(--ac-light);display:inline-block;padding:2px 10px;border-radius:100px;">${roleStr}</div>
               ${prmBadge}
             </div>
-            <div style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.9rem; font-weight:700; color:var(--tx-2);">Account Details</span>
-                <button class="btn-text" style="font-size:0.8rem; color:var(--ac); display:flex; align-items:center; gap:4px; padding:4px 8px; border-radius:6px; background:#EEF2FF;" onclick="window.enableProfileEdit('${suffix}')">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Edit
+            <div style="padding:24px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:1rem; font-weight:800; color:var(--tx-main); letter-spacing:-0.01em;">Account Details</span>
+                <button class="btn btn-ghost" style="padding:6px 12px; border-radius:8px; font-size:0.8rem;" onclick="window.enableProfileEdit('${suffix}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Edit
                 </button>
             </div>
-            <div style="padding:0 20px 24px; display:flex; flex-direction:column; gap:16px;">
+            <div style="padding:0 24px 24px; display:flex; flex-direction:column; gap:16px;">
                 <div class="form-group">
-                    <label class="form-label" style="margin-bottom:6px; display:block; font-size:0.8rem; font-weight:700; color:var(--tx-2);">Full Name</label>
-                    <input type="text" id="prof-name-${suffix}" class="form-input prof-input-readonly" style="font-weight:600; font-size:0.95rem; transition:all 0.2s;" value="${esc(name)}" readonly>
+                    <label class="form-label">Full Name</label>
+                    <input type="text" id="prof-name-${suffix}" class="form-input prof-input-readonly" value="${esc(name)}" readonly>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" style="margin-bottom:6px; display:block; font-size:0.8rem; font-weight:700; color:var(--tx-2);">Email Address</label>
-                    <input type="email" id="prof-email-${suffix}" class="form-input prof-input-readonly" style="font-weight:600; font-size:0.95rem; transition:all 0.2s;" value="${esc(email)}" readonly>
+                    <label class="form-label">Email Address</label>
+                    <input type="email" id="prof-email-${suffix}" class="form-input prof-input-readonly" value="${esc(email)}" readonly>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" style="margin-bottom:6px; display:block; font-size:0.8rem; font-weight:700; color:var(--tx-2);">Zenda ID <span style="color:var(--tx-3);font-weight:500;">(Read-only)</span></label>
-                    <div style="background:var(--bg-input); padding:12px 14px; border-radius:10px; border:1px solid var(--bd-color); font-family:var(--f-mono); font-size:0.95rem; font-weight:600; color:var(--tx-1); display:flex; justify-content:space-between; align-items:center;">
+                    <label class="form-label">Zenda ID <span style="color:var(--tx-muted);font-weight:500;">(Read-only)</span></label>
+                    <div style="background:var(--bg-raised); padding:10px 14px; border-radius:10px; border:1px solid var(--bd-subtle); font-family:var(--font-mono); font-size:0.95rem; font-weight:700; color:var(--tx-main); display:flex; justify-content:space-between; align-items:center;">
                         <span id="prof-uid-${suffix}">${uniqueId}</span>
-                        <button class="btn-text" style="padding:4px 8px; background:white; border-radius:6px; border:1px solid var(--bd-color); font-size:0.75rem;" onclick="window.copyToClipboard('${uniqueId}'); window.showToast('ID Copied!', 'success');">Copy</button>
+                        <button class="btn btn-ghost" style="padding:4px 8px; background:white; border-radius:6px; border:1px solid var(--bd-subtle); font-size:0.75rem;" onclick="window.copyToClipboard('${uniqueId}'); window.showToast('ID Copied!', 'success');">Copy</button>
                     </div>
                 </div>
-                <div style="margin-top:8px; display:flex; flex-direction:column; gap:10px;">
-                    <button class="btn btn-primary w-full" id="btn-save-prof-${suffix}" style="border-radius:12px; padding:14px; font-size:0.95rem; display:none;" onclick="window.saveProfileData('${suffix}')">Save Changes</button>
-                    <button class="btn w-full" style="border-radius:12px; padding:14px; font-size:0.95rem; color:#EF4444; background:#FEF2F2; border:none; font-weight:700;" onclick="window.handleLogout()">Sign Out</button>
-                </div>
+                
+                <button class="btn btn-primary w-full" id="btn-save-prof-${suffix}" style="display:none; margin-top:8px; padding:12px;" onclick="window.saveProfileData('${suffix}')">Save Changes</button>
+                <button class="btn btn-danger w-full" style="margin-top:16px; padding:12px; background:#FEF2F2; color:#EF4444; border:none;" onclick="window.handleLogout()">Sign Out</button>
             </div>
           `;
       }
@@ -1157,33 +1152,44 @@
 
     window.confirmDelete = async function() { if (!deleteTargetUid) return; const btn = document.getElementById('del-confirm-btn'); loadBtn(btn, true); try { await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd); const m = document.getElementById('delete-modal'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } showToast('Staff member removed.', 'success'); deleteTargetUid = null; setTimeout(() => { if (m) m.style.display = ''; }, 100); } catch (e) { showToast('Error: ' + e.message, 'error'); loadBtn(btn, false, 'Delete'); window.checkDelConfirm(); } };
 
-    window.openCreateStaffPage = function() { document.getElementById('create-staff-page')?.classList.add('open'); document.getElementById('panel-overlay')?.classList.add('visible'); };
-    
-    // ── FIXED TOGGLE & CLOSE LOGIC ──
-    window.toggleNotifDropdown = function(e) {
-      if(e) e.stopPropagation();
-      const panel = document.getElementById('notificationDropdown');
-      if (!panel) return;
-      const isHidden = panel.classList.contains('hidden');
-      
-      window.closeAllPanels(); 
-      
-      if (isHidden) {
+    window.openCreateStaffPage = function() {
+      const panel = document.getElementById('create-staff-page');
+      if (panel) {
         panel.classList.remove('hidden');
-        document.getElementById('panel-overlay').classList.add('visible');
+        panel.style.display = '';
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => panel.classList.add('open'));
+        });
       }
+      document.getElementById('panel-overlay')?.classList.add('visible');
     };
 
-    window.closeAllPanels = function() {
-      document.querySelectorAll('.side-panel, .profile-side-panel').forEach(p => p.classList.remove('open')); 
-      ['profile-page-mobile', 'create-staff-page', 'notificationDropdown'].forEach(id => {
-         const el = document.getElementById(id);
-         if(el) { el.classList.remove('open'); el.classList.add('hidden'); }
-      }); 
+    window.closeAllPanels = function(skipDropdown = false) {
+      document.querySelectorAll('.side-panel, .profile-side-panel')
+        .forEach(p => p.classList.remove('open'));
+      
+      ['profile-page-mobile'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.classList.remove('open'); el.classList.add('hidden'); }
+      });
+
+      if (!skipDropdown) {
+        const notif = document.getElementById('notificationDropdown');
+        if (notif) notif.classList.add('hidden');
+      }
+
+      const staffPanel = document.getElementById('create-staff-page');
+      if (staffPanel) {
+        staffPanel.classList.remove('open');
+        setTimeout(() => {
+          if (!staffPanel.classList.contains('open')) {
+            staffPanel.classList.add('hidden');
+          }
+        }, 420);
+      }
+
       document.getElementById('panel-overlay')?.classList.remove('visible');
     };
-    
-    window.closeFullpage = function() { window.closeAllPanels(); };
 
     window.initiateCreateStaff = async function() {
       const name = document.getElementById('cs-name').value.trim(), email = document.getElementById('cs-email').value.trim(), desig = document.getElementById('cs-designation').value.trim(), pwd = document.getElementById('cs-password').value.trim();
@@ -1229,10 +1235,9 @@
       if (v === 'tasks') window.renderTasksList();
     };
 
-    window.openProfile = function() { if (!_profileBuilt) { window.buildProfile(); _profileBuilt = true; } if (window.innerWidth >= 769) { document.getElementById('profile-side-panel')?.classList.add('open'); document.getElementById('panel-overlay')?.classList.add('visible'); } else { document.getElementById('profile-page-mobile')?.classList.add('open'); document.getElementById('profile-page-mobile')?.classList.remove('hidden'); } };
-    window.closeProfile = function() { window.closeAllPanels(); };
+    window.openProfile = function() { if (!_profileBuilt) { window.buildProfile(); _profileBuilt = true; } if (window.innerWidth >= 769) { document.getElementById('profile-side-panel')?.classList.add('open'); document.getElementById('panel-overlay')?.classList.add('visible'); } else { document.getElementById('profile-page-mobile')?.classList.remove('hidden'); document.getElementById('profile-page-mobile')?.classList.add('open'); } };
     window.openAppLib = function() { window.open('app-library.html' + (window.CU?.uid ? '?uid=' + window.CU.uid : ''), '_blank'); };
-    window.openModal = function(id) { const el = document.getElementById(id); if (el) { el.classList.remove('hidden'); el.style.display = ''; } window.closeAllPanels(); document.getElementById('panel-overlay')?.classList.add('visible'); };
+    window.openModal = function(id) { const el = document.getElementById(id); if (el) { el.classList.remove('hidden'); el.style.display = ''; } window.closeAllPanels(true); document.getElementById('panel-overlay')?.classList.add('visible'); };
     window.closeModal = function(id) { const el = document.getElementById(id); if (el) { el.classList.add('hidden'); el.style.display = 'none'; } document.getElementById('panel-overlay')?.classList.remove('visible'); };
     window.openAssignModal = function() { window.openModal('assign-modal'); };
     window.markAllRead = async function() { try { await markAllReadFn(window.CU?.uid); document.getElementById('notif-badge')?.classList.add('hidden'); document.getElementById('notif-count-badge').textContent = ''; showToast('All marked read', 'success'); } catch (e) { console.error(e); } };
@@ -1240,6 +1245,12 @@
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
+    
+    // Topbar shadow on scroll
+    window.addEventListener('scroll', () => {
+      const tb = document.querySelector('.topbar');
+      if (tb) tb.classList.toggle('scrolled', window.scrollY > 8);
+    }, { passive: true });
   </script>
   <script>
     setTimeout(() => {
