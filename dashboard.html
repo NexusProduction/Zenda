@@ -2,81 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Dashboard — Zenda</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="dashboard.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text x='16' y='23' font-size='22' font-family='sans-serif' font-weight='900' fill='white' text-anchor='middle'>Z</text></svg>">
   
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   
   <script>
-    setTimeout(() => {
-      const loader = document.getElementById('loading-overlay');
-      if (loader) { 
-        loader.style.opacity = '0'; 
-        loader.style.pointerEvents = 'none'; 
-        setTimeout(() => loader.remove(), 500); 
-      }
-    }, 2500);
+    document.addEventListener("DOMContentLoaded", () => {
+      setTimeout(() => {
+        const loader = document.getElementById('loading-overlay');
+        if (loader) { 
+          loader.style.opacity = '0'; 
+          loader.style.pointerEvents = 'none'; 
+          setTimeout(() => loader.remove(), 600); 
+        }
+      }, 1500);
+    });
   </script>
 
   <style>
-    /* ══════════════════════════════════════════════════
-       BASE STYLES & RESET
-       ══════════════════════════════════════════════════ */
+    /* --- CSS RESET & BASE VARIABLES --- */
     *, *::before, *::after { 
         box-sizing: border-box; 
+        margin: 0;
+        padding: 0;
     }
     
     @keyframes spin { 
         to { transform: rotate(360deg); } 
     }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
     :root {
-      --bd-color: #CBD5E1 !important;
+      /* Color Palette */
+      --bd-color: #E2E8F0 !important;
       --bd-subtle: rgba(15, 23, 42, 0.08);
       --bg-surface: #FFFFFF;
       --bg-raised: #F8FAFC;
+      --bg-page: #F1F5F9;
       --tx-main: #0F172A;
       --tx-muted: #64748B;
+      
+      /* Accents */
       --ac: #3A57E8;
       --ac-hover: #2A41C7;
       --ac-light: #EEF2FF;
       --danger: #EF4444;
+      --danger-hover: #DC2626;
       --danger-light: #FEF2F2;
       --success: #10B981;
       --success-light: #ECFDF5;
-      --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.03);
+      --warning: #F59E0B;
+      
+      /* Shadows */
+      --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.04);
       --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.06);
       --shadow-float: 0 24px 64px rgba(15, 23, 42, 0.12);
-      --rad-outer: 24px;
-      --rad-inner: 12px;
+      
+      /* Borders */
+      --rad-outer: 16px;
+      --rad-inner: 10px; /* Globally changed to rounded squares */
+      --rad-btn: 10px;   /* Globally changed from 100px to 10px */
+      
+      /* Typography */
+      --font-main: 'Plus Jakarta Sans', sans-serif;
       --font-mono: 'DM Mono', monospace;
     }
 
     body { 
-        font-family: 'Plus Jakarta Sans', sans-serif; 
-        background: #FAFAFA; 
+        font-family: var(--font-main); 
+        background: var(--bg-surface); 
         color: var(--tx-main); 
-        overflow-x: hidden; 
+        overflow: hidden; /* Prevent body scroll, let app-body handle it */
         -webkit-font-smoothing: antialiased; 
-        margin: 0; 
+        -moz-osx-font-smoothing: grayscale;
+        height: 100vh;
+        width: 100vw;
     }
 
-    /* ══════════════════════════════════════════════════
-       TYPOGRAPHY
-       ══════════════════════════════════════════════════ */
-    .greeting-name { color: var(--ac); font-weight: 800; }
+    /* --- TYPOGRAPHY & HEADERS --- */
+    h1, h2, h3, h4, h5, h6 {
+        margin: 0;
+        color: var(--tx-main);
+    }
+    
+    .greeting-name { 
+        color: var(--ac); 
+        font-weight: 800; 
+    }
     
     .page-ttl { 
         font-size: 1.8rem; 
         font-weight: 800; 
         letter-spacing: -0.03em; 
-        margin-bottom: 4px; 
+        margin-bottom: 6px; 
     }
     
     .page-sub { 
@@ -87,48 +115,51 @@
     
     .content-ttl { 
         font-size: 1.1rem; 
-        font-weight: 700; 
+        font-weight: 800; 
         letter-spacing: -0.01em; 
     }
     
     .chart-hdr, .content-hdr { 
-        padding: 16px 20px; 
+        padding: 16px 24px; 
         border-bottom: 1px solid var(--bd-subtle); 
         display: flex; 
         justify-content: space-between; 
         align-items: center; 
     }
 
-    /* ══════════════════════════════════════════════════
-       FORMS
-       ══════════════════════════════════════════════════ */
-    .form-group { margin-bottom: 16px; }
+    /* --- FORMS & INPUTS --- */
+    .form-group { margin-bottom: 18px; }
     
     .form-input, .zenda-select, textarea.form-input {
-      border-radius: 10px; 
+      border-radius: var(--rad-inner); 
       border: 1px solid var(--bd-color); 
       background: var(--bg-raised);
-      padding: 10px 14px; 
+      padding: 12px 16px; 
       font-family: inherit; 
       width: 100%; 
-      font-size: 0.9rem; 
+      font-size: 0.95rem; 
       font-weight: 500; 
-      transition: all 0.2s; 
+      transition: all 0.2s ease; 
       color: var(--tx-main);
     }
     
     .form-input:focus, .zenda-select:focus, textarea.form-input:focus { 
         border-color: var(--ac); 
-        box-shadow: 0 0 0 3px rgba(58, 87, 232, 0.15); 
+        box-shadow: 0 0 0 4px rgba(58, 87, 232, 0.1); 
         outline: none; 
         background: var(--bg-surface); 
     }
     
+    .form-input::placeholder, textarea.form-input::placeholder {
+        color: #94A3B8;
+        font-weight: 500;
+    }
+    
     .form-label { 
-        font-size: 0.8rem; 
+        font-size: 0.85rem; 
         font-weight: 700; 
         color: var(--tx-muted); 
-        margin-bottom: 6px; 
+        margin-bottom: 8px; 
         display: block; 
     }
 
@@ -138,23 +169,23 @@
       color: var(--tx-main) !important;
       font-weight: 700 !important;
       pointer-events: none;
+      opacity: 0.8;
     }
 
-    /* ══════════════════════════════════════════════════
-       BUTTONS
-       ══════════════════════════════════════════════════ */
+    /* --- BUTTONS --- */
+    /* ALL Buttons modified to square with slight radius */
     .btn { 
         display: inline-flex; 
         align-items: center; 
         justify-content: center; 
         gap: 8px; 
-        padding: 10px 24px; 
-        border-radius: 100px; 
+        padding: 10px 20px; 
+        border-radius: var(--rad-btn); 
         font-size: 0.875rem; 
         font-weight: 700; 
         cursor: pointer; 
         border: none; 
-        transition: all 0.2s; 
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); 
         font-family: inherit; 
     }
     
@@ -163,18 +194,19 @@
     .btn-primary { 
         background: var(--ac); 
         color: white; 
-        box-shadow: 0 4px 14px rgba(58, 87, 232, 0.25); 
+        box-shadow: 0 4px 12px rgba(58, 87, 232, 0.2); 
     }
     
     .btn-primary:hover { 
         background: var(--ac-hover); 
-        transform: translateY(-1px); 
-        box-shadow: 0 6px 20px rgba(58, 87, 232, 0.35); 
+        transform: translateY(-2px); 
+        box-shadow: 0 6px 16px rgba(58, 87, 232, 0.3); 
     }
     
     .btn-secondary { 
         background: var(--bg-raised); 
         color: var(--tx-muted); 
+        border: 1px solid var(--bd-color);
     }
     
     .btn-secondary:hover { 
@@ -190,7 +222,7 @@
     }
     
     .btn-danger:hover { 
-        background: var(--danger); 
+        background: var(--danger-hover); 
         color: white; 
     }
     
@@ -200,8 +232,8 @@
         font-weight: 700; 
         font-size: 0.85rem; 
         border: 1.5px solid var(--bd-subtle); 
-        border-radius: 8px; 
-        padding: 6px 14px; 
+        border-radius: var(--rad-btn); 
+        padding: 8px 16px; 
         transition: all 0.2s; 
     }
     
@@ -215,9 +247,9 @@
         background: var(--danger-light); 
         color: var(--danger); 
         border: 1px solid rgba(239,68,68,.2); 
-        border-radius: 8px; 
-        width: 32px; 
-        height: 32px; 
+        border-radius: var(--rad-btn); 
+        width: 36px; 
+        height: 36px; 
         padding: 0; 
         display: flex; 
         align-items: center; 
@@ -230,23 +262,85 @@
     .btn-delete-big:hover { 
         background: var(--danger); 
         color: white; 
-        transform: translateY(-1px); 
+        transform: translateY(-2px); 
         box-shadow: 0 4px 12px rgba(239,68,68,.25); 
     }
     
     .w-full { width: 100%; }
+    
+    /* Topbar Upgrade Button Square */
+    #topbar-upgrade-btn {
+        padding: 8px 14px; 
+        font-size: 0.85rem; 
+        background: linear-gradient(135deg, #F59E0B, #D97706); 
+        border: none; 
+        border-radius: var(--rad-btn);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+        color: white;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
 
-    /* ══════════════════════════════════════════════════
-       PANELS & MODALS
-       ══════════════════════════════════════════════════ */
+    /* --- LAYOUT FIXES (CRITICAL) --- */
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 24px;
+        background: var(--bg-surface);
+        border-bottom: 1px solid var(--bd-subtle);
+        height: 65px;
+        position: relative;
+        z-index: 50;
+    }
+
+    .app-body {
+        display: flex;
+        width: 100vw;
+        height: calc(100vh - 65px); /* Rest of screen minus topbar */
+        overflow: hidden;
+        background: var(--bg-page);
+    }
+
+    .sidebar {
+        width: 250px;
+        background: var(--bg-surface);
+        border-right: 1px solid var(--bd-subtle);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        flex-shrink: 0; /* Prevents sidebar from squishing */
+        z-index: 40;
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .main-content {
+        flex: 1; /* Takes up remaining space perfectly */
+        height: 100%;
+        overflow-y: auto;
+        padding: 32px;
+        background: var(--bg-raised);
+        position: relative;
+        min-width: 0; /* Prevents flex children from blowing out width */
+    }
+
+    .fade-in-section {
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* --- PANELS & MODALS --- */
     .panel-overlay { 
         position: fixed; 
         inset: 0; 
-        background: rgba(15, 23, 42, 0.45); 
+        background: rgba(15, 23, 42, 0.5); 
         z-index: 998; 
         opacity: 0; 
         pointer-events: none; 
-        transition: opacity 0.3s ease; 
+        transition: opacity 0.3s ease;
+        backdrop-filter: blur(2px);
     }
     
     .panel-overlay.visible { 
@@ -268,7 +362,7 @@
         position: fixed; 
         top: 0; 
         right: 0; 
-        width: 400px; 
+        width: 420px; 
         height: 100vh; 
         background: var(--bg-surface); 
         box-shadow: var(--shadow-float); 
@@ -282,15 +376,16 @@
     .side-panel.open, .profile-side-panel.open { transform: translateX(0); }
     
     .sp-hdr { 
-        padding: 20px 24px; 
+        padding: 24px; 
         border-bottom: 1px solid var(--bd-subtle); 
         display: flex; 
         justify-content: space-between; 
         align-items: center; 
+        background: var(--bg-surface);
     }
     
     .sp-ttl { 
-        font-size: 1.1rem; 
+        font-size: 1.2rem; 
         font-weight: 800; 
         color: var(--tx-main); 
         letter-spacing: -0.02em; 
@@ -299,16 +394,17 @@
     .sp-body { 
         flex: 1; 
         overflow-y: auto; 
-        background: var(--bg-page); 
+        background: var(--bg-surface); 
     }
 
+    /* Fixed fullpage background color */
     .fullpage { 
         position: fixed; 
         top: 0; 
         left: 0; 
         width: 100%; 
         height: 100vh; 
-        background: var(--bg-page); 
+        background: var(--bg-surface); /* FIX: Solves transparent mesh bug */
         z-index: 1001; 
         transform: translateY(100%); 
         transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.4s; 
@@ -319,7 +415,7 @@
     .fullpage.open { transform: translateY(0); }
     
     .fp-hdr { 
-        padding: 16px 20px; 
+        padding: 20px 24px; 
         display: flex; 
         align-items: center; 
         border-bottom: 1px solid var(--bd-subtle); 
@@ -344,13 +440,17 @@
     .fp-back:hover { color: var(--tx-main); }
     
     .fp-ttl { 
-        font-size: 1.2rem; 
+        font-size: 1.3rem; 
         font-weight: 800; 
         color: var(--tx-main); 
         letter-spacing: -0.02em; 
     }
     
-    .fp-body { flex: 1; overflow-y: auto; }
+    .fp-body { 
+        flex: 1; 
+        overflow-y: auto; 
+        background: var(--bg-page); /* Added light grey body inside fullpage */
+    }
 
     #create-staff-page { 
         width: 55%; 
@@ -363,14 +463,12 @@
     
     #create-staff-page.open { transform: translateX(0); }
 
-    /* ══════════════════════════════════════════════════
-       NOTIFICATIONS
-       ══════════════════════════════════════════════════ */
+    /* --- NOTIFICATIONS --- */
     .notif-panel { 
         position: absolute; 
         top: 72px; 
         right: 24px; 
-        width: 400px; 
+        width: 420px; 
         height: auto; 
         max-height: calc(100vh - 100px); 
         background: var(--bg-surface); 
@@ -392,7 +490,7 @@
     }
     
     .notif-card { 
-        padding: 16px 20px; 
+        padding: 20px; 
         border-bottom: 1px solid var(--bd-subtle); 
         display: flex; 
         gap: 16px; 
@@ -405,9 +503,9 @@
     .notif-card:last-child { border-bottom: none; }
     
     .notif-icon { 
-        width: 42px; 
-        height: 42px; 
-        border-radius: 12px; 
+        width: 46px; 
+        height: 46px; 
+        border-radius: 14px; 
         display: flex; 
         align-items: center; 
         justify-content: center; 
@@ -416,21 +514,21 @@
     
     .notif-icon.security { background: var(--danger-light); color: var(--danger); }
     .notif-icon.task { background: var(--ac-light); color: var(--ac); }
-    .notif-icon.general { background: var(--bg-raised); color: var(--tx-muted); }
+    .notif-icon.general { background: var(--bg-page); color: var(--tx-muted); }
     
     .notif-content-wrap { 
         flex: 1; 
         min-width: 0; 
         display: flex; 
         flex-direction: column; 
-        gap: 4px; 
+        gap: 6px; 
     }
     
     .notif-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
     
     .notif-title { 
         font-family: inherit; 
-        font-size: 0.95rem; 
+        font-size: 1rem; 
         color: var(--tx-main); 
         font-weight: 800; 
         margin: 0; 
@@ -439,7 +537,7 @@
     }
     
     .notif-time { 
-        font-size: 0.7rem; 
+        font-size: 0.75rem; 
         color: var(--tx-muted); 
         font-family: var(--font-mono); 
         white-space: nowrap; 
@@ -447,27 +545,25 @@
     }
     
     .notif-body { 
-        font-size: 0.85rem; 
+        font-size: 0.9rem; 
         color: var(--tx-muted); 
         margin: 0; 
-        line-height: 1.4; 
+        line-height: 1.5; 
         font-weight: 500; 
     }
 
-    /* ══════════════════════════════════════════════════
-       MODALS
-       ══════════════════════════════════════════════════ */
+    /* --- MODALS --- */
     .modal-overlay { 
         position: fixed; 
         inset: 0; 
-        background: rgba(15,23,42,0.45); 
+        background: rgba(15,23,42,0.5); 
         z-index: 1002; 
         display: flex; 
         align-items: center; 
         justify-content: center; 
         padding: 16px; 
-        backdrop-filter: blur(2px); 
-        -webkit-backdrop-filter: blur(2px); 
+        backdrop-filter: blur(4px); 
+        -webkit-backdrop-filter: blur(4px); 
         opacity: 0; 
         transition: opacity 0.3s, visibility 0.3s; 
     }
@@ -484,7 +580,7 @@
     .modal { 
         background: var(--bg-surface); 
         width: 100%; 
-        max-width: 440px; 
+        max-width: 460px; 
         border-radius: var(--rad-outer); 
         box-shadow: var(--shadow-float); 
         overflow-y: auto; 
@@ -492,21 +588,21 @@
     }
     
     .modal-hdr { 
-        padding: 20px 24px; 
+        padding: 24px; 
         border-bottom: 1px solid var(--bd-subtle); 
         display: flex; 
         justify-content: space-between; 
         align-items: center; 
     }
     
-    .modal-ttl { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.02em; }
+    .modal-ttl { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
     
     .modal-close { 
         background: var(--bg-raised); 
         border: none; 
-        width: 32px; 
-        height: 32px; 
-        border-radius: 50%; 
+        width: 36px; 
+        height: 36px; 
+        border-radius: 10px; /* Square close button */
         display: flex; 
         align-items: center; 
         justify-content: center; 
@@ -521,14 +617,12 @@
         transform: rotate(90deg); 
     }
 
-    /* ══════════════════════════════════════════════════
-       ANIMATIONS
-       ══════════════════════════════════════════════════ */
+    /* --- ANIMATIONS & UTILS --- */
     .toast.out { animation: toastOut .3s forwards; }
     
     .anim-stagger { 
         opacity: 0; 
-        animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+        animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
     }
     
     @keyframes slideUpFade { 
@@ -536,18 +630,20 @@
         100% { opacity: 1; transform: translateY(0); } 
     }
 
-    /* ══════════════════════════════════════════════════
-       CARDS & GRIDS
-       ══════════════════════════════════════════════════ */
+    /* --- CARDS & GRIDS --- */
     .team-card { 
-        padding: 16px; 
-        border-radius: 16px; 
+        padding: 24px; 
+        border-radius: var(--rad-outer); 
         transition: transform 0.2s, box-shadow 0.2s; 
         position: relative; 
         background: var(--bg-surface); 
         border: 1px solid var(--bd-color); 
         box-shadow: var(--shadow-sm); 
         cursor: pointer; 
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
     }
     
     .team-card:hover { 
@@ -556,54 +652,78 @@
         border-color: var(--ac); 
     }
     
-    .team-card-top { margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
-    .team-profile-info { display: flex; align-items: center; gap: 12px; }
+    .team-card-top { 
+        margin-bottom: 20px; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center;
+        gap: 16px;
+        width: 100%;
+    }
+    
+    .team-profile-info { 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        gap: 12px; 
+    }
     
     .team-av { 
         display: flex; 
         align-items: center; 
         justify-content: center; 
         flex-shrink: 0; 
-        border-radius: 50%; 
-        font-weight: 700; 
-        width: 44px; 
-        height: 44px; 
+        border-radius: 16px; /* Squarish Avatar */
+        font-weight: 800; 
+        width: 56px; 
+        height: 56px; 
+        font-size: 1.4rem;
     }
     
-    .team-text-block { display: flex; flex-direction: column; justify-content: center; }
-    .team-name { font-weight: 800; font-size: 1.05rem; color: var(--tx-main); letter-spacing: -0.01em; }
+    .team-text-block { 
+        display: flex; 
+        flex-direction: column; 
+        justify-content: center; 
+        align-items: center;
+    }
+    
+    .team-name { font-weight: 800; font-size: 1.1rem; color: var(--tx-main); letter-spacing: -0.01em; }
     
     .team-role { 
-        font-size: 0.75rem; 
+        font-size: 0.8rem; 
         font-weight: 700; 
         color: var(--ac); 
         background: var(--ac-light); 
         display: inline-block; 
-        padding: 2px 8px; 
-        border-radius: 100px; 
-        margin-top: 4px; 
+        padding: 4px 12px; 
+        border-radius: 8px; /* Square tag */
+        margin-top: 6px; 
         width: fit-content; 
     }
     
     .team-card-actions { 
-        padding-top: 12px; 
-        border-top: 1px solid var(--bd-subtle); 
+        padding-top: 0; 
+        border-top: none; 
         display: flex; 
-        justify-content: space-between; 
+        flex-direction: column;
+        justify-content: center; 
         align-items: center; 
+        gap: 12px;
+        width: 100%;
     }
 
     /* Task Specific Styles */
     .premium-task-card { 
-        margin-bottom: 12px; 
+        margin-bottom: 16px; 
         width: 100%; 
         box-sizing: border-box; 
         background: var(--bg-surface); 
         border: 1px solid var(--bd-color); 
-        border-radius: var(--rad-inner); 
-        padding: 16px; 
+        border-radius: var(--rad-outer); 
+        padding: 24px; 
         display: flex; 
-        gap: 16px; 
+        gap: 20px; 
         align-items: flex-start; 
         transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
         box-shadow: var(--shadow-sm); 
@@ -617,64 +737,24 @@
     
     .card-title { 
         font-weight: 800; 
-        font-size: 1rem; 
+        font-size: 1.1rem; 
         color: var(--tx-main); 
-        margin-bottom: 6px; 
+        margin-bottom: 8px; 
         letter-spacing: -0.01em; 
     }
     
     .card-title.done {
         text-decoration: line-through;
         color: var(--tx-muted);
+        opacity: 0.7;
     }
     
-    .card-date-top { display: flex; align-items: center; gap: 4px; }
-    
-    .card-date-bottom { 
-        display: none; 
-        align-items: center; 
-        gap: 5px; 
-        font-size: .72rem; 
-        color: var(--tx-muted); 
-        font-weight: 600; 
-        margin-top: 5px; 
-    }
-    
-    .card-date-bottom svg { flex-shrink: 0; }
-    .task-declined .card-date-top { display: none !important; }
-    .task-declined .card-date-bottom { display: flex !important; }
-    
-    .task-delete-inline { 
-        display: inline-flex; 
-        align-items: center; 
-        gap: 4px; 
-        padding: 4px 10px; 
-        border-radius: 8px; 
-        border: 1px solid rgba(239,68,68,.25); 
-        background: var(--danger-light); 
-        color: var(--danger); 
-        font-size: .7rem; 
-        font-weight: 800; 
-        cursor: pointer; 
-        flex-shrink: 0; 
-        white-space: nowrap; 
-        transition: all .2s; 
-        margin-left: 8px; 
-        font-family: inherit; 
-    }
-    
-    .task-delete-inline:hover { 
-        background: var(--danger); 
-        color: #fff; 
-        border-color: var(--danger); 
-    }
-
     /* Tabs */
     .ftab {
-        padding: 8px 16px;
-        border-radius: 100px;
+        padding: 10px 20px;
+        border-radius: var(--rad-btn); /* Square tabs */
         font-weight: 700;
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         color: var(--tx-muted);
         cursor: pointer;
         transition: all 0.2s;
@@ -685,7 +765,14 @@
     .ftab:hover { background: var(--bg-raised); color: var(--tx-main); }
     .ftab.on { background: var(--ac-light); color: var(--ac); }
 
-    .tasks-page-hdr { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 24px; padding: 0 4px; }
+    .tasks-page-hdr { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        width: 100%; 
+        margin-bottom: 32px; 
+    }
+    
     .tasks-page-hdr h1 { margin: 0; }
     
     #assign-tasks-btn-full { 
@@ -695,9 +782,9 @@
         background: var(--ac); 
         color: white; 
         border: none; 
-        border-radius: 100px; 
-        padding: 10px 24px; 
-        font-size: .9rem; 
+        border-radius: var(--rad-btn); 
+        padding: 12px 24px; 
+        font-size: .95rem; 
         font-weight: 700; 
         cursor: pointer; 
         box-shadow: 0 4px 14px rgba(58, 87, 232, 0.3); 
@@ -711,42 +798,65 @@
         box-shadow: 0 8px 20px rgba(58, 87, 232, 0.4); 
     }
 
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    /* Grid Layouts */
+    .stats-grid { 
+        display: grid; 
+        grid-template-columns: repeat(3, 1fr); 
+        gap: 24px; 
+    }
     
     .sc-ico { 
-        width: 56px; 
-        height: 56px; 
-        border-radius: 16px; 
+        width: 64px; 
+        height: 64px; 
+        border-radius: 18px; 
         display: flex; 
         align-items: center; 
         justify-content: center; 
         flex-shrink: 0 !important; 
     }
     
-    .sc-ico svg { flex-shrink: 0 !important; min-width: 24px; min-height: 24px; }
+    .sc-ico svg { flex-shrink: 0 !important; min-width: 28px; min-height: 28px; }
+    
     .sc-info { flex: 1; min-width: 0; }
-    .sc-info .sc-lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; color: var(--tx-muted); font-size: 0.85rem; }
+    .sc-info .sc-lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; color: var(--tx-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
 
-    .content-row { display: flex; flex-direction: column; gap: 20px; }
-    .apps-wrap-order { order: 0; }
-    .recent-wrap-order { order: 1; }
+    .content-row { display: flex; flex-direction: row; gap: 24px; align-items: flex-start; }
+    
+    .recent-wrap-order { 
+        order: 0; 
+        flex: 1.6; 
+        height: 480px; 
+        overflow: hidden; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    
+    .apps-wrap-order { 
+        order: 1; 
+        flex: 1; 
+        height: 480px; 
+        overflow: hidden; 
+        display: flex; 
+        flex-direction: column; 
+    }
     
     .apps-grid { 
         display: grid; 
         grid-template-columns: repeat(4, 1fr); 
-        gap: 12px; 
+        gap: 16px; 
         align-content: flex-start; 
-        padding: 16px; 
+        padding: 24px; 
+        overflow-y: auto;
     }
     
     .app-squircle { 
-        width: 60px; 
-        height: 60px; 
-        border-radius: 18px; 
+        width: 64px; 
+        height: 64px; 
+        border-radius: 16px; 
         display: flex; 
         align-items: center; 
         justify-content: center; 
-        margin: 0 auto 8px; 
+        margin: 0 auto 12px; 
         transition: transform .3s cubic-bezier(.34,1.56,.64,1); 
         box-shadow: var(--shadow-sm); 
     }
@@ -757,16 +867,17 @@
     }
     
     .app-squircle-wrap { display: flex; flex-direction: column; align-items: center; cursor: pointer; padding: 4px; }
-    .app-name { font-family: inherit; font-size: .75rem; font-weight: 700; color: var(--tx-muted); text-align: center; line-height: 1.2; }
+    
+    .app-name { font-family: inherit; font-size: .8rem; font-weight: 700; color: var(--tx-muted); text-align: center; line-height: 1.2; }
     
     .app-viewall-tile { 
-        width: 60px; 
-        height: 60px; 
-        border-radius: 18px; 
+        width: 64px; 
+        height: 64px; 
+        border-radius: 16px; 
         display: flex; 
         align-items: center; 
         justify-content: center; 
-        margin: 0 auto 8px; 
+        margin: 0 auto 12px; 
         background: linear-gradient(135deg,#EEF2FF,#E0E7FF); 
         border: 2px dashed #A5B4FC; 
         transition: all .2s; 
@@ -778,142 +889,140 @@
         transform: translateY(-4px); 
     }
 
-    /* ══════════════════════════════════════════════════
-       RESPONSIVE DESIGN (DESKTOP / TABLET)
-       ══════════════════════════════════════════════════ */
+    /* --- RESPONSIVE DESIGN (TABLET) --- */
     @media (min-width: 769px) and (max-width: 1024px) {
-      .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
-      .content-row { flex-direction: row; flex-wrap: wrap; }
-      .content-row .content-card { flex: 1; min-width: 280px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+      .content-row { flex-direction: column; flex-wrap: wrap; }
+      .recent-wrap-order, .apps-wrap-order { width: 100%; height: auto; min-height: 300px;}
       .apps-wrap-order { order: 1; }
       .recent-wrap-order { order: 0; }
       #create-staff-page { width: 75%; }
     }
 
-    @media (min-width: 1025px) {
-      .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left: 16px; padding-right: 16px; }
-      .content-row { flex-direction: row; gap: 24px; align-items: flex-start; }
-      .recent-wrap-order { order: 0; flex: 1.6; height: 440px; min-height: 440px; max-height: 440px; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0 !important; }
-      #recent-tasks { flex: 1; overflow-y: auto; scrollbar-width: none; padding: 0 4px; }
-      #recent-tasks::-webkit-scrollbar { display: none; }
-      #recent-tasks .task-list-wrapper { padding-bottom: 4px !important; }
-      .apps-wrap-order { order: 1; flex: 1; height: 440px; min-height: 440px; max-height: 440px; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0 !important; }
-      .apps-wrap .apps-grid { overflow-y: auto; scrollbar-width: none; }
-      .apps-wrap .apps-grid::-webkit-scrollbar { display: none; }
-      #assign-tasks-btn-full { display: flex !important; }
-      .team-card { flex-direction: column !important; align-items: center !important; text-align: center !important; padding: 24px 16px !important; }
-      .team-card-top { flex-direction: column !important; justify-content: center !important; gap: 12px; width: 100%; margin-bottom: 16px !important; }
-      .team-profile-info { flex-direction: column !important; gap: 8px !important; }
-      .team-text-block { align-items: center !important; }
-      .team-card-actions { flex-direction: column !important; gap: 12px; align-items: center !important; border-top: none !important; padding-top: 0 !important; width: 100%; justify-content: center !important; }
-      .team-email { justify-content: center !important; }
-      .btn-delete-big { position: absolute; top: 12px; right: 12px; }
-    }
-
-    /* ══════════════════════════════════════════════════
-       RESPONSIVE DESIGN (MOBILE)
-       ══════════════════════════════════════════════════ */
+    /* --- RESPONSIVE DESIGN (MOBILE) --- */
     @media (max-width: 768px) {
-      html, body { max-width: 100vw !important; overflow-x: hidden !important; }
-      .app-body, .main-content { width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; min-width: 0; padding-left: 0 !important; padding-right: 0 !important; }
-      .page-hdr { padding-left: 16px !important; padding-right: 16px !important; margin-bottom: 24px !important; }
-      .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 12px !important; padding-left: 16px !important; padding-right: 16px !important; }
-      .stats-grid .stat-card:first-child { grid-column: 1 / -1 !important; }
-      .apps-wrap-order { order: 0; }
-      .recent-wrap-order { order: 1; }
-      .content-card { padding: 20px !important; width: 100% !important; margin: 0 0 16px 0 !important; box-sizing: border-box !important; border-radius: var(--rad-outer) !important; }
-      .apps-wrap { padding: 20px !important; }
-      .content-hdr { padding: 0 0 12px 0 !important; margin-bottom: 16px !important; border-bottom: 1px solid var(--bd-subtle) !important; }
-      .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left: 16px !important; padding-right: 16px !important; width: 100% !important; box-sizing: border-box !important; }
-      #recent-tasks { width: 100% !important; padding: 0 !important; overflow: hidden !important; }
-      #recent-tasks .premium-task-card { width: 100% !important; margin: 0 0 12px 0 !important; box-sizing: border-box !important; }
-      .apps-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; width: 100% !important; padding: 0 !important; }
-      .app-squircle, .app-viewall-tile { width: 52px !important; height: 52px !important; border-radius: 14px !important; margin: 0 auto 8px !important; }
-      .app-squircle svg { width: 24px !important; height: 24px !important; }
-      .app-name { font-size: .7rem !important; word-wrap: break-word; }
-      .card-date-top { display: none !important; }
-      .card-date-bottom { display: flex !important; }
+      .topbar { padding: 12px 16px; }
+      .topbar-company { display: none; } /* Hide company name on small screens to save space */
+      
+      .app-body { height: calc(100vh - 65px - 80px); /* Account for bottom nav */ overflow-y: auto; display: block; }
+      .sidebar { display: none; /* Hide desktop sidebar */ }
+      .main-content { padding: 20px 16px 120px; /* Padding for bottom nav */ }
+      
+      .page-hdr { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 24px !important; }
+      
+      .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
+      .stats-grid .stat-card:first-child { grid-column: 1 / -1 !important; } /* Total Staff spans full width */
+      
+      .content-row { flex-direction: column; gap: 16px; }
+      .recent-wrap-order { order: 0; height: auto; }
+      .apps-wrap-order { order: 1; height: auto; }
+      
+      .content-card { width: 100% !important; margin: 0 0 16px 0 !important; border-radius: var(--rad-outer) !important; }
+      
+      #recent-tasks { padding: 16px !important; }
+      .premium-task-card { padding: 16px; flex-direction: column; gap: 12px;}
+      
+      .apps-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; padding: 16px !important; }
+      .app-squircle, .app-viewall-tile { width: 56px !important; height: 56px !important; border-radius: 14px !important; }
+      .app-name { font-size: .75rem !important; }
+      
       #assign-top-btn { display: none !important; }
-      #assign-tasks-btn-full { display: flex !important; padding: 10px 16px !important; font-size: 0.8rem !important; }
-      .topbar-right .profile-btn { display: none !important; }
-      .tasks-page-hdr { padding-left: 16px !important; padding-right: 16px !important; }
-      #create-staff-page { width: 100% !important; border-radius: 24px 24px 0 0 !important; top: 40px !important; height: calc(100vh - 40px) !important; box-shadow: 0 -10px 40px rgba(0,0,0,0.15) !important; transform: translateY(100%); }
+      #assign-tasks-btn-full { padding: 10px 16px !important; font-size: 0.85rem !important; width: 100%; justify-content: center; }
+      .tasks-page-hdr { flex-direction: column; align-items: flex-start; gap: 16px; }
+      
+      #create-staff-page { width: 100% !important; border-radius: 24px 24px 0 0 !important; top: 40px !important; height: calc(100vh - 40px) !important; transform: translateY(100%); }
       #create-staff-page.open { transform: translateY(0); }
-      #create-staff-page .fp-hdr { padding: 20px 24px 16px !important; }
-      #create-staff-page .fp-body { padding: 0 24px 24px !important; }
-      #create-staff-page .form-section { padding: 20px !important; border-radius: 12px !important; margin-bottom: 16px !important; }
-      #create-staff-page .form-row { grid-template-columns: 1fr !important; gap: 16px !important; }
-      .team-card { padding: 16px !important; }
-      #task-tab-row { overflow-x: auto; scrollbar-width: none; white-space: nowrap; padding-bottom: 4px; padding-left: 16px !important; }
+      
+      .team-grid { grid-template-columns: 1fr !important; }
+      .team-card { padding: 16px !important; flex-direction: row !important; text-align: left !important; justify-content: space-between; }
+      .team-card-top { flex-direction: row !important; width: auto !important; margin: 0 !important;}
+      .team-profile-info { flex-direction: row !important; }
+      .team-text-block { align-items: flex-start !important; }
+      .team-card-actions { width: auto !important; flex-direction: row !important; }
+      
+      #task-tab-row { overflow-x: auto; scrollbar-width: none; white-space: nowrap; padding-bottom: 8px; }
       #task-tab-row::-webkit-scrollbar { display: none; }
-      .bottom-nav { position: fixed !important; bottom: 24px !important; left: 16px !important; right: 16px !important; height: 68px !important; background: #ffffff !important; border-radius: 32px !important; box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.08) !important; display: flex !important; align-items: center !important; padding: 0 12px !important; z-index: 900 !important; border: 1px solid rgba(226, 232, 240, 0.6) !important; }
+      
+      /* Mobile Bottom Nav */
+      .bottom-nav { 
+          position: fixed !important; 
+          bottom: 0 !important; 
+          left: 0 !important; 
+          right: 0 !important; 
+          height: 80px !important; 
+          background: #ffffff !important; 
+          border-top: 1px solid var(--bd-color) !important; 
+          display: flex !important; 
+          align-items: center !important; 
+          padding: 0 16px 16px !important; /* Safe area padding */
+          z-index: 900 !important; 
+      }
       .bn-items { display: flex !important; width: 100% !important; justify-content: space-around !important; align-items: center !important; }
-      .bn-item { flex: 1 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 4px !important; color: var(--tx-muted) !important; background: transparent !important; border: none !important; min-height: 52px !important; cursor: pointer !important; padding: 6px 12px; border-radius: 18px; transition: all 0.2s; }
-      .bn-item span:not(.bn-dot) { font-family: inherit !important; font-size: 11px !important; font-weight: 600 !important; }
-      .bn-item.active { background: var(--ac-light) !important; color: var(--ac) !important; font-weight: 800 !important; }
+      .bn-item { flex: 1 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 6px !important; color: var(--tx-muted) !important; background: transparent !important; border: none !important; min-height: 56px !important; cursor: pointer !important; padding: 6px; border-radius: 12px; transition: all 0.2s; }
+      .bn-item span:not(.bn-dot) { font-family: inherit !important; font-size: 11px !important; font-weight: 700 !important; }
+      .bn-item.active { color: var(--ac) !important; }
       .bn-item.active svg { stroke: var(--ac) !important; }
-      .app-body, .main-content { padding-bottom: 110px !important; }
-      .notif-panel { width: calc(100% - 32px); right: 16px; left: 16px; top: 80px; height: auto; max-height: calc(100vh - 120px); border-radius: 24px; border: none; transform: translateY(-20px) scale(0.95); }
-      .notif-panel.open { transform: translateY(0) scale(1); }
+      
+      .notif-panel { width: calc(100vw - 32px); right: 16px; left: 16px; top: 72px; }
     }
   </style>
 </head>
 <body>
   
   <div id="loading-overlay" class="loader-overlay" style="position:fixed;inset:0;background:#fff;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s">
-    <div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;color:var(--tx-main);letter-spacing:-0.02em;">
-      <div style="width:36px;height:36px;border-radius:10px;background:var(--ac);display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:900;">Z</div> Zenda
+    <div style="display:flex;align-items:center;gap:12px;font-size:18px;font-weight:800;color:var(--tx-main);letter-spacing:-0.02em;">
+      <div style="width:40px;height:40px;border-radius:12px;background:var(--ac);display:flex;align-items:center;justify-content:center;color:white;font-size:24px;font-weight:900;">Z</div> Zenda
     </div>
   </div>
 
   <div class="panel-overlay" id="panel-overlay" onclick="window.closeAllPanels()"></div>
 
-  <header class="topbar" style="display:flex;justify-content:space-between;align-items:center;padding:12px 24px;background:white;border-bottom:1px solid var(--bd-subtle);">
-    <div class="topbar-left" style="display:flex;align-items:center;gap:12px;">
-      <div class="topbar-logo" onclick="window.showView('home')" style="display:flex;align-items:center;cursor:pointer;">
-        <div class="topbar-logo-icon" style="background:var(--ac);color:white;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;">Z</div>
-        <span id="topbar-logo-text" style="font-weight:800;font-size:1.1rem;margin-left:8px;color:var(--tx-main);">Zenda</span>
+  <header class="topbar">
+    <div class="topbar-left" style="display:flex;align-items:center;gap:16px;">
+      <div class="topbar-logo" onclick="window.showView('home')" style="display:flex;align-items:center;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+        <div class="topbar-logo-icon" style="background:var(--ac);color:white;border-radius:10px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;">Z</div>
+        <span id="topbar-logo-text" style="font-weight:800;font-size:1.2rem;margin-left:10px;color:var(--tx-main);letter-spacing:-0.02em;">Zenda</span>
       </div>
-      <div class="topbar-company" id="topbar-company" style="font-weight:600;font-size:0.9rem;color:var(--tx-muted);background:var(--bg-raised);padding:4px 10px;border-radius:6px;border:1px solid var(--bd-subtle);"></div>
+      <div class="topbar-company" id="topbar-company" style="font-weight:700;font-size:0.85rem;color:var(--tx-muted);background:var(--bg-page);padding:6px 12px;border-radius:8px;border:1px solid var(--bd-color);letter-spacing:0.5px;"></div>
     </div>
     
-    <div class="topbar-right" style="display:flex;align-items:center;gap:16px;">
-      <button id="topbar-upgrade-btn" class="btn btn-primary hidden" onclick="window.location.href='subscription.html'" style="padding: 6px 14px; font-size: 0.8rem; background: linear-gradient(135deg, #F59E0B, #D97706); border: none; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
+    <div class="topbar-right" style="display:flex;align-items:center;gap:20px;">
+      <button id="topbar-upgrade-btn" class="btn hidden" onclick="window.location.href='subscription.html'">
          👑 Upgrade
       </button>
 
-      <button class="icon-btn" id="notif-btn" onclick="window.toggleNotifDropdown(event)" title="Notifications" style="background:none;border:none;cursor:pointer;position:relative;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        <span class="notif-badge hidden" id="notif-badge" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:white;font-size:10px;font-weight:800;padding:2px 6px;border-radius:10px;">0</span>
+      <button class="icon-btn" id="notif-btn" onclick="window.toggleNotifDropdown(event)" title="Notifications" style="background:none;border:none;cursor:pointer;position:relative;color:var(--tx-muted);transition:color 0.2s;" onmouseover="this.style.color='var(--tx-main)'" onmouseout="this.style.color='var(--tx-muted)'">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-badge hidden" id="notif-badge" style="position:absolute;top:-2px;right:-2px;background:var(--danger);color:white;font-size:10px;font-weight:800;padding:2px 6px;border-radius:8px;">0</span>
       </button>
 
-      <button class="profile-btn" onclick="window.openProfile()" style="background:none;border:none;cursor:pointer;padding:0;">
-        <div class="av" id="topbar-avatar" style="width:34px;height:34px;font-size:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;"></div>
+      <button class="profile-btn" onclick="window.openProfile()" style="background:none;border:none;cursor:pointer;padding:0;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+        <div class="av" id="topbar-avatar" style="width:38px;height:38px;font-size:14px;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"></div>
       </button>
     </div>
   </header>
 
   <div id="notificationDropdown" class="notif-panel">
-    <div class="sp-hdr" style="padding:20px 24px;">
+    <div class="sp-hdr">
       <h4 style="margin:0;font-size:1.1rem;color:var(--tx-main);font-weight:800;letter-spacing:-0.02em;">Notifications</h4>
       <div style="display:flex;align-items:center;gap:12px;">
-        <span class="badge hidden" id="notif-count-badge" style="background:var(--danger);color:white;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:800;">0</span>
-        <button class="modal-close" style="background:transparent;border:none;cursor:pointer;color:var(--tx-muted);padding:4px;" onclick="window.closeAllPanels()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <span class="badge hidden" id="notif-count-badge" style="background:var(--danger);color:white;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;">0</span>
+        <button class="modal-close" onclick="window.closeAllPanels()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
     </div>
-    <div class="sp-body" id="notif-body" style="max-height:400px;background:var(--bg-surface);"></div>
+    <div class="sp-body" id="notif-body" style="max-height:400px;"></div>
   </div>
 
   <template id="tpl-security">
     <div class="notif-card" data-id="">
-      <div class="notif-icon security"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <div class="notif-icon security"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
       <div class="notif-content-wrap">
         <div class="notif-header"><h4 class="notif-title">Security Alert</h4><span class="notif-time">Just now</span></div>
         <p class="notif-body">Your account was accessed from a new device.</p>
-        <div class="notif-actions" style="justify-content:flex-start;">
-          <button class="btn btn-secondary" style="padding:6px 16px;" onclick="window.dismissAlert(this)">Dismiss</button>
+        <div class="notif-actions" style="justify-content:flex-start;margin-top:8px;">
+          <button class="btn btn-secondary" style="padding:8px 16px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Dismiss</button>
         </div>
       </div>
     </div>
@@ -921,115 +1030,123 @@
 
   <template id="tpl-task">
     <div class="notif-card" data-id="" data-task-id="" data-sender-id="">
-      <div class="notif-icon task"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+      <div class="notif-icon task"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
       <div class="notif-content-wrap">
         <div class="notif-header"><h4 class="notif-title">Task Update</h4><span class="notif-time">Just now</span></div>
         <p class="notif-body task-title">...</p>
-        <div class="notif-actions" style="justify-content:flex-start;">
-          <button class="btn btn-primary" style="padding:6px 16px;" onclick="window.acceptTaskNotif(this)">Accept</button>
-          <button class="btn btn-danger" style="padding:6px 16px;" onclick="window.showDenyInput(this)">Deny</button>
+        <div class="notif-actions" style="justify-content:flex-start;margin-top:8px;">
+          <button class="btn btn-primary" style="padding:8px 16px;font-size:0.8rem;" onclick="window.acceptTaskNotif(this)">Accept</button>
+          <button class="btn btn-danger" style="padding:8px 16px;font-size:0.8rem;" onclick="window.showDenyInput(this)">Deny</button>
         </div>
-        <div class="deny-container hidden">
-          <input type="text" class="form-input deny-input" placeholder="Reason (max 10 words)" maxlength="60" style="padding:6px 12px;">
-          <button class="btn btn-primary" onclick="window.submitDeny(this)">Send</button>
+        <div class="deny-container hidden" style="margin-top:8px;">
+          <input type="text" class="form-input deny-input" placeholder="Reason (max 10 words)" maxlength="60" style="padding:8px 12px;margin-bottom:8px;">
+          <button class="btn btn-primary w-full" onclick="window.submitDeny(this)">Send</button>
         </div>
       </div>
     </div>
   </template>
 
-  <div class="app-body" style="display:flex;height:calc(100vh - 65px);">
+  <div class="app-body">
     
-    <aside class="sidebar" id="sidebar" style="width:250px;border-right:1px solid var(--bd-subtle);background:white;display:flex;flex-direction:column;justify-content:space-between;">
-      <nav class="sidebar-nav" style="padding:20px;">
-        <div class="sidebar-section-label" style="font-size:0.75rem;font-weight:800;color:var(--tx-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;">Overview</div>
-        <div class="sidebar-item active" id="nav-home" onclick="window.showView('home')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;margin-bottom:8px;color:var(--ac);background:var(--ac-light);">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/></svg> Dashboard
-        </div>
-        <div class="sidebar-item" id="nav-tasks" onclick="window.showView('tasks')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;margin-bottom:8px;color:var(--tx-main);transition:all 0.2s;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> My Tasks 
-          <span class="sidebar-badge hidden" id="task-badge-side" style="margin-left:auto;background:var(--ac);color:white;padding:2px 8px;border-radius:100px;font-size:11px;">0</span>
+    <aside class="sidebar" id="sidebar">
+      <nav class="sidebar-nav" style="padding:24px 20px;">
+        <div class="sidebar-section-label" style="font-size:0.75rem;font-weight:800;color:var(--tx-muted);margin-bottom:16px;text-transform:uppercase;letter-spacing:1px;">Overview</div>
+        
+        <div class="sidebar-item active" id="nav-home" onclick="window.showView('home')" style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:var(--rad-btn);cursor:pointer;font-weight:700;margin-bottom:8px;color:var(--tx-main);transition:all 0.2s;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/></svg> Dashboard
         </div>
         
-        <div class="sidebar-section-label hidden" id="team-label" style="font-size:0.75rem;font-weight:800;color:var(--tx-muted);margin:24px 0 12px;text-transform:uppercase;letter-spacing:1px;">Management</div>
-        <div class="sidebar-item hidden" id="nav-staff" onclick="window.showView('staff')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;color:var(--tx-main);transition:all 0.2s;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> My Team
+        <div class="sidebar-item" id="nav-tasks" onclick="window.showView('tasks')" style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:var(--rad-btn);cursor:pointer;font-weight:700;margin-bottom:8px;color:var(--tx-main);transition:all 0.2s;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> My Tasks 
+          <span class="sidebar-badge hidden" id="task-badge-side" style="margin-left:auto;background:var(--ac);color:white;padding:2px 8px;border-radius:8px;font-size:11px;">0</span>
+        </div>
+        
+        <div class="sidebar-section-label hidden" id="team-label" style="font-size:0.75rem;font-weight:800;color:var(--tx-muted);margin:32px 0 16px;text-transform:uppercase;letter-spacing:1px;">Management</div>
+        
+        <div class="sidebar-item hidden" id="nav-staff" onclick="window.showView('staff')" style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:var(--rad-btn);cursor:pointer;font-weight:700;color:var(--tx-main);transition:all 0.2s;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> My Team
         </div>
       </nav>
-      <div class="sidebar-footer" id="sidebar-footer" style="padding:24px 16px 16px;border-top:1px solid var(--bd-subtle);"></div>
+      
+      <div class="sidebar-footer" id="sidebar-footer" style="padding:24px 20px;border-top:1px solid var(--bd-subtle);"></div>
     </aside>
 
-    <main class="main-content" style="flex:1;overflow-y:auto;padding:32px;background:var(--bg-raised);">
+    <main class="main-content">
       
       <div id="view-home" class="fade-in-section">
-        <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;">
+        <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;">
           <div>
             <h1 class="page-ttl" id="home-greeting">Welcome</h1>
             <p class="page-sub" id="home-sub"></p>
           </div>
-          <button class="btn btn-primary" id="assign-top-btn" onclick="window.openAssignModal()" style="display:none;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Assign Task
+          <button class="btn btn-primary" id="assign-top-btn" onclick="window.openAssignModal()" style="display:none; padding:12px 24px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Assign Task
           </button>
         </div>
         
         <div class="stats-grid" id="stats-grid"></div>
         
         <div class="charts-row hidden" id="charts-row" style="margin-top:24px;">
-          <div class="chart-card" style="background:white;border-radius:16px;padding:20px;border:1px solid var(--bd-subtle);">
-            <div class="chart-hdr" style="padding-bottom:16px;margin-bottom:16px;">
+          <div class="chart-card" style="background:var(--bg-surface);border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);">
+            <div class="chart-hdr" style="padding:20px 24px;border-bottom:1px solid var(--bd-subtle);">
               <div>
                 <div class="content-ttl">Activity Overview</div>
-                <div class="page-sub" style="margin-left:0!important;">Tasks completed over the last 7 days</div>
+                <div class="page-sub">Tasks completed over the last 7 days</div>
               </div>
             </div>
-            <div style="height:240px;position:relative;padding:0 16px;"><canvas id="main-area-chart"></canvas></div>
+            <div style="height:280px;position:relative;padding:20px;"><canvas id="main-area-chart"></canvas></div>
             <canvas id="bar-chart" class="hidden"></canvas>
             <canvas id="donut-chart" class="hidden"></canvas>
           </div>
         </div>
         
         <div class="content-row" style="margin-top:24px;">
-          <div class="content-card apps-wrap apps-wrap-order" style="background:white;border-radius:16px;border:1px solid var(--bd-subtle);">
+          <div class="content-card apps-wrap-order" style="background:var(--bg-surface);border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);">
             <div class="content-hdr">
               <div class="content-ttl">My Apps</div>
-              <button class="btn btn-ghost" style="padding:6px 14px;font-size:0.8rem;" onclick="window.openAppLib()">Library</button>
+              <button class="btn btn-ghost" onclick="window.openAppLib()">Library</button>
             </div>
             <div class="apps-grid" id="apps-grid"></div>
           </div>
-          <div class="content-card recent-wrap-order" style="background:white;border-radius:16px;border:1px solid var(--bd-subtle);">
+          
+          <div class="content-card recent-wrap-order" style="background:var(--bg-surface);border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);">
             <div class="content-hdr">
-              <div class="content-ttl" id="recent-ttl">Recent Tasks</div>
-              <button class="btn btn-ghost" style="padding:6px 14px;font-size:0.8rem;" onclick="window.showView('tasks')">View All</button>
+              <div class="content-ttl" id="recent-ttl">Recently Assigned by Me</div>
+              <button class="btn btn-ghost" onclick="window.setTaskTab('assigned-by-me');window.showView('tasks')">View All</button>
             </div>
-            <div id="recent-tasks" class="task-list-wrapper" style="padding:16px;"></div>
+            <div id="recent-tasks" class="task-list-wrapper" style="padding:24px;overflow-y:auto;"></div>
           </div>
         </div>
       </div>
 
       <div id="view-tasks" class="hidden fade-in-section">
         <div class="tasks-page-hdr">
-          <h1 class="page-ttl" style="margin:0;">My Tasks</h1>
+          <h1 class="page-ttl">My Tasks</h1>
           <button class="btn btn-primary" id="assign-tasks-btn-full" onclick="window.openAssignModal()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Assign Task
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Assign Task
           </button>
         </div>
-        <div class="ftabs" id="task-tab-row" style="margin-bottom:20px;display:flex;gap:8px;"></div>
-        <div id="tasks-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+        
+        <div class="ftabs" id="task-tab-row" style="margin-bottom:24px;display:flex;gap:12px;border-bottom:1px solid var(--bd-color);padding-bottom:12px;"></div>
+        
+        <div id="tasks-list" style="display:flex;flex-direction:column;gap:16px;"></div>
       </div>
 
       <div id="view-staff" class="hidden fade-in-section">
-        <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd-subtle);padding-bottom:16px;margin-bottom:24px;">
+        <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--bd-subtle);padding-bottom:20px;margin-bottom:32px;">
           <div style="flex:1;min-width:0;">
-            <h1 class="page-ttl" style="margin:0;">My Team</h1>
-            <p class="page-sub" id="staff-count-sub" style="margin:2px 0 0;"></p>
+            <h1 class="page-ttl">My Team</h1>
+            <p class="page-sub" id="staff-count-sub"></p>
           </div>
           <div class="staff-header-actions">
-            <button class="btn btn-primary" id="add-staff-btn" onclick="window.openCreateStaffPage()" style="display:none;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Staff
+            <button class="btn btn-primary" id="add-staff-btn" onclick="window.openCreateStaffPage()" style="display:none;padding:12px 24px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Staff
             </button>
           </div>
         </div>
-        <div id="staff-cards-list" class="team-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;"></div>
+        <div id="staff-cards-list" class="team-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;"></div>
       </div>
+      
     </main>
   </div>
 
@@ -1046,7 +1163,7 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Team</span>
       </button>
       <button class="bn-item" id="bn-profile" onclick="window.openProfile()">
-        <div class="av" id="bn-avatar" style="width:26px;height:26px;font-size:10px;"></div><span>Me</span>
+        <div class="av" id="bn-avatar" style="width:28px;height:28px;font-size:12px;border-radius:8px;"></div><span>Me</span>
       </button>
     </div>
   </nav>
@@ -1054,97 +1171,99 @@
   <div class="profile-side-panel" id="profile-side-panel">
     <div class="sp-hdr">
       <div class="sp-ttl">My Profile</div>
-      <button class="modal-close" onclick="window.closeAllPanels()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button class="modal-close" onclick="window.closeAllPanels()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="sp-body" id="profile-body-desktop"></div>
   </div>
 
   <div class="fullpage" id="profile-page-mobile">
     <div class="fp-hdr">
-      <button class="fp-back" onclick="window.closeAllPanels()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button>
+      <button class="fp-back" onclick="window.closeAllPanels()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button>
       <div class="fp-ttl">My Profile</div>
     </div>
-    <div class="fp-body" id="profile-body-mobile"></div>
-  </div>
-
-  <div class="modal-overlay hidden" id="staff-detail-modal">
-    <div class="modal" style="max-width:400px;padding:0;">
-      <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);height:100px;position:relative;">
-        <button class="modal-close" style="position:absolute;top:16px;right:16px;color:white;background:rgba(0,0,0,0.2);" onclick="window.closeModal('staff-detail-modal')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div style="padding:0 24px 24px;position:relative;margin-top:-32px;text-align:center;">
-        <div id="sd-avatar" style="width:72px;height:72px;border-radius:18px;background:white;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;border:4px solid white;box-shadow:var(--shadow-sm);margin:0 auto 12px;"></div>
-        <h2 id="sd-name" style="margin:0;font-size:1.4rem;color:var(--tx-main);font-weight:800;letter-spacing:-0.02em;"></h2>
-        <div id="sd-role" style="font-size:0.9rem;color:var(--ac);font-weight:700;margin-bottom:20px;background:var(--ac-light);display:inline-block;padding:4px 12px;border-radius:100px;margin-top:6px;"></div>
-        <div style="background:var(--bg-raised);border:1px solid var(--bd-subtle);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;text-align:left;">
-          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.8rem;color:var(--tx-muted);font-weight:700;">EMAIL</span><span id="sd-email" style="font-size:0.9rem;color:var(--tx-main);font-weight:600;"></span></div>
-          <div id="sd-password-row" style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.8rem;color:var(--tx-muted);font-weight:700;">PASSWORD</span><span id="sd-password" style="font-size:0.9rem;color:var(--tx-main);font-weight:600;"></span></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.8rem;color:var(--tx-muted);font-weight:700;">JOINED</span><span id="sd-joined" style="font-size:0.9rem;color:var(--tx-main);font-weight:600;"></span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-overlay hidden" id="email-otp-modal">
-    <div class="modal" style="max-width:400px;width:90%;">
-      <div class="modal-hdr">
-        <div class="modal-ttl" style="color:var(--ac);">Security Check</div>
-        <button class="modal-close" onclick="window.closeModal('email-otp-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-      </div>
-      <div style="padding:24px;">
-        <h4 id="email-otp-step" style="margin:0 0 8px;font-size:1.1rem;color:var(--tx-main);font-weight:800;">Step 1: Verify Current Email</h4>
-        <p style="font-size:0.9rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;">Enter the 6-digit code sent to <br><strong style="color:var(--tx-main);" id="email-otp-target"></strong></p>
-        <input class="form-input" id="email-otp-input" type="text" placeholder="------" style="text-align:center;font-size:1.6rem;letter-spacing:0.5em;font-weight:800;margin-bottom:24px;padding:16px;" maxlength="6">
-        <div style="display:flex;gap:12px;">
-          <button class="btn btn-ghost w-full" onclick="window.closeModal('email-otp-modal')">Cancel</button>
-          <button class="btn btn-primary w-full" id="btn-verify-email-otp" onclick="window.verifyEmailChangeOTP()">Verify Code</button>
-        </div>
-      </div>
-    </div>
+    <div class="fp-body" id="profile-body-mobile" style="background:var(--bg-page);"></div>
   </div>
 
   <div class="fullpage" id="create-staff-page">
     <div class="fp-hdr">
-      <button class="fp-back" onclick="window.closeAllPanels()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button>
+      <button class="fp-back" onclick="window.closeAllPanels()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button>
       <div class="fp-ttl">Add Staff Member</div>
     </div>
-    <div class="fp-body" style="padding:24px;max-width:600px;margin:0 auto;">
+    <div class="fp-body" style="padding:32px 24px;max-width:600px;margin:0 auto;">
       <div id="staff-form-container">
-        <div style="background:var(--bg-surface);border-radius:var(--rad-outer);padding:20px;border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);margin-bottom:16px;">
-          <div style="font-weight:800;color:var(--tx-main);margin-bottom:16px;font-size:1.1rem;letter-spacing:-0.01em;">Personal Details</div>
-          <div style="display:flex;flex-direction:column;gap:12px">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div style="background:var(--bg-surface);border-radius:var(--rad-outer);padding:24px;border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);margin-bottom:20px;">
+          <div style="font-weight:800;color:var(--tx-main);margin-bottom:20px;font-size:1.15rem;letter-spacing:-0.01em;">Personal Details</div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
               <div><label class="form-label">Full Name *</label><input class="form-input" id="cs-name" type="text" placeholder="Jane Doe"></div>
               <div><label class="form-label">Email *</label><input class="form-input" id="cs-email" type="email" placeholder="jane@company.com"></div>
             </div>
             <div><label class="form-label">Designation *</label><input class="form-input" id="cs-designation" type="text" placeholder="e.g. Senior Developer"></div>
           </div>
         </div>
-        <div style="background:var(--bg-surface);border-radius:var(--rad-outer);padding:20px;border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);margin-bottom:20px;">
-          <div style="font-weight:800;color:var(--tx-main);margin-bottom:16px;font-size:1.1rem;letter-spacing:-0.01em;">Security</div>
+        <div style="background:var(--bg-surface);border-radius:var(--rad-outer);padding:24px;border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);margin-bottom:24px;">
+          <div style="font-weight:800;color:var(--tx-main);margin-bottom:20px;font-size:1.15rem;letter-spacing:-0.01em;">Security</div>
           <div><label class="form-label">Temporary Password *</label><input class="form-input" id="cs-password" type="text" placeholder="Set their login password"></div>
         </div>
-        <button class="btn btn-primary w-full" id="create-staff-btn" style="padding:14px;font-size:1.05rem;" onclick="window.initiateCreateStaff()">Verify Email &amp; Create Staff →</button>
+        <button class="btn btn-primary w-full" id="create-staff-btn" style="padding:16px;font-size:1.05rem;" onclick="window.initiateCreateStaff()">Verify Email &amp; Create Staff →</button>
       </div>
+
       <div id="staff-otp-container" class="hidden" style="background:var(--bg-surface);border-radius:var(--rad-outer);padding:40px;border:1px solid var(--bd-subtle);box-shadow:var(--shadow-md);text-align:center;">
-        <div style="width:64px;height:64px;background:var(--ac-light);color:var(--ac);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
-        <h3 style="font-size:1.5rem;font-weight:800;color:var(--tx-main);margin-bottom:8px;">Verify Staff Email</h3>
+        <div style="width:72px;height:72px;background:var(--ac-light);color:var(--ac);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+        <h3 style="font-size:1.6rem;font-weight:800;color:var(--tx-main);margin-bottom:12px;">Verify Staff Email</h3>
         <p style="font-size:1rem;color:var(--tx-muted);margin-bottom:32px;font-weight:500;">Enter the 6-digit code sent to <b id="otp-sent-email" style="color:var(--tx-main);"></b>.</p>
-        <input class="form-input" id="cs-otp-input" type="text" placeholder="------" style="text-align:center;font-size:1.8rem;letter-spacing:0.5em;font-weight:800;margin:0 auto 24px;max-width:300px;padding:16px;" maxlength="6">
-        <div style="max-width:300px;margin:0 auto;display:flex;flex-direction:column;gap:12px;">
-          <button class="btn btn-primary w-full" id="verify-staff-btn" style="padding:14px;font-size:1.05rem;" onclick="window.finalizeCreateStaff()">Verify &amp; Create</button>
+        <input class="form-input" id="cs-otp-input" type="text" placeholder="------" style="text-align:center;font-size:2rem;letter-spacing:0.5em;font-weight:800;margin:0 auto 32px;max-width:320px;padding:20px;" maxlength="6">
+        <div style="max-width:320px;margin:0 auto;display:flex;flex-direction:column;gap:16px;">
+          <button class="btn btn-primary w-full" id="verify-staff-btn" style="padding:16px;font-size:1.05rem;" onclick="window.finalizeCreateStaff()">Verify &amp; Create</button>
           <button class="btn btn-ghost w-full" onclick="window.cancelCreateStaff()">Back to Edit</button>
         </div>
       </div>
-      <div id="created-card-section" class="hidden" style="padding:40px;background:var(--success-light);border-radius:var(--rad-outer);border:2px solid var(--success);box-shadow:var(--shadow-md);text-align:center;">
-        <div style="width:72px;height:72px;background:white;color:var(--success);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:var(--shadow-sm);"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-        <h3 style="font-size:1.6rem;font-weight:800;color:var(--tx-main);margin:0 0 8px;letter-spacing:-0.02em;">Team Member Created!</h3>
-        <p style="font-size:1rem;color:var(--tx-muted);font-weight:600;margin:0 0 24px;" id="email-sent-note"></p>
-        <div style="display:flex;gap:12px;max-width:400px;margin:0 auto;">
+
+      <div id="created-card-section" class="hidden" style="padding:48px;background:var(--success-light);border-radius:var(--rad-outer);border:2px solid var(--success);box-shadow:var(--shadow-md);text-align:center;">
+        <div style="width:80px;height:80px;background:white;color:var(--success);border-radius:24px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;box-shadow:var(--shadow-sm);"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h3 style="font-size:1.8rem;font-weight:800;color:var(--tx-main);margin:0 0 12px;letter-spacing:-0.02em;">Team Member Created!</h3>
+        <p style="font-size:1.05rem;color:var(--tx-muted);font-weight:600;margin:0 0 32px;" id="email-sent-note"></p>
+        <div style="display:flex;gap:16px;max-width:400px;margin:0 auto;">
           <button class="btn btn-ghost w-full" style="background:white;border:1px solid var(--bd-subtle);" onclick="window.closeAllPanels()">Done</button>
           <button class="btn btn-primary w-full" id="download-card-btn" onclick="window.downloadStaffCard()">Download Card</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="staff-detail-modal">
+    <div class="modal" style="max-width:400px;padding:0;">
+      <div style="background:linear-gradient(135deg,#4F46E5,#7C3AED);height:120px;position:relative;">
+        <button class="modal-close" style="position:absolute;top:16px;right:16px;color:white;background:rgba(0,0,0,0.2);" onclick="window.closeModal('staff-detail-modal')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div style="padding:0 24px 32px;position:relative;margin-top:-40px;text-align:center;">
+        <div id="sd-avatar" style="width:80px;height:80px;border-radius:24px;background:white;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;border:4px solid white;box-shadow:var(--shadow-sm);margin:0 auto 16px;"></div>
+        <h2 id="sd-name" style="margin:0;font-size:1.5rem;color:var(--tx-main);font-weight:800;letter-spacing:-0.02em;"></h2>
+        <div id="sd-role" style="font-size:0.9rem;color:var(--ac);font-weight:700;margin-bottom:24px;background:var(--ac-light);display:inline-block;padding:6px 16px;border-radius:10px;margin-top:8px;"></div>
+        <div style="background:var(--bg-raised);border:1px solid var(--bd-subtle);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px;text-align:left;">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.85rem;color:var(--tx-muted);font-weight:700;">EMAIL</span><span id="sd-email" style="font-size:0.9rem;color:var(--tx-main);font-weight:600;"></span></div>
+          <div id="sd-password-row" style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.85rem;color:var(--tx-muted);font-weight:700;">PASSWORD</span><span id="sd-password" style="font-size:0.9rem;color:var(--tx-main);font-weight:600;"></span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.85rem;color:var(--tx-muted);font-weight:700;">JOINED</span><span id="sd-joined" style="font-size:0.9rem;color:var(--tx-main);font-weight:600;"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="email-otp-modal">
+    <div class="modal" style="max-width:420px;width:90%;">
+      <div class="modal-hdr">
+        <div class="modal-ttl" style="color:var(--ac);">Security Check</div>
+        <button class="modal-close" onclick="window.closeModal('email-otp-modal')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div style="padding:32px 24px;">
+        <h4 id="email-otp-step" style="margin:0 0 12px;font-size:1.15rem;color:var(--tx-main);font-weight:800;">Step 1: Verify Current Email</h4>
+        <p style="font-size:0.95rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;">Enter the 6-digit code sent to <br><strong style="color:var(--tx-main);" id="email-otp-target"></strong></p>
+        <input class="form-input" id="email-otp-input" type="text" placeholder="------" style="text-align:center;font-size:1.8rem;letter-spacing:0.5em;font-weight:800;margin-bottom:32px;padding:20px;" maxlength="6">
+        <div style="display:flex;gap:16px;">
+          <button class="btn btn-ghost w-full" onclick="window.closeModal('email-otp-modal')">Cancel</button>
+          <button class="btn btn-primary w-full" id="btn-verify-email-otp" onclick="window.verifyEmailChangeOTP()">Verify Code</button>
         </div>
       </div>
     </div>
@@ -1154,20 +1273,20 @@
     <div class="modal">
       <div class="modal-hdr">
         <div class="modal-ttl">Assign Work</div>
-        <button class="modal-close" onclick="window.closeModal('assign-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <button class="modal-close" onclick="window.closeModal('assign-modal')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div style="padding:24px;">
-        <div style="margin-bottom:16px;"><label class="form-label">Assign To</label><select class="zenda-select form-input" id="assign-to"></select></div>
-        <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;">
+        <div style="margin-bottom:20px;"><label class="form-label">Assign To</label><select class="zenda-select form-input" id="assign-to"></select></div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px;">
           <div><label class="form-label">Task Title *</label><input class="form-input" id="task-title" type="text" placeholder="e.g. Review Q3 report" maxlength="80"></div>
           <div><label class="form-label">Priority</label><select class="zenda-select form-input" id="task-priority"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option></select></div>
         </div>
-        <div style="margin-bottom:16px;"><label class="form-label">Description <span style="color:var(--tx-muted);font-weight:500">(optional)</span></label><textarea class="form-input" id="task-desc" placeholder="Add details…" style="min-height:80px;"></textarea></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+        <div style="margin-bottom:20px;"><label class="form-label">Description <span style="color:var(--tx-muted);font-weight:500">(optional)</span></label><textarea class="form-input" id="task-desc" placeholder="Add details…" style="min-height:100px;"></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px;">
           <div><label class="form-label">Due Date</label><input class="form-input" id="task-date" type="date"></div>
           <div><label class="form-label">Due Time</label><input class="form-input" id="task-time" type="time"></div>
         </div>
-        <div style="display:flex;gap:12px;">
+        <div style="display:flex;gap:16px;">
           <button class="btn btn-ghost w-full" onclick="window.closeModal('assign-modal')">Cancel</button>
           <button class="btn btn-primary w-full" id="assign-btn" onclick="window.handleAssign()">Assign Task</button>
         </div>
@@ -1176,15 +1295,15 @@
   </div>
 
   <div class="modal-overlay hidden" id="decline-modal">
-    <div class="modal" style="max-width:420px">
+    <div class="modal" style="max-width:440px">
       <div class="modal-hdr">
         <div class="modal-ttl">Decline Task</div>
-        <button class="modal-close" onclick="window.closeModal('decline-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <button class="modal-close" onclick="window.closeModal('decline-modal')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div style="padding:24px;">
-        <div style="background:var(--danger-light);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:16px;margin-bottom:20px;font-size:0.9rem;color:var(--danger);font-weight:600;">Task: <strong id="decline-task-title" style="color:var(--tx-main);"></strong></div>
-        <div style="margin-bottom:24px"><label class="form-label">Reason <span style="color:var(--tx-muted);font-weight:500">(optional)</span></label><textarea class="form-input" id="decline-reason" placeholder="Let them know why you're declining…" style="min-height:100px;"></textarea></div>
-        <div style="display:flex;gap:12px">
+        <div style="background:var(--danger-light);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:16px;margin-bottom:24px;font-size:0.95rem;color:var(--danger);font-weight:600;">Task: <strong id="decline-task-title" style="color:var(--tx-main);"></strong></div>
+        <div style="margin-bottom:32px"><label class="form-label">Reason <span style="color:var(--tx-muted);font-weight:500">(optional)</span></label><textarea class="form-input" id="decline-reason" placeholder="Let them know why you're declining…" style="min-height:100px;"></textarea></div>
+        <div style="display:flex;gap:16px">
           <button class="btn btn-ghost w-full" onclick="window.closeModal('decline-modal')">Cancel</button>
           <button class="btn btn-danger w-full" id="confirm-decline-btn" onclick="window.confirmDecline()">Decline Task</button>
         </div>
@@ -1193,15 +1312,15 @@
   </div>
 
   <div class="modal-overlay hidden" id="delete-modal">
-    <div class="modal" style="max-width:440px;">
+    <div class="modal" style="max-width:460px;">
       <div class="modal-hdr">
-        <div class="modal-ttl" style="color:var(--danger);display:flex;align-items:center;gap:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Remove Staff</div>
-        <button class="modal-close" onclick="window.closeModal('delete-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <div class="modal-ttl" style="color:var(--danger);display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Remove Staff</div>
+        <button class="modal-close" onclick="window.closeModal('delete-modal')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div style="padding:24px;">
-        <p style="font-size:0.95rem;color:var(--tx-muted);margin-bottom:20px;font-weight:500;line-height:1.5;">Permanently delete <strong id="del-name-display" style="color:var(--tx-main);"></strong> and revoke access.<br>Type <strong id="del-confirm-hint" style="color:var(--danger);font-family:var(--font-mono);"></strong> to confirm.</p>
-        <input class="form-input" id="del-confirm-input" type="text" placeholder="Type name to confirm…" oninput="window.checkDelConfirm()" style="margin-bottom:24px;">
-        <div style="display:flex;gap:12px;">
+        <p style="font-size:1rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;line-height:1.5;">Permanently delete <strong id="del-name-display" style="color:var(--tx-main);"></strong> and revoke access.<br>Type <strong id="del-confirm-hint" style="color:var(--danger);font-family:var(--font-mono);"></strong> to confirm.</p>
+        <input class="form-input" id="del-confirm-input" type="text" placeholder="Type name to confirm…" oninput="window.checkDelConfirm()" style="margin-bottom:32px;">
+        <div style="display:flex;gap:16px;">
           <button class="btn btn-ghost w-full" onclick="window.closeModal('delete-modal')">Cancel</button>
           <button class="btn btn-danger w-full" id="del-confirm-btn" disabled onclick="window.confirmDelete()">Delete Forever</button>
         </div>
@@ -1210,14 +1329,14 @@
   </div>
 
   <div class="modal-overlay hidden" id="delete-task-modal">
-    <div class="modal" style="max-width:420px;">
+    <div class="modal" style="max-width:440px;">
       <div class="modal-hdr">
-        <div class="modal-ttl" style="color:var(--danger);display:flex;align-items:center;gap:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete Task</div>
-        <button class="modal-close" onclick="window.closeModal('delete-task-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <div class="modal-ttl" style="color:var(--danger);display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete Task</div>
+        <button class="modal-close" onclick="window.closeModal('delete-task-modal')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div style="padding:24px;">
-        <p style="font-size:0.95rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;line-height:1.5;">Delete <strong id="del-task-name-display" style="color:var(--tx-main);"></strong>?<br>This action cannot be undone.</p>
-        <div style="display:flex;gap:12px;">
+        <p style="font-size:1rem;color:var(--tx-muted);margin-bottom:32px;font-weight:500;line-height:1.5;">Delete <strong id="del-task-name-display" style="color:var(--tx-main);"></strong>?<br>This action cannot be undone.</p>
+        <div style="display:flex;gap:16px;">
           <button class="btn btn-ghost w-full" onclick="window.closeModal('delete-task-modal')">Cancel</button>
           <button class="btn btn-danger w-full" id="del-task-confirm-btn" onclick="window.executeTaskDelete()">Delete Task</button>
         </div>
@@ -1227,7 +1346,7 @@
 
   <div class="fullpage" id="app-store-page">
     <div class="fp-hdr">
-      <button class="fp-back" onclick="window.closeAllPanels()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button>
+      <button class="fp-back" onclick="window.closeAllPanels()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button>
       <div class="fp-ttl">App Library</div>
     </div>
     <div class="fp-body" id="app-store-body"></div>
@@ -1246,7 +1365,7 @@
     import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { sendOTP, verifyUserOTP } from './otp.js';
 
-    // ── LOCAL HELPERS ──
+    // ── LOCAL UI HELPERS ──
     function getInitials(name) { 
         if (!name) return 'Z'; 
         const p = name.split(' '); 
@@ -1267,26 +1386,29 @@
         return role.charAt(0).toUpperCase() + role.slice(1); 
     }
 
-    // ── GLOBALS ──
+    // ── GLOBAL STATE VARIABLES ──
     window.copyToClipboard = copyToClipboard;
     window.showToast = showToast;
-    window.CU = null;
-    window.myTasks = [];
-    window.assignedByMeTasks = [];
-    window.taskTab = 'pending';
+    window.CU = null;               // Current User
+    window.myTasks = [];            // Tasks assigned TO user
+    window.assignedByMeTasks = [];  // Tasks assigned BY user
+    window.taskTab = 'pending';     // Active task tab
     
     let allStaff = [];
     let _profileBuilt = false;
     let deleteTargetUid = null, deleteConfirmStr = '', deleteTargetEmail = '', deleteTargetPwd = '';
-    let pendingDeclineId = null, deleteTaskTargetId = null, mainAreaChart = null, unsubs = [], _lastCreatedStaff = {};
+    let pendingDeclineId = null, deleteTaskTargetId = null;
+    let mainAreaChart = null;
+    let unsubs = [];                // Firebase listener unsubscribe functions
+    let _lastCreatedStaff = {};
 
-    // ── UI HELPERS ──
+    // ── DOM MANIPULATION HELPERS ──
     function loadBtn(btn, loading, restoreText) {
       if (!btn) return;
       if (loading) { 
           btn._origHTML = btn.innerHTML; 
           btn.disabled = true; 
-          btn.innerHTML = `<span style="width:16px;height:16px;border:3px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;display:inline-block;animation:spin .6s linear infinite;vertical-align:middle;"></span>`; 
+          btn.innerHTML = `<span style="width:18px;height:18px;border:3px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;display:inline-block;animation:spin .6s linear infinite;vertical-align:middle;"></span>`; 
       } else { 
           btn.disabled = false; 
           if (restoreText) btn.textContent = restoreText; 
@@ -1329,7 +1451,7 @@
         return o; 
     }
 
-    // ── PANELS & MODALS ──
+    // ── PANEL & MODAL CONTROLLERS ──
     window.closeAllPanels = function(skipDropdown = false) {
       document.querySelectorAll('.side-panel, .profile-side-panel, .fullpage, .modal-overlay').forEach(p => p.classList.remove('open'));
       if (!skipDropdown) { 
@@ -1354,8 +1476,14 @@
       }
     };
 
+    /**
+     * View Switcher: Handles transitioning between Dashboard, Tasks, and Staff pages.
+     * Manages highlighting logic for both Mobile bottom-nav and Desktop sidebar.
+     */
     window.showView = function(v) {
       window.closeAllPanels();
+      
+      // 1. Toggle Section Visibility
       ['home', 'tasks', 'staff'].forEach(n => {
         const el = document.getElementById('view-' + n);
         if (el) { 
@@ -1368,16 +1496,27 @@
             } 
         }
       });
+      
+      // 2. Update Mobile Bottom Nav Active State
       const bnMap = { home: 'bn-home', tasks: 'bn-tasks', staff: 'bn-staff-btn' };
       Object.values(bnMap).forEach(id => document.getElementById(id)?.classList.remove('active'));
       if (bnMap[v]) document.getElementById(bnMap[v])?.classList.add('active');
+
+      // 3. Update Desktop Sidebar Active State
+      ['home', 'tasks', 'staff'].forEach(n => {
+          const navEl = document.getElementById('nav-' + n);
+          if (navEl) {
+              if (n === v) { navEl.classList.add('active'); }
+              else { navEl.classList.remove('active'); }
+          }
+      });
       
-      // Auto re-render lists when toggling views to ensure freshness
+      // 4. Trigger localized renders
       if (v === 'tasks') {
-          if(window.renderTasksList) window.renderTasksList();
+          if (window.renderTasksList) window.renderTasksList();
       }
       if (v === 'staff') {
-          if(window.renderStaffCards) window.renderStaffCards(allStaff);
+          if (window.renderStaffCards) window.renderStaffCards(allStaff);
       }
     };
 
@@ -1412,7 +1551,7 @@
       document.getElementById('panel-overlay')?.classList.add('visible');
     };
 
-    // ── NOTIFICATIONS RENDERER ──
+    // ── NOTIFICATIONS LOGIC ──
     window.renderNotifs = function(items) {
       const el = document.getElementById('notif-body');
       if (!el) return;
@@ -1421,7 +1560,7 @@
       const innerBadge = document.getElementById('notif-count-badge');
       
       if (!activeNotifs.length) {
-        el.innerHTML = `<div class="empty" style="padding:40px 20px;text-align:center;"><div style="margin-bottom:12px;display:flex;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div style="color:var(--tx-muted);font-size:14px;font-weight:600;">No notifications</div></div>`;
+        el.innerHTML = `<div class="empty" style="padding:60px 20px;text-align:center;"><div style="margin-bottom:16px;display:flex;justify-content:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div style="color:var(--tx-muted);font-size:0.95rem;font-weight:600;">You're all caught up!</div></div>`;
         if (topBadge) { topBadge.classList.add('hidden'); topBadge.textContent = '0'; }
         if (innerBadge) { innerBadge.classList.add('hidden'); innerBadge.textContent = '0'; }
         return;
@@ -1453,11 +1592,11 @@
           div.className = 'notif-card';
           div.dataset.id = n.id;
           div.innerHTML = `
-            <div class="notif-icon general"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+            <div class="notif-icon general"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
             <div class="notif-content-wrap">
               <div class="notif-header"><h4 class="notif-title">Notification</h4><span class="notif-time">${ago(n.createdAt)}</span></div>
               <p class="notif-body">${esc(n.message)}</p>
-              <div class="notif-actions" style="justify-content:flex-start;"><button class="btn-secondary" style="padding:6px 16px;" onclick="window.dismissAlert(this)">Mark as Read</button></div>
+              <div class="notif-actions" style="justify-content:flex-start;margin-top:8px;"><button class="btn btn-secondary" style="padding:8px 16px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Mark as Read</button></div>
             </div>`;
           el.appendChild(div);
         }
@@ -1473,7 +1612,7 @@
         try { 
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' }); 
         } catch (e) { 
-            console.error(e); 
+            console.error("Failed to dismiss alert: ", e); 
         } 
     };
     
@@ -1486,7 +1625,7 @@
         try { 
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' }); 
         } catch (e) { 
-            console.error(e); 
+            console.error("Failed to accept task notif: ", e); 
         } 
     };
     
@@ -1500,42 +1639,56 @@
       const card = btn.closest('.notif-card');
       const input = card.querySelector('.deny-input').value.trim();
       const wordCount = input.split(/\s+/).filter(w => w.length > 0).length;
+      
       if (wordCount === 0 || wordCount > 10) { 
           window.showToast("Please provide a reason between 1 and 10 words.", "error"); 
           return; 
       }
-      const taskId = card.dataset.taskId, managerId = card.dataset.senderId, notifId = card.dataset.id;
+      
+      const taskId = card.dataset.taskId;
+      const managerId = card.dataset.senderId;
+      const notifId = card.dataset.id;
+      
       btn.textContent = "Sending...";
       try {
         if (taskId) await updateDoc(doc(db, 'tasks', taskId), { status: 'declined', reason: input });
         if (managerId) await addDoc(collection(db, 'users', managerId, 'notifications'), { type: 'task_update', message: `Task denied. Reason: ${input}`, taskId, createdAt: Date.now(), read: false, status: 'unread' });
         if (notifId) await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+        
         btn.textContent = "Done!"; 
         card.style.opacity = '0.5'; 
         setTimeout(() => card.remove(), 300);
         window.showToast("Task denied.", "success");
       } catch (e) { 
-          console.error(e); 
+          console.error("Deny Task Error: ", e); 
           window.showToast("Error updating task.", "error"); 
           btn.textContent = "Send"; 
       }
     };
 
-    // ── PROFILE ENGINE ──
+    // ── PROFILE ENGINE (AVATAR & DETAILS) ──
     window.uploadAvatar = function(e, suffix) {
       const file = e.target.files[0]; 
       if (!file) return;
+      
       const reader = new FileReader();
       reader.onload = function(ev) {
         const dataUrl = ev.target.result;
+        // Save to localStorage for quick boot up caching
         localStorage.setItem('zenda_logo_' + window.CU.uid, dataUrl);
         window.CU.avatarData = dataUrl;
+        
+        // Update all elements displaying Avatar
         document.querySelectorAll('.prof-av-display').forEach(el => { 
             el.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`; 
         });
-        const ini = getInitials(window.CU.name), col = avatarColor(window.CU.name);
-        setAv('topbar-avatar', ini, col, 34, dataUrl);
-        setAv('bn-avatar', ini, col, 24, dataUrl);
+        
+        const ini = getInitials(window.CU.name);
+        const col = avatarColor(window.CU.name);
+        setAv('topbar-avatar', ini, col, 38, dataUrl);
+        setAv('bn-avatar', ini, col, 28, dataUrl);
+        
+        // Sync to firebase
         updateDoc(doc(db, 'users', window.CU.uid), { avatarData: dataUrl });
       };
       reader.readAsDataURL(file);
@@ -1680,6 +1833,10 @@
       }
     };
 
+    /**
+     * Renders Profile HTML into both Mobile and Desktop containers.
+     * Incorporates Premium display formatting.
+     */
     window.buildProfile = function() {
       if (!window.CU) return;
       const { name, email, avatarData } = window.CU;
@@ -1690,37 +1847,36 @@
       const expDateStr = window.CU.subscriptionExpiry ? new Date(window.CU.subscriptionExpiry).toLocaleDateString() : 'Lifetime';
       
       const prmBadge = window.CU.isPremium
-        ? `<div style="margin:16px auto 0;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:12px;padding:12px 16px;color:white;box-shadow:var(--shadow-sm);border:1px solid rgba(255,255,255,0.1);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:200px;">
-            <div style="font-weight:800;font-size:0.95rem;margin-bottom:2px;display:flex;align-items:center;gap:8px;color:#FBBF24;letter-spacing:-0.02em;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        ? `<div style="margin:20px auto 0;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:12px;padding:12px 20px;color:white;box-shadow:var(--shadow-sm);border:1px solid rgba(255,255,255,0.1);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:220px;">
+            <div style="font-weight:800;font-size:0.95rem;margin-bottom:4px;display:flex;align-items:center;gap:8px;color:#FBBF24;letter-spacing:-0.02em;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
               Premium Active
             </div>
-            <div style="font-size:0.8rem;color:#94A3B8;font-weight:600;">Valid till ${expDateStr}</div>
+            <div style="font-size:0.85rem;color:#94A3B8;font-weight:600;">Valid till ${expDateStr}</div>
           </div>`
         : '';
 
-      // [FIX REMOVED ZENDA ID FROM PROFILE TEMPLATE]
       function getProfileHTML(suffix) {
         return `
-          <div style="text-align:center;padding:32px 20px 24px;border-bottom:1px solid var(--bd-subtle);background:var(--bg-surface);">
-            <div style="position:relative;width:96px;height:96px;margin:0 auto 16px;">
-              <div class="av prof-av-display" style="width:100%;height:100%;font-size:2.4rem;font-weight:800;border-radius:28px;background:${bgC}22;color:${bgC};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:var(--shadow-md);border:2px solid white;">${avContent}</div>
-              <label for="avatar-upload-${suffix}" style="position:absolute;bottom:-4px;right:-4px;background:var(--ac);color:white;width:34px;height:34px;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid white;box-shadow:var(--shadow-sm);transition:transform 0.2s;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div style="text-align:center;padding:40px 24px 32px;border-bottom:1px solid var(--bd-subtle);background:var(--bg-surface);">
+            <div style="position:relative;width:104px;height:104px;margin:0 auto 20px;">
+              <div class="av prof-av-display" style="width:100%;height:100%;font-size:2.8rem;font-weight:800;border-radius:24px;background:${bgC}22;color:${bgC};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:var(--shadow-md);border:3px solid white;">${avContent}</div>
+              <label for="avatar-upload-${suffix}" style="position:absolute;bottom:-6px;right:-6px;background:var(--ac);color:white;width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:3px solid white;box-shadow:var(--shadow-sm);transition:transform 0.2s;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               </label>
               <input type="file" id="avatar-upload-${suffix}" accept="image/*" style="display:none;" onchange="window.uploadAvatar(event,'${suffix}')">
             </div>
-            <div style="font-size:1.4rem;font-weight:800;color:var(--tx-main);letter-spacing:-0.03em;">${esc(name)}</div>
-            <div style="font-size:0.85rem;color:var(--ac);font-weight:700;margin-top:4px;background:var(--ac-light);display:inline-block;padding:2px 10px;border-radius:100px;">${roleStr}</div>
+            <div style="font-size:1.6rem;font-weight:800;color:var(--tx-main);letter-spacing:-0.03em;">${esc(name)}</div>
+            <div style="font-size:0.85rem;color:var(--ac);font-weight:800;margin-top:6px;background:var(--ac-light);display:inline-block;padding:4px 12px;border-radius:8px;">${roleStr}</div>
             ${prmBadge}
           </div>
-          <div style="padding:24px;display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:1rem;font-weight:800;color:var(--tx-main);letter-spacing:-0.01em;">Account Details</span>
-            <button class="btn-ghost" style="padding:6px 12px;border-radius:8px;font-size:0.8rem;display:flex;align-items:center;gap:4px;" onclick="window.enableProfileEdit('${suffix}')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Edit
+          <div style="padding:32px 24px;display:flex;justify-content:space-between;align-items:center;background:var(--bg-surface);">
+            <span style="font-size:1.1rem;font-weight:800;color:var(--tx-main);letter-spacing:-0.01em;">Account Details</span>
+            <button class="btn-ghost" style="padding:8px 16px;border-radius:10px;font-size:0.85rem;display:flex;align-items:center;gap:6px;" onclick="window.enableProfileEdit('${suffix}')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Edit
             </button>
           </div>
-          <div style="padding:0 24px 24px;display:flex;flex-direction:column;gap:16px;">
+          <div style="padding:0 24px 40px;display:flex;flex-direction:column;gap:20px;background:var(--bg-surface);">
             <div class="form-group">
               <label class="form-label">Full Name</label>
               <input type="text" id="prof-name-${suffix}" class="form-input prof-input-readonly" value="${esc(name)}" readonly>
@@ -1729,8 +1885,9 @@
               <label class="form-label">Email Address</label>
               <input type="email" id="prof-email-${suffix}" class="form-input prof-input-readonly" value="${esc(email)}" readonly>
             </div>
-            <button class="btn-primary w-full" id="btn-save-prof-${suffix}" style="display:none;margin-top:8px;padding:12px;border-radius:12px;font-size:0.95rem;justify-content:center;" onclick="window.saveProfileData('${suffix}')">Save Changes</button>
-            <button class="btn-danger w-full" style="margin-top:16px;padding:12px;border-radius:12px;font-size:0.95rem;display:flex;justify-content:center;" onclick="window.handleLogout()">Sign Out</button>
+            
+            <button class="btn-primary w-full" id="btn-save-prof-${suffix}" style="display:none;margin-top:12px;padding:14px;border-radius:12px;font-size:1rem;justify-content:center;" onclick="window.saveProfileData('${suffix}')">Save Changes</button>
+            <button class="btn-danger w-full" style="margin-top:24px;padding:14px;border-radius:12px;font-size:1rem;display:flex;justify-content:center;" onclick="window.handleLogout()">Sign Out</button>
           </div>`;
       }
 
@@ -1740,7 +1897,10 @@
       if (m) m.innerHTML = getProfileHTML('mob');
     };
 
-    // ── TASK ACTIONS & RENDERING [FIX ADDED MISSING FUNCTIONS] ──
+    // ── TASK ACTIONS & RENDERING ──
+    /**
+     * Handles displaying tasks within the My Tasks view based on the active tab
+     */
     window.renderTasksList = function() {
       const list = document.getElementById('tasks-list');
       if (!list) return;
@@ -1757,7 +1917,12 @@
       }
 
       if (!tasksToRender || tasksToRender.length === 0) {
-        list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--tx-muted);font-weight:600;background:var(--bg-surface);border-radius:16px;border:1px solid var(--bd-subtle);">No tasks found for this category.</div>';
+        list.innerHTML = `
+          <div style="padding:60px 20px;text-align:center;background:var(--bg-surface);border-radius:var(--rad-outer);border:1px dashed var(--bd-color);">
+             <div style="margin-bottom:16px;color:var(--tx-muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+             <div style="color:var(--tx-main);font-weight:800;font-size:1.1rem;margin-bottom:8px;">No tasks found</div>
+             <div style="color:var(--tx-muted);font-weight:500;font-size:0.95rem;">There are currently no tasks in this category.</div>
+          </div>`;
         return;
       }
 
@@ -1765,42 +1930,65 @@
         <div class="premium-task-card" id="task-${t.id}">
           <div style="flex:1;">
             <div class="card-title ${t.status === 'done' ? 'done' : ''}">${esc(t.title)}</div>
-            <div style="font-size:0.85rem;color:var(--tx-muted);margin-bottom:8px;line-height:1.4;">${esc(t.description || 'No additional details provided.')}</div>
-            <div style="display:flex;gap:8px;align-items:center;font-size:0.75rem;font-weight:700;">
-               <span style="background:var(--bg-raised);padding:4px 8px;border-radius:6px;border:1px solid var(--bd-subtle);">Priority: ${t.priority || 'Medium'}</span>
-               ${t.dueDate ? `<span style="background:var(--ac-light);color:var(--ac);padding:4px 8px;border-radius:6px;">Due: ${t.dueDate} ${t.dueTime || ''}</span>` : ''}
+            <div style="font-size:0.9rem;color:var(--tx-muted);margin-bottom:12px;line-height:1.5;">${esc(t.description || 'No additional details provided.')}</div>
+            
+            <div style="display:flex;gap:10px;align-items:center;font-size:0.8rem;font-weight:700;flex-wrap:wrap;">
+               <span style="background:var(--bg-page);color:var(--tx-muted);padding:6px 12px;border-radius:8px;border:1px solid var(--bd-color);">Priority: ${t.priority || 'Medium'}</span>
+               ${t.dueDate ? `<span style="background:var(--ac-light);color:var(--ac);padding:6px 12px;border-radius:8px;">Due: ${t.dueDate} ${t.dueTime || ''}</span>` : ''}
+               ${t.status === 'declined' ? `<span style="background:var(--danger-light);color:var(--danger);padding:6px 12px;border-radius:8px;">Declined</span>` : ''}
             </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:8px;">
+          
+          <div style="display:flex;flex-direction:column;gap:10px;min-width:120px;">
             ${(t.status === 'pending' || t.status === 'unread') && window.taskTab === 'assigned-to-me' ? `
-              <button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.doAcceptTask('${t.id}')">Complete</button>
-              <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.openDeclineModal('${t.id}', '${esc(t.title)}')">Decline</button>
+              <button class="btn btn-primary w-full" style="padding:10px 16px;font-size:0.85rem;" onclick="window.doAcceptTask('${t.id}')">
+                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Done
+              </button>
+              <button class="btn btn-secondary w-full" style="padding:10px 16px;font-size:0.85rem;" onclick="window.openDeclineModal('${t.id}', '${esc(t.title)}')">
+                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Decline
+              </button>
             ` : ''}
-            ${(window.CU.role === 'owner' || window.CU.role === 'manager') ? `
-              <button class="btn btn-danger" style="padding:6px 14px;font-size:0.8rem;" onclick="window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')">Delete</button>
+            
+            ${(window.CU.role === 'owner' || window.CU.role === 'manager') && window.taskTab === 'assigned-by-me' ? `
+              <button class="btn btn-danger w-full" style="padding:10px 16px;font-size:0.85rem;" onclick="window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')">Delete Task</button>
             ` : ''}
           </div>
         </div>
       `).join('');
     };
 
+    /**
+     * Renders top 3 assigned tasks by the user on the dashboard.
+     */
     window.renderRecentTasks = function() {
       const r = document.getElementById('recent-tasks');
       if (!r) return;
       
-      const tasks = window.myTasks.filter(t => t.status !== 'done' && t.status !== 'declined').slice(0, 5);
+      // FIX: Only show tasks 'I Assigned' in the recent block for owners/managers
+      // Sort by newest first using createdAt
+      const tasks = (window.assignedByMeTasks || [])
+         .filter(t => t.status !== 'done' && t.status !== 'declined')
+         .sort((a, b) => (b.createdAt || Date.now()) - (a.createdAt || Date.now()))
+         .slice(0, 3);
       
       if (!tasks.length) {
-         r.innerHTML = '<div style="padding:20px;text-align:center;color:var(--tx-muted);font-size:0.85rem;font-weight:600;">You are all caught up!</div>';
+         r.innerHTML = `
+           <div style="padding:40px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;">
+             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--bd-color)" stroke-width="1.5" style="margin-bottom:16px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+             <div style="color:var(--tx-muted);font-size:0.95rem;font-weight:600;">No recently assigned tasks!</div>
+           </div>`;
          return;
       }
       
       r.innerHTML = tasks.map(t => `
-         <div class="premium-task-card" style="margin-bottom:8px;padding:12px 16px;cursor:pointer;" onclick="window.setTaskTab('assigned-to-me');window.showView('tasks');">
+         <div class="premium-task-card" style="margin-bottom:12px;padding:16px 20px;cursor:pointer;flex-direction:row;align-items:center;" onclick="window.setTaskTab('assigned-by-me');window.showView('tasks');">
            <div style="flex:1;">
-              <div class="card-title" style="margin-bottom:2px;">${esc(t.title)}</div>
-              <div style="font-size:0.75rem;color:var(--tx-muted);">${t.dueDate ? 'Due: ' + t.dueDate : 'No strict deadline'}</div>
+              <div class="card-title" style="margin-bottom:4px;font-size:1rem;">${esc(t.title)}</div>
+              <div style="font-size:0.8rem;color:var(--tx-muted);font-weight:500;">
+                 Assigned to: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedToName || 'Team')}</span>
+              </div>
            </div>
+           ${t.dueDate ? `<div style="font-size:0.75rem;background:var(--ac-light);color:var(--ac);padding:6px 12px;border-radius:8px;font-weight:700;">Due: ${t.dueDate}</div>` : ''}
          </div>
       `).join('');
     };
@@ -1810,11 +1998,13 @@
        document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
        if (btn) btn.classList.add('on');
        else {
-           // Default tab highlighting if activated programmatically
+           // Default programmatic highlighting
            const tRow = document.getElementById('task-tab-row');
            if (tRow) {
                tRow.querySelectorAll('.ftab').forEach(b => {
-                   if (b.innerText.toLowerCase().includes(tab.split('-')[0])) b.classList.add('on');
+                   if (b.innerText.toLowerCase().replace(/\s+/g, '-').includes(tab)) {
+                       b.classList.add('on');
+                   }
                });
            }
        }
@@ -1833,7 +2023,12 @@
       const btn = document.getElementById('del-task-confirm-btn');
       loadBtn(btn, true);
       const tEl = document.getElementById('task-' + deleteTaskTargetId);
-      if (tEl) { tEl.style.opacity = '.4'; tEl.style.pointerEvents = 'none'; }
+      
+      if (tEl) { 
+          tEl.style.opacity = '.4'; 
+          tEl.style.pointerEvents = 'none'; 
+      }
+      
       try { 
           await deleteDoc(doc(db, 'tasks', deleteTaskTargetId)); 
           if (tEl) tEl.remove(); 
@@ -1841,13 +2036,16 @@
           window.showToast('Task deleted.', 'success'); 
       } catch (e) { 
           if (tEl) { tEl.style.opacity = '1'; tEl.style.pointerEvents = ''; } 
-          window.showToast('Could not delete: ' + e.message, 'error'); 
+          window.showToast('Could not delete task: ' + e.message, 'error'); 
       } finally { 
           loadBtn(btn, false, 'Delete Task'); 
           deleteTaskTargetId = null; 
       }
     };
     
+    /**
+     * Completes a task visually immediately, then updates Firebase.
+     */
     window.doAcceptTask = async function(id) {
       const el = document.getElementById('task-' + id);
       if (el) { 
@@ -1856,12 +2054,16 @@
           el.classList.add('completed-state'); 
           el.querySelectorAll('button').forEach(b => b.style.display = 'none'); 
       }
+      
+      // Optimistic Update
       const obj = (window.myTasks || []).find(t => t.id === id); 
       if (obj) obj.status = 'done';
+      
       try { 
           await updateDoc(doc(db, 'tasks', id), { status: 'done', completedAt: Date.now() }); 
           window.showToast('Task completed! 🎉', 'success'); 
       } catch (e) { 
+          // Rollback
           if (obj) obj.status = 'pending'; 
           if (el) { 
               el.classList.remove('completed-state'); 
@@ -1877,8 +2079,10 @@
         pendingDeclineId = id; 
         const el = document.getElementById('decline-task-title'); 
         if (el) el.textContent = title; 
+        
         const r = document.getElementById('decline-reason'); 
         if (r) r.value = ''; 
+        
         window.openModal('decline-modal'); 
     };
     
@@ -1892,20 +2096,27 @@
           window.showToast('Task declined.', 'success'); 
       } catch (e) { 
           window.showToast(e.message, 'error'); 
+      } finally {
+          loadBtn(btn, false, 'Decline Task');
       }
-      loadBtn(btn, false, 'Decline Task');
     };
 
     // ── ASSIGN TASK ENGINE ──
     function buildAssignSelect(staff) { 
         const sel = document.getElementById('assign-to'); 
         if (!sel) return; 
-        sel.innerHTML = '<option value="">Select team member…</option>' + staff.filter(s => s.uid !== window.CU?.uid).map(s => `<option value="${s.uid}">${esc(s.name)}</option>`).join(''); 
+        sel.innerHTML = '<option value="" disabled selected>Select team member…</option>' + 
+            staff.filter(s => s.uid !== window.CU?.uid)
+                 .map(s => `<option value="${s.uid}">${esc(s.name)}</option>`)
+                 .join(''); 
     }
     
     window.quickAssign = function(uid) { 
         window.openAssignModal(); 
-        setTimeout(() => { const s = document.getElementById('assign-to'); if (s) s.value = uid; }, 50); 
+        setTimeout(() => { 
+            const s = document.getElementById('assign-to'); 
+            if (s) s.value = uid; 
+        }, 100); 
     };
     
     window.openAssignModal = function() { 
@@ -1925,6 +2136,7 @@
       
       const btn = document.getElementById('assign-btn');
       loadBtn(btn, true);
+      
       try {
         const a = allStaff.find(s => s.uid === to);
         await assignTask({ 
@@ -1942,23 +2154,32 @@
         window.closeModal('assign-modal');
         window.showToast(`Assigned to ${a?.name}!`, 'success');
         
-        // Reset Form
+        // Reset Form values
+        document.getElementById('assign-to').value = '';
         document.getElementById('task-title').value = '';
         document.getElementById('task-desc').value = '';
+        document.getElementById('task-date').value = '';
+        document.getElementById('task-time').value = '';
         
       } catch (e) { 
           window.showToast(e.message, 'error'); 
+      } finally {
+          loadBtn(btn, false, 'Assign Task');
       }
-      loadBtn(btn, false, 'Assign Task');
     };
 
-    // ── STAFF RENDERING & MANAGEMENT [FIX ADDED MISSING FUNCTION] ──
+    // ── STAFF RENDERING & MANAGEMENT ──
     window.renderStaffCards = function(staffList) {
        const list = document.getElementById('staff-cards-list');
        if (!list) return;
 
-       if (!staffList || staffList.length === 0) {
-          list.innerHTML = '<div style="padding:40px;grid-column:1/-1;text-align:center;color:var(--tx-muted);font-weight:600;background:var(--bg-surface);border-radius:16px;border:1px solid var(--bd-subtle);">No team members to display.</div>';
+       if (!staffList || staffList.length <= 1) { // 1 assumes only the owner exists
+          list.innerHTML = `
+            <div style="padding:60px 20px;grid-column:1/-1;text-align:center;background:var(--bg-surface);border-radius:var(--rad-outer);border:1px dashed var(--bd-color);">
+              <div style="margin-bottom:16px;color:var(--tx-muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+              <div style="color:var(--tx-main);font-weight:800;font-size:1.1rem;margin-bottom:8px;">No team members yet</div>
+              <div style="color:var(--tx-muted);font-weight:500;font-size:0.95rem;">Add staff to start assigning tasks and managing work.</div>
+            </div>`;
           return;
        }
 
@@ -1978,10 +2199,13 @@
                </div>
              </div>
              <div class="team-card-actions">
-                ${s.uid !== window.CU.uid ? `<button class="btn btn-secondary" style="padding:6px 14px;font-size:0.75rem;" onclick="window.quickAssign('${s.uid}')">Assign Work</button>` : `<span style="font-size:0.75rem;font-weight:700;color:var(--tx-muted);padding:6px 0;">This is you</span>`}
+                ${s.uid !== window.CU.uid 
+                  ? `<button class="btn btn-secondary w-full" style="padding:10px 16px;" onclick="window.quickAssign('${s.uid}')">Assign Work</button>` 
+                  : `<span style="font-size:0.85rem;font-weight:700;color:var(--tx-muted);padding:10px 0;width:100%;text-align:center;background:var(--bg-raised);border-radius:8px;">This is you</span>`
+                }
                 ${(window.CU.role === 'owner' && s.uid !== window.CU.uid) ? `
-                   <button class="btn-delete-big" onclick="window.openDeleteModal('${s.uid}', '${esc(s.name)}', '${esc(s.email)}', '')">
-                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                   <button class="btn-delete-big" style="position:absolute;top:16px;right:16px;" onclick="window.openDeleteModal('${s.uid}', '${esc(s.name)}', '${esc(s.email)}', '')" title="Remove Staff">
+                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                    </button>
                 ` : ''}
              </div>
@@ -2030,39 +2254,206 @@
       }
     };
 
-    // ── INITIALIZATION ──
-    async function init() {
-      const loader = document.getElementById('loading-overlay');
-      if (loader) { 
-          loader.style.opacity = '0'; 
-          loader.style.pointerEvents = 'none'; 
-          setTimeout(() => loader.remove(), 400); 
-      }
-      try {
-        await requireAuth('login.html');
-        const cu = await getCurrentUser();
-        if (!cu) { location.href = 'login.html'; return; }
+    // ── DATA SUBSCRIPTIONS ──
+    function subscribeAll() {
+      const { uid, companyId, role } = window.CU;
+      const cs = role === 'owner' || role === 'manager'; // Can see staff
+      const ca = role === 'owner' || role === 'manager'; // Can assign tasks
+
+      // Listen for Notifications
+      import('./notifications.js').then(module => { 
+          if (module.listenNotifications) {
+              unsubs.push(module.listenNotifications(uid, (it) => { window.renderNotifs(it); })); 
+          }
+      }).catch(e => console.error("Notification load failed", e));
+      
+      // Listen for Tasks
+      import('./tasks.js').then(module => {
+        if (module.listenMyTasks) {
+            unsubs.push(module.listenMyTasks(uid, tasks => {
+              window.myTasks = tasks;
+              const p = tasks.filter(t => t.status === 'pending').length;
+              setBadge('task-badge-side', p); 
+              setDot('bn-task-dot', p > 0);
+              
+              if(window.renderRecentTasks) window.renderRecentTasks(); 
+              if(window.renderTasksList) window.renderTasksList();
+              if (role === 'staff' || role === 'manager') { updateCharts(tasks); renderNonOwnerStats(tasks); }
+              if (role === 'owner') renderOwnerStats();
+            }));
+        }
         
-        window.CU = cu; 
-        saveSession(cu); 
-        window.CU._notifyList = cu.notifyApps || [];
-        
-        setupUI(); 
-        window.buildProfile(); 
-        subscribeAll();
-      } catch (e) { 
-          console.error(e); 
-      }
+        if (ca && module.listenAssignedByMe) {
+            unsubs.push(module.listenAssignedByMe(uid, tasks => {
+              window.assignedByMeTasks = tasks;
+              if (role === 'owner') renderOwnerStats();
+              if(window.renderRecentTasks) window.renderRecentTasks(); 
+              if(window.renderTasksList) window.renderTasksList();
+            }));
+        }
+      }).catch(e => console.error("Task load failed", e));
+      
+      // Listen for Staff Details
+      import('./staff.js').then(module => {
+        if (cs && companyId && module.listenCompanyStaff) {
+            unsubs.push(module.listenCompanyStaff(companyId, staff => {
+              allStaff = staff;
+              if (role === 'owner') renderOwnerStats();
+              if(window.renderStaffCards) window.renderStaffCards(staff); 
+              buildAssignSelect(staff);
+              const n = staff.filter(s => s.role !== 'owner');
+              const sc = document.getElementById('staff-count-sub'); 
+              if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`;
+            }));
+        }
+        else if (companyId && module.getAssignableStaff) {
+            module.getAssignableStaff(companyId, uid).then(s => { allStaff = s; }).catch(console.error);
+        }
+      }).catch(e => console.error("Staff load failed", e));
+      
+      // Listen for Apps
+      import('./apps.js').then(module => { 
+          if (module.listenInstalledApps) {
+              unsubs.push(module.listenInstalledApps(uid, ids => buildAppsGrid(ids))); 
+          }
+      }).catch(e => console.error("Apps load failed", e));
     }
 
+    // ── STATS & CHARTS GENERATION ──
+    function sIco(bg, c, p) { 
+        return `<div style="background:${bg};color:${c};border-radius:18px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${p}</svg></div>`; 
+    }
+
+    function renderOwnerStats() {
+      const staff = allStaff.filter(s => s.role !== 'owner');
+      const all = [...window.myTasks, ...window.assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+      const p = all.filter(t => t.status === 'pending').length;
+      const d = all.filter(t => t.status === 'done').length;
+      
+      const el = document.getElementById('stats-grid'); 
+      if (!el) return;
+      
+      el.innerHTML = `
+        <div class="stat-card anim-stagger" onclick="window.showView('staff')" style="cursor:pointer;background:var(--bg-surface);padding:24px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+          <div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${staff.length}</div></div>${sIco('#EEF2FF','#3A57E8','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div>
+        </div>
+        <div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me');window.showView('tasks')" style="cursor:pointer;background:var(--bg-surface);padding:24px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);transition:transform 0.2s;animation-delay:0.1s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+          <div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div>
+        </div>
+        <div class="stat-card anim-stagger" onclick="window.setTaskTab('done');window.showView('tasks')" style="cursor:pointer;background:var(--bg-surface);padding:24px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);transition:transform 0.2s;animation-delay:0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+          <div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div>
+        </div>`;
+    }
+
+    function renderNonOwnerStats(tasks) {
+      const p = tasks.filter(t => t.status === 'pending').length;
+      const d = tasks.filter(t => t.status === 'done').length;
+      const isMgr = window.CU.role === 'manager';
+      
+      const el = document.getElementById('stats-grid'); 
+      if (!el) return;
+      
+      const statBaseStyle = `cursor:pointer;background:var(--bg-surface);padding:24px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);box-shadow:var(--shadow-sm);transition:transform 0.2s;`;
+      
+      el.innerHTML = isMgr
+        ? `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me');window.showView('tasks')" style="${statBaseStyle}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div>
+           <div class="stat-card anim-stagger" onclick="window.setTaskTab('done');window.showView('tasks')" style="${statBaseStyle};animation-delay:0.1s" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>
+           <div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me');window.showView('tasks')" style="${statBaseStyle};animation-delay:0.2s" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${window.assignedByMeTasks.length}</div></div>${sIco('#EEF2FF','#3A57E8','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}</div></div>`
+        : `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me');window.showView('tasks')" style="${statBaseStyle}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div>
+           <div class="stat-card anim-stagger" onclick="window.setTaskTab('done');window.showView('tasks')" style="${statBaseStyle};animation-delay:0.1s" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
+    }
+
+    function initCharts() { 
+        const cv = document.getElementById('main-area-chart'); 
+        if (!cv) return; 
+        const c = cv.getContext('2d'); 
+        const gr = c.createLinearGradient(0, 0, 0, 240); 
+        gr.addColorStop(0, 'rgba(79,70,229,.25)'); 
+        gr.addColorStop(1, 'rgba(79,70,229,0)'); 
+        
+        mainAreaChart = new Chart(c, { 
+            type: 'line', 
+            data: { 
+                labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], 
+                datasets: [{ 
+                    label: 'Done Tasks', 
+                    data: [0,0,0,0,0,0,0], 
+                    borderColor: '#3A57E8', 
+                    backgroundColor: gr, 
+                    borderWidth: 4, 
+                    fill: true, 
+                    tension: .4, 
+                    pointBackgroundColor: '#fff', 
+                    pointBorderColor: '#3A57E8', 
+                    pointBorderWidth: 3, 
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }] 
+            }, 
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } }, 
+                scales: { 
+                    x: { grid: { display: false } }, 
+                    y: { beginAtZero: true, grid: { color: '#F1F5F9' }, border: { display: false } } 
+                } 
+            } 
+        }); 
+    }
+    
+    function updateCharts(tasks) { 
+        if (!mainAreaChart) return; 
+        const days = last7(); 
+        mainAreaChart.data.labels = days.map(d => d.label); 
+        mainAreaChart.data.datasets[0].data = days.map(day => 
+            tasks.filter(t => t.status === 'done' && t.completedAt && new Date(t.completedAt).toDateString() === day.date).length
+        ); 
+        mainAreaChart.update(); 
+    }
+
+    // ── APPS ENGINE ──
+    const APPS = {
+      calculator: { label: 'Calculator', icon: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>', bg: 'linear-gradient(135deg,#3A57E8,#2A41C7)' },
+      calendar:   { label: 'Calendar',   icon: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', bg: 'linear-gradient(135deg,#10B981,#059669)' },
+      inventory:  { label: 'Inventory',  icon: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>', bg: 'linear-gradient(135deg,#F59E0B,#D97706)' },
+      expenses:   { label: 'Expenses',   icon: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', bg: 'linear-gradient(135deg,#EF4444,#DC2626)' }
+    };
+
+    function buildAppsGrid(ids) {
+      const el = document.getElementById('apps-grid'); 
+      if (!el) return;
+      const all = ['calculator', ...(ids || []).filter(i => i !== 'calculator')];
+      const vis = all.slice(0, 15), hm = all.length > 15;
+      
+      el.innerHTML = vis.map(id => { 
+          const a = APPS[id]; 
+          if (!a) return ''; 
+          return `<div class="app-squircle-wrap" onclick="window.openApp('${id}')"><div class="app-squircle" style="background:${a.bg};">${a.icon}</div><span class="app-name">${a.label}</span></div>`; 
+      }).join('')
+        + `<div class="app-squircle-wrap" onclick="window.openAppLib()"><div class="app-viewall-tile"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3A57E8" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div><span class="app-name" style="color:var(--ac);font-weight:800;">${hm ? '+' + (all.length - 15) + ' More' : 'View All'}</span></div>`;
+    }
+
+    window.openApp = function(id) {
+      const m = { calculator: 'calculator.html', calendar: 'calendar.html', inventory: 'inventory.html', expenses: 'expenses.html' };
+      const f = m[id]; 
+      if (f) location.href = f + (window.CU?.uid ? '?uid=' + window.CU.uid : ''); 
+      else window.showToast('App not found!', 'error');
+    };
+    
+    window.openAppLib = function() { 
+        const p = document.getElementById('app-store-page'); 
+        if (p) p.classList.add('open'); 
+        document.getElementById('panel-overlay')?.classList.add('visible'); 
+    };
+
+    // ── BOOT UP INITIALIZATION ──
     function setupUI() {
       const { name, role } = window.CU;
       const col = avatarColor(name), ini = getInitials(name);
       const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
-      setAv('topbar-avatar', ini, col, 34, src);
-      setAv('bn-avatar', ini, col, 26, src);
-
-      // [FIX] Removed setTopbarName entirely to hide 'Rohan' text from top left
+      setAv('topbar-avatar', ini, col, 38, src);
+      setAv('bn-avatar', ini, col, 28, src);
 
       if (window.CU.companyId) {
         getDoc(doc(db, 'companies', window.CU.companyId)).then(s => {
@@ -2076,19 +2467,20 @@
             window.CU.isPremium = ip;
             window.CU.subscriptionExpiry = cd.subscriptionExpiry;
             
-            // [FIX] Top Bar Premium Button Logic
+            // Topbar Premium Upgrade Logic
             const topUpgradeBtn = document.getElementById('topbar-upgrade-btn');
             if (topUpgradeBtn) {
                 ip ? topUpgradeBtn.classList.add('hidden') : topUpgradeBtn.classList.remove('hidden');
             }
 
+            // Sidebar Footer Premium Logic
             const subCard = document.getElementById('sidebar-footer');
             if (subCard) {
               if (ip) {
                 const expDate = cd.subscriptionExpiry ? new Date(cd.subscriptionExpiry).toLocaleDateString() : 'Lifetime';
                 subCard.innerHTML = `
-                <div style="background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:16px;padding:20px 16px;color:white;box-shadow:var(--shadow-sm);border:1px solid rgba(255,255,255,0.1);">
-                  <div style="font-weight:800;font-size:1rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FBBF24;letter-spacing:-0.02em;">
+                <div style="background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:12px;padding:20px 16px;color:white;box-shadow:var(--shadow-sm);border:1px solid rgba(255,255,255,0.1);">
+                  <div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FBBF24;letter-spacing:-0.02em;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                     Premium Active
                   </div>
@@ -2096,7 +2488,7 @@
                 </div>`;
               } else {
                 subCard.innerHTML = `
-                <div style="background:linear-gradient(135deg,#F59E0B,#D97706);border-radius:16px;padding:12px 16px;color:white;cursor:pointer;box-shadow:var(--shadow-md);transition:transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div style="background:linear-gradient(135deg,#F59E0B,#D97706);border-radius:12px;padding:16px;color:white;cursor:pointer;box-shadow:var(--shadow-md);transition:transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                   <div style="font-weight:800;font-size:1rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;letter-spacing:-0.02em;">👑 Upgrade Plan</div>
                   <div style="font-size:0.8rem;opacity:0.9;font-weight:600;">Unlock all features</div>
                 </div>`;
@@ -2134,10 +2526,17 @@
       const tr = document.getElementById('task-tab-row');
       if (tr) {
         if (isOwner) {
-          tr.innerHTML = `<button class="btn-ghost ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn-ghost ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="btn-ghost ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`;
+          tr.innerHTML = `
+            <button class="btn-ghost ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
+            <button class="btn-ghost ftab" onclick="window.setTaskTab('done',this)">Done</button>
+            <button class="btn-ghost ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`;
           window.taskTab = 'assigned-by-me';
         } else {
-          tr.innerHTML = `<button class="btn-ghost ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button><button class="btn-ghost ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn-ghost ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="btn-ghost ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`;
+          tr.innerHTML = `
+            <button class="btn-ghost ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button>
+            <button class="btn-ghost ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
+            <button class="btn-ghost ftab" onclick="window.setTaskTab('done',this)">Done</button>
+            <button class="btn-ghost ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`;
           window.taskTab = 'assigned-to-me';
         }
       }
@@ -2159,195 +2558,30 @@
       }
     }
 
-    function setAv(id, ini, col, sz, src) {
-      const el = document.getElementById(id); 
-      if (!el) return;
-      el.style.cssText = `width:${sz}px;height:${sz}px;font-size:${sz * .38}px;`;
-      if (src) {
-          el.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-      } else { 
-          el.textContent = ini; 
-          el.style.background = col + '22'; 
-          el.style.color = col; 
+    async function init() {
+      try {
+        await requireAuth('login.html');
+        const cu = await getCurrentUser();
+        if (!cu) { location.href = 'login.html'; return; }
+        
+        window.CU = cu; 
+        saveSession(cu); 
+        window.CU._notifyList = cu.notifyApps || [];
+        
+        setupUI(); 
+        window.buildProfile(); 
+        subscribeAll();
+      } catch (e) { 
+          console.error("Dashboard Init Error: ", e); 
       }
     }
 
-    // ── SUBSCRIPTIONS ──
-    function subscribeAll() {
-      const { uid, companyId, role } = window.CU;
-      const cs = role === 'owner' || role === 'manager';
-      const ca = role === 'owner' || role === 'manager';
-
-      import('./notifications.js').then(module => { 
-          if (module.listenNotifications) unsubs.push(module.listenNotifications(uid, (it) => { window.renderNotifs(it); })); 
-      }).catch(e => console.error(e));
-      
-      import('./tasks.js').then(module => {
-        if (module.listenMyTasks) unsubs.push(module.listenMyTasks(uid, tasks => {
-          window.myTasks = tasks;
-          const p = tasks.filter(t => t.status === 'pending').length;
-          setBadge('task-badge-side', p); 
-          setDot('bn-task-dot', p > 0);
-          if(window.renderRecentTasks) window.renderRecentTasks(); 
-          if(window.renderTasksList) window.renderTasksList();
-          if (role === 'staff' || role === 'manager') { updateCharts(tasks); renderNonOwnerStats(tasks); }
-          if (role === 'owner') renderOwnerStats();
-        }));
-        if (ca && module.listenAssignedByMe) unsubs.push(module.listenAssignedByMe(uid, tasks => {
-          window.assignedByMeTasks = tasks;
-          if (role === 'owner') renderOwnerStats();
-          if(window.renderRecentTasks) window.renderRecentTasks(); 
-          if(window.renderTasksList) window.renderTasksList();
-        }));
-      }).catch(e => console.error(e));
-      
-      import('./staff.js').then(module => {
-        if (cs && companyId && module.listenCompanyStaff) unsubs.push(module.listenCompanyStaff(companyId, staff => {
-          allStaff = staff;
-          if (role === 'owner') renderOwnerStats();
-          if(window.renderStaffCards) window.renderStaffCards(staff); 
-          buildAssignSelect(staff);
-          const n = staff.filter(s => s.role !== 'owner');
-          const sc = document.getElementById('staff-count-sub'); 
-          if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`;
-        }));
-        else if (companyId && module.getAssignableStaff) module.getAssignableStaff(companyId, uid).then(s => { allStaff = s; }).catch(console.error);
-      }).catch(e => console.error(e));
-      
-      import('./apps.js').then(module => { 
-          if (module.listenInstalledApps) unsubs.push(module.listenInstalledApps(uid, ids => buildAppsGrid(ids))); 
-      }).catch(e => console.error(e));
-    }
-
-    function sIco(bg, c, p) { 
-        return `<div style="background:${bg};color:${c};border-radius:16px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${p}</svg></div>`; 
-    }
-
-    function renderOwnerStats() {
-      const staff = allStaff.filter(s => s.role !== 'owner');
-      const all = [...window.myTasks, ...window.assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-      const p = all.filter(t => t.status === 'pending').length, d = all.filter(t => t.status === 'done').length;
-      const el = document.getElementById('stats-grid'); 
-      if (!el) return;
-      el.innerHTML = `
-        <div class="stat-card anim-stagger" onclick="window.showView('staff')" style="cursor:pointer;background:var(--bg-surface);padding:20px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);">
-          <div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${staff.length}</div></div>${sIco('#EEF2FF','#3A57E8','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div>
-        </div>
-        <div class="stat-card anim-stagger" onclick="window.setTaskTab?.('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;background:var(--bg-surface);padding:20px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);">
-          <div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div>
-        </div>
-        <div class="stat-card anim-stagger" onclick="window.setTaskTab?.('done',null);window.showView('tasks')" style="cursor:pointer;background:var(--bg-surface);padding:20px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);">
-          <div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div>
-        </div>`;
-    }
-
-    function renderNonOwnerStats(tasks) {
-      const p = tasks.filter(t => t.status === 'pending').length, d = tasks.filter(t => t.status === 'done').length;
-      const isMgr = window.CU.role === 'manager';
-      const el = document.getElementById('stats-grid'); 
-      if (!el) return;
-      el.innerHTML = isMgr
-        ? `<div class="stat-card anim-stagger" onclick="window.setTaskTab?.('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;background:var(--bg-surface);padding:20px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab?.('done',null);window.showView('tasks')" style="cursor:pointer;background:var(--bg-surface);padding:20px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab?.('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;background:var(--bg-surface);padding:20px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${window.assignedByMeTasks.length}</div></div>${sIco('#EEF2FF','#3A57E8','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}</div></div>`
-        : `<div class="stat-card anim-stagger" onclick="window.setTaskTab?.('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;background:var(--bg-surface);padding:20px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab?.('done',null);window.showView('tasks')" style="cursor:pointer;background:var(--bg-surface);padding:20px;border-radius:var(--rad-outer);border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
-    }
-
-    function initCharts() { 
-        const cv = document.getElementById('main-area-chart'); 
-        if (!cv) return; 
-        const c = cv.getContext('2d'); 
-        const gr = c.createLinearGradient(0, 0, 0, 240); 
-        gr.addColorStop(0, 'rgba(79,70,229,.25)'); 
-        gr.addColorStop(1, 'rgba(79,70,229,0)'); 
-        mainAreaChart = new Chart(c, { 
-            type: 'line', 
-            data: { 
-                labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], 
-                datasets: [{ 
-                    label: 'Done', 
-                    data: [0,0,0,0,0,0,0], 
-                    borderColor: '#3A57E8', 
-                    backgroundColor: gr, 
-                    borderWidth: 3, 
-                    fill: true, 
-                    tension: .4, 
-                    pointBackgroundColor: '#fff', 
-                    pointBorderColor: '#3A57E8', 
-                    pointBorderWidth: 2, 
-                    pointRadius: 4 
-                }] 
-            }, 
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false } }, 
-                scales: { 
-                    x: { grid: { display: false } }, 
-                    y: { beginAtZero: true, grid: { color: '#F1F5F9' }, border: { display: false } } 
-                } 
-            } 
-        }); 
-    }
-    
-    function updateCharts(tasks) { 
-        if (!mainAreaChart) return; 
-        const days = last7(); 
-        mainAreaChart.data.labels = days.map(d => d.label); 
-        mainAreaChart.data.datasets[0].data = days.map(day => tasks.filter(t => t.status === 'done' && t.completedAt && new Date(t.completedAt).toDateString() === day.date).length); 
-        mainAreaChart.update(); 
-    }
-
-    const APPS = {
-      calculator: { label: 'Calculator', icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>', bg: 'linear-gradient(135deg,#3A57E8,#2A41C7)' },
-      calendar:   { label: 'Calendar',   icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', bg: 'linear-gradient(135deg,#10B981,#059669)' },
-      inventory:  { label: 'Inventory',  icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>', bg: 'linear-gradient(135deg,#F59E0B,#D97706)' },
-      expenses:   { label: 'Expenses',   icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', bg: 'linear-gradient(135deg,#EF4444,#DC2626)' }
-    };
-
-    function buildAppsGrid(ids) {
-      const el = document.getElementById('apps-grid'); 
-      if (!el) return;
-      const all = ['calculator', ...(ids || []).filter(i => i !== 'calculator')];
-      const vis = all.slice(0, 15), hm = all.length > 15;
-      
-      el.innerHTML = vis.map(id => { 
-          const a = APPS[id]; 
-          if (!a) return ''; 
-          return `<div class="app-squircle-wrap" onclick="window.openApp('${id}')"><div class="app-squircle" style="background:${a.bg};display:flex;align-items:center;justify-content:center;">${a.icon}</div><span class="app-name">${a.label}</span></div>`; 
-      }).join('')
-        + `<div class="app-squircle-wrap" onclick="window.openAppLib()"><div class="app-viewall-tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3A57E8" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div><span class="app-name" style="color:var(--ac);font-weight:700;">${hm ? '+' + (all.length - 15) + ' More' : 'View All'}</span></div>`;
-    }
-
-    window.openApp = function(id) {
-      const m = { calculator: 'calculator.html', calendar: 'calendar.html', inventory: 'inventory.html', expenses: 'expenses.html' };
-      const f = m[id]; 
-      if (f) location.href = f + (window.CU?.uid ? '?uid=' + window.CU.uid : ''); 
-      else window.showToast('App not found!', 'error');
-    };
-    
-    window.openAppLib = function() { 
-        const p = document.getElementById('app-store-page'); 
-        if (p) p.classList.add('open'); 
-        document.getElementById('panel-overlay')?.classList.add('visible'); 
-    };
-
-    window.addEventListener('scroll', () => { 
-        const tb = document.querySelector('.topbar'); 
-        if (tb) tb.classList.toggle('scrolled', window.scrollY > 8); 
-    }, { passive: true });
-    
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init); 
     } else {
         init();
     }
 
-    window.addEventListener('error', function() {
-      const loader = document.getElementById('loading-overlay');
-      if (loader) { 
-          loader.style.opacity = '0'; 
-          loader.style.pointerEvents = 'none'; 
-      }
-    });
   </script>
 </body>
 </html>
