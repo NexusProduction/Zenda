@@ -10,6 +10,14 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text x='16' y='23' font-size='22' font-family='sans-serif' font-weight='900' fill='white' text-anchor='middle'>Z</text></svg>">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  
+  <script>
+    setTimeout(() => {
+        const loader = document.getElementById('loading-overlay');
+        if (loader) { loader.style.opacity = '0'; loader.style.pointerEvents = 'none'; setTimeout(() => loader.remove(), 500); }
+    }, 2500); // Guarantees the loader vanishes after 2.5 seconds no matter what!
+  </script>
+
   <style>
     /* =========================================
        ZENDA DASHBOARD — PERFECTED ARCHITECTURE
@@ -81,7 +89,6 @@
     .w-full { width: 100%; }
 
     /* ── BULLETPROOF OVERLAY & PANEL ARCHITECTURE ── */
-    /* This permanently fixes the invisible unclickable button issue */
     .panel-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 998; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
     .panel-overlay.visible { opacity: 1; pointer-events: auto; }
 
@@ -110,6 +117,7 @@
     .notif-panel.open { transform: scale(1); opacity: 1; }
     .notif-card { padding: 16px 20px; border-bottom: 1px solid var(--bd-subtle); display: flex; gap: 16px; transition: background 0.2s; align-items: flex-start; background: var(--bg-surface); }
     .notif-card:hover { background: var(--bg-raised); }
+    .notif-card:last-child { border-bottom: none; }
     .notif-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .notif-icon.security { background: var(--danger-light); color: var(--danger); }
     .notif-icon.task { background: var(--ac-light); color: var(--ac); }
@@ -120,7 +128,6 @@
     .notif-time { font-size: 0.7rem; color: var(--tx-muted); font-family: var(--font-mono); white-space: nowrap; font-weight: 600;}
     .notif-body { font-size: 0.85rem; color: var(--tx-muted); margin: 0; line-height: 1.4; font-weight: 500;}
 
-    /* ── Modals ── */
     .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 1002; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); opacity: 0; transition: opacity 0.3s, visibility 0.3s; }
     .modal-overlay.open { opacity: 1; }
     .modal-overlay .modal { transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -198,6 +205,7 @@
       .apps-wrap-order { order: 1; flex: 1; height: 440px; min-height: 440px; max-height: 440px; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0 !important; }
       .apps-wrap .apps-grid { overflow-y: auto; scrollbar-width: none; }
       .apps-wrap .apps-grid::-webkit-scrollbar { display: none; }
+      #assign-tasks-btn-full { display: flex !important; }
 
       .team-card { flex-direction: column !important; align-items: center !important; text-align: center !important; padding: 24px 16px !important; }
       .team-card-top { flex-direction: column !important; justify-content: center !important; gap: 12px; width: 100%; margin-bottom: 16px !important; }
@@ -210,8 +218,8 @@
 
     /* ════════════════════════════   MOBILE STRICT RESPONSIVENESS FIX ════════════════════════════ */
     @media (max-width: 768px) {
-      html, body { max-width: 100vw; overflow-x: hidden; }
-      .app-body, .main-content { width: 100%; max-width: 100vw; overflow-x: hidden; min-width: 0; padding-left: 0 !important; padding-right: 0 !important; }
+      html, body { max-width: 100vw !important; overflow-x: hidden !important; }
+      .app-body, .main-content { width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; min-width: 0; padding-left: 0 !important; padding-right: 0 !important; }
       .page-hdr { padding-left: 16px !important; padding-right: 16px !important; margin-bottom: 24px !important; }
       .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 12px !important; padding-left: 16px !important; padding-right: 16px !important; }
       .stats-grid .stat-card:first-child { grid-column: 1 / -1 !important; }
@@ -221,8 +229,6 @@
       /* ── PERFECT ALIGNMENT: App Wrap Padding matched exactly to Content Card ── */
       .content-card { padding: 20px !important; width: 100% !important; margin: 0 0 16px 0 !important; box-sizing: border-box !important; border-radius: var(--rad-outer) !important;}
       .apps-wrap { padding: 20px !important; }
-      
-      /* Unified Header Padding */
       .content-hdr { padding: 0 0 12px 0 !important; margin-bottom: 16px !important; border-bottom: 1px solid var(--bd-subtle) !important; }
 
       .stats-grid, .content-row, #task-tab-row, #tasks-list, .team-grid { padding-left: 16px !important; padding-right: 16px !important; width: 100% !important; box-sizing: border-box !important;}
@@ -237,11 +243,7 @@
       
       .card-date-top { display: none !important; }
       .card-date-bottom { display: flex !important; }
-      
-      /* Hide Top Button on mobile */
       #assign-top-btn { display: none !important; }
-      
-      /* Show Assign Task on My Tasks Page Mobile */
       #assign-tasks-btn-full { display: flex !important; padding: 10px 16px !important; font-size: 0.8rem !important; }
       .topbar-right .profile-btn { display: none !important; }
       .tasks-page-hdr { padding-left: 16px !important; padding-right: 16px !important; }
@@ -263,7 +265,6 @@
       .bn-item { flex: 1 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 4px !important; color: var(--tx-muted) !important; background: transparent !important; border: none !important; min-height: 52px !important; cursor: pointer !important; padding: 6px 12px; border-radius: 18px; transition: all 0.2s; }
       .bn-item span:not(.bn-dot) { font-family: inherit !important; font-size: 11px !important; font-weight: 600 !important; }
       
-      /* New Premium active state */
       .bn-item.active { background: var(--ac-light) !important; color: var(--ac) !important; font-weight: 800 !important; }
       .bn-item.active svg { stroke: var(--ac) !important; }
 
@@ -274,18 +275,333 @@
   </style>
 </head>
 <body>
+  <div id="loading-overlay" class="loader-overlay" style="position:fixed;inset:0;background:var(--bg-page);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s">
+    <div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;color:var(--tx-main); letter-spacing:-0.02em;">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--ac);display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:900;">Z</div> Zenda
+    </div>
+  </div>
+  
+  <div class="panel-overlay" id="panel-overlay" onclick="window.closeAllPanels()"></div>
+  
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo" onclick="window.showView('home')">
+        <div class="topbar-logo-icon">Z</div> <span id="topbar-logo-text">Zenda</span>
+      </div>
+      <div class="topbar-company" id="topbar-company"></div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" id="notif-btn" onclick="window.toggleNotifDropdown(event)" title="Notifications">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-badge hidden" id="notif-badge">0</span>
+      </button>
+      <button class="profile-btn" onclick="window.openProfile()">
+        <div class="av" id="topbar-avatar" style="width:34px;height:34px;font-size:14px;"></div>
+      </button>
+    </div>
+  </header>
+
+  <div id="notificationDropdown" class="notif-panel">
+    <div class="sp-hdr" style="padding: 20px 24px;">
+      <h4 style="margin: 0; font-size: 1.1rem; color: var(--tx-main); font-weight:800; letter-spacing:-0.02em;">Notifications</h4>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="badge hidden" id="notif-count-badge" style="background: var(--danger); color: white; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 800;">0</span>
+        <button class="modal-close" style="background:transparent;border:none;cursor:pointer;color:var(--tx-muted);padding:4px;" onclick="window.closeAllPanels()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+    </div>
+    <div class="sp-body" id="notif-body" style="max-height: 400px; background:var(--bg-surface);">
+      </div>
+  </div>
+
+  <template id="tpl-security">
+    <div class="notif-card" data-id="">
+      <div class="notif-icon security"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <div class="notif-content-wrap">
+        <div class="notif-header"><h4 class="notif-title">Security Alert</h4><span class="notif-time">Just now</span></div>
+        <p class="notif-body">Your account was accessed from a new device.</p>
+        <div class="notif-actions" style="justify-content: flex-start;">
+          <button class="btn btn-secondary" style="padding:6px 16px;" onclick="window.dismissAlert(this)">Dismiss</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-task">
+    <div class="notif-card" data-id="" data-task-id="" data-sender-id="">
+      <div class="notif-icon task"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+      <div class="notif-content-wrap">
+        <div class="notif-header"><h4 class="notif-title">Task Update</h4><span class="notif-time">Just now</span></div>
+        <p class="notif-body task-title">...</p>
+        <div class="notif-actions" style="justify-content: flex-start;">
+          <button class="btn btn-primary" style="padding:6px 16px;" onclick="window.acceptTaskNotif(this)">Accept</button>
+          <button class="btn btn-danger" style="padding:6px 16px;" onclick="window.showDenyInput(this)">Deny</button>
+        </div>
+        <div class="deny-container hidden">
+          <input type="text" class="form-input deny-input" placeholder="Reason (max 10 words)" maxlength="60" style="padding:6px 12px;">
+          <button class="btn btn-primary" onclick="window.submitDeny(this)">Send</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <div class="app-body">
+    <aside class="sidebar" id="sidebar">
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Overview</div>
+        <div class="sidebar-item active" id="nav-home" onclick="window.showView('home')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/></svg> Dashboard</div>
+        <div class="sidebar-item" id="nav-tasks" onclick="window.showView('tasks')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> My Tasks <span class="sidebar-badge hidden" id="task-badge-side">0</span></div>
+        <div class="sidebar-section-label hidden" id="team-label">Management</div>
+        <div class="sidebar-item hidden" id="nav-staff" onclick="window.showView('staff')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> My Team</div>
+      </nav>
+      <div class="sidebar-footer" id="sidebar-footer" style="padding:24px 16px 16px; border-top:1px solid var(--bd-subtle);"></div>
+    </aside>
+    
+    <main class="main-content">
+      <div id="view-home" class="fade-in-section">
+        <div class="page-hdr">
+          <div>
+            <h1 class="page-ttl" id="home-greeting">Welcome</h1>
+            <p class="page-sub" id="home-sub"></p>
+          </div>
+          <button class="btn btn-primary" id="assign-top-btn" onclick="window.openAssignModal()" style="display:none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Assign Task
+          </button>
+        </div>
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="charts-row hidden" id="charts-row">
+          <div class="chart-card">
+            <div class="chart-hdr"><div><div class="content-ttl">Activity Overview</div><div class="page-sub" style="margin-left:0!important;">Tasks completed over the last 7 days</div></div></div>
+            <div style="height:240px;position:relative;padding:0 16px;"><canvas id="main-area-chart"></canvas></div>
+            <canvas id="bar-chart" class="hidden"></canvas><canvas id="donut-chart" class="hidden"></canvas>
+          </div>
+        </div>
+        <div class="content-row mt-4">
+          <div class="content-card apps-wrap apps-wrap-order">
+            <div class="content-hdr"><div class="content-ttl">My Apps</div><button class="btn btn-ghost" style="padding:6px 14px; font-size:0.8rem;" onclick="window.openAppLib()">Library</button></div>
+            <div class="apps-grid" id="apps-grid"></div>
+          </div>
+          <div class="content-card recent-wrap-order">
+            <div class="content-hdr"><div class="content-ttl" id="recent-ttl">Recent Tasks</div><button class="btn btn-ghost" style="padding:6px 14px; font-size:0.8rem;" onclick="window.showView('tasks')">View All</button></div>
+            <div id="recent-tasks" class="task-list-wrapper"></div>
+          </div>
+        </div>
+      </div>
+      <div id="view-tasks" class="hidden fade-in-section">
+        <div class="tasks-page-hdr">
+          <h1 class="page-ttl" style="margin:0;">My Tasks</h1>
+          <button class="btn btn-primary" id="assign-tasks-btn-full" onclick="window.openAssignModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Assign Task
+          </button>
+        </div>
+        <div class="ftabs" id="task-tab-row" style="margin-bottom:20px; display:flex; gap:8px;"></div>
+        <div id="tasks-list"></div>
+      </div>
+      <div id="view-staff" class="hidden fade-in-section">
+        <div class="page-hdr" style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd-subtle);padding-bottom:16px;margin-bottom:24px;">
+          <div style="flex:1;min-width:0;">
+            <h1 class="page-ttl" style="margin:0;">My Team</h1>
+            <p class="page-sub" id="staff-count-sub" style="margin:2px 0 0;"></p>
+          </div>
+          <div class="staff-header-actions">
+            <button class="btn btn-primary" id="add-staff-btn" onclick="window.openCreateStaffPage()" style="display:none;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Staff
+            </button>
+          </div>
+        </div>
+        <div id="staff-cards-list" class="team-grid"></div>
+      </div>
+    </main>
+  </div>
+  
+  <nav class="bottom-nav" id="bottom-nav">
+    <div class="bn-items">
+      <button class="bn-item active" id="bn-home" onclick="window.showView('home')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><polyline points="9 21 9 12 15 12 15 21"/></svg><span>Home</span>
+      </button>
+      <button class="bn-item" id="bn-tasks" onclick="window.showView('tasks')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="bn-dot hidden" id="bn-task-dot"></span><span>Tasks</span>
+      </button>
+      <button class="bn-item hidden" id="bn-staff-btn" onclick="window.showView('staff')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Team</span>
+      </button>
+      <button class="bn-item" id="bn-profile" onclick="window.openProfile()">
+        <div class="av" id="bn-avatar" style="width:26px;height:26px;font-size:10px;"></div><span>Me</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="profile-side-panel" id="profile-side-panel">
+    <div class="sp-hdr"><div class="sp-ttl">My Profile</div><button class="modal-close" onclick="window.closeAllPanels()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="sp-body" id="profile-body-desktop"></div>
+  </div>
+  
+  <div class="fullpage" id="profile-page-mobile">
+    <div class="fp-hdr"><button class="fp-back" onclick="window.closeAllPanels()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button><div class="fp-ttl">My Profile</div></div>
+    <div class="fp-body" id="profile-body-mobile"></div>
+  </div>
+  
+  <div class="modal-overlay hidden" id="staff-detail-modal">
+    <div class="modal" style="max-width:400px; padding:0;">
+      <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); height: 100px; position: relative;">
+         <button class="modal-close" style="position:absolute; top:16px; right:16px; color:white; background:rgba(0,0,0,0.2);" onclick="window.closeModal('staff-detail-modal')">
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+         </button>
+      </div>
+      <div style="padding: 0 24px 24px; position: relative; margin-top: -32px; text-align:center;">
+         <div id="sd-avatar" style="width:72px; height:72px; border-radius:18px; background:white; display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:800; border:4px solid white; box-shadow:var(--shadow-sm); margin:0 auto 12px;"></div>
+         <h2 id="sd-name" style="margin:0; font-size:1.4rem; color:var(--tx-main); font-weight:800; letter-spacing:-0.02em;"></h2>
+         <div id="sd-role" style="font-size:0.9rem; color:var(--ac); font-weight:700; margin-bottom:20px; background:var(--ac-light); display:inline-block; padding:4px 12px; border-radius:100px; margin-top:6px;"></div>
+         
+         <div style="background:var(--bg-raised); border:1px solid var(--bd-subtle); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px; text-align:left;">
+           <div style="display:flex; justify-content:space-between; align-items:center;">
+             <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:700;">EMAIL</span>
+             <span id="sd-email" style="font-size:0.9rem; color:var(--tx-main); font-weight:600;"></span>
+           </div>
+           <div style="display:flex; justify-content:space-between; align-items:center;">
+             <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:700;">ZENDA ID</span>
+             <span id="sd-zenda-id" style="font-size:0.9rem; color:var(--tx-main); font-weight:700; font-family:var(--font-mono);"></span>
+           </div>
+           <div id="sd-password-row" style="display:flex; justify-content:space-between; align-items:center;">
+             <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:700;">PASSWORD</span>
+             <span id="sd-password" style="font-size:0.9rem; color:var(--tx-main); font-weight:600;"></span>
+           </div>
+           <div style="display:flex; justify-content:space-between; align-items:center;">
+             <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:700;">JOINED</span>
+             <span id="sd-joined" style="font-size:0.9rem; color:var(--tx-main); font-weight:600;"></span>
+           </div>
+         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="email-otp-modal">
+    <div class="modal" style="max-width: 400px; width: 90%;">
+      <div class="modal-hdr"><div class="modal-ttl" style="color:var(--ac);">Security Check</div><button class="modal-close" onclick="window.closeModal('email-otp-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div style="padding: 24px;">
+        <h4 id="email-otp-step" style="margin:0 0 8px; font-size:1.1rem; color:var(--tx-main); font-weight:800;">Step 1: Verify Current Email</h4>
+        <p style="font-size:0.9rem; color:var(--tx-muted); margin-bottom: 24px; font-weight:500;">Enter the 6-digit code sent to <br><strong style="color:var(--tx-main);" id="email-otp-target"></strong></p>
+        <input class="form-input" id="email-otp-input" type="text" placeholder="------" style="text-align:center; font-size:1.6rem; letter-spacing:0.5em; font-weight:800; margin-bottom:24px; padding:16px;" maxlength="6">
+        <div style="display:flex;gap:12px;">
+          <button class="btn btn-ghost w-full" onclick="window.closeModal('email-otp-modal')">Cancel</button>
+          <button class="btn btn-primary w-full" id="btn-verify-email-otp" onclick="window.verifyEmailChangeOTP()">Verify Code</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fullpage" id="create-staff-page">
+    <div class="fp-hdr"><button class="fp-back" onclick="window.closeAllPanels()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button><div class="fp-ttl">Add Staff Member</div></div>
+    <div class="fp-body" style="padding:24px; max-width:600px; margin:0 auto;">
+      <div id="staff-form-container">
+        <div style="background:var(--bg-surface); border-radius:var(--rad-outer); padding:20px; border:1px solid var(--bd-subtle); box-shadow:var(--shadow-sm); margin-bottom:16px;">
+          <div style="font-weight:800;color:var(--tx-main);margin-bottom:16px;font-size:1.1rem;letter-spacing:-0.01em;">Personal Details</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div><label class="form-label">Full Name *</label><input class="form-input" id="cs-name" type="text" placeholder="Jane Doe"></div>
+              <div><label class="form-label">Email *</label><input class="form-input" id="cs-email" type="email" placeholder="jane@company.com"></div>
+            </div>
+            <div><label class="form-label">Designation *</label><input class="form-input" id="cs-designation" type="text" placeholder="e.g. Senior Developer"></div>
+          </div>
+        </div>
+        <div style="background:var(--bg-surface); border-radius:var(--rad-outer); padding:20px; border:1px solid var(--bd-subtle); box-shadow:var(--shadow-sm); margin-bottom:20px;">
+          <div style="font-weight:800;color:var(--tx-main);margin-bottom:16px;font-size:1.1rem;letter-spacing:-0.01em;">Security</div>
+          <div><label class="form-label">Temporary Password *</label><input class="form-input" id="cs-password" type="text" placeholder="Set their login password"></div>
+        </div>
+        <button class="btn btn-primary w-full" id="create-staff-btn" style="padding:14px;font-size:1.05rem;" onclick="window.initiateCreateStaff()">Verify Email &amp; Create Staff →</button>
+      </div>
+
+      <div id="staff-otp-container" class="hidden" style="background:var(--bg-surface); border-radius:var(--rad-outer); padding:40px; border:1px solid var(--bd-subtle); box-shadow:var(--shadow-md); text-align:center;">
+        <div style="width:64px;height:64px;background:var(--ac-light);color:var(--ac);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+        <h3 style="font-size:1.5rem;font-weight:800;color:var(--tx-main);margin-bottom:8px;">Verify Staff Email</h3>
+        <p style="font-size:1rem;color:var(--tx-muted);margin-bottom:32px;font-weight:500;">Enter the 6-digit code sent to <b id="otp-sent-email" style="color:var(--tx-main);"></b>.</p>
+        <input class="form-input" id="cs-otp-input" type="text" placeholder="------" style="text-align:center;font-size:1.8rem;letter-spacing:0.5em;font-weight:800;margin:0 auto 24px;max-width:300px;padding:16px;" maxlength="6">
+        <div style="max-width:300px; margin:0 auto; display:flex; flex-direction:column; gap:12px;">
+          <button class="btn btn-primary w-full" id="verify-staff-btn" style="padding:14px;font-size:1.05rem;" onclick="window.finalizeCreateStaff()">Verify &amp; Create</button>
+          <button class="btn btn-ghost w-full" onclick="window.cancelCreateStaff()">Back to Edit</button>
+        </div>
+      </div>
+
+      <div id="created-card-section" class="hidden" style="padding:40px;background:var(--success-light);border-radius:var(--rad-outer);border:2px solid var(--success);box-shadow:var(--shadow-md);text-align:center;">
+        <div style="width:72px;height:72px;background:white;color:var(--success);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:var(--shadow-sm);"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h3 style="font-size:1.6rem;font-weight:800;color:var(--tx-main);margin:0 0 8px;letter-spacing:-0.02em;">Team Member Created!</h3>
+        <p style="font-size:1rem;color:var(--tx-muted);font-weight:600;margin:0 0 24px;" id="email-sent-note"></p>
+        <div style="display:flex;gap:12px;max-width:400px;margin:0 auto;">
+          <button class="btn btn-ghost w-full" style="background:white;border:1px solid var(--bd-subtle);" onclick="window.closeAllPanels()">Done</button>
+          <button class="btn btn-primary w-full" id="download-card-btn" onclick="window.downloadStaffCard()">Download Card</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="assign-modal">
+    <div class="modal">
+      <div class="modal-hdr"><div class="modal-ttl">Assign Work</div><button class="modal-close" onclick="window.closeModal('assign-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div style="padding: 24px;">
+        <div style="margin-bottom: 16px;"><label class="form-label">Assign To</label><select class="zenda-select form-input" id="assign-to"></select></div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom: 16px;">
+          <div><label class="form-label">Task Title *</label><input class="form-input" id="task-title" type="text" placeholder="e.g. Review Q3 report" maxlength="80"></div>
+          <div><label class="form-label">Priority</label><select class="zenda-select form-input" id="task-priority"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option></select></div>
+        </div>
+        <div style="margin-bottom: 16px;"><label class="form-label">Description <span style="color:var(--tx-muted);font-weight:500">(optional)</span></label><textarea class="form-input" id="task-desc" placeholder="Add details…" style="min-height: 80px;"></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom: 24px;">
+          <div><label class="form-label">Due Date</label><input class="form-input" id="task-date" type="date"></div>
+          <div><label class="form-label">Due Time</label><input class="form-input" id="task-time" type="time"></div>
+        </div>
+        <div style="display:flex;gap:12px;"><button class="btn btn-ghost w-full" onclick="window.closeModal('assign-modal')">Cancel</button><button class="btn btn-primary w-full" id="assign-btn" onclick="window.handleAssign()">Assign Task</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="decline-modal">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-hdr"><div class="modal-ttl">Decline Task</div><button class="modal-close" onclick="window.closeModal('decline-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div style="padding:24px;">
+        <div style="background:var(--danger-light);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:16px;margin-bottom:20px;font-size:0.9rem;color:var(--danger);font-weight:600;">Task: <strong id="decline-task-title" style="color:var(--tx-main);"></strong></div>
+        <div style="margin-bottom:24px"><label class="form-label">Reason <span style="color:var(--tx-muted);font-weight:500">(optional)</span></label><textarea class="form-input" id="decline-reason" placeholder="Let them know why you're declining…" style="min-height:100px;"></textarea></div>
+        <div style="display:flex;gap:12px"><button class="btn btn-ghost w-full" onclick="window.closeModal('decline-modal')">Cancel</button><button class="btn btn-danger w-full" id="confirm-decline-btn" onclick="window.confirmDecline()">Decline Task</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="delete-modal">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-hdr"><div class="modal-ttl" style="color:var(--danger);display:flex;align-items:center;gap:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Remove Staff</div><button class="modal-close" onclick="window.closeModal('delete-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div style="padding:24px;">
+        <p style="font-size:0.95rem;color:var(--tx-muted);margin-bottom:20px;font-weight:500;line-height:1.5;">Permanently delete <strong id="del-name-display" style="color:var(--tx-main);"></strong> and revoke access.<br>Type <strong id="del-confirm-hint" style="color:var(--danger);font-family:var(--font-mono);"></strong> to confirm.</p>
+        <input class="form-input" id="del-confirm-input" type="text" placeholder="Type name to confirm…" oninput="window.checkDelConfirm()" style="margin-bottom:24px;">
+        <div style="display:flex;gap:12px;"><button class="btn btn-ghost w-full" onclick="window.closeModal('delete-modal')">Cancel</button><button class="btn btn-danger w-full" id="del-confirm-btn" disabled onclick="window.confirmDelete()">Delete Forever</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="delete-task-modal">
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-hdr"><div class="modal-ttl" style="color:var(--danger);display:flex;align-items:center;gap:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete Task</div><button class="modal-close" onclick="window.closeModal('delete-task-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div style="padding:24px;">
+        <p style="font-size:0.95rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;line-height:1.5;">Delete <strong id="del-task-name-display" style="color:var(--tx-main);"></strong>?<br>This action cannot be undone.</p>
+        <div style="display:flex;gap:12px;"><button class="btn btn-ghost w-full" onclick="window.closeModal('delete-task-modal')">Cancel</button><button class="btn btn-danger w-full" id="del-task-confirm-btn" onclick="window.executeTaskDelete()">Delete Task</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fullpage" id="app-store-page"><div class="fp-hdr"><button class="fp-back" onclick="window.closeAllPanels()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button><div class="fp-ttl">App Library</div></div><div class="fp-body" id="app-store-body"></div></div>
+  <div id="toast-container"></div>
 
   <script type="module">
     import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
     import { requireAuth, logout, getCurrentUser } from './auth.js';
-    import { listenNotifications, markAllRead as markAllReadFn } from './notifications.js';
-    import { listenMyTasks, listenAssignedByMe, assignTask, markTaskDone, markTaskDeclined } from './tasks.js';
+    import { listenMyTasks, listenAssignedByMe, assignTask } from './tasks.js';
     import { listenCompanyStaff, getAssignableStaff, createStaff, deleteStaffMember } from './staff.js';
     import { listenInstalledApps } from './apps.js';
-    import { showToast, getInitials, avatarColor, formatRole, copyToClipboard, saveSession } from './utils.js';
+    import { showToast, copyToClipboard, saveSession } from './utils.js';
     import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { sendOTP, verifyUserOTP } from './otp.js';
+
+    // ── LOCAL HELPERS TO PREVENT CRASHES ──
+    function getInitials(name) { if (!name) return 'Z'; const p = name.split(' '); return (p[0][0] + (p.length > 1 ? p[1][0] : '')).toUpperCase(); }
+    function avatarColor(name) { const c = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']; let h = 0; for(let i=0; i<(name||'').length; i++) h = name.charCodeAt(i) + ((h<<5)-h); return c[Math.abs(h) % c.length]; }
+    function formatRole(role) { if (!role) return 'User'; return role.charAt(0).toUpperCase() + role.slice(1); }
 
     // Global Functions Bound Immediately
     window.copyToClipboard = copyToClipboard;
@@ -341,7 +657,6 @@
         if (!panel) return;
         
         const isCurrentlyOpen = panel.classList.contains('open');
-        
         window.closeAllPanels(true); // Close everything ELSE
         
         if (!isCurrentlyOpen) {
@@ -371,12 +686,8 @@
     window.openProfile = function() { 
         if (!_profileBuilt) { window.buildProfile(); _profileBuilt = true; } 
         window.closeAllPanels();
-        
-        if (window.innerWidth >= 769) { 
-            document.getElementById('profile-side-panel')?.classList.add('open'); 
-        } else { 
-            document.getElementById('profile-page-mobile')?.classList.add('open'); 
-        } 
+        if (window.innerWidth >= 769) { document.getElementById('profile-side-panel')?.classList.add('open'); } 
+        else { document.getElementById('profile-page-mobile')?.classList.add('open'); } 
         document.getElementById('panel-overlay')?.classList.add('visible'); 
     };
 
@@ -458,7 +769,23 @@
     window.acceptTaskNotif = async function(btn) { const card = btn.closest('.notif-card'); const id = card.dataset.id; btn.textContent = "Accepted!"; card.style.opacity = '0.5'; setTimeout(() => card.remove(), 300); try { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' }); } catch(e) { console.error("Error marking read:", e); } };
     window.showDenyInput = function(btn) { const card = btn.closest('.notif-card'); card.querySelector('.notif-actions').classList.add('hidden'); card.querySelector('.deny-container').classList.remove('hidden'); };
     window.submitDeny = async function(btn) { const card = btn.closest('.notif-card'); const input = card.querySelector('.deny-input').value.trim(); const wordCount = input.split(/\s+/).filter(word => word.length > 0).length; if (wordCount === 0 || wordCount > 10) { window.showToast("Please provide a reason between 1 and 10 words.", "error"); return; } const taskId = card.dataset.taskId; const managerId = card.dataset.senderId; const notifId = card.dataset.id; btn.textContent = "Sending..."; try { if (taskId) { await updateDoc(doc(db, 'tasks', taskId), { status: 'declined', reason: input }); } if (managerId) { await addDoc(collection(db, 'users', managerId, 'notifications'), { type: 'task_update', message: `Task denied. Reason: ${input}`, taskId: taskId, createdAt: Date.now(), read: false, status: 'unread' }); } if (notifId) { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' }); } btn.textContent = "Done!"; card.style.opacity = '0.5'; setTimeout(() => card.remove(), 300); window.showToast("Task denied.", "success"); } catch(e) { console.error(e); window.showToast("Error updating task.", "error"); btn.textContent = "Send"; } };
-    window.markAllRead = async function() { try { await markAllReadFn(window.CU?.uid); document.getElementById('notif-badge')?.classList.add('hidden'); document.getElementById('notif-count-badge')?.classList.add('hidden'); window.showToast('All marked read', 'success'); } catch (e) { console.error(e); } };
+    
+    // Hardcoded to prevent import crashes
+    window.markAllRead = async function() { 
+      try { 
+        const q = query(collection(db, 'users', window.CU.uid, 'notifications'), where('read', '==', false));
+        const snap = await getDocs(q);
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.update(d.ref, { read: true, status: 'read' }));
+        await batch.commit();
+        document.getElementById('notif-badge')?.classList.add('hidden'); 
+        document.getElementById('notif-count-badge')?.classList.add('hidden'); 
+        document.querySelectorAll('.notif-item').forEach(el => el.remove());
+        const nb = document.getElementById('notif-body');
+        if(nb) nb.innerHTML = `<div class="empty"><div class="empty-ico" style="font-size:24px;margin-bottom:8px;">✅</div><div class="empty-ttl" style="font-size:14px;color:var(--tx-muted);font-weight:600;">You're all caught up!</div></div>`;
+        window.showToast('All marked read', 'success'); 
+      } catch (e) { console.error(e); } 
+    };
 
     // ── PROFILE MANAGEMENT ──
     window.uploadAvatar = function(e, suffix) {
@@ -645,7 +972,7 @@
             </div>
             <div style="padding:24px; display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:1rem; font-weight:800; color:var(--tx-main); letter-spacing:-0.01em;">Account Details</span>
-                <button class="btn btn-ghost" style="padding:6px 12px; border-radius:8px; font-size:0.8rem;" onclick="window.enableProfileEdit('${suffix}')">
+                <button class="btn-ghost" style="padding:6px 12px; border-radius:8px; font-size:0.8rem; display:flex; align-items:center; gap:4px;" onclick="window.enableProfileEdit('${suffix}')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Edit
                 </button>
             </div>
@@ -662,12 +989,12 @@
                     <label class="form-label">Zenda ID <span style="color:var(--tx-muted);font-weight:500;">(Read-only)</span></label>
                     <div style="background:var(--bg-raised); padding:10px 14px; border-radius:10px; border:1px solid var(--bd-subtle); font-family:var(--font-mono); font-size:0.95rem; font-weight:700; color:var(--tx-main); display:flex; justify-content:space-between; align-items:center;">
                         <span id="prof-uid-${suffix}">${uniqueId}</span>
-                        <button class="btn btn-ghost" style="padding:4px 8px; background:white; border-radius:6px; border:1px solid var(--bd-subtle); font-size:0.75rem;" onclick="window.copyToClipboard('${uniqueId}'); window.showToast('ID Copied!', 'success');">Copy</button>
+                        <button class="btn-ghost" style="padding:4px 8px; background:white; border-radius:6px; font-size:0.75rem;" onclick="window.copyToClipboard('${uniqueId}'); window.showToast('ID Copied!', 'success');">Copy</button>
                     </div>
                 </div>
                 
-                <button class="btn btn-primary w-full" id="btn-save-prof-${suffix}" style="display:none; margin-top:8px; padding:12px;" onclick="window.saveProfileData('${suffix}')">Save Changes</button>
-                <button class="btn btn-danger w-full" style="margin-top:16px; padding:12px; background:var(--danger-light); color:var(--danger); border:1px solid rgba(239,68,68,0.2);" onclick="window.handleLogout()">Sign Out</button>
+                <button class="btn-primary w-full" id="btn-save-prof-${suffix}" style="display:none; margin-top:8px; padding:12px; border-radius:12px; font-size:0.95rem; justify-content:center;" onclick="window.saveProfileData('${suffix}')">Save Changes</button>
+                <button class="btn-danger w-full" style="margin-top:16px; padding:12px; border-radius:12px; font-size:0.95rem; display:flex; justify-content:center;" onclick="window.handleLogout()">Sign Out</button>
             </div>
           `;
       }
@@ -678,34 +1005,33 @@
       if (m) m.innerHTML = getProfileHTML('mob');
     };
 
-    // ── TASK MANAGEMENT ──
     window.openDeleteTaskModal = function(id, title) { deleteTaskTargetId = id; document.getElementById('del-task-name-display').textContent = title; window.openModal('delete-task-modal'); };
     window.executeTaskDelete = async function() { if (!deleteTaskTargetId) return; const btn = document.getElementById('del-task-confirm-btn'); loadBtn(btn, true); const tEl = document.getElementById('task-' + deleteTaskTargetId); if (tEl) { tEl.style.opacity = '.4'; tEl.style.pointerEvents = 'none'; } try { await deleteDoc(doc(db, 'tasks', deleteTaskTargetId)); if (tEl) tEl.remove(); window.closeModal('delete-task-modal'); window.showToast('Task deleted.', 'success'); } catch (e) { if (tEl) { tEl.style.opacity = '1'; tEl.style.pointerEvents = ''; } window.showToast('Could not delete: ' + e.message, 'error'); } finally { loadBtn(btn, false, 'Delete Task'); deleteTaskTargetId = null; } };
-    window.doAcceptTask = async function(id) { const el = document.getElementById('task-' + id); if (el) { const ti = el.querySelector('.card-title'); if (ti) ti.classList.add('done'); el.classList.add('completed-state'); el.querySelectorAll('button').forEach(b => b.style.display = 'none'); } const obj = (window.myTasks || []).find(t => t.id === id); if (obj) obj.status = 'done'; try { await markTaskDone(id); window.showToast('Task completed! 🎉', 'success'); } catch (e) { if (obj) obj.status = 'pending'; if (el) { el.classList.remove('completed-state'); const ti = el.querySelector('.card-title'); if (ti) ti.classList.remove('done'); el.querySelectorAll('button').forEach(b => b.style.display = 'block'); } window.showToast(e.message, 'error'); } };
+    window.doAcceptTask = async function(id) { const el = document.getElementById('task-' + id); if (el) { const ti = el.querySelector('.card-title'); if (ti) ti.classList.add('done'); el.classList.add('completed-state'); el.querySelectorAll('button').forEach(b => b.style.display = 'none'); } const obj = (window.myTasks || []).find(t => t.id === id); if (obj) obj.status = 'done'; try { await updateDoc(doc(db, 'tasks', id), { status: 'done', completedAt: Date.now() }); window.showToast('Task completed! 🎉', 'success'); } catch (e) { if (obj) obj.status = 'pending'; if (el) { el.classList.remove('completed-state'); const ti = el.querySelector('.card-title'); if (ti) ti.classList.remove('done'); el.querySelectorAll('button').forEach(b => b.style.display = 'block'); } window.showToast(e.message, 'error'); } };
     window.openDeclineModal = function(id, title) { pendingDeclineId = id; document.getElementById('decline-task-title').textContent = title; document.getElementById('decline-reason').value = ''; window.openModal('decline-modal'); };
-    window.confirmDecline = async function() { const reason = document.getElementById('decline-reason').value.trim(); const btn = document.getElementById('confirm-decline-btn'); loadBtn(btn, true); try { await markTaskDeclined(pendingDeclineId, reason); window.closeModal('decline-modal'); window.showToast('Task declined.', ''); } catch (e) { window.showToast(e.message, 'error'); } loadBtn(btn, false, 'Decline Task'); };
+    window.confirmDecline = async function() { const reason = document.getElementById('decline-reason').value.trim(); const btn = document.getElementById('confirm-decline-btn'); loadBtn(btn, true); try { await updateDoc(doc(db, 'tasks', pendingDeclineId), { status: 'declined', reason: reason }); window.closeModal('decline-modal'); window.showToast('Task declined.', 'success'); } catch (e) { window.showToast(e.message, 'error'); } loadBtn(btn, false, 'Decline Task'); };
 
     function buildAssignSelect(staff) { const sel = document.getElementById('assign-to'); if (!sel) return; sel.innerHTML = '<option value="">Select team member…</option>' + staff.filter(s => s.uid !== window.CU?.uid).map(s => `<option value="${s.uid}">${esc(s.name)}</option>`).join(''); }
     window.quickAssign = function(uid) { window.openAssignModal(); setTimeout(() => { const s = document.getElementById('assign-to'); if (s) s.value = uid; }, 50); };
     window.handleAssign = async function() { const to = document.getElementById('assign-to').value, title = document.getElementById('task-title').value.trim(), desc = document.getElementById('task-desc').value.trim(), date = document.getElementById('task-date').value, time = document.getElementById('task-time').value, priority = document.getElementById('task-priority')?.value || 'Medium'; if (!to) { window.showToast('Select a team member.', 'error'); return; } if (!title) { window.showToast('Enter a task title.', 'error'); return; } const btn = document.getElementById('assign-btn'); loadBtn(btn, true); try { const a = allStaff.find(s => s.uid === to); await assignTask({ title, description: desc, assignedTo: to, assignedToName: a?.name || 'Team Member', assignedBy: window.CU?.uid, assignedByName: window.CU?.name, companyId: window.CU?.companyId, dueDate: date || null, dueTime: time || null, priority }); window.closeModal('assign-modal'); window.showToast(`Assigned to ${a?.name}!`, 'success'); } catch (e) { window.showToast(e.message, 'error'); } loadBtn(btn, false, 'Assign Task'); };
 
-    // ── STAFF MANAGEMENT ──
     window.openDeleteModal = function(uid, name, email, pwd) { deleteTargetUid = uid; deleteConfirmStr = name; deleteTargetEmail = email; deleteTargetPwd = pwd; document.getElementById('del-name-display').textContent = name; document.getElementById('del-confirm-hint').textContent = name; document.getElementById('del-confirm-input').value = ''; const b = document.getElementById('del-confirm-btn'); b.disabled = true; window.openModal('delete-modal'); };
     window.checkDelConfirm = function() { const v = document.getElementById('del-confirm-input').value, b = document.getElementById('del-confirm-btn'), ok = v === deleteConfirmStr; b.disabled = !ok; };
     window.confirmDelete = async function() { if (!deleteTargetUid) return; const btn = document.getElementById('del-confirm-btn'); loadBtn(btn, true); try { await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd); window.closeModal('delete-modal'); window.showToast('Staff member removed.', 'success'); deleteTargetUid = null; } catch (e) { window.showToast('Error: ' + e.message, 'error'); loadBtn(btn, false, 'Delete'); window.checkDelConfirm(); } };
 
     // ── CORE INITIALIZATION ──
     async function init() {
+      const loader = document.getElementById('loading-overlay');
+      if (loader) { loader.style.opacity = '0'; loader.style.pointerEvents = 'none'; setTimeout(() => loader.remove(), 400); }
+      
       try {
         await requireAuth('login.html');
         const cu = await getCurrentUser();
         if (!cu) { location.href = 'login.html'; return; }
         window.CU = cu; saveSession(cu); window.CU._notifyList = cu.notifyApps || [];
         setupUI(); window.buildProfile(); subscribeAll();
-      } catch (e) { console.error(e); } finally { hideLoader(); }
+      } catch (e) { console.error(e); } 
     }
-
-    function hideLoader() { const el = document.getElementById('loading-overlay'); if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); } }
 
     function setupUI() {
       const { name, role } = window.CU;
@@ -755,7 +1081,8 @@
       
       const h = new Date().getHours();
       const fn = (name || 'User').split(' ')[0];
-      document.getElementById('home-greeting').innerHTML = `Good afternoon, <span class="greeting-name">${esc(fn)}</span>`;
+      const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+      document.getElementById('home-greeting').innerHTML = `${greet}, <span class="greeting-name">${esc(fn)}</span>`;
       document.getElementById('home-sub').textContent = { owner: 'Overview of your company and team', manager: 'Your team tasks and activity', staff: 'Your assignments and progress' }[role] || '';
       
       const canAssign = role === 'owner' || role === 'manager';
@@ -768,7 +1095,7 @@
       }
       
       const tr = document.getElementById('task-tab-row');
-      if (tr) { if (isOwner) { tr.innerHTML = `<button class="btn btn-ghost ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn btn-ghost ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="btn btn-ghost ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-by-me'; } else { tr.innerHTML = `<button class="btn btn-ghost ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button><button class="btn btn-ghost ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn btn-ghost ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="btn btn-ghost ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-to-me'; } }
+      if (tr) { if (isOwner) { tr.innerHTML = `<button class="btn-ghost ftab on" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn-ghost ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="btn-ghost ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-by-me'; } else { tr.innerHTML = `<button class="btn-ghost ftab on" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button><button class="btn-ghost ftab" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn-ghost ftab" onclick="window.setTaskTab('done',this)">Done</button><button class="btn-ghost ftab" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-to-me'; } }
       
       if (canSeeStaff) { document.getElementById('nav-staff')?.classList.remove('hidden'); document.getElementById('team-label')?.classList.remove('hidden'); document.getElementById('bn-staff-btn')?.classList.remove('hidden'); }
       if (isOwner) { const b = document.getElementById('add-staff-btn'); if (b) b.style.display = 'flex'; }
@@ -782,15 +1109,17 @@
       const cs = role === 'owner' || role === 'manager';
       const ca = role === 'owner' || role === 'manager';
       
-      unsubs.push(listenNotifications(uid, (it, u) => { window.renderNotifs(it); }));
-      
-      unsubs.push(listenMyTasks(uid, tasks => { window.myTasks = tasks; const p = tasks.filter(t => t.status === 'pending').length; setBadge('task-badge-side', p); setDot('bn-task-dot', p > 0); window.renderRecentTasks(); window.renderTasksList(); if (role === 'staff' || role === 'manager') { updateCharts(tasks); renderNonOwnerStats(tasks); } if (role === 'owner') renderOwnerStats(); }));
-      
-      if (ca) unsubs.push(listenAssignedByMe(uid, tasks => { window.assignedByMeTasks = tasks; if (role === 'owner') renderOwnerStats(); window.renderRecentTasks(); window.renderTasksList(); }));
-      
-      if (cs && companyId) unsubs.push(listenCompanyStaff(companyId, staff => { allStaff = staff; if (role === 'owner') renderOwnerStats(); window.renderStaffCards(staff); buildAssignSelect(staff); const n = staff.filter(s => s.role !== 'owner'); const sc = document.getElementById('staff-count-sub'); if (sc) sc.textContent = `${n.length} ${n.length!==1?'members':'member'}`; })); else if (companyId) getAssignableStaff(companyId, uid).then(s => { allStaff = s; }).catch(console.error);
-      
-      unsubs.push(listenInstalledApps(uid, ids => buildAppsGrid(ids)));
+      // Use local implementations so missing exports don't crash
+      import('./notifications.js').then(module => { if (module.listenNotifications) unsubs.push(module.listenNotifications(uid, (it) => { window.renderNotifs(it); })); }).catch(e => console.error(e));
+      import('./tasks.js').then(module => { 
+          if (module.listenMyTasks) unsubs.push(module.listenMyTasks(uid, tasks => { window.myTasks = tasks; const p = tasks.filter(t => t.status === 'pending').length; setBadge('task-badge-side', p); setDot('bn-task-dot', p > 0); window.renderRecentTasks(); window.renderTasksList(); if (role === 'staff' || role === 'manager') { updateCharts(tasks); renderNonOwnerStats(tasks); } if (role === 'owner') renderOwnerStats(); }));
+          if (ca && module.listenAssignedByMe) unsubs.push(module.listenAssignedByMe(uid, tasks => { window.assignedByMeTasks = tasks; if (role === 'owner') renderOwnerStats(); window.renderRecentTasks(); window.renderTasksList(); }));
+      }).catch(e => console.error(e));
+      import('./staff.js').then(module => {
+          if (cs && companyId && module.listenCompanyStaff) unsubs.push(module.listenCompanyStaff(companyId, staff => { allStaff = staff; if (role === 'owner') renderOwnerStats(); window.renderStaffCards(staff); buildAssignSelect(staff); const n = staff.filter(s => s.role !== 'owner'); const sc = document.getElementById('staff-count-sub'); if (sc) sc.textContent = `${n.length} ${n.length!==1?'members':'member'}`; })); 
+          else if (companyId && module.getAssignableStaff) module.getAssignableStaff(companyId, uid).then(s => { allStaff = s; }).catch(console.error);
+      }).catch(e => console.error(e));
+      import('./apps.js').then(module => { if(module.listenInstalledApps) unsubs.push(module.listenInstalledApps(uid, ids => buildAppsGrid(ids))); }).catch(e => console.error(e));
     }
 
     function sIco(bg, c, p) { return `<div style="background:${bg};color:${c};border-radius:16px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${p}</svg></div>`; }
@@ -800,25 +1129,33 @@
       const all = [...window.myTasks, ...window.assignedByMeTasks].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
       const p = all.filter(t => t.status === 'pending').length, d = all.filter(t => t.status === 'done').length;
       const el = document.getElementById('stats-grid'); if (!el) return;
-      el.innerHTML = `<div class="stat-card anim-stagger" onclick="window.showView('staff')" style="cursor:pointer;"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val">${staff.length}</div></div>${sIco('#EEF2FF','#3A57E8','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
+      el.innerHTML = `<div class="stat-card anim-stagger" onclick="window.showView('staff')" style="cursor:pointer; background:var(--bg-surface); padding:20px; border-radius:var(--rad-outer); border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${staff.length}</div></div>${sIco('#EEF2FF','#3A57E8','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer; background:var(--bg-surface); padding:20px; border-radius:var(--rad-outer); border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer; background:var(--bg-surface); padding:20px; border-radius:var(--rad-outer); border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
     }
 
     function renderNonOwnerStats(tasks) {
       const p = tasks.filter(t => t.status === 'pending').length, d = tasks.filter(t => t.status === 'done').length;
       const isMgr = window.CU.role === 'manager';
       const el = document.getElementById('stats-grid'); if (!el) return;
-      el.innerHTML = isMgr ? `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val">${window.assignedByMeTasks.length}</div></div>${sIco('#EEF2FF','#3A57E8','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}</div></div>` : `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer;"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
+      el.innerHTML = isMgr ? `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer; background:var(--bg-surface); padding:20px; border-radius:var(--rad-outer); border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer; background:var(--bg-surface); padding:20px; border-radius:var(--rad-outer); border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-by-me',null);window.showView('tasks')" style="cursor:pointer; background:var(--bg-surface); padding:20px; border-radius:var(--rad-outer); border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${window.assignedByMeTasks.length}</div></div>${sIco('#EEF2FF','#3A57E8','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}</div></div>` : `<div class="stat-card anim-stagger" onclick="window.setTaskTab('assigned-to-me',null);window.showView('tasks')" style="cursor:pointer; background:var(--bg-surface); padding:20px; border-radius:var(--rad-outer); border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${p}</div></div>${sIco('#FFFBEB','#D97706','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card anim-stagger" onclick="window.setTaskTab('done',null);window.showView('tasks')" style="cursor:pointer; background:var(--bg-surface); padding:20px; border-radius:var(--rad-outer); border:1px solid var(--bd-subtle);"><div class="sc-top" style="display:flex; width:100%; align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2rem;font-weight:800;">${d}</div></div>${sIco('#ECFDF5','#10B981','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
     }
 
     function initCharts() { const cv = document.getElementById('main-area-chart'); if (!cv) return; const c = cv.getContext('2d'); const gr = c.createLinearGradient(0, 0, 0, 240); gr.addColorStop(0, 'rgba(79,70,229,.25)'); gr.addColorStop(1, 'rgba(79,70,229,0)'); mainAreaChart = new Chart(c, { type: 'line', data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [{ label: 'Done', data: [0, 0, 0, 0, 0, 0, 0], borderColor: '#3A57E8', backgroundColor: gr, borderWidth: 3, fill: true, tension: .4, pointBackgroundColor: '#fff', pointBorderColor: '#3A57E8', pointBorderWidth: 2, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#F1F5F9' }, border: { display: false } } } } }); }
     function updateCharts(tasks) { if (!mainAreaChart) return; const days = last7(); mainAreaChart.data.labels = days.map(d => d.label); mainAreaChart.data.datasets[0].data = days.map(day => tasks.filter(t => t.status === 'done' && t.completedAt && new Date(t.completedAt).toDateString() === day.date).length); mainAreaChart.update(); } 
     
+    // Hardcoded App library to prevent crashing
     const APPS = { calculator: { label: 'Calculator', icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>', bg: 'linear-gradient(135deg,#3A57E8,#2A41C7)' }, calendar: { label: 'Calendar', icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', bg: 'linear-gradient(135deg,#10B981,#059669)' }, inventory: { label: 'Inventory', icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>', bg: 'linear-gradient(135deg,#F59E0B,#D97706)' }, expenses: { label: 'Expenses', icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', bg: 'linear-gradient(135deg,#EF4444,#DC2626)' } };
-    function buildAppsGrid(ids) { const el = document.getElementById('apps-grid'); if (!el) return; const all = ['calculator', ...(ids || []).filter(i => i !== 'calculator')]; const vis = all.slice(0, 15), hm = all.length > 15; el.innerHTML = vis.map(id => { const a = APPS[id]; if (!a) return ''; return `<div class="app-squircle-wrap" onclick="window.openApp('${id}')"><div class="app-squircle" style="background:${a.bg}; display:flex; align-items:center; justify-content:center;">${a.icon}</div><span class="app-name">${a.label}</span></div>`; }).join('') + `<div class="app-squircle-wrap" onclick="window.openAppLib()"><div class="app-viewall-tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3A57E8" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div><span class="app-name" style="color:var(--ac);font-weight:700;">${hm?'+'+(all.length-15)+' More':'View All'}</span></div>`; } window.openApp = function(id) { const m = { calculator: 'calculator.html', calendar: 'calendar.html', inventory: 'inventory.html', expenses: 'expenses.html' }; const f = m[id]; if (f) location.href = f + (window.CU?.uid ? '?uid=' + window.CU.uid : ''); else window.showToast('App not found!', 'error'); };
+    function buildAppsGrid(ids) { const el = document.getElementById('apps-grid'); if (!el) return; const all = ['calculator', ...(ids || []).filter(i => i !== 'calculator')]; const vis = all.slice(0, 15), hm = all.length > 15; el.innerHTML = vis.map(id => { const a = APPS[id]; if (!a) return ''; return `<div class="app-squircle-wrap" onclick="window.openApp('${id}')"><div class="app-squircle" style="background:${a.bg}; display:flex; align-items:center; justify-content:center;">${a.icon}</div><span class="app-name">${a.label}</span></div>`; }).join('') + `<div class="app-squircle-wrap" onclick="window.openAppLib()"><div class="app-viewall-tile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3A57E8" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div><span class="app-name" style="color:var(--ac);font-weight:700;">${hm?'+'+(all.length-15)+' More':'View All'}</span></div>`; } 
+    window.openApp = function(id) { const m = { calculator: 'calculator.html', calendar: 'calendar.html', inventory: 'inventory.html', expenses: 'expenses.html' }; const f = m[id]; if (f) location.href = f + (window.CU?.uid ? '?uid=' + window.CU.uid : ''); else window.showToast('App not found!', 'error'); };
 
     // Load at bottom to ensure all functions bound
     window.addEventListener('scroll', () => { const tb = document.querySelector('.topbar'); if (tb) tb.classList.toggle('scrolled', window.scrollY > 8); }, { passive: true });
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+    
+    // FINAL BACKUP: If everything fails, unblock UI
+    window.addEventListener('error', function(e) {
+      const loader = document.getElementById('loading-overlay');
+      if (loader) { loader.style.opacity = '0'; loader.style.pointerEvents = 'none'; }
+    });
   </script>
 </body>
 </html>
