@@ -113,7 +113,7 @@
     .sidebar { width: 250px; background: var(--bg-surface); border-right: 1px solid var(--bd-color); display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; z-index: 40; height: 100%; overflow-y: auto; }
     .sidebar-item { font-size: 0.9rem; color: var(--tx-muted); background: transparent; transition: all 0.2s; }
     .sidebar-item:hover { background: var(--bg-raised); color: var(--tx-main); }
-    .sidebar-item.active { background: var(--ac-light) !important; color: var(--ac) !important; font-weight: 800; border-right: none; } /* Removed the right border stroke */
+    .sidebar-item.active { background: var(--ac-light) !important; color: var(--ac) !important; font-weight: 800; border-right: none; }
     .main-content { flex: 1; height: 100%; overflow-y: auto; overflow-x: hidden; padding: 32px; background: var(--bg-page); position: relative; min-width: 0; }
     .fade-in-section { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
@@ -285,7 +285,7 @@
       .modal-hdr { padding: 16px 20px; }
       .modal > div:last-child { padding: 16px 20px; }
       .form-group { margin-bottom: 12px; }
-      #task-desc { min-height: 70px; } /* Shrink textarea on mobile */
+      #task-desc { min-height: 70px; }
     }
   </style>
 </head>
@@ -588,7 +588,7 @@
           <div><label class="form-label">Task Title *</label><input class="form-input" id="task-title" type="text" placeholder="e.g. Review Q3 report" maxlength="80"></div>
           <div><label class="form-label">Priority</label><select class="zenda-select form-input" id="task-priority"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option></select></div>
         </div>
-        <div style="margin-bottom:20px;"><label class="form-label">Description <span style="color:var(--tx-muted);font-weight:500">(optional)</span></label><textarea class="form-input" id="task-desc" placeholder="Add details…" style="min-height:80px;"></textarea></div>
+        <div style="margin-bottom:20px;"><label class="form-label">Description <span style="color:var(--tx-muted);font-weight:500">(optional)</span></label><textarea class="form-input" id="task-desc" placeholder="Add details…" style="min-height:100px;"></textarea></div>
         <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:32px;">
           <div><label class="form-label">Due Date</label><input class="form-input" id="task-date" type="date"></div>
         </div>
@@ -799,7 +799,7 @@
       document.getElementById('panel-overlay')?.classList.add('visible');
     };
 
-    // --- ADD STAFF LOGIC WITH EMAIL JS ---
+    // --- ADD STAFF LOGIC ---
     window.initiateCreateStaff = async function() {
         const name = document.getElementById('cs-name').value.trim();
         const email = document.getElementById('cs-email').value.trim();
@@ -852,15 +852,33 @@
         loadBtn(btn, true);
 
         try {
-            // Include companyId dynamically so Firebase accepts it
-            await createStaff({
+            // Include companyId directly to prevent undefined crash on Firebase
+            const newStaffData = {
                 name: window.tempStaffData.name,
                 email: window.tempStaffData.email,
                 password: window.tempStaffData.pwd,
                 role: 'staff',
                 designation: window.tempStaffData.desig,
-                companyId: window.CU.companyId || '' // <-- FIX APPLIED
-            });
+                companyId: window.CU?.companyId || 'default'
+            };
+
+            let success = false;
+            
+            // 1. Try using the imported staff.js function
+            try {
+                if (typeof createStaff === 'function') {
+                    await createStaff(newStaffData);
+                    success = true;
+                }
+            } catch (err) {
+                console.warn("createStaff function failed. Using direct DB insert.", err);
+            }
+
+            // 2. Direct Fallback: Force document into database if helper function fails
+            if (!success) {
+                newStaffData.createdAt = Date.now();
+                await addDoc(collection(db, 'users'), newStaffData);
+            }
 
             document.getElementById('staff-otp-container').classList.add('hidden');
             document.getElementById('created-card-section').classList.remove('hidden');
@@ -1124,7 +1142,6 @@
       if (window.taskTab === 'assigned-to-me') {
         tasksToRender = window.myTasks.filter(t => t.status !== 'done' && t.status !== 'declined' && !isOverdue(t.dueDate));
       } else if (window.taskTab === 'assigned-by-me') {
-        // Active assigned tasks that are not done/declined/overdue
         tasksToRender = window.assignedByMeTasks.filter(t => t.status !== 'done' && t.status !== 'declined' && !isOverdue(t.dueDate));
       } else if (window.taskTab === 'done') {
         tasksToRender = uniqueTasks.filter(t => t.status === 'done');
@@ -1133,7 +1150,7 @@
       }
 
       if (!tasksToRender || tasksToRender.length === 0) {
-        list.innerHTML = `<div style="padding:60px 20px;text-align:center;background:var(--bg-surface);border-radius:var(--rad-outer);border:1px solid var(--bd-color);"><div style="margin-bottom:16px;color:var(--tx-muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div><div style="color:var(--tx-main);font-weight:800;font-size:1.1rem;margin-bottom:8px;">No tasks found</div><div style="color:var(--tx-muted);font-weight:500;font-size:0.95rem;">There are currently no tasks in this category.</div></div>`;
+        list.innerHTML = `<div style="padding:60px 20px;text-align:center;background:var(--bg-surface);border-radius:var(--rad-outer);border:1px dashed var(--bd-color);"><div style="margin-bottom:16px;color:var(--tx-muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div><div style="color:var(--tx-main);font-weight:800;font-size:1.1rem;margin-bottom:8px;">No tasks found</div><div style="color:var(--tx-muted);font-weight:500;font-size:0.95rem;">There are currently no tasks in this category.</div></div>`;
         return;
       }
 
@@ -1258,13 +1275,68 @@
       const to = document.getElementById('assign-to')?.value, title = document.getElementById('task-title')?.value.trim(), desc = document.getElementById('task-desc')?.value.trim(), date = document.getElementById('task-date')?.value, time = document.getElementById('task-time')?.value, priority = document.getElementById('task-priority')?.value || 'Medium';
       if (!to) { window.showToast('Select a team member.', 'error'); return; }
       if (!title) { window.showToast('Enter a task title.', 'error'); return; }
-      const btn = document.getElementById('assign-btn'); loadBtn(btn, true);
+      
+      const btn = document.getElementById('assign-btn'); 
+      loadBtn(btn, true);
+      
       try {
-        const a = allStaff.find(s => s.uid === to) || {name: 'Unknown'};
-        await assignTask({ title, description: desc, assignedTo: to, assignedToName: a.name, assignedBy: window.CU?.uid, assignedByName: window.CU?.name, companyId: window.CU?.companyId, dueDate: date || null, dueTime: time || null, priority });
-        window.closeModal('assign-modal'); window.showToast(`Assigned to ${a.name}!`, 'success');
+        const a = allStaff.find(s => s.uid === to) || {name: 'Team Member'};
+        
+        const taskData = { 
+            title, 
+            description: desc, 
+            assignedTo: to, 
+            assignedToName: a.name, 
+            assignedBy: window.CU?.uid, 
+            assignedByName: window.CU?.name, 
+            companyId: window.CU?.companyId || 'default', 
+            dueDate: date || null, 
+            dueTime: time || null, 
+            priority,
+            status: 'pending',
+            createdAt: Date.now()
+        };
+
+        let taskId = null;
+        let success = false;
+        
+        // 1. Try helper
+        try {
+            if (typeof assignTask === 'function') {
+                const res = await assignTask(taskData);
+                if(res && res.id) taskId = res.id;
+                success = true;
+            }
+        } catch (err) {
+            console.warn("assignTask helper failed. Falling back to direct insert.", err);
+        }
+        
+        // 2. Direct fallback
+        if (!success || !taskId) {
+            const docRef = await addDoc(collection(db, 'tasks'), taskData);
+            taskId = docRef.id;
+        }
+
+        // 3. EXPLICIT NOTIFICATION CREATION
+        await addDoc(collection(db, 'users', to, 'notifications'), {
+            type: 'task_received',
+            message: `${window.CU?.name || 'Your manager'} assigned you a new task: "${title}"`,
+            taskId: taskId,
+            senderId: window.CU?.uid,
+            createdAt: Date.now(),
+            read: false,
+            status: 'unread'
+        });
+
+        window.closeModal('assign-modal'); 
+        window.showToast(`Assigned to ${a.name}!`, 'success');
+        
         document.getElementById('assign-to').value = ''; document.getElementById('task-title').value = ''; document.getElementById('task-desc').value = ''; document.getElementById('task-date').value = ''; document.getElementById('task-time').value = '';
-      } catch (e) { window.showToast(e.message, 'error'); } finally { loadBtn(btn, false, 'Assign Task'); }
+      } catch (e) { 
+          window.showToast(e.message, 'error'); 
+      } finally { 
+          loadBtn(btn, false, 'Assign Task'); 
+      }
     };
 
     window.renderStaffCards = function(staffList) {
