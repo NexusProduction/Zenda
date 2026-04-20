@@ -1528,7 +1528,7 @@
     window.quickAssign = function(uid) { window.openAssignModal(); setTimeout(() => { const s = document.getElementById('assign-to'); if (s) s.value = uid; }, 100); };
     window.openAssignModal = function() { window.openModal('assign-modal'); };
     
-    window.handleAssign = async function() {
+window.handleAssign = async function() {
       const to = document.getElementById('assign-to')?.value;
       const title = document.getElementById('task-title')?.value.trim();
       const desc = document.getElementById('task-desc')?.value.trim();
@@ -1576,17 +1576,14 @@
         const docRef = await addDoc(collection(db, 'tasks'), taskData);
         const taskId = docRef.id;
 
-        taskData.id = taskId;
-        
-        if (taskData.assignedTo === window.CU.uid) { window.myTasks.unshift(taskData); } 
-        else { window.assignedByMeTasks.unshift(taskData); }
-
-        window.updateAllStats();
-        window.renderTasksList();
-        window.renderRecentTasks();
+        // Note: Removed manual array unshift here! 
+        // Firebase real-time listener will auto-update the list for us.
 
         window.closeModal('assign-modal'); 
-        document.getElementById('assign-to').value = ''; document.getElementById('task-title').value = ''; document.getElementById('task-desc').value = ''; document.getElementById('task-date').value = ''; 
+        document.getElementById('assign-to').value = ''; 
+        document.getElementById('task-title').value = ''; 
+        document.getElementById('task-desc').value = ''; 
+        document.getElementById('task-date').value = ''; 
         window.showToast(`Assigned to ${a.name}!`, 'success');
 
         try {
