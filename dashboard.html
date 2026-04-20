@@ -180,6 +180,12 @@
     .modal-ttl { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; }
     .modal-close { background: var(--bg-page); border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--tx-muted); transition: all 0.2s; }
     .modal-close:hover { background: var(--bd-color); color: var(--tx-main); transform: scale(1.05); }
+    
+    /* Ensure Toast is always strictly above modals */
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999 !important; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+    .toast { padding: 16px 24px; border-radius: 12px; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.12); font-weight: 600; font-size: 0.95rem; color: #1D1D1F; display: flex; align-items: center; gap: 12px; border-left: 4px solid var(--ac); pointer-events: auto; }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.success { border-left-color: var(--success); }
     .toast.out { animation: toastOut .3s forwards; }
 
     /* --- CARDS & GRIDS --- */
@@ -276,6 +282,9 @@
       .apps-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; padding: 20px !important; }
       .app-squircle, .app-viewall-tile { width: 56px !important; height: 56px !important; border-radius: 14px !important; }
       .app-name { font-size: .8rem !important; }
+      
+      #create-staff-page { width: 100% !important; border-radius: 24px 24px 0 0 !important; top: 40px !important; height: calc(100vh - 40px) !important; transform: translateY(100%); }
+      #create-staff-page.open { transform: translateY(0); }
       
       .team-grid { grid-template-columns: 1fr !important; gap: 16px !important;}
       .team-card { padding: 20px !important; flex-direction: column !important; align-items: flex-start !important; text-align: left !important; gap: 16px !important; }
@@ -675,6 +684,13 @@
     </div>
   </div>
 
+  <style>
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999 !important; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+    .toast { padding: 16px 24px; border-radius: 12px; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.12); font-weight: 600; font-size: 0.95rem; color: #1D1D1F; display: flex; align-items: center; gap: 12px; border-left: 4px solid var(--ac); pointer-events: auto; }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.success { border-left-color: var(--success); }
+    .toast.out { animation: toastOut .3s forwards; }
+  </style>
   <div id="toast-container"></div>
 
   <script type="module">
@@ -686,6 +702,15 @@
     import { showToast, copyToClipboard, saveSession } from './utils.js';
     import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    // Failsafe for showToast if utils.js drops CSS
+    window.showToast = function(msg, type) {
+        if (showToast) {
+            try { showToast(msg, type); } catch(e) { alert(msg); }
+        } else {
+            alert(msg);
+        }
+    };
 
     window.updateAllStats = function() {
         const combined = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])];
@@ -721,15 +746,12 @@
 
     function isOverdue(dateStr) {
         if (!dateStr) return false;
-        const today = new Date();
-        today.setHours(0,0,0,0);
         const due = new Date(dateStr);
-        due.setHours(0,0,0,0);
-        return due < today;
+        due.setHours(23, 59, 59, 999);
+        return new Date() > due;
     }
 
     window.copyToClipboard = copyToClipboard;
-    window.showToast = showToast;
     window.CU = null;               
     window.myTasks = [];            
     window.assignedByMeTasks = [];  
@@ -844,17 +866,17 @@
         const btn = document.getElementById('create-staff-btn');
 
         if (!name || !email || !desig || !pwd) {
-            window.showToast("Some parameters are missing.", "error");
+            alert("Some parameters are missing. Please fill all fields.");
             return;
         }
         if (!email.includes('@')) {
-            window.showToast("Email must contain an '@' symbol.", "error");
+            alert("Email must contain an '@' symbol.");
             return;
         }
         
         const pwdRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/;
         if (!pwdRegex.test(pwd)) {
-            window.showToast("Password must contain at least one letter, one number, and one symbol.", "error");
+            alert("Password must contain at least one letter, one number, and one symbol (e.g., @, #, $).");
             return;
         }
 
@@ -865,16 +887,17 @@
 
         try {
             if(typeof emailjs !== 'undefined' && emailjs.send) {
+                // IN THE CODE BELOW, FIND THIS SECTION
                 await emailjs.send(
-                  "YOUR_SERVICE_ID",   
-                  "YOUR_TEMPLATE_ID",  
+                  "YOUR_SERVICE_ID",   // <-- Replace with your EmailJS Service ID
+                  "YOUR_TEMPLATE_ID",  // <-- Replace with your EmailJS Template ID
                   {
                     to_email: email,
                     to_name: name,
                     otp_code: window.tempStaffOTP,
                     company_name: document.getElementById('topbar-company')?.innerText || 'Zenda'
                   },
-                  "YOUR_PUBLIC_KEY"    
+                  "YOUR_PUBLIC_KEY"    // <-- Replace with your EmailJS Public Key
                 );
             } else {
                 throw new Error("EmailJS not configured");
@@ -1126,20 +1149,19 @@
       if (!nameChanged && !emailChanged) { window.showToast('No changes made.', 'info'); window.disableProfileEdit(suffix); return; }
       window.pendingProfileUpdates = { newName, newEmail, nameChanged, emailChanged, suffix };
       if (emailChanged) {
-        window.showToast('Verifying current email...', 'info');
         try {
           window.tempOTP = Math.floor(100000 + Math.random() * 900000).toString();
           if(typeof emailjs !== 'undefined' && emailjs.send) {
               await emailjs.send(
-                  "YOUR_SERVICE_ID",   
-                  "YOUR_TEMPLATE_ID",  
+                  "YOUR_SERVICE_ID",   // <-- Replace with your EmailJS Service ID
+                  "YOUR_TEMPLATE_ID",  // <-- Replace with your EmailJS Template ID
                   {
                     to_email: window.CU.email,
                     to_name: window.CU.name,
                     otp_code: window.tempOTP,
                     company_name: 'Zenda Security'
                   },
-                  "YOUR_PUBLIC_KEY"    
+                  "YOUR_PUBLIC_KEY"    // <-- Replace with your EmailJS Public Key
               );
           } else {
               throw new Error("EmailJS not configured");
@@ -1150,7 +1172,7 @@
           window.emailOTPState = 'current';
         } catch (e) { 
             console.warn("EmailJS failed, falling back to console OTP: ", window.tempOTP);
-            alert(`TEST MODE ACTIVE: Check the console, or use OTP: ${window.tempOTP}`);
+            alert(`TEST MODE ACTIVE: Check the console, or use OTP: ${window.tempOTP}\n\n(To remove this alert, put your real keys in the emailjs.send function inside dashboard.html)`);
             window.openModal('email-otp-modal');
             const stepEl = document.getElementById('email-otp-step'); if (stepEl) stepEl.textContent = 'Step 1: Verify Current Email';
             const targetEl = document.getElementById('email-otp-target'); if (targetEl) targetEl.textContent = window.CU.email;
@@ -1225,11 +1247,14 @@
           batch.set(doc(collection(db, 'users', window.CU.uid, 'notifications')), { type: 'security_login', message: 'Your email address was successfully updated to ' + newEmail + '.', createdAt: Date.now(), read: false, status: 'unread' });
         }
         await updateDoc(userRef, updates); await batch.commit();
-        window.showToast('Profile updated successfully!', 'success');
+        
         window.disableProfileEdit(suffix); 
         
-        // Use timeout to prevent double click bug rendering issue
-        setTimeout(() => window.buildProfile(), 100);
+        document.getElementById(`prof-name-${suffix}`).value = newName;
+        document.getElementById(`prof-email-${suffix}`).value = newEmail;
+        window.buildProfile();
+        
+        window.showToast('Profile updated successfully!', 'success');
       } catch (e) {
         if (e.code === 'auth/requires-recent-login') { window.showToast('Please log out and log back in to change your email.', 'error'); } else { window.showToast(e.message, 'error'); }
       }
@@ -1326,7 +1351,7 @@
         <div class="premium-task-card" id="task-${t.id}">
           <div style="flex:1;">
             
-            <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:4px; gap:12px; width:100%;">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px; gap:12px; width:100%;">
               <div class="card-title ${t.status === 'done' ? 'done' : ''}" style="margin-bottom:0; word-wrap:break-word; padding-right:16px;">${esc(t.title)}</div>
               ${(window.CU.role === 'owner' || window.CU.role === 'manager') && window.taskTab === 'assigned-by-me' ? `
                 <button class="btn-icon-danger" style="margin-left:auto;" title="Delete Task" onclick="window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')">
@@ -1463,7 +1488,7 @@
       const priority = document.getElementById('task-priority')?.value || 'Medium';
 
       if (!to || !title || !priority || !date) { 
-          window.showToast('Please fill all mandatory fields including Due Date.', 'error'); 
+          alert('Please fill all mandatory fields including Due Date.'); 
           return; 
       }
 
@@ -1471,7 +1496,7 @@
       const today = new Date();
       today.setHours(0,0,0,0);
       if (selectedDate < today) { 
-          window.showToast('Due date cannot be in the past.', 'error'); 
+          alert('Due date cannot be in the past.'); 
           return; 
       }
       
@@ -1495,23 +1520,8 @@
             createdAt: Date.now()
         };
 
-        let taskId = null;
-        let success = false;
-        
-        try {
-            if (typeof assignTask === 'function') {
-                const res = await assignTask(taskData);
-                if(res && res.id) taskId = res.id;
-                success = true;
-            }
-        } catch (err) {
-            console.warn("assignTask helper failed. Falling back to direct insert.", err);
-        }
-        
-        if (!success || !taskId) {
-            const docRef = await addDoc(collection(db, 'tasks'), taskData);
-            taskId = docRef.id;
-        }
+        const docRef = await addDoc(collection(db, 'tasks'), taskData);
+        const taskId = docRef.id;
 
         taskData.id = taskId;
         
@@ -1690,7 +1700,7 @@
             if (subCard) {
               if (ip) {
                 const expDate = cd.subscriptionExpiry ? new Date(cd.subscriptionExpiry).toLocaleDateString() : 'Lifetime';
-                subCard.innerHTML = `<div style="background:var(--bg-surface);border-radius:12px;padding:20px 16px;color:var(--tx-main);box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"><div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FF9500;letter-spacing:-0.02em;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${window.CU.subscriptionTier}</div><div style="font-size:0.8rem;color:#86868B;font-weight:500;">Valid till ${expDate}</div></div>`;
+                subCard.innerHTML = `<div style="background:var(--bg-surface);border-radius:12px;padding:20px 16px;color:var(--tx-main);box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"><div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FF9500;letter-spacing:-0.02em;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${window.CU.subscriptionTier}</div><div style="font-size:0.8rem;color:var(--tx-muted);font-weight:600;">Valid till ${expDate}</div></div>`;
               } else {
                 subCard.innerHTML = `<div style="background:linear-gradient(135deg,#FF9500,#E68600);border-radius:12px;padding:16px;color:white;cursor:pointer;box-shadow:var(--shadow-md);transition:transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'"><div style="font-weight:800;font-size:1rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;letter-spacing:-0.02em;">👑 Upgrade Plan</div><div style="font-size:0.8rem;opacity:0.9;font-weight:600;">Unlock all features</div></div>`;
               }
