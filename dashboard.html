@@ -1295,32 +1295,36 @@
       } catch (e) { window.showToast(e.message, 'error'); } finally { loadBtn(btn, false, 'Verify Code'); }
     };
 
-    window.commitProfileUpdates = async function() {
+window.commitProfileUpdates = async function() {
       const { newName, newEmail, nameChanged, emailChanged, suffix, btn } = window.pendingProfileUpdates;
       try {
         const userRef = doc(db, 'users', window.CU.uid);
-        const updates = {}; const batch = writeBatch(db);
+        const updates = {}; 
         
         if (nameChanged) {
           updates.name = newName; 
           if (auth.currentUser) await updateProfile(auth.currentUser, { displayName: newName }); 
-          window.CU.name = newName;
-          batch.set(doc(collection(db, 'users', window.CU.uid, 'notifications')), { type: 'general', message: 'Your profile name was successfully updated to ' + newName + '.', createdAt: Date.now(), read: false, status: 'unread' });
         }
         
         if (emailChanged) {
           if (auth.currentUser) await updateEmail(auth.currentUser, newEmail); 
-          updates.email = newEmail; window.CU.email = newEmail;
-          batch.set(doc(collection(db, 'users', window.CU.uid, 'notifications')), { type: 'security_login', message: 'Your email address was successfully updated to ' + newEmail + '.', createdAt: Date.now(), read: false, status: 'unread' });
+          updates.email = newEmail; 
         }
         
-        await updateDoc(userRef, updates); 
-        await batch.commit();
+        // 1. Update the database FIRST
+        if (Object.keys(updates).length > 0) {
+            await updateDoc(userRef, updates); 
+        }
         
-        window.showToast('Profile updated successfully!', 'success');
+        // 2. Update local variables ONLY if database save succeeds
+        if (nameChanged) window.CU.name = newName;
+        if (emailChanged) window.CU.email = newEmail;
+        
+        window.showToast('Changes applied!', 'success');
         window.disableProfileEdit(suffix); 
         window.buildProfile();
       } catch (e) {
+        console.error("Profile Save Error:", e);
         if (e.code === 'auth/requires-recent-login') { 
             window.showToast('Please log out and log back in to change your email.', 'error'); 
         } else { 
