@@ -1189,13 +1189,26 @@
     };
 
     window.pendingProfileUpdates = {};
+    
     window.saveProfileData = async function(suffix) {
+      const btn = document.getElementById('btn-save-prof-' + suffix);
       const newName = document.getElementById('prof-name-' + suffix)?.value.trim();
       const newEmail = document.getElementById('prof-email-' + suffix)?.value.trim();
+      
       if (!newName || !newEmail) return;
+      
       const nameChanged = newName !== window.CU.name, emailChanged = newEmail !== window.CU.email;
-      if (!nameChanged && !emailChanged) { window.showToast('No changes made.', 'info'); window.disableProfileEdit(suffix); return; }
-      window.pendingProfileUpdates = { newName, newEmail, nameChanged, emailChanged, suffix };
+      
+      if (!nameChanged && !emailChanged) { 
+          window.showToast('No changes made.', 'info'); 
+          window.disableProfileEdit(suffix); 
+          return; 
+      }
+      
+      loadBtn(btn, true);
+      
+      window.pendingProfileUpdates = { newName, newEmail, nameChanged, emailChanged, suffix, btn };
+      
       if (emailChanged) {
         try {
           window.tempOTP = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1218,6 +1231,7 @@
           const stepEl = document.getElementById('email-otp-step'); if (stepEl) stepEl.textContent = 'Step 1: Verify Current Email';
           const targetEl = document.getElementById('email-otp-target'); if (targetEl) targetEl.textContent = window.CU.email;
           window.emailOTPState = 'current';
+          loadBtn(btn, false, 'Save Changes');
         } catch (e) { 
             console.warn("EmailJS failed, falling back to console OTP: ", window.tempOTP);
             alert(`TEST MODE ACTIVE: Check the console, or use OTP: ${window.tempOTP}`);
@@ -1225,8 +1239,11 @@
             const stepEl = document.getElementById('email-otp-step'); if (stepEl) stepEl.textContent = 'Step 1: Verify Current Email';
             const targetEl = document.getElementById('email-otp-target'); if (targetEl) targetEl.textContent = window.CU.email;
             window.emailOTPState = 'current';
+            loadBtn(btn, false, 'Save Changes');
         }
-      } else { await window.commitProfileUpdates(); }
+      } else { 
+          await window.commitProfileUpdates(); 
+      }
     };
 
     window.verifyEmailChangeOTP = async function() {
@@ -1279,32 +1296,38 @@
     };
 
     window.commitProfileUpdates = async function() {
-      const { newName, newEmail, nameChanged, emailChanged, suffix } = window.pendingProfileUpdates;
+      const { newName, newEmail, nameChanged, emailChanged, suffix, btn } = window.pendingProfileUpdates;
       try {
         const userRef = doc(db, 'users', window.CU.uid);
         const updates = {}; const batch = writeBatch(db);
+        
         if (nameChanged) {
           updates.name = newName; 
           if (auth.currentUser) await updateProfile(auth.currentUser, { displayName: newName }); 
           window.CU.name = newName;
           batch.set(doc(collection(db, 'users', window.CU.uid, 'notifications')), { type: 'general', message: 'Your profile name was successfully updated to ' + newName + '.', createdAt: Date.now(), read: false, status: 'unread' });
         }
+        
         if (emailChanged) {
           if (auth.currentUser) await updateEmail(auth.currentUser, newEmail); 
           updates.email = newEmail; window.CU.email = newEmail;
           batch.set(doc(collection(db, 'users', window.CU.uid, 'notifications')), { type: 'security_login', message: 'Your email address was successfully updated to ' + newEmail + '.', createdAt: Date.now(), read: false, status: 'unread' });
         }
-        await updateDoc(userRef, updates); await batch.commit();
         
-        window.disableProfileEdit(suffix); 
-        
-        document.getElementById(`prof-name-${suffix}`).value = newName;
-        document.getElementById(`prof-email-${suffix}`).value = newEmail;
-        window.buildProfile();
+        await updateDoc(userRef, updates); 
+        await batch.commit();
         
         window.showToast('Profile updated successfully!', 'success');
+        window.disableProfileEdit(suffix); 
+        window.buildProfile();
       } catch (e) {
-        if (e.code === 'auth/requires-recent-login') { window.showToast('Please log out and log back in to change your email.', 'error'); } else { window.showToast(e.message, 'error'); }
+        if (e.code === 'auth/requires-recent-login') { 
+            window.showToast('Please log out and log back in to change your email.', 'error'); 
+        } else { 
+            window.showToast(e.message, 'error'); 
+        }
+      } finally {
+        if (btn) loadBtn(btn, false, 'Save Changes');
       }
     };
 
