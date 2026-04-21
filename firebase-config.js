@@ -3,12 +3,12 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-aut
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey:            "YOUR_NEW_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  apiKey:            "AIzaSyArQLilynpEoydg-nye9yCQ2cQIVpeuyUI",
+  authDomain:        "zenda-app-593a8.firebaseapp.com",
+  projectId:         "zenda-app-593a8",
+  storageBucket:     "zenda-app-593a8.firebasestorage.app",
+  messagingSenderId: "56547460703",
+  appId:             "1:56547460703:web:689c2fb2707464ac733dea"
 };
 
 const app  = initializeApp(firebaseConfig);
