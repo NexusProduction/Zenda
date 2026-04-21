@@ -1,41 +1,36 @@
 // =============================================
 //  ZENDA — Firestore Security Rules
-//  Paste these in: Firebase Console > Firestore > Rules
 // =============================================
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---- Helper functions ----
+    // ---- Helper functions (Now Null-Safe!) ----
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      // Safely check if the user document exists before trying to read it
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data
+        : null;
     }
 
     function getUserRole() {
-      return getUserData().role;
+      let data = getUserData();
+      return data != null ? data.role : 'none';
     }
 
     function getCompanyId() {
-      return getUserData().companyId;
-    }
-
-    function isCompanyMember(companyId) {
-      return isSignedIn() && getCompanyId() == companyId;
+      let data = getUserData();
+      return data != null ? data.companyId : 'none';
     }
 
     // ---- COMPANIES ----
     match /companies/{companyId} {
       allow read: if isSignedIn() && getCompanyId() == companyId;
-      // Allow new owners to create a company, and allow existing owners to update the staff count
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (getUserRole() == 'owner' || resource.data.ownerId == request.auth.uid);
       allow delete: if false;
@@ -45,26 +40,23 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn();
       
-      // Allow users to create their own profile, AND allow owners to create staff profiles
+      // Allow users to create their own profile OR allow owners to create staff
       allow create: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'owner');
       
-      // Users can update their own profile; owners can update any in their company
+      // Allow users to update themselves OR allow owners to update staff
       allow update: if isSignedIn() && (
         request.auth.uid == userId ||
         (getUserRole() == 'owner' && getCompanyId() == resource.data.companyId)
       );
       
-      // Allow owners to delete staff profiles when a deletion request is approved
+      // Allow owners to delete staff
       allow delete: if isSignedIn() && getUserRole() == 'owner';
     }
 
     // ---- TASKS ----
     match /tasks/{taskId} {
-      // Company members can read tasks in their company
       allow read: if isSignedIn() && getCompanyId() == resource.data.companyId;
-      // Owners and managers can create tasks
       allow create: if isSignedIn() && (getUserRole() == 'owner' || getUserRole() == 'manager');
-      // Assignee can update status; assigner can update too
       allow update: if isSignedIn() && (
         request.auth.uid == resource.data.assignedTo ||
         request.auth.uid == resource.data.assignedBy
@@ -74,29 +66,22 @@ service cloud.firestore {
 
     // ---- NOTIFICATIONS ----
     match /users/{userId}/notifications/{notifId} {
-      // Only the notification owner can read, update, or delete
       allow read, update, delete: if isSignedIn() && request.auth.uid == userId;
-      
-      // Anyone signed in can create notifications (so staff can send requests to owners)
       allow create: if isSignedIn();
     }
 
     // ---- OTPs ----
     match /otps/{emailKey} {
-      // OTPs can be read and written by anyone (needed for verification flow)
-      // In production, consider using Firebase Functions for this
       allow read, write: if true;
     }
 
     // ---- INSTALLED APPS ----
     match /installedApps/{userId} {
-      // Allow the owner to set up the default apps for the new staff member
       allow read, write: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'owner');
     }
 
-    // ---- APP DATA (calculator history, calendar events) ----
+    // ---- APP DATA ----
     match /appData/{userId}/apps/{appId} {
-      // Allow the owner to wipe app data when deleting a staff member
       allow read, write: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'owner');
     }
   }
