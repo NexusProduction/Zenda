@@ -67,7 +67,7 @@ export async function createStaff({ name, email, password, role, companyId, comp
 
   } catch (err) {
     if (err.message && err.message.startsWith('FIELD:')) throw err;
-    if (err.code === 'auth/email-already-in-use') throw new Error('This email is already registered. Use a different email.');
+    if (err.code === 'auth/email-already-in-use') throw new Error("this email I'd is already used tyr different one");
     if (err.code === 'auth/weak-password')        throw new Error('FIELD:cs-password:Password must be at least 6 characters.');
     if (err.code === 'auth/invalid-email')        throw new Error('FIELD:cs-email:Invalid email address.');
     throw err;
