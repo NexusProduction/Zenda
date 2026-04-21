@@ -711,6 +711,54 @@
     import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
+
+    // ── UPGRADE BUTTON HANDLER ──
+window.handleUpgradeClick = async function() {
+  if (window.CU.role === 'owner') {
+    window.location.href = 'subscription.html';
+    return;
+  }
+  // Staff/Manager — find owner and send notification
+  try {
+    const staff = allStaff.find(s => s.role === 'owner');
+    const ownerId = staff ? staff.uid : null;
+    if (!ownerId) { window.showToast('Could not find owner.', 'error'); return; }
+    await addDoc(collection(db, 'users', ownerId, 'notifications'), {
+      type: 'upgrade_request',
+      message: `${window.CU.name} is requesting to upgrade the account to Premium.`,
+      requesterId: window.CU.uid,
+      requesterName: window.CU.name,
+      createdAt: Date.now(),
+      read: false,
+      status: 'unread'
+    });
+    window.showToast('Upgrade request sent to owner! ✓', 'success');
+  } catch(e) { window.showToast('Failed to send request.', 'error'); }
+};
+
+// ── APPROVE / DECLINE UPGRADE REQUEST ──
+window.approveUpgradeRequest = async function(notifId) {
+  try {
+    await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+    window.location.href = 'subscription.html';
+  } catch(e) { window.showToast('Error.', 'error'); }
+};
+
+window.declineUpgradeRequest = async function(notifId, requesterId, requesterName) {
+  try {
+    await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+    // Notify the staff member their request was declined
+    await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+      type: 'upgrade_declined',
+      message: `${window.CU.name} (Owner) declined your request to upgrade the account.`,
+      createdAt: Date.now(),
+      read: false,
+      status: 'unread'
+    });
+    window.showToast('Request declined. Staff has been notified.', 'success');
+  } catch(e) { window.showToast('Error.', 'error'); }
+};
+    
     // Custom non-sticking Toast logic
     window.showToast = function(msg, type = 'success') {
         const container = document.getElementById('custom-toast-container');
