@@ -659,6 +659,42 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="staff-request-modal" onclick="if(event.target === this) window.closeModal('staff-request-modal')">
+    <div class="modal" style="max-width: 440px;">
+      <div class="modal-hdr">
+        <div class="modal-ttl" id="sr-modal-title">Review Request</div>
+        <button class="modal-close" onclick="window.closeModal('staff-request-modal')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div style="padding: 32px;">
+        <div style="background:var(--bg-page);border:1px solid var(--bd-color);border-radius:16px;padding:20px;margin-bottom:24px;">
+          <div style="font-size:0.8rem;color:var(--tx-muted);margin-bottom:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">Requested By</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <div id="sr-requester-av" style="width:44px;height:44px;border-radius:50%;background:var(--ac-light);color:var(--ac);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;"></div>
+            <div>
+              <div id="sr-requester-name" style="font-weight:800;color:var(--tx-main);font-size:1.05rem;letter-spacing:-0.01em;"></div>
+              <div style="font-size:0.8rem;color:var(--tx-muted);font-weight:600;">Team Member</div>
+            </div>
+          </div>
+          
+          <div style="height:1px;background:var(--bd-color);margin:20px 0;"></div>
+          
+          <div style="font-size:0.8rem;color:var(--tx-muted);margin-bottom:16px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">Target Staff Details</div>
+          
+          <div style="display:flex;flex-direction:column;gap:12px;font-size:0.95rem;">
+             <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Name:</span><span style="color:var(--tx-main);font-weight:800;" id="sr-target-name"></span></div>
+             <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Email:</span><span style="color:var(--tx-main);font-weight:700;" id="sr-target-email"></span></div>
+             <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Role:</span><span style="color:var(--tx-main);font-weight:700;" id="sr-target-role"></span></div>
+             <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Password:</span><span style="color:var(--tx-main);font-family:var(--font-mono);font-weight:700;" id="sr-target-pwd"></span></div>
+          </div>
+        </div>
+        
+        <div style="display:flex;gap:16px;">
+          <button class="btn btn-secondary w-full" id="sr-btn-decline" style="padding:14px;color:var(--danger);border-color:rgba(255,59,48,0.2);background:var(--danger-light);border-radius:14px;">Decline</button>
+          <button class="btn btn-primary w-full" id="sr-btn-approve" style="padding:14px;background:#10B981;border-radius:14px;box-shadow:0 4px 12px rgba(16,185,129,0.25);">Approve</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <style>
     /* Slide up from the bottom instead of down from the top */
@@ -1034,6 +1070,7 @@
                     message: `${window.CU.name} requested to add a new staff member: ${window.tempStaffData.name} (${window.tempStaffData.email})`,
                     pendingData: pendingData,
                     requesterId: window.CU.uid,
+                    requesterName: window.CU.name, // <-- ADD THIS LINE
                     createdAt: Date.now(),
                     read: false,
                     status: 'unread'
@@ -1145,100 +1182,106 @@
         }, 300);
     };
 
-    // ── OWNER APPROVAL HANDLERS FOR STAFF CREATION/DELETION ──
-    window.approveStaffAdd = async function(btn, notifId) {
-        const pendingDataStr = btn.getAttribute('data-pending');
-        const requesterId = btn.getAttribute('data-requester-id');
-        const pendingData = JSON.parse(decodeURIComponent(escape(atob(pendingDataStr))));
+    // ── STAFF REQUEST MODAL HANDLERS ──
+    window.currentStaffRequest = {}; 
+
+    window.openStaffRequestModal = function(btn) {
+        const type = btn.getAttribute('data-type');
+        const notifId = btn.getAttribute('data-id');
+        const reqId = btn.getAttribute('data-requester-id');
+        const reqName = btn.getAttribute('data-requester-name') || 'Staff Member';
         
-        const card = btn.closest('.notif-card');
-        loadBtn(btn, true);
-        try {
-            if (typeof createStaff === 'function') {
-                await createStaff({ ...pendingData, createdAt: Date.now() });
-            }
-            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+        // Save Context
+        window.currentStaffRequest = { btn, type, notifId, reqId };
+        
+        document.getElementById('sr-requester-name').textContent = reqName;
+        document.getElementById('sr-requester-av').textContent = reqName.charAt(0).toUpperCase();
+        
+        if (type === 'add') {
+            document.getElementById('sr-modal-title').textContent = 'New Staff Request';
+            const pendingData = JSON.parse(decodeURIComponent(escape(atob(btn.getAttribute('data-pending')))));
             
-            if (requesterId && requesterId.trim() !== '' && requesterId !== 'undefined') {
-                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+            document.getElementById('sr-target-name').textContent = pendingData.name;
+            document.getElementById('sr-target-email').textContent = pendingData.email;
+            document.getElementById('sr-target-role').textContent = pendingData.designation || 'Staff';
+            document.getElementById('sr-target-pwd').textContent = pendingData.password;
+            
+            window.currentStaffRequest.payload = pendingData;
+            
+            document.getElementById('sr-btn-approve').textContent = 'Approve Addition';
+            document.getElementById('sr-btn-decline').textContent = 'Decline Addition';
+        } else {
+            document.getElementById('sr-modal-title').textContent = 'Remove Staff Request';
+            
+            document.getElementById('sr-target-name').textContent = btn.getAttribute('data-target-name') || 'Unknown';
+            document.getElementById('sr-target-email').textContent = btn.getAttribute('data-target-email') || 'Unknown';
+            document.getElementById('sr-target-role').textContent = 'Revoke Access';
+            document.getElementById('sr-target-pwd').textContent = '*** (Hidden)';
+            
+            window.currentStaffRequest.targetUid = btn.getAttribute('data-target-uid');
+            window.currentStaffRequest.targetEmail = btn.getAttribute('data-target-email');
+            window.currentStaffRequest.targetPwd = atob(btn.getAttribute('data-target-pwd'));
+            
+            document.getElementById('sr-btn-approve').textContent = 'Approve Deletion';
+            document.getElementById('sr-btn-decline').textContent = 'Decline Deletion';
+        }
+        
+        // Bind Buttons dynamically
+        document.getElementById('sr-btn-approve').onclick = () => window.executeStaffRequest('approve');
+        document.getElementById('sr-btn-decline').onclick = () => window.executeStaffRequest('decline');
+        
+        window.openModal('staff-request-modal');
+    };
+
+    window.executeStaffRequest = async function(action) {
+        const req = window.currentStaffRequest;
+        const actionBtn = document.getElementById(action === 'approve' ? 'sr-btn-approve' : 'sr-btn-decline');
+        loadBtn(actionBtn, true);
+        
+        try {
+            // Execute Database changes if approved
+            if (action === 'approve') {
+                if (req.type === 'add') {
+                    if (typeof createStaff === 'function') {
+                        await createStaff({ ...req.payload, createdAt: Date.now() });
+                    }
+                } else if (req.type === 'delete') {
+                    await deleteStaffMember(req.targetUid, req.targetEmail, req.targetPwd);
+                }
+            }
+            
+            // Update Notification Status
+            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', req.notifId), { read: true, status: 'read' });
+            
+            // Send RETURN notification back to staff member securely
+            if (req.reqId && req.reqId.trim() !== '' && req.reqId !== 'undefined') {
+                const actionText = action === 'approve' ? 'approved' : 'declined';
+                const typeText = req.type === 'add' ? `add a new staff member` : `remove a staff member`;
+                await addDoc(collection(db, 'users', req.reqId, 'notifications'), {
                     type: 'general',
-                    message: `Owner approved your request to add ${pendingData.name}.`,
-                    createdAt: Date.now(), read: false, status: 'unread'
+                    message: `Owner ${actionText} your request to ${typeText}.`,
+                    createdAt: Date.now(), 
+                    read: false, 
+                    status: 'unread'
                 });
             }
-
-            window.showToast("Staff added successfully!", "success");
-            card.classList.add('slide-left-out');
-            setTimeout(() => card.remove(), 350);
+            
+            // UI Cleanup
+            window.showToast(`Request ${action === 'approve' ? 'Approved' : 'Declined'}!`, action === 'approve' ? 'success' : 'info');
+            window.closeModal('staff-request-modal');
+            
+            const card = req.btn.closest('.notif-card');
+            if (card) {
+                card.classList.add('slide-left-out');
+                setTimeout(() => card.remove(), 350);
+            }
         } catch(e) {
+            console.error(e);
             window.showToast(e.message, 'error');
-            loadBtn(btn, false, 'Approve');
+        } finally {
+            loadBtn(actionBtn, false, action === 'approve' ? 'Approve' : 'Decline');
         }
     };
-
-    window.declineStaffAdd = async function(btn, notifId) {
-        const requesterId = btn.getAttribute('data-requester-id');
-        const card = btn.closest('.notif-card');
-        card.classList.add('slide-left-out');
-        setTimeout(() => card.remove(), 350);
-        try {
-            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-            if (requesterId && requesterId.trim() !== '' && requesterId !== 'undefined') {
-                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
-                    type: 'general',
-                    message: `Owner declined your request to add a new staff member.`,
-                    createdAt: Date.now(), read: false, status: 'unread'
-                });
-            }
-        } catch(e) {}
-    };
-
-    window.approveStaffDelete = async function(btn, notifId) {
-        const targetUid = btn.getAttribute('data-target-uid');
-        const targetEmail = btn.getAttribute('data-target-email');
-        const targetPwd = atob(btn.getAttribute('data-target-pwd'));
-        const requesterId = btn.getAttribute('data-requester-id');
-
-        const card = btn.closest('.notif-card');
-        loadBtn(btn, true);
-        try {
-            await deleteStaffMember(targetUid, targetEmail, targetPwd);
-            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-            
-            if (requesterId && requesterId.trim() !== '' && requesterId !== 'undefined') {
-                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
-                    type: 'general',
-                    message: `Owner approved your request to remove a staff member.`,
-                    createdAt: Date.now(), read: false, status: 'unread'
-                });
-            }
-
-            window.showToast("Staff removed successfully!", "success");
-            card.classList.add('slide-left-out');
-            setTimeout(() => card.remove(), 350);
-        } catch(e) {
-            window.showToast(e.message, 'error');
-            loadBtn(btn, false, 'Approve');
-        }
-    };
-
-    window.declineStaffDelete = async function(btn, notifId) {
-        const requesterId = btn.getAttribute('data-requester-id');
-        const card = btn.closest('.notif-card');
-        card.classList.add('slide-left-out');
-        setTimeout(() => card.remove(), 350);
-        try {
-            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-            if (requesterId && requesterId.trim() !== '' && requesterId !== 'undefined') {
-                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
-                    type: 'general',
-                    message: `Owner declined your request to remove a staff member.`,
-                    createdAt: Date.now(), read: false, status: 'unread'
-                });
-            }
-        } catch(e) {}
-    };
-
     window.approveStaffDelete = async function(btn, notifId, targetUid, targetEmail, targetPwd, requesterId) {
         const card = btn.closest('.notif-card');
         loadBtn(btn, true);
@@ -1328,11 +1371,17 @@
                            <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;" onclick="window.declineUpgradeRequest(this, '${n.id}','${n.requesterId}','${esc(n.requesterName||'')}')">✕ Decline</button>`;
         } else if (n.type === 'staff_add_request') {
             const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData))));
-            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;border:none;" data-pending="${safeData}" data-requester-id="${n.requesterId || ''}" onclick="window.approveStaffAdd(this, '${n.id}')">Approve</button>
-                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;border:none;" data-requester-id="${n.requesterId || ''}" onclick="window.declineStaffAdd(this, '${n.id}')">Decline</button>`;
+            actionsHtml = `<button class="btn btn-primary w-full" style="padding:8px 16px;font-size:0.85rem;" 
+                            data-type="add" data-id="${n.id}" data-pending="${safeData}" 
+                            data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}"
+                            onclick="window.openStaffRequestModal(this)">Review Request →</button>`;
         } else if (n.type === 'staff_delete_request') {
-            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;border:none;" data-target-uid="${n.targetUid || ''}" data-target-email="${esc(n.targetEmail || '')}" data-target-pwd="${btoa(n.targetPwd || '')}" data-requester-id="${n.requesterId || ''}" onclick="window.approveStaffDelete(this, '${n.id}')">Approve</button>
-                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;border:none;" data-requester-id="${n.requesterId || ''}" onclick="window.declineStaffDelete(this, '${n.id}')">Decline</button>`;
+            actionsHtml = `<button class="btn btn-danger w-full" style="padding:8px 16px;font-size:0.85rem;" 
+                            data-type="delete" data-id="${n.id}" data-target-uid="${n.targetUid || ''}" 
+                            data-target-email="${esc(n.targetEmail || '')}" data-target-name="${esc(n.targetName || 'Staff')}" 
+                            data-target-pwd="${btoa(n.targetPwd || '')}" data-requester-id="${n.requesterId || ''}" 
+                            data-requester-name="${esc(n.requesterName || 'Staff')}"
+                            onclick="window.openStaffRequestModal(this)">Review Request →</button>`;
         } else {
             actionsHtml = `<button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Dismiss</button>`;
         }
@@ -1964,8 +2013,10 @@ window.handleAssign = async function() {
                         message: `${window.CU.name} requested to remove staff member: ${deleteConfirmStr}`,
                         targetUid: deleteTargetUid || '',
                         targetEmail: deleteTargetEmail || '',
+                        targetName: deleteConfirmStr || '', // <-- ADD THIS LINE
                         targetPwd: deleteTargetPwd || '',
                         requesterId: window.CU.uid || '',
+                        requesterName: window.CU.name || '', // <-- ADD THIS LINE
                         createdAt: Date.now(),
                         read: false,
                         status: 'unread'
