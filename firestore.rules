@@ -34,12 +34,11 @@ service cloud.firestore {
 
     // ---- COMPANIES ----
     match /companies/{companyId} {
-      // Any signed-in user can read their own company
       allow read: if isSignedIn() && getCompanyId() == companyId;
-      // Only the owner can create/update
-      allow create: if isSignedIn() && request.auth.uid == companyId;
-      allow update: if isSignedIn() && request.auth.uid == companyId;
-      allow delete: if false; // Never allow deletion
+      // Allow new owners to create a company, and allow existing owners to update the staff count
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (getUserRole() == 'owner' || resource.data.ownerId == request.auth.uid);
+      allow delete: if false;
     }
 
     // ---- USERS ----
