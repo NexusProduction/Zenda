@@ -741,11 +741,23 @@
     };
     
     // Custom non-sticking Toast logic
+    // Custom non-sticking Toast logic with Professional SVGs
     window.showToast = function(msg, type = 'success') {
         const container = document.getElementById('custom-toast-container');
         const toast = document.createElement('div');
         toast.className = `custom-toast ${type}`;
-        toast.innerHTML = type === 'success' ? `✓ ${msg}` : `⚠ ${msg}`;
+        
+        let icon = '';
+        if (type === 'success') {
+            icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        } else if (type === 'error') {
+            icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+        } else {
+            icon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+        }
+
+        toast.innerHTML = `<span style="display:flex;align-items:center;justify-content:center;margin-right:2px;">${icon}</span><span style="font-weight:600;font-size:0.95rem;letter-spacing:-0.01em;">${msg}</span>`;
+        
         container.appendChild(toast);
         setTimeout(() => {
             toast.classList.add('out');
@@ -1134,7 +1146,7 @@
     };
 
     // ── OWNER APPROVAL HANDLERS FOR STAFF CREATION/DELETION ──
-    window.approveStaffAdd = async function(btn, notifId, pendingDataStr) {
+    window.approveStaffAdd = async function(btn, notifId, pendingDataStr, requesterId) {
         const pendingData = JSON.parse(decodeURIComponent(escape(atob(pendingDataStr))));
         const card = btn.closest('.notif-card');
         loadBtn(btn, true);
@@ -1143,12 +1155,24 @@
                 await createStaff({ ...pendingData, createdAt: Date.now() });
             }
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+            
+            // Send success notification back to requester
+            if (requesterId) {
+                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+                    type: 'general',
+                    message: `Owner approved your request to add ${pendingData.name}.`,
+                    createdAt: Date.now(),
+                    read: false,
+                    status: 'unread'
+                });
+            }
+
             window.showToast("Staff added successfully!", "success");
             card.classList.add('slide-left-out');
             setTimeout(() => card.remove(), 350);
         } catch(e) {
             window.showToast(e.message, 'error');
-            loadBtn(btn, false, '✓ Approve');
+            loadBtn(btn, false, 'Approve');
         }
     };
 
@@ -1158,28 +1182,42 @@
         setTimeout(() => card.remove(), 350);
         try {
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-            await addDoc(collection(db, 'users', requesterId, 'notifications'), {
-                type: 'general',
-                message: `Owner declined your request to add new staff.`,
-                createdAt: Date.now(),
-                read: false,
-                status: 'unread'
-            });
+            if (requesterId) {
+                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+                    type: 'general',
+                    message: `Owner declined your request to add a new staff member.`,
+                    createdAt: Date.now(),
+                    read: false,
+                    status: 'unread'
+                });
+            }
         } catch(e) {}
     };
 
-    window.approveStaffDelete = async function(btn, notifId, targetUid, targetEmail, targetPwd) {
+    window.approveStaffDelete = async function(btn, notifId, targetUid, targetEmail, targetPwd, requesterId) {
         const card = btn.closest('.notif-card');
         loadBtn(btn, true);
         try {
             await deleteStaffMember(targetUid, targetEmail, targetPwd);
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+            
+            // Send success notification back to requester
+            if (requesterId) {
+                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+                    type: 'general',
+                    message: `Owner approved your request to remove a staff member.`,
+                    createdAt: Date.now(),
+                    read: false,
+                    status: 'unread'
+                });
+            }
+
             window.showToast("Staff removed successfully!", "success");
             card.classList.add('slide-left-out');
             setTimeout(() => card.remove(), 350);
         } catch(e) {
             window.showToast(e.message, 'error');
-            loadBtn(btn, false, '✓ Approve');
+            loadBtn(btn, false, 'Approve');
         }
     };
 
@@ -1189,13 +1227,15 @@
         setTimeout(() => card.remove(), 350);
         try {
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-            await addDoc(collection(db, 'users', requesterId, 'notifications'), {
-                type: 'general',
-                message: `Owner declined your request to remove staff.`,
-                createdAt: Date.now(),
-                read: false,
-                status: 'unread'
-            });
+            if (requesterId) {
+                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+                    type: 'general',
+                    message: `Owner declined your request to remove a staff member.`,
+                    createdAt: Date.now(),
+                    read: false,
+                    status: 'unread'
+                });
+            }
         } catch(e) {}
     };
 
