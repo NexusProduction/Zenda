@@ -1849,18 +1849,25 @@ window.handleAssign = async function() {
         if (window.CU.role !== 'owner') {
             const owner = allStaff.find(s => s.role === 'owner');
             if (owner) {
-                await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
-                    type: 'staff_delete_request',
-                    message: `${window.CU.name} requested to remove staff member: ${deleteConfirmStr}`,
-                    targetUid: deleteTargetUid,
-                    targetEmail: deleteTargetEmail,
-                    targetPwd: deleteTargetPwd,
-                    requesterId: window.CU.uid,
-                    createdAt: Date.now(),
-                    read: false,
-                    status: 'unread'
-                });
-                window.showToast("Remove Staff request sent to Owner.", "success");
+                try {
+                    await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
+                        type: 'staff_delete_request',
+                        message: `${window.CU.name} requested to remove staff member: ${deleteConfirmStr}`,
+                        targetUid: deleteTargetUid || '',
+                        targetEmail: deleteTargetEmail || '',
+                        targetPwd: deleteTargetPwd || '',
+                        requesterId: window.CU.uid || '',
+                        createdAt: Date.now(),
+                        read: false,
+                        status: 'unread'
+                    });
+                    window.showToast("Remove Staff request sent to Owner.", "success");
+                } catch(e) {
+                    console.error("Notification Error: ", e);
+                    window.showToast("Failed to send request to Owner.", "error");
+                }
+            } else {
+                window.showToast("Owner account not found.", "error");
             }
             window.closeModal('delete-modal');
             loadBtn(btn, false, 'Delete Forever');
@@ -1931,9 +1938,10 @@ window.handleAssign = async function() {
 
     function renderNonOwnerStats(p = 0, d = 0) {
       const isMgr = window.CU.role === 'manager'; const el = document.getElementById('stats-grid'); if (!el) return;
+      const staffCount = allStaff.filter(s => s.role !== 'owner').length;
       el.innerHTML = isMgr
-        ? `<div class="stat-card" onclick="window.setTaskTab('assigned-to-me');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${p}</div></div>${sIco('#FFFBEB','#FF9500','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('done');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${d}</div></div>${sIco('#ECFDF5','#34C759','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('assigned-by-me');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">I Assigned</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${(window.assignedByMeTasks||[]).filter(t => t.status !== 'done' && t.status !== 'declined' && !isOverdue(t.dueDate)).length}</div></div>${sIco('#EEF2FF','#0066CC','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}</div></div>`
-        : `<div class="stat-card" onclick="window.setTaskTab('assigned-to-me');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${p}</div></div>${sIco('#FFFBEB','#FF9500','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('done');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${d}</div></div>${sIco('#ECFDF5','#34C759','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
+        ? `<div class="stat-card" onclick="window.showView('staff')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${staffCount}</div></div>${sIco('#EEF2FF','#0066CC','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('assigned-to-me');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${p}</div></div>${sIco('#FFFBEB','#FF9500','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('done');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${d}</div></div>${sIco('#ECFDF5','#34C759','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`
+        : `<div class="stat-card" onclick="window.showView('staff')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${staffCount}</div></div>${sIco('#EEF2FF','#0066CC','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('assigned-to-me');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${p}</div></div>${sIco('#FFFBEB','#FF9500','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('done');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${d}</div></div>${sIco('#ECFDF5','#34C759','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
     }
 
     function initCharts() { 
