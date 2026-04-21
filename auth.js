@@ -91,39 +91,33 @@ export async function login(email, password) {
 }
 
 // Sign up a new owner/user
-export async function signup(email, password, name, companyName) {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    await updateProfile(user, { displayName: name });
-    
-    // Create the initial company document
-    const companyRef = doc(collection(db, 'companies'));
-    await setDoc(companyRef, {
-      name: companyName,
-      ownerId: user.uid,
-      createdAt: Date.now(),
-      isPremium: false
-    });
-    
-    const uniqueId = 'Z' + Math.floor(100000 + Math.random() * 900000);
-    
-    // Create the user document linked to the company
-    await setDoc(doc(db, 'users', user.uid), {
-      name: name,
-      email: email,
-      role: 'owner',
-      companyId: companyRef.id,
-      companyName: companyName,
-      uniqueId: uniqueId,
-      createdAt: Date.now()
-    });
-    
-    return user;
-  } catch (error) {
-    throw error;
-  }
+export async function ownerSignUp(companyName, name, email, password) {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+  await updateProfile(user, { displayName: name });
+  
+  const companyRef = doc(collection(db, 'companies'));
+  await setDoc(companyRef, {
+    name: companyName,
+    ownerId: user.uid,
+    createdAt: Date.now(),
+    isPremium: false
+  });
+  
+  const uniqueCode = 'Z' + Math.floor(100000 + Math.random() * 900000).toString() + 'XXXX';
+  
+  await setDoc(doc(db, 'users', user.uid), {
+    name, email,
+    role: 'owner',
+    companyId: companyRef.id,
+    companyName,
+    uniqueId: uniqueCode,
+    createdAt: Date.now()
+  });
+  
+  await setDoc(doc(db, 'installedApps', user.uid), { apps: ['calculator'] });
+  
+  return { uid: user.uid, uniqueCode, companyId: companyRef.id };
 }
 
 // Standard logout
