@@ -1065,12 +1065,13 @@
             };
 
             try {
+                // Ensure Requester ID is attached so Owner knows who to reply to!
                 await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
                     type: 'staff_add_request',
-                    message: `${window.CU.name} requested to add a new staff member: ${window.tempStaffData.name} (${window.tempStaffData.email})`,
+                    message: `${window.CU.name} requested to add a new staff member: ${window.tempStaffData.name}`,
                     pendingData: pendingData,
-                    requesterId: window.CU.uid,
-                    requesterName: window.CU.name, // <-- ADD THIS LINE
+                    requesterId: window.CU.uid || '',
+                    requesterName: window.CU.name || '',
                     createdAt: Date.now(),
                     read: false,
                     status: 'unread'
@@ -1097,14 +1098,13 @@
             };
 
             let success = false;
-            
             try {
                 if (typeof createStaff === 'function') {
                     await createStaff(newStaffData);
                     success = true;
                 }
             } catch (err) {
-                console.warn("createStaff function failed. Using direct DB insert.", err);
+                console.warn("createStaff function failed.", err);
             }
 
             if (!success) {
@@ -1116,7 +1116,7 @@
 
             document.getElementById('staff-otp-container').classList.add('hidden');
             document.getElementById('created-card-section').classList.remove('hidden');
-            
+
             document.getElementById('card-name').textContent = esc(window.tempStaffData.name);
             document.getElementById('card-desig').textContent = esc(window.tempStaffData.desig);
             document.getElementById('card-email').textContent = esc(window.tempStaffData.email);
@@ -1239,7 +1239,7 @@
         loadBtn(actionBtn, true);
         
         try {
-            // Execute Database changes if approved
+            // 1. Execute Database changes if approved
             if (action === 'approve') {
                 if (req.type === 'add') {
                     if (typeof createStaff === 'function') {
@@ -1250,23 +1250,32 @@
                 }
             }
             
-            // Update Notification Status
+            // 2. Update Notification Status
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', req.notifId), { read: true, status: 'read' });
             
-            // Send RETURN notification back to staff member securely
-            if (req.reqId && req.reqId.trim() !== '' && req.reqId !== 'undefined') {
+            // 3. Send RETURN notification back to staff member securely
+            if (req.reqId && req.reqId.trim() !== '' && req.reqId !== 'undefined' && req.reqId !== 'null') {
                 const actionText = action === 'approve' ? 'approved' : 'declined';
                 const typeText = req.type === 'add' ? `add a new staff member` : `remove a staff member`;
-                await addDoc(collection(db, 'users', req.reqId, 'notifications'), {
-                    type: 'general',
-                    message: `Owner ${actionText} your request to ${typeText}.`,
-                    createdAt: Date.now(), 
-                    read: false, 
-                    status: 'unread'
-                });
+                
+                try {
+                    await addDoc(collection(db, 'users', req.reqId, 'notifications'), {
+                        type: 'general',
+                        message: `Owner ${actionText} your request to ${typeText}.`,
+                        createdAt: Date.now(), 
+                        read: false, 
+                        status: 'unread'
+                    });
+                } catch(err) {
+                    console.error("Return Notif Error:", err);
+                    window.showToast("Warning: Owner action succeeded, but return notification failed. Check Firestore rules.", "error");
+                }
+            } else {
+                console.warn("Missing Requester ID - this is likely an old request.");
+                window.showToast("Owner action succeeded! (Return notification skipped for older request).", "info");
             }
             
-            // UI Cleanup
+            // 4. UI Cleanup
             window.showToast(`Request ${action === 'approve' ? 'Approved' : 'Declined'}!`, action === 'approve' ? 'success' : 'info');
             window.closeModal('staff-request-modal');
             
@@ -2008,15 +2017,16 @@ window.handleAssign = async function() {
             const owner = allStaff.find(s => s.role === 'owner');
             if (owner) {
                 try {
+                    // Ensure Requester ID is attached so Owner knows who to reply to!
                     await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
                         type: 'staff_delete_request',
                         message: `${window.CU.name} requested to remove staff member: ${deleteConfirmStr}`,
                         targetUid: deleteTargetUid || '',
                         targetEmail: deleteTargetEmail || '',
-                        targetName: deleteConfirmStr || '', // <-- ADD THIS LINE
+                        targetName: deleteConfirmStr || '',
                         targetPwd: deleteTargetPwd || '',
                         requesterId: window.CU.uid || '',
-                        requesterName: window.CU.name || '', // <-- ADD THIS LINE
+                        requesterName: window.CU.name || '',
                         createdAt: Date.now(),
                         read: false,
                         status: 'unread'
