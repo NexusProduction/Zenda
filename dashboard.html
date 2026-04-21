@@ -1806,26 +1806,28 @@ window.handleAssign = async function() {
        const list = document.getElementById('staff-cards-list'); if (!list) return;
        if (!staffList) return;
 
-       const filteredStaffList = staffList.filter(s => s.uid !== window.CU.uid);
+       // Filter out self AND filter out the owner if the current user is NOT the owner
+       const filteredStaffList = staffList.filter(s => s.uid !== window.CU.uid && (window.CU.role === 'owner' || s.role !== 'owner'));
 
        if (filteredStaffList.length === 0) {
           list.innerHTML = `<div style="padding:60px 20px;grid-column:1/-1;text-align:center;background:var(--bg-surface);border-radius:var(--rad-outer);border:1px dashed var(--bd-color);"><div style="margin-bottom:16px;color:var(--tx-muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="color:var(--tx-main);font-weight:800;font-size:1.1rem;margin-bottom:8px;">No team members yet</div><div style="color:var(--tx-muted);font-weight:500;font-size:0.95rem;">Add staff to start assigning tasks and managing work.</div></div>`; return;
        }
 
        list.innerHTML = filteredStaffList.map(s => {
-         const initials = getInitials(s.name), bgColor = avatarColor(s.name), roleName = formatRole(s.role);
+         const initials = getInitials(s.name), bgColor = avatarColor(s.name);
+         // Prioritize designation, fallback to formatted role
+         const displayRole = s.designation ? s.designation : formatRole(s.role);
+         
          return `
            <div class="team-card">
-             ${(window.CU.role === 'owner' && s.uid !== window.CU.uid) ? `
-                <button class="btn-icon-danger-absolute" onclick="window.openDeleteModal('${s.uid}', '${esc(s.name)}', '${esc(s.email)}', '${esc(s.password || s.passwordHint || '')}')" title="Remove Staff">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                </button>
-             ` : ''}
+             <button class="btn-icon-danger-absolute" onclick="window.openDeleteModal('${s.uid}', '${esc(s.name)}', '${esc(s.email)}', '${esc(s.password || s.passwordHint || '')}')" title="Remove Staff">
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+             </button>
              <div class="team-card-top">
                <div class="team-av" style="background:${bgColor}22;color:${bgColor}">${initials}</div>
                <div class="team-text-block">
                  <div class="team-name">${esc(s.name)}</div>
-                 <div class="team-role">${esc(roleName)}</div>
+                 <div class="team-role">${esc(displayRole)}</div>
                </div>
              </div>
              <div class="team-card-actions">
@@ -2051,13 +2053,8 @@ window.handleAssign = async function() {
       const b = document.getElementById('add-staff-btn'); 
       if (b) b.style.display = 'flex'; // Visible to staff so they can trigger requests
 
-      if (role === 'owner') { 
-          document.getElementById('charts-row')?.classList.remove('hidden'); 
-          initCharts(); 
-      } else {
-          // Remove graph for staff accounts 
-          document.getElementById('charts-row')?.classList.add('hidden');
-      }
+      // Graph removed for everyone
+      document.getElementById('charts-row')?.classList.add('hidden');
     }
 
     async function init() {
