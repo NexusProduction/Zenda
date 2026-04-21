@@ -43,16 +43,19 @@ service cloud.firestore {
 
     // ---- USERS ----
     match /users/{userId} {
-      // Users can read profiles in the same company
       allow read: if isSignedIn();
-      // Only create your own profile
-      allow create: if isSignedIn() && request.auth.uid == userId;
+      
+      // Allow users to create their own profile, AND allow owners to create staff profiles
+      allow create: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'owner');
+      
       // Users can update their own profile; owners can update any in their company
       allow update: if isSignedIn() && (
         request.auth.uid == userId ||
         (getUserRole() == 'owner' && getCompanyId() == resource.data.companyId)
       );
-      allow delete: if false;
+      
+      // Allow owners to delete staff profiles when a deletion request is approved
+      allow delete: if isSignedIn() && getUserRole() == 'owner';
     }
 
     // ---- TASKS ----
@@ -87,12 +90,14 @@ service cloud.firestore {
 
     // ---- INSTALLED APPS ----
     match /installedApps/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      // Allow the owner to set up the default apps for the new staff member
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'owner');
     }
 
     // ---- APP DATA (calculator history, calendar events) ----
     match /appData/{userId}/apps/{appId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      // Allow the owner to wipe app data when deleting a staff member
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'owner');
     }
   }
 }
