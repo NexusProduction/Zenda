@@ -4,7 +4,9 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  deleteUser
+  deleteUser,
+  setPersistence,
+  inMemoryPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   doc, setDoc, getDoc, collection, query,
@@ -14,11 +16,17 @@ import { generateStaffId } from './utils.js';
 
 // ── Secondary app — keeps owner signed in when creating/deleting staff ──
 let _secondaryApp = null;
-function getSecondaryAuth() {
+
+async function getSecondaryAuth() {
   if (!_secondaryApp) {
     _secondaryApp = initializeApp(firebaseConfig, 'zenda-secondary');
   }
-  return getAuth(_secondaryApp);
+  const secAuth = getAuth(_secondaryApp);
+  
+  // FIX: Isolate this session completely so it doesn't log the Owner out!
+  await setPersistence(secAuth, inMemoryPersistence);
+  
+  return secAuth;
 }
 
 // ── Create staff ──
@@ -32,11 +40,11 @@ export async function createStaff({ name, email, password, role, companyId, comp
   const uniqueId = generateStaffId(role);
 
   try {
-    const secAuth = getSecondaryAuth();
+    const secAuth = await getSecondaryAuth();
     const cred = await createUserWithEmailAndPassword(secAuth, email.trim(), password.trim());
     const uid = cred.user.uid;
-    await secAuth.signOut();
 
+    // Write to the database FIRST while we guarantee the Owner token is 100% active
     await setDoc(doc(db, 'users', uid), {
       name: name.trim(), email: email.trim(), role, companyId, uniqueId,
       designation: designation.trim(), createdBy,
@@ -52,10 +60,13 @@ export async function createStaff({ name, email, password, role, companyId, comp
 
     await setDoc(doc(db, 'installedApps', uid), { apps: ['calculator'] });
 
+    // Now it is safe to log the secondary app out
+    await secAuth.signOut();
+
     return { uid, name: name.trim(), email: email.trim(), role, uniqueId, companyId, companyName, designation: designation.trim() };
 
   } catch (err) {
-    if (err.message.startsWith('FIELD:')) throw err;
+    if (err.message && err.message.startsWith('FIELD:')) throw err;
     if (err.code === 'auth/email-already-in-use') throw new Error('This email is already registered. Use a different email.');
     if (err.code === 'auth/weak-password')        throw new Error('FIELD:cs-password:Password must be at least 6 characters.');
     if (err.code === 'auth/invalid-email')        throw new Error('FIELD:cs-email:Invalid email address.');
@@ -72,16 +83,13 @@ export async function deleteStaffMember(uid, staffEmail, staffPassword) {
   try { await deleteDoc(doc(db, 'appData', uid, 'apps', 'calendar')); } catch(e) {}
 
   // 2. Delete Firebase Auth account using secondary app
-  // Sign in as the staff member using their uniqueId as password, then delete
   if (staffEmail && staffPassword) {
     try {
-      const secAuth = getSecondaryAuth();
+      const secAuth = await getSecondaryAuth();
       const cred = await signInWithEmailAndPassword(secAuth, staffEmail, staffPassword);
       await deleteUser(cred.user);
       await secAuth.signOut();
     } catch(e) {
-      // Auth deletion failed silently — Firestore data is already deleted
-      // User can no longer log in since their Firestore profile is gone
       console.warn('Auth account deletion skipped:', e.code);
     }
   }
