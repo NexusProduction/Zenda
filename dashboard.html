@@ -1146,8 +1146,11 @@
     };
 
     // ── OWNER APPROVAL HANDLERS FOR STAFF CREATION/DELETION ──
-    window.approveStaffAdd = async function(btn, notifId, pendingDataStr, requesterId) {
+    window.approveStaffAdd = async function(btn, notifId) {
+        const pendingDataStr = btn.getAttribute('data-pending');
+        const requesterId = btn.getAttribute('data-requester-id');
         const pendingData = JSON.parse(decodeURIComponent(escape(atob(pendingDataStr))));
+        
         const card = btn.closest('.notif-card');
         loadBtn(btn, true);
         try {
@@ -1156,14 +1159,11 @@
             }
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
             
-            // Send success notification back to requester
-            if (requesterId) {
+            if (requesterId && requesterId.trim() !== '' && requesterId !== 'undefined') {
                 await addDoc(collection(db, 'users', requesterId, 'notifications'), {
                     type: 'general',
                     message: `Owner approved your request to add ${pendingData.name}.`,
-                    createdAt: Date.now(),
-                    read: false,
-                    status: 'unread'
+                    createdAt: Date.now(), read: false, status: 'unread'
                 });
             }
 
@@ -1176,19 +1176,64 @@
         }
     };
 
-    window.declineStaffAdd = async function(btn, notifId, requesterId) {
+    window.declineStaffAdd = async function(btn, notifId) {
+        const requesterId = btn.getAttribute('data-requester-id');
         const card = btn.closest('.notif-card');
         card.classList.add('slide-left-out');
         setTimeout(() => card.remove(), 350);
         try {
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-            if (requesterId) {
+            if (requesterId && requesterId.trim() !== '' && requesterId !== 'undefined') {
                 await addDoc(collection(db, 'users', requesterId, 'notifications'), {
                     type: 'general',
                     message: `Owner declined your request to add a new staff member.`,
-                    createdAt: Date.now(),
-                    read: false,
-                    status: 'unread'
+                    createdAt: Date.now(), read: false, status: 'unread'
+                });
+            }
+        } catch(e) {}
+    };
+
+    window.approveStaffDelete = async function(btn, notifId) {
+        const targetUid = btn.getAttribute('data-target-uid');
+        const targetEmail = btn.getAttribute('data-target-email');
+        const targetPwd = atob(btn.getAttribute('data-target-pwd'));
+        const requesterId = btn.getAttribute('data-requester-id');
+
+        const card = btn.closest('.notif-card');
+        loadBtn(btn, true);
+        try {
+            await deleteStaffMember(targetUid, targetEmail, targetPwd);
+            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+            
+            if (requesterId && requesterId.trim() !== '' && requesterId !== 'undefined') {
+                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+                    type: 'general',
+                    message: `Owner approved your request to remove a staff member.`,
+                    createdAt: Date.now(), read: false, status: 'unread'
+                });
+            }
+
+            window.showToast("Staff removed successfully!", "success");
+            card.classList.add('slide-left-out');
+            setTimeout(() => card.remove(), 350);
+        } catch(e) {
+            window.showToast(e.message, 'error');
+            loadBtn(btn, false, 'Approve');
+        }
+    };
+
+    window.declineStaffDelete = async function(btn, notifId) {
+        const requesterId = btn.getAttribute('data-requester-id');
+        const card = btn.closest('.notif-card');
+        card.classList.add('slide-left-out');
+        setTimeout(() => card.remove(), 350);
+        try {
+            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+            if (requesterId && requesterId.trim() !== '' && requesterId !== 'undefined') {
+                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+                    type: 'general',
+                    message: `Owner declined your request to remove a staff member.`,
+                    createdAt: Date.now(), read: false, status: 'unread'
                 });
             }
         } catch(e) {}
@@ -1283,11 +1328,11 @@
                            <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;" onclick="window.declineUpgradeRequest(this, '${n.id}','${n.requesterId}','${esc(n.requesterName||'')}')">✕ Decline</button>`;
         } else if (n.type === 'staff_add_request') {
             const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData))));
-            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;border:none;" onclick="window.approveStaffAdd(this, '${n.id}', '${safeData}', '${n.requesterId}')">Approve</button>
-                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;border:none;" onclick="window.declineStaffAdd(this, '${n.id}','${n.requesterId}')">Decline</button>`;
+            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;border:none;" data-pending="${safeData}" data-requester-id="${n.requesterId || ''}" onclick="window.approveStaffAdd(this, '${n.id}')">Approve</button>
+                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;border:none;" data-requester-id="${n.requesterId || ''}" onclick="window.declineStaffAdd(this, '${n.id}')">Decline</button>`;
         } else if (n.type === 'staff_delete_request') {
-            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;border:none;" onclick="window.approveStaffDelete(this, '${n.id}', '${n.targetUid}', '${n.targetEmail}', '${n.targetPwd}', '${n.requesterId}')">Approve</button>
-                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;border:none;" onclick="window.declineStaffDelete(this, '${n.id}','${n.requesterId}')">Decline</button>`;
+            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;border:none;" data-target-uid="${n.targetUid || ''}" data-target-email="${esc(n.targetEmail || '')}" data-target-pwd="${btoa(n.targetPwd || '')}" data-requester-id="${n.requesterId || ''}" onclick="window.approveStaffDelete(this, '${n.id}')">Approve</button>
+                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;border:none;" data-requester-id="${n.requesterId || ''}" onclick="window.declineStaffDelete(this, '${n.id}')">Decline</button>`;
         } else {
             actionsHtml = `<button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Dismiss</button>`;
         }
@@ -1878,8 +1923,32 @@ window.handleAssign = async function() {
        }).join('');
     };
 
-    window.openDeleteModal = function(uid, name, email, pwd) { deleteTargetUid = uid; deleteConfirmStr = name; deleteTargetEmail = email; deleteTargetPwd = pwd; const dn = document.getElementById('del-name-display'); if (dn) dn.textContent = name; const dh = document.getElementById('del-confirm-hint'); if (dh) dh.textContent = name; const di = document.getElementById('del-confirm-input'); if (di) di.value = ''; const b = document.getElementById('del-confirm-btn'); if (b) b.disabled = true; window.openModal('delete-modal'); };
-    window.checkDelConfirm = function() { const v = document.getElementById('del-confirm-input')?.value, b = document.getElementById('del-confirm-btn'); if (b) b.disabled = v !== deleteConfirmStr; };
+    window.openDeleteModal = function(uid, name, email, pwd) { 
+        deleteTargetUid = uid; deleteConfirmStr = name; deleteTargetEmail = email; deleteTargetPwd = pwd; 
+        const dn = document.getElementById('del-name-display'); if (dn) dn.textContent = name; 
+        const dh = document.getElementById('del-confirm-hint'); if (dh) dh.textContent = name; 
+        const di = document.getElementById('del-confirm-input'); if (di) di.value = ''; 
+        
+        const b = document.getElementById('del-confirm-btn'); 
+        if (b) { 
+            b.disabled = true; 
+            b.style.opacity = '0.4'; 
+            b.style.cursor = 'not-allowed'; 
+            b.style.transition = 'all 0.3s ease';
+        } 
+        window.openModal('delete-modal'); 
+    };
+    
+    window.checkDelConfirm = function() { 
+        const v = document.getElementById('del-confirm-input')?.value;
+        const b = document.getElementById('del-confirm-btn'); 
+        if (b) { 
+            const isMatch = (v === deleteConfirmStr);
+            b.disabled = !isMatch; 
+            b.style.opacity = isMatch ? '1' : '0.4';
+            b.style.cursor = isMatch ? 'pointer' : 'not-allowed';
+        } 
+    };
     
     window.confirmDelete = async function() { 
         if (!deleteTargetUid) return; 
