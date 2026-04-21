@@ -50,10 +50,29 @@ export async function getCurrentUser() {
           const docRef = doc(db, 'users', user.uid);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            resolve({ uid: user.uid, email: user.email, ...docSnap.data() });
-          } else {
+    resolve({ uid: user.uid, email: user.email, ...docSnap.data() });
+} else {
+    // SELF-HEALING: Document not found by UID — try finding by email
+    // This fixes staff accounts created with wrong document ID (addDoc fallback bug)
+    try {
+        const { query, collection, where, getDocs, setDoc } = await import(
+            "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
+        );
+        const q = query(collection(db, 'users'), where('email', '==', user.email));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            const data = snap.docs[0].data();
+            // Fix the path permanently so future logins work correctly
+            await setDoc(doc(db, 'users', user.uid), { ...data, uid: user.uid });
+            resolve({ uid: user.uid, email: user.email, ...data });
+        } else {
             resolve({ uid: user.uid, email: user.email });
-          }
+        }
+    } catch (fallbackErr) {
+        console.error("Fallback lookup failed:", fallbackErr);
+        resolve({ uid: user.uid, email: user.email });
+    }
+}
         } catch (error) {
           console.error("Error fetching user data:", error);
           resolve({ uid: user.uid, email: user.email });
