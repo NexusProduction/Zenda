@@ -307,6 +307,13 @@
       .modal-hdr { padding: 16px 20px; }
       .modal > div:last-child { padding: 20px; }
     }
+    
+    /* Animation Class for Smooth Notification Deletion */
+    .slide-left-out {
+      transform: translateX(-120%) scale(0.95) !important;
+      opacity: 0 !important;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
   </style>
 </head>
 <body>
@@ -352,37 +359,6 @@
     </div>
     <div class="sp-body" id="notif-body" style="max-height:400px; overflow-y:auto;"></div>
   </div>
-
-  <template id="tpl-security">
-    <div class="notif-card" data-id="">
-      <div class="notif-icon security"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
-      <div class="notif-content-wrap">
-        <div class="notif-header"><h4 class="notif-title">Security Alert</h4><span class="notif-time">Just now</span></div>
-        <p class="notif-body">Your account was accessed from a new device.</p>
-        <div class="notif-actions" style="justify-content:flex-start;margin-top:8px;">
-          <button class="btn-outline" style="padding:6px 14px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Dismiss</button>
-        </div>
-      </div>
-    </div>
-  </template>
-
-  <template id="tpl-task">
-    <div class="notif-card" data-id="" data-task-id="" data-sender-id="">
-      <div class="notif-icon task"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></div>
-      <div class="notif-content-wrap">
-        <div class="notif-header"><h4 class="notif-title">Task Update</h4><span class="notif-time">Just now</span></div>
-        <p class="notif-body task-title">...</p>
-        <div class="notif-actions" style="justify-content:flex-start;margin-top:12px; display:flex; gap:8px;">
-          <button class="btn btn-primary" style="padding:8px 16px;font-size:0.85rem;" onclick="window.acceptTaskNotif(this)">Accept</button>
-          <button class="btn btn-secondary" style="padding:8px 16px;font-size:0.85rem;" onclick="window.showDenyInput(this)">Deny</button>
-        </div>
-        <div class="deny-container hidden" style="margin-top:12px;">
-          <input type="text" class="form-input deny-input" placeholder="Reason (max 20 words)" maxlength="120" style="padding:10px 14px;margin-bottom:8px;">
-          <button class="btn btn-primary w-full" onclick="window.submitDeny(this)">Send</button>
-        </div>
-      </div>
-    </div>
-  </template>
 
   <div class="app-body">
     
@@ -716,51 +692,53 @@
 
 
     // ── UPGRADE BUTTON HANDLER ──
-window.handleUpgradeClick = async function() {
-  if (window.CU.role === 'owner') {
-    window.location.href = 'subscription.html';
-    return;
-  }
-  // Staff/Manager — find owner and send notification
-  try {
-    const staff = allStaff.find(s => s.role === 'owner');
-    const ownerId = staff ? staff.uid : null;
-    if (!ownerId) { window.showToast('Could not find owner.', 'error'); return; }
-    await addDoc(collection(db, 'users', ownerId, 'notifications'), {
-      type: 'upgrade_request',
-      message: `${window.CU.name} is requesting to upgrade the account to Premium.`,
-      requesterId: window.CU.uid,
-      requesterName: window.CU.name,
-      createdAt: Date.now(),
-      read: false,
-      status: 'unread'
-    });
-    window.showToast('Upgrade request sent to owner! ✓', 'success');
-  } catch(e) { window.showToast('Failed to send request.', 'error'); }
-};
+    window.handleUpgradeClick = async function() {
+      if (window.CU.role === 'owner') {
+        window.location.href = 'subscription.html';
+        return;
+      }
+      try {
+        const staff = allStaff.find(s => s.role === 'owner');
+        const ownerId = staff ? staff.uid : null;
+        if (!ownerId) { window.showToast('Could not find owner.', 'error'); return; }
+        await addDoc(collection(db, 'users', ownerId, 'notifications'), {
+          type: 'upgrade_request',
+          message: `${window.CU.name} is requesting to upgrade the account to Premium.`,
+          requesterId: window.CU.uid,
+          requesterName: window.CU.name,
+          createdAt: Date.now(),
+          read: false,
+          status: 'unread'
+        });
+        window.showToast('Upgrade request sent to owner! ✓', 'success');
+      } catch(e) { window.showToast('Failed to send request.', 'error'); }
+    };
 
-// ── APPROVE / DECLINE UPGRADE REQUEST ──
-window.approveUpgradeRequest = async function(notifId) {
-  try {
-    await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-    window.location.href = 'subscription.html';
-  } catch(e) { window.showToast('Error.', 'error'); }
-};
+    // ── APPROVE / DECLINE UPGRADE REQUEST ──
+    window.approveUpgradeRequest = async function(btn, notifId) {
+      loadBtn(btn, true);
+      try {
+        await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+        window.location.href = 'subscription.html';
+      } catch(e) { window.showToast('Error.', 'error'); loadBtn(btn, false, '✓ Approve'); }
+    };
 
-window.declineUpgradeRequest = async function(notifId, requesterId, requesterName) {
-  try {
-    await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-    // Notify the staff member their request was declined
-    await addDoc(collection(db, 'users', requesterId, 'notifications'), {
-      type: 'upgrade_declined',
-      message: `${window.CU.name} (Owner) declined your request to upgrade the account.`,
-      createdAt: Date.now(),
-      read: false,
-      status: 'unread'
-    });
-    window.showToast('Request declined. Staff has been notified.', 'success');
-  } catch(e) { window.showToast('Error.', 'error'); }
-};
+    window.declineUpgradeRequest = async function(btn, notifId, requesterId, requesterName) {
+      const card = btn.closest('.notif-card');
+      card.classList.add('slide-left-out');
+      setTimeout(() => card.remove(), 300);
+      try {
+        await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+        await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+          type: 'general',
+          message: `${window.CU.name} (Owner) declined your request to upgrade the account.`,
+          createdAt: Date.now(),
+          read: false,
+          status: 'unread'
+        });
+        window.showToast('Request declined. Staff has been notified.', 'success');
+      } catch(e) { window.showToast('Error.', 'error'); }
+    };
     
     // Custom non-sticking Toast logic
     window.showToast = function(msg, type = 'success') {
@@ -1024,6 +1002,40 @@ window.declineUpgradeRequest = async function(notifId, requesterId, requesterNam
 
         loadBtn(btn, true);
 
+        // DELIVER STAFF REQUEST TO OWNER IF USER IS NOT OWNER
+        if (window.CU.role !== 'owner') {
+            const owner = allStaff.find(s => s.role === 'owner');
+            if (!owner) { window.showToast('Owner not found.', 'error'); loadBtn(btn, false, 'Verify & Create'); return; }
+
+            const pendingData = {
+                name: window.tempStaffData.name,
+                email: window.tempStaffData.email,
+                password: window.tempStaffData.pwd,
+                role: 'staff',
+                designation: window.tempStaffData.desig,
+                companyId: window.CU.companyId || 'default'
+            };
+
+            try {
+                await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
+                    type: 'staff_add_request',
+                    message: `${window.CU.name} requested to add a new staff member: ${window.tempStaffData.name} (${window.tempStaffData.email})`,
+                    pendingData: pendingData,
+                    requesterId: window.CU.uid,
+                    createdAt: Date.now(),
+                    read: false,
+                    status: 'unread'
+                });
+                window.showToast("Staff Add Request sent to Owner for approval.", "success");
+                window.resetAndCloseAddStaff();
+            } catch(e) {
+                window.showToast('Failed to send request.', 'error');
+            }
+            loadBtn(btn, false, 'Verify & Create');
+            return;
+        }
+
+        // IF USER IS OWNER, CREATE IMMEDIATELY
         try {
             const newStaffData = {
                 name: window.tempStaffData.name,
@@ -1047,13 +1059,11 @@ window.declineUpgradeRequest = async function(notifId, requesterId, requesterNam
             }
 
             if (!success) {
-    // addDoc would create a random ID — we must NOT do that.
-    // Instead, show a clear error so the owner knows to retry.
-    window.showToast("Staff creation failed. Please try again.", "error");
-    document.getElementById('staff-otp-container').classList.add('hidden');
-    document.getElementById('staff-form-container').classList.remove('hidden');
-    return;
-}
+                window.showToast("Staff creation failed. Please try again.", "error");
+                document.getElementById('staff-otp-container').classList.add('hidden');
+                document.getElementById('staff-form-container').classList.remove('hidden');
+                return;
+            }
 
             document.getElementById('staff-otp-container').classList.add('hidden');
             document.getElementById('created-card-section').classList.remove('hidden');
@@ -1123,6 +1133,72 @@ window.declineUpgradeRequest = async function(notifId, requesterId, requesterNam
         }, 300);
     };
 
+    // ── OWNER APPROVAL HANDLERS FOR STAFF CREATION/DELETION ──
+    window.approveStaffAdd = async function(btn, notifId, pendingDataStr) {
+        const pendingData = JSON.parse(decodeURIComponent(escape(atob(pendingDataStr))));
+        const card = btn.closest('.notif-card');
+        loadBtn(btn, true);
+        try {
+            if (typeof createStaff === 'function') {
+                await createStaff({ ...pendingData, createdAt: Date.now() });
+            }
+            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+            window.showToast("Staff added successfully!", "success");
+            card.classList.add('slide-left-out');
+            setTimeout(() => card.remove(), 350);
+        } catch(e) {
+            window.showToast(e.message, 'error');
+            loadBtn(btn, false, '✓ Approve');
+        }
+    };
+
+    window.declineStaffAdd = async function(btn, notifId, requesterId) {
+        const card = btn.closest('.notif-card');
+        card.classList.add('slide-left-out');
+        setTimeout(() => card.remove(), 350);
+        try {
+            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+            await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+                type: 'general',
+                message: `Owner declined your request to add new staff.`,
+                createdAt: Date.now(),
+                read: false,
+                status: 'unread'
+            });
+        } catch(e) {}
+    };
+
+    window.approveStaffDelete = async function(btn, notifId, targetUid, targetEmail, targetPwd) {
+        const card = btn.closest('.notif-card');
+        loadBtn(btn, true);
+        try {
+            await deleteStaffMember(targetUid, targetEmail, targetPwd);
+            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+            window.showToast("Staff removed successfully!", "success");
+            card.classList.add('slide-left-out');
+            setTimeout(() => card.remove(), 350);
+        } catch(e) {
+            window.showToast(e.message, 'error');
+            loadBtn(btn, false, '✓ Approve');
+        }
+    };
+
+    window.declineStaffDelete = async function(btn, notifId, requesterId) {
+        const card = btn.closest('.notif-card');
+        card.classList.add('slide-left-out');
+        setTimeout(() => card.remove(), 350);
+        try {
+            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+            await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+                type: 'general',
+                message: `Owner declined your request to remove staff.`,
+                createdAt: Date.now(),
+                read: false,
+                status: 'unread'
+            });
+        } catch(e) {}
+    };
+
     window.renderNotifs = function(items) {
       const el = document.getElementById('notif-body');
       if (!el) return;
@@ -1150,9 +1226,30 @@ window.declineUpgradeRequest = async function(notifId, requesterId, requesterNam
         } else if (n.type === 'task_received' || n.type === 'task_update') {
           iconType = `<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>`;
           iconBgClass = 'task';
+        } else if (n.type.includes('staff')) {
+          iconType = `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>`;
+          iconBgClass = 'general';
         } else {
           iconType = `<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>`;
           iconBgClass = 'general';
+        }
+
+        let actionsHtml = '';
+        if (n.type === 'task_received') {
+            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.acceptTaskNotif(this)">Accept</button>
+                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.showDenyInput(this)">Deny</button>`;
+        } else if (n.type === 'upgrade_request') {
+            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;" onclick="window.approveUpgradeRequest(this, '${n.id}')">✓ Approve</button>
+                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;" onclick="window.declineUpgradeRequest(this, '${n.id}','${n.requesterId}','${esc(n.requesterName||'')}')">✕ Decline</button>`;
+        } else if (n.type === 'staff_add_request') {
+            const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData))));
+            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;" onclick="window.approveStaffAdd(this, '${n.id}', '${safeData}')">✓ Approve</button>
+                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;" onclick="window.declineStaffAdd(this, '${n.id}','${n.requesterId}')">✕ Decline</button>`;
+        } else if (n.type === 'staff_delete_request') {
+            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;" onclick="window.approveStaffDelete(this, '${n.id}', '${n.targetUid}', '${n.targetEmail}', '${n.targetPwd}')">✓ Approve</button>
+                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;" onclick="window.declineStaffDelete(this, '${n.id}','${n.requesterId}')">✕ Decline</button>`;
+        } else {
+            actionsHtml = `<button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Dismiss</button>`;
         }
 
         const html = `
@@ -1162,11 +1259,7 @@ window.declineUpgradeRequest = async function(notifId, requesterId, requesterNam
               <div class="notif-header"><h4 class="notif-title">${n.type.includes('task') ? 'Task Update' : (n.type.includes('security') ? 'Security Alert' : 'Notification')}</h4><span class="notif-time">${ago(n.createdAt)}</span></div>
               <p class="notif-body">${esc(n.message)}</p>
               <div class="notif-actions" style="justify-content:flex-start;margin-top:12px; display:flex; gap:8px;">
-                ${n.type === 'task_received' 
-  ? `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.acceptTaskNotif(this)">Accept</button><button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.showDenyInput(this)">Deny</button>` 
-  : n.type === 'upgrade_request'
-  ? `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;" onclick="window.approveUpgradeRequest('${n.id}')">✓ Approve</button><button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;" onclick="window.declineUpgradeRequest('${n.id}','${n.requesterId}','${esc(n.requesterName||'')}')">✕ Decline</button>`
-  : `<button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Dismiss</button>`}
+                ${actionsHtml}
               </div>
               <div class="deny-container hidden" style="margin-top:12px;">
                 <input type="text" class="form-input deny-input" placeholder="Reason (max 20 words)" maxlength="120" style="padding:10px 14px;margin-bottom:8px;">
@@ -1180,12 +1273,12 @@ window.declineUpgradeRequest = async function(notifId, requesterId, requesterNam
     };
 
     window.dismissAlert = async function(btn) { 
-        const card = btn.closest('.notif-card'); const id = card.dataset.id; btn.textContent = "Done!"; card.style.opacity = '0.5'; setTimeout(() => card.remove(), 300); 
+        const card = btn.closest('.notif-card'); const id = card.dataset.id; btn.textContent = "Done!"; card.classList.add('slide-left-out'); setTimeout(() => card.remove(), 350); 
         try { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' }); } catch (e) { console.error(e); } 
     };
     
     window.acceptTaskNotif = async function(btn) { 
-        const card = btn.closest('.notif-card'); const id = card.dataset.id; btn.textContent = "Accepted!"; card.style.opacity = '0.5'; setTimeout(() => card.remove(), 300); 
+        const card = btn.closest('.notif-card'); const id = card.dataset.id; btn.textContent = "Accepted!"; card.classList.add('slide-left-out'); setTimeout(() => card.remove(), 350); 
         try { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' }); } catch (e) { console.error(e); } 
     };
     
@@ -1212,7 +1305,7 @@ window.declineUpgradeRequest = async function(notifId, requesterId, requesterNam
         if (managerId) await addDoc(collection(db, 'users', managerId, 'notifications'), { type: 'task_update', message: `${window.CU.name} declined task "${tTitle}". Reason: ${input}`, taskId, createdAt: Date.now(), read: false, status: 'unread' });
         if (notifId) await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
         
-        btn.textContent = "Done!"; card.style.opacity = '0.5'; setTimeout(() => card.remove(), 300);
+        btn.textContent = "Done!"; card.classList.add('slide-left-out'); setTimeout(() => card.remove(), 350);
         window.showToast("Task declined.", "success");
       } catch (e) { console.error(e); window.showToast("Error updating task.", "error"); btn.textContent = "Send"; }
     };
@@ -1745,7 +1838,44 @@ window.handleAssign = async function() {
 
     window.openDeleteModal = function(uid, name, email, pwd) { deleteTargetUid = uid; deleteConfirmStr = name; deleteTargetEmail = email; deleteTargetPwd = pwd; const dn = document.getElementById('del-name-display'); if (dn) dn.textContent = name; const dh = document.getElementById('del-confirm-hint'); if (dh) dh.textContent = name; const di = document.getElementById('del-confirm-input'); if (di) di.value = ''; const b = document.getElementById('del-confirm-btn'); if (b) b.disabled = true; window.openModal('delete-modal'); };
     window.checkDelConfirm = function() { const v = document.getElementById('del-confirm-input')?.value, b = document.getElementById('del-confirm-btn'); if (b) b.disabled = v !== deleteConfirmStr; };
-    window.confirmDelete = async function() { if (!deleteTargetUid) return; const btn = document.getElementById('del-confirm-btn'); loadBtn(btn, true); try { await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd); window.closeModal('delete-modal'); window.showToast('Staff member removed.', 'success'); deleteTargetUid = null; } catch (e) { window.showToast('Error: ' + e.message, 'error'); loadBtn(btn, false, 'Delete Forever'); window.checkDelConfirm(); } };
+    
+    window.confirmDelete = async function() { 
+        if (!deleteTargetUid) return; 
+        const btn = document.getElementById('del-confirm-btn'); 
+        loadBtn(btn, true); 
+
+        if (window.CU.role !== 'owner') {
+            const owner = allStaff.find(s => s.role === 'owner');
+            if (owner) {
+                await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
+                    type: 'staff_delete_request',
+                    message: `${window.CU.name} requested to remove staff member: ${deleteConfirmStr}`,
+                    targetUid: deleteTargetUid,
+                    targetEmail: deleteTargetEmail,
+                    targetPwd: deleteTargetPwd,
+                    requesterId: window.CU.uid,
+                    createdAt: Date.now(),
+                    read: false,
+                    status: 'unread'
+                });
+                window.showToast("Remove Staff request sent to Owner.", "success");
+            }
+            window.closeModal('delete-modal');
+            loadBtn(btn, false, 'Delete Forever');
+            return;
+        }
+
+        try { 
+            await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd); 
+            window.closeModal('delete-modal'); 
+            window.showToast('Staff member removed.', 'success'); 
+            deleteTargetUid = null; 
+        } catch (e) { 
+            window.showToast('Error: ' + e.message, 'error'); 
+            loadBtn(btn, false, 'Delete Forever'); 
+            window.checkDelConfirm(); 
+        } 
+    };
 
     function subscribeAll() {
       const { uid, companyId, role } = window.CU;
@@ -1758,7 +1888,7 @@ window.handleAssign = async function() {
             window.updateAllStats();
             if(window.renderRecentTasks) window.renderRecentTasks(); 
             if(window.renderTasksList) window.renderTasksList(); 
-            if (role === 'staff' || role === 'manager') { updateCharts(tasks); } 
+            if (role === 'owner') { updateCharts(tasks); } 
         })); }
         
         if (ca && module.listenAssignedByMe) { unsubs.push(module.listenAssignedByMe(uid, tasks => { 
@@ -1770,16 +1900,17 @@ window.handleAssign = async function() {
       }).catch(e => console.error(e));
       
       import('./staff.js').then(module => {
-        if (cs && companyId && module.listenCompanyStaff) { unsubs.push(module.listenCompanyStaff(companyId, staff => { 
-            allStaff = staff; 
-            window.updateAllStats();
-            if(window.renderStaffCards) window.renderStaffCards(staff); 
-            buildAssignSelect(staff); 
-            const n = staff.filter(s => s.role !== 'owner'); 
-            const sc = document.getElementById('staff-count-sub'); 
-            if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`; 
-        })); }
-        else if (companyId && module.getAssignableStaff) { module.getAssignableStaff(companyId, uid).then(s => { allStaff = s; }).catch(console.error); }
+        if (companyId && module.listenCompanyStaff) { 
+            unsubs.push(module.listenCompanyStaff(companyId, staff => { 
+                allStaff = staff; 
+                window.updateAllStats();
+                if(window.renderStaffCards) window.renderStaffCards(staff); 
+                buildAssignSelect(staff); 
+                const n = staff.filter(s => s.role !== 'owner'); 
+                const sc = document.getElementById('staff-count-sub'); 
+                if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`; 
+            })); 
+        }
       }).catch(e => console.error(e));
       
       import('./apps.js').then(module => { if (module.listenInstalledApps) { unsubs.push(module.listenInstalledApps(uid, ids => buildAppsGrid(ids))); } }).catch(e => console.error(e));
@@ -1879,7 +2010,9 @@ window.handleAssign = async function() {
       const greetEl = document.getElementById('home-greeting'); if (greetEl) greetEl.innerHTML = `${greet}, <span class="greeting-name">${esc(fn)}</span>`;
       const subEl = document.getElementById('home-sub'); if (subEl) subEl.textContent = { owner: 'Overview of your company and team', manager: 'Your team tasks and activity', staff: 'Your assignments and progress' }[role] || '';
 
-      const canAssign = role === 'owner' || role === 'manager', isOwner = role === 'owner', canSeeStaff = role === 'owner' || role === 'manager';
+      const canAssign = role === 'owner' || role === 'manager', isOwner = role === 'owner';
+      // Staff tabs made accessible
+      const canSeeStaff = true; 
 
       const assignTopBtn = document.getElementById('assign-top-btn');
       const assignTasksBtnFull = document.getElementById('assign-tasks-btn-full');
@@ -1909,9 +2042,22 @@ window.handleAssign = async function() {
         }
       }
 
-      if (canSeeStaff) { document.getElementById('nav-staff')?.classList.remove('hidden'); document.getElementById('team-label')?.classList.remove('hidden'); document.getElementById('bn-staff-btn')?.classList.remove('hidden'); }
-      if (isOwner) { const b = document.getElementById('add-staff-btn'); if (b) b.style.display = 'flex'; }
-      if (role === 'staff' || role === 'manager') { document.getElementById('charts-row')?.classList.remove('hidden'); initCharts(); }
+      if (canSeeStaff) { 
+          document.getElementById('nav-staff')?.classList.remove('hidden'); 
+          document.getElementById('team-label')?.classList.remove('hidden'); 
+          document.getElementById('bn-staff-btn')?.classList.remove('hidden'); 
+      }
+      
+      const b = document.getElementById('add-staff-btn'); 
+      if (b) b.style.display = 'flex'; // Visible to staff so they can trigger requests
+
+      if (role === 'owner') { 
+          document.getElementById('charts-row')?.classList.remove('hidden'); 
+          initCharts(); 
+      } else {
+          // Remove graph for staff accounts 
+          document.getElementById('charts-row')?.classList.add('hidden');
+      }
     }
 
     async function init() {
