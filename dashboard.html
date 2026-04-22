@@ -742,21 +742,21 @@
   </div>
 
   <style>
-    /* Slide up from the bottom instead of down from the top */
+    /* Custom Toast Engine (Redesigned Floating Pill) */
     @keyframes customToastIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes customToastOut { from { transform: translateY(0); opacity: 1; } to { transform: translateY(20px); opacity: 0; } }
     
-    /* Anchor to bottom-right on PC */
     #custom-toast-container { position: fixed; bottom: 32px; right: 32px; z-index: 99999 !important; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
     
-    /* Ensure it floats safely above the mobile bottom-nav bar */
     @media (max-width: 768px) {
-        #custom-toast-container { bottom: 100px; right: 16px; left: 16px; align-items: center; }
+        #custom-toast-container { bottom: 100px; right: 16px; left: 16px; align-items: center; justify-content: center; }
     }
 
-    .custom-toast { padding: 14px 20px; border-radius: 12px; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.12); font-weight: 600; font-size: 0.95rem; color: #1D1D1F; display: flex; align-items: center; gap: 10px; border-left: 4px solid var(--ac); pointer-events: auto; animation: customToastIn 0.3s forwards; }
-    .custom-toast.error { border-left-color: var(--danger); }
-    .custom-toast.success { border-left-color: var(--success); }
+    .custom-toast { padding: 14px 24px; border-radius: 50px; background: white; box-shadow: 0 12px 32px rgba(0,0,0,0.15); font-weight: 700; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 2px solid transparent; pointer-events: auto; animation: customToastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; max-width: 90vw; text-align: center; }
+    
+    .custom-toast.success { background: var(--success-light); color: var(--success); border-color: rgba(52,199,89,0.2); }
+    .custom-toast.error { background: var(--danger-light); color: var(--danger); border-color: rgba(255,59,48,0.2); }
+    .custom-toast.info { background: var(--ac-light); color: var(--ac); border-color: rgba(0,102,204,0.2); }
     .custom-toast.out { animation: customToastOut 0.3s forwards !important; }
   </style>
   <div id="custom-toast-container"></div>
@@ -1666,11 +1666,19 @@
               <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                   ${t.status === 'done' ? `
                     <div class="done-badge-solid">
-                      <div style="display:flex; align-items:center; justify-content:flex-end; gap:4px;">
+                      <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
                         <svg class="done-tick-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 
                         Completed
                       </div>
                       <div class="done-badge-date">${t.completedAt ? formatDateIN(t.completedAt) : 'Recently'}</div>
+                    </div>` : ''}
+                    
+                  ${t.status === 'declined' ? `
+                    <div class="done-badge-solid" style="background: var(--danger-light); color: var(--danger); box-shadow: none;">
+                      <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
+                        <svg class="done-tick-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> 
+                        Declined
+                      </div>
                     </div>` : ''}
                   
                   ${(window.CU.role === 'owner' || window.CU.role === 'manager') && window.taskTab === 'assigned-by-me' ? `
@@ -1699,9 +1707,14 @@
             </div>` : ''}
 
             ${t.status === 'declined' && t.reason ? `
-                <div style="margin-top: 12px; padding: 10px 14px; background: var(--bg-page); border: 1px dashed var(--bd-color); border-radius: 10px; font-size: 0.85rem; color: var(--tx-main); line-height: 1.4;">
-                    <strong style="font-weight: 800; display: block; margin-bottom: 4px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--danger);">Decline Reason</strong>
-                    ${esc(t.reason)}
+                <div style="margin-top: 16px; padding: 16px; background: var(--danger-light); border: 1px solid rgba(255,59,48,0.2); border-radius: 12px;">
+                    <div style="display:flex; align-items:center; gap:6px; margin-bottom: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        <strong style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--danger);">Reason for Decline</strong>
+                    </div>
+                    <div style="font-size: 0.95rem; color: var(--danger); font-weight: 600; line-height: 1.5;">
+                        ${esc(t.reason)}
+                    </div>
                 </div>` : ''}
           </div>
         </div>`;
