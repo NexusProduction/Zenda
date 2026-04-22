@@ -643,8 +643,15 @@
       </div>
       <div style="padding:32px;">
         <p style="font-size:1rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;line-height:1.5;">Permanently delete <strong id="del-name-display" style="color:var(--tx-main);"></strong> and revoke access.<br>Type <strong id="del-confirm-hint" style="color:var(--danger);font-family:var(--font-mono);"></strong> to confirm.</p>
-        <input class="form-input" id="del-confirm-input" type="text" placeholder="Type name to confirm…" oninput="window.checkDelConfirm()" style="margin-bottom:32px;padding:16px;" maxlength="40">
-        <div style="display:flex;gap:16px;">
+        
+        <input class="form-input" id="del-confirm-input" type="text" placeholder="Type name to confirm…" oninput="window.checkDelConfirm()" style="margin-bottom:16px;padding:16px;" maxlength="40">
+        
+        <div id="del-reason-container" class="hidden" style="margin-bottom:32px;">
+          <label class="form-label" style="margin-bottom:8px;">Reason for removal <span style="color:var(--tx-muted);font-weight:500;">(Required, max 50 chars)</span></label>
+          <input class="form-input" id="del-reason-input" type="text" placeholder="e.g. Left the company..." maxlength="50" oninput="window.checkDelConfirm()" style="padding:16px;">
+        </div>
+
+        <div style="display:flex;gap:16px;margin-top:16px;">
           <button class="btn btn-ghost w-full" style="padding:14px;border-radius:14px;" onclick="window.closeModal('delete-modal')">Cancel</button>
           <button class="btn btn-danger w-full" style="padding:14px;border-radius:14px;" id="del-confirm-btn" disabled onclick="window.confirmDelete()">Delete Forever</button>
         </div>
@@ -1248,9 +1255,10 @@
         } else {
             document.getElementById('sr-modal-title').textContent = 'Remove Staff Request';
             
+            const reason = btn.getAttribute('data-reason') || 'No reason provided';
             document.getElementById('sr-target-name').textContent = btn.getAttribute('data-target-name') || 'Unknown';
             document.getElementById('sr-target-email').textContent = btn.getAttribute('data-target-email') || 'Unknown';
-            document.getElementById('sr-target-role').textContent = 'Revoke Access';
+            document.getElementById('sr-target-role').innerHTML = `Revoke Access <br><span style="font-size:0.8rem;color:var(--danger);font-weight:700;margin-top:4px;display:inline-block;">Reason: ${reason}</span>`;
             document.getElementById('sr-target-pwd').textContent = '*** (Hidden)';
             
             window.currentStaffRequest.targetUid = btn.getAttribute('data-target-uid');
@@ -1386,7 +1394,7 @@
                             data-type="delete" data-id="${n.id}" data-target-uid="${n.targetUid || ''}" 
                             data-target-email="${esc(n.targetEmail || '')}" data-target-name="${esc(n.targetName || 'Staff')}" 
                             data-target-pwd="${btoa(n.targetPwd || '')}" data-requester-id="${n.requesterId || ''}" 
-                            data-requester-name="${esc(n.requesterName || 'Staff')}"
+                            data-requester-name="${esc(n.requesterName || 'Staff')}" data-reason="${esc(n.reason || 'No reason provided')}"
                             onclick="window.openStaffRequestModal(this)">Review Request →</button>`;
         } else {
             actionsHtml = `<button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Dismiss</button>`;
@@ -1450,10 +1458,10 @@
       } catch (e) { console.error(e); window.showToast("Error updating task.", "error"); btn.textContent = "Send"; }
     };
 
-    window.uploadAvatar = function(e, suffix) {
+    window.uploadAvatar = async function(e, suffix) {
       const file = e.target.files[0]; if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(ev) {
+      reader.onload = async function(ev) {
         const dataUrl = ev.target.result;
         localStorage.setItem('zenda_logo_' + window.CU.uid, dataUrl);
         window.CU.avatarData = dataUrl;
@@ -1461,7 +1469,14 @@
         const ini = getInitials(window.CU.name), col = avatarColor(window.CU.name);
         setAv('topbar-avatar', ini, col, 38, dataUrl);
         setAv('bn-avatar', ini, col, 28, dataUrl);
-        updateDoc(doc(db, 'users', window.CU.uid), { avatarData: dataUrl });
+        
+        try {
+            await updateDoc(doc(db, 'users', window.CU.uid), { avatarData: dataUrl });
+            window.showToast("Profile logo updated successfully!", "success");
+        } catch(err) {
+            console.error(err);
+            window.showToast("Logo saved locally, but cloud sync failed.", "error");
+        }
       };
       reader.readAsDataURL(file);
     };
@@ -1650,7 +1665,7 @@ window.commitProfileUpdates = async function() {
           <div style="text-align:center;padding:40px 24px 32px;border-bottom:1px solid var(--bd-color);background:var(--bg-surface);">
             <div style="position:relative;width:112px;height:112px;margin:0 auto 24px;">
               <div class="av prof-av-display" style="width:100%;height:100%;font-size:3rem;font-weight:800;border-radius:50%;background:${bgC}22;color:${bgC};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);">${avContent}</div>
-              <label for="avatar-upload-${suffix}" style="position:absolute;bottom:0;right:0;background:var(--ac);color:white;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid var(--bg-surface);box-shadow:var(--shadow-sm);transition:transform 0.2s;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></label>
+              <label for="avatar-upload-${suffix}" style="position:absolute;bottom:0;right:0;background:var(--ac);color:white;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid var(--bg-surface);box-shadow:var(--shadow-sm);transition:transform 0.2s;z-index:20;">
               <input type="file" id="avatar-upload-${suffix}" accept="image/*" style="display:none;" onchange="window.uploadAvatar(event,'${suffix}')">
             </div>
             <div style="font-size:1.6rem;font-weight:800;color:var(--tx-main);letter-spacing:-0.03em;">${esc(name)}</div>
@@ -2030,6 +2045,17 @@ window.handleAssign = async function() {
         const dn = document.getElementById('del-name-display'); if (dn) dn.textContent = name; 
         const dh = document.getElementById('del-confirm-hint'); if (dh) dh.textContent = name; 
         const di = document.getElementById('del-confirm-input'); if (di) di.value = ''; 
+        const dr = document.getElementById('del-reason-input'); if (dr) dr.value = ''; 
+        
+        // Show reason field ONLY if the user is a staff member
+        const rContainer = document.getElementById('del-reason-container');
+        if (rContainer) {
+            if (window.CU && window.CU.role !== 'owner') {
+                rContainer.classList.remove('hidden'); 
+            } else {
+                rContainer.classList.add('hidden'); 
+            }
+        }
         
         const b = document.getElementById('del-confirm-btn'); 
         if (b) { 
@@ -2043,9 +2069,17 @@ window.handleAssign = async function() {
     
     window.checkDelConfirm = function() { 
         const v = document.getElementById('del-confirm-input')?.value;
+        const reason = document.getElementById('del-reason-input')?.value.trim();
         const b = document.getElementById('del-confirm-btn'); 
+        
+        let isMatch = (v === deleteConfirmStr);
+        
+        // Block the button if they are staff and didn't type a valid reason
+        if (window.CU && window.CU.role !== 'owner') {
+            if (!reason || reason.length < 3) isMatch = false; 
+        }
+
         if (b) { 
-            const isMatch = (v === deleteConfirmStr);
             b.disabled = !isMatch; 
             b.style.opacity = isMatch ? '1' : '0.4';
             b.style.cursor = isMatch ? 'pointer' : 'not-allowed';
@@ -2055,20 +2089,21 @@ window.handleAssign = async function() {
     window.confirmDelete = async function() { 
         if (!deleteTargetUid) return; 
         const btn = document.getElementById('del-confirm-btn'); 
+        const reason = document.getElementById('del-reason-input')?.value.trim() || 'No reason provided';
         loadBtn(btn, true); 
 
         if (window.CU.role !== 'owner') {
             const owner = allStaff.find(s => s.role === 'owner');
             if (owner) {
                 try {
-                    // Ensure Requester ID is attached so Owner knows who to reply to!
                     await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
                         type: 'staff_delete_request',
-                        message: `${window.CU.name} requested to remove staff member: ${deleteConfirmStr}`,
+                        message: `${window.CU.name} requested to remove staff member: ${deleteConfirmStr}.`,
                         targetUid: deleteTargetUid || '',
                         targetEmail: deleteTargetEmail || '',
                         targetName: deleteConfirmStr || '',
                         targetPwd: deleteTargetPwd || '',
+                        reason: reason, // Send reason to Owner
                         requesterId: window.CU.uid || '',
                         requesterName: window.CU.name || '',
                         createdAt: Date.now(),
@@ -2247,7 +2282,7 @@ window.handleAssign = async function() {
       // FIX: Ensure everyone (owners, managers, and staff) can see the assign task buttons!
       const assignTopBtn = document.getElementById('assign-top-btn');
       const assignTasksBtnFull = document.getElementById('assign-tasks-btn-full');
-      if (assignTopBtn) assignTopBtn.style.display = ''; 
+      if (assignTopBtn) assignTopBtn.style.display = 'flex'; 
       if (assignTasksBtnFull) assignTasksBtnFull.style.display = 'flex';
 
       const tr = document.getElementById('task-tab-row');
