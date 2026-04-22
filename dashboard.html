@@ -436,8 +436,11 @@
       </div>
 
       <div id="view-tasks" class="hidden fade-in-section">
-        <div class="tasks-page-hdr">
-          <h1 class="page-ttl">My Tasks</h1>
+        <div class="tasks-page-hdr" style="border-bottom: 1px solid var(--bd-color); padding-bottom: 24px; margin-bottom: 24px;">
+          <div style="text-align: left;">
+            <h1 class="page-ttl">My Tasks</h1>
+            <p class="page-sub" style="margin-top:4px;">Manage and track assigned work</p>
+          </div>
           <button class="btn btn-primary" id="assign-tasks-btn-full" onclick="window.openAssignModal()" style="display:none;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Assign Task
           </button>
@@ -1881,8 +1884,8 @@ window.handleAssign = async function() {
        const list = document.getElementById('staff-cards-list'); if (!list) return;
        if (!staffList) return;
 
-       // Filter out self AND filter out the owner if the current user is NOT the owner
-       const filteredStaffList = staffList.filter(s => s.uid !== window.CU.uid && (window.CU.role === 'owner' || s.role !== 'owner'));
+       // FIX: Filter out self ONLY. Show everyone else (including the Owner)
+       const filteredStaffList = staffList.filter(s => s.uid !== window.CU.uid);
 
        if (filteredStaffList.length === 0) {
           list.innerHTML = `<div style="padding:60px 20px;grid-column:1/-1;text-align:center;background:var(--bg-surface);border-radius:var(--rad-outer);border:1px dashed var(--bd-color);"><div style="margin-bottom:16px;color:var(--tx-muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="color:var(--tx-main);font-weight:800;font-size:1.1rem;margin-bottom:8px;">No team members yet</div><div style="color:var(--tx-muted);font-weight:500;font-size:0.95rem;">Add staff to start assigning tasks and managing work.</div></div>`; return;
@@ -1892,29 +1895,37 @@ window.handleAssign = async function() {
          const initials = getInitials(s.name), bgColor = avatarColor(s.name);
          const displayRole = s.designation ? s.designation : formatRole(s.role);
          
-         // Fetch the real avatar image if they uploaded one!
          const avatarHtml = s.avatarData 
             ? `<img src="${s.avatarData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` 
             : initials;
+            
+         const isOwner = s.role === 'owner';
          
          return `
            <div class="team-card">
-             ${(s.role !== 'owner') ? `
+             ${(!isOwner) ? `
              <button class="btn-icon-danger-absolute" style="background: var(--danger-light); color: var(--danger); border: 1px solid rgba(255,59,48,0.2);" onclick="window.openDeleteModal('${s.uid}', '${esc(s.name)}', '${esc(s.email)}', '${esc(s.password || s.passwordHint || '')}')" title="Remove Staff">
                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
              </button>
-             ` : ''}
+             ` : `
+             <div class="btn-icon-danger-absolute" style="background: transparent; color: #FF9500; border: none; pointer-events: none;" title="Account Owner">
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+             </div>
+             `}
              
              <div class="team-card-top">
                <div class="team-av" style="background:${bgColor}22;color:${bgColor};overflow:hidden;">${avatarHtml}</div>
                <div class="team-text-block">
                  <div class="team-name">${esc(s.name)}</div>
-                 <div class="team-role">${esc(displayRole)}</div>
+                 <div class="team-role" ${isOwner ? 'style="background:#FF9500;color:white;"' : ''}>${esc(displayRole)}</div>
                </div>
              </div>
+             
+             ${(!isOwner) ? `
              <div class="team-card-actions">
                 <button class="btn btn-secondary w-full" onclick="window.quickAssign('${s.uid}')">Assign Work</button>
              </div>
+             ` : ''}
            </div>
          `;
        }).join('');
