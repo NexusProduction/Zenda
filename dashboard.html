@@ -343,8 +343,13 @@
       .desk-only-text { display: none; }
       /* Increase inner padding to make mobile cards look bigger and spacious */
       .premium-task-card { padding: 28px 24px !important; } 
-      /* Stack the completed badge text on mobile */
-      .done-badge-solid { flex-direction: column; align-items: flex-end; gap: 4px; padding: 8px 12px; border-radius: 10px; }
+      /* Mobile header stacking to remove horizontal space */
+      .mobile-hdr-stack { flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; }
+      .mobile-actions-left { margin-left: 0 !important; width: 100%; justify-content: space-between; }
+      
+      /* Hide tick icon and stack badge text tightly to the left */
+      .done-tick-icon { display: none !important; }
+      .done-badge-solid { flex-direction: column; align-items: flex-start; gap: 0px; padding: 6px 12px; border-radius: 8px; }
       .done-badge-date::before { content: ""; }
     }
   </style>
@@ -1638,14 +1643,12 @@
         
         let assignText = '';
         if (t.assignedBy === window.CU.uid) {
-            // If YOU assigned the task to someone else...
             if (t.status === 'done') {
                 assignText = `Done by: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedToName || 'Team Member')}</span>`;
             } else {
                 assignText = `Assigned to: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedToName || 'Team Member')}</span>`;
             }
         } else {
-            // If someone else assigned the task to YOU...
             assignText = `Assigned by: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedByName || 'Manager')}</span>`;
         }
         
@@ -1653,17 +1656,17 @@
         <div class="premium-task-card" id="task-${t.id}">
           <div style="flex:1; width:100%;">
             
-            <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:4px; gap:12px; width:100%;">
+            <div class="mobile-hdr-stack" style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:4px; gap:12px; width:100%;">
               <div class="card-title ${t.status === 'done' ? 'done' : ''}" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                  ${isDeclineTab && isTaskOverdue && t.status !== 'declined' ? `<span style="background:var(--danger-light);color:var(--danger);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">OVERDUE</span>` : ''}
                  ${esc(t.title)}
               </div>
               
-              <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+              <div class="mobile-actions-left" style="display:flex; align-items:center; gap:8px; margin-left:auto;">
                   ${t.status === 'done' ? `
                     <div class="done-badge-solid">
                       <div style="display:flex; align-items:center; gap:4px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 
+                        <svg class="done-tick-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 
                         Completed
                       </div>
                       <div class="done-badge-date">${t.completedAt ? formatDateIN(t.completedAt) : 'Recently'}</div>
@@ -1704,7 +1707,6 @@
         </div>`;
       }).join('');
     };
-
     window.renderRecentTasks = function() {
       const r = document.getElementById('recent-tasks');
       if (!r) return;
