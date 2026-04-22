@@ -326,24 +326,34 @@
     /* Heartbeat 'dhak-dhak' Animation */
     @keyframes dhakdhak {
       0%, 100% { transform: scale(1); }
-      15% { transform: scale(1.15); box-shadow: 0 8px 16px rgba(0,102,204,0.4); }
+      15% { transform: scale(1.15); }
       30% { transform: scale(1); }
-      45% { transform: scale(1.15); box-shadow: 0 8px 16px rgba(0,102,204,0.4); }
+      45% { transform: scale(1.15); }
       60% { transform: scale(1); }
     }
-    .heartbeat-logo { animation: dhakdhak 1.2s infinite ease-in-out; }
+    /* Apply to the wrapper to pulse both text and logo */
+    .heartbeat-wrapper { animation: dhakdhak 1.2s infinite ease-in-out; transform-origin: center center; display: flex; align-items: center; gap: 12px; }
     
-    /* PC-only text helper */
+    /* Solid Green Completed Badge */
+    .done-badge-solid { background: var(--success); color: white; padding: 6px 14px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; gap: 6px; white-space: nowrap; box-shadow: 0 4px 12px rgba(52,199,89,0.25); }
+    .done-badge-date::before { content: ": "; }
+    
+    /* PC-only text helper & Mobile Adjustments */
     @media (max-width: 768px) {
       .desk-only-text { display: none; }
+      /* Increase inner padding to make mobile cards look bigger and spacious */
+      .premium-task-card { padding: 28px 24px !important; } 
+      /* Stack the completed badge text on mobile */
+      .done-badge-solid { flex-direction: column; align-items: flex-end; gap: 4px; padding: 8px 12px; border-radius: 10px; }
+      .done-badge-date::before { content: ""; }
     }
   </style>
 </head>
 <body>
   
   <div id="loading-overlay" class="loader-overlay" style="position:fixed;inset:0;background:#fff;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s">
-    <div style="display:flex;align-items:center;gap:12px;font-size:18px;font-weight:800;color:var(--tx-main);letter-spacing:-0.02em;">
-      <div class="heartbeat-logo" style="width:40px;height:40px;border-radius:12px;background:var(--ac);display:flex;align-items:center;justify-content:center;color:white;font-size:24px;font-weight:900;transition: all 0.2s;">Z</div> Zenda
+    <div class="heartbeat-wrapper" style="font-size:18px;font-weight:800;color:var(--tx-main);letter-spacing:-0.02em;">
+      <div style="width:40px;height:40px;border-radius:12px;background:var(--ac);display:flex;align-items:center;justify-content:center;color:white;font-size:24px;font-weight:900;">Z</div> Zenda
     </div>
   </div>
 
@@ -1642,18 +1652,32 @@
         return `
         <div class="premium-task-card" id="task-${t.id}">
           <div style="flex:1; width:100%;">
+            
             <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:4px; gap:12px; width:100%;">
               <div class="card-title ${t.status === 'done' ? 'done' : ''}" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                  ${isDeclineTab && isTaskOverdue && t.status !== 'declined' ? `<span style="background:var(--danger-light);color:var(--danger);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">OVERDUE</span>` : ''}
                  ${esc(t.title)}
               </div>
-              ${(window.CU.role === 'owner' || window.CU.role === 'manager') && window.taskTab === 'assigned-by-me' ? `
-                <button class="btn-icon-danger" onclick="window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                </button>` : ''}
+              
+              <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+                  ${t.status === 'done' ? `
+                    <div class="done-badge-solid">
+                      <div style="display:flex; align-items:center; gap:4px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 
+                        Completed
+                      </div>
+                      <div class="done-badge-date">${t.completedAt ? formatDateIN(t.completedAt) : 'Recently'}</div>
+                    </div>` : ''}
+                  
+                  ${(window.CU.role === 'owner' || window.CU.role === 'manager') && window.taskTab === 'assigned-by-me' ? `
+                    <button class="btn-icon-danger" onclick="window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                    </button>` : ''}
+              </div>
             </div>
             
             <div style="font-size:0.85rem;color:var(--tx-muted);margin-bottom:12px;">${assignText}</div>
+            
             ${(!t.description && (t.status === 'done' || t.status === 'declined')) ? '' : `
             <div style="font-size:0.95rem;color:var(--tx-muted);margin-bottom:20px;line-height:1.5;">${getDescHTML(t.description, t.id)}</div>
             `}
@@ -1663,13 +1687,6 @@
                    ${showPriority ? `<span style="background:var(--bg-page);color:var(--tx-muted);padding:6px 12px;border-radius:8px;border:1px solid var(--bd-color);">Priority: ${t.priority || 'Medium'}</span>` : ''}
                    ${t.dueDate && t.status !== 'done' && !isDeclineTab ? `<span style="background:var(--ac-light);color:var(--ac);padding:6px 12px;border-radius:8px;">Due: ${formatDateIN(t.dueDate)}</span>` : ''}
                 </div>
-
-                ${t.status === 'done' ? `
-                  <div style="margin-left: auto; display:flex;">
-                    <span style="background:var(--success-light);color:var(--success);padding:6px 12px;border-radius:8px;display:flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:700;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Completed: ${t.completedAt ? formatDateIN(t.completedAt) : 'Recently'}
-                    </span>
-                  </div>` : ''}
 
                 ${(t.status === 'pending' || t.status === 'unread') && window.taskTab === 'assigned-to-me' && !isTaskOverdue ? `
                   <div style="display:flex; gap:8px; margin-left:auto;">
