@@ -1779,6 +1779,105 @@ window.commitProfileUpdates = async function() {
     };
 
     window.renderTasksList = function() {
+      const list = document.getElementById('tasks-list');
+      if (!list) return;
+
+      let tasksToRender = [];
+      const combinedTasks = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])];
+      const uniqueTasks = Array.from(new Map(combinedTasks.map(item => [item.id, item])).values());
+
+      // Determine which tasks to show based on the active tab
+      if (window.taskTab === 'assigned-to-me') {
+        tasksToRender = (window.myTasks || []).filter(t => t.status !== 'done' && t.status !== 'declined' && !isOverdue(t.dueDate));
+      } else if (window.taskTab === 'assigned-by-me') {
+        tasksToRender = (window.assignedByMeTasks || []).filter(t => t.status !== 'done' && t.status !== 'declined' && !isOverdue(t.dueDate));
+      } else if (window.taskTab === 'done') {
+        tasksToRender = uniqueTasks.filter(t => t.status === 'done');
+      } else if (window.taskTab === 'declined') {
+        tasksToRender = uniqueTasks.filter(t => t.status === 'declined' || (t.status === 'pending' && isOverdue(t.dueDate)));
+      }
+
+      // 1. Dynamic Empty States (Clean & Professional)
+      if (!tasksToRender || tasksToRender.length === 0) {
+        let emptyIcon, emptyTitle, emptyDesc;
+        if (window.taskTab === 'done') {
+            emptyIcon = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+            emptyTitle = 'No completed tasks';
+            emptyDesc = 'Tasks you finish will appear here.';
+        } else if (window.taskTab === 'declined') {
+            emptyIcon = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+            emptyTitle = 'No declined tasks';
+            emptyDesc = 'Tasks that are declined or overdue will show up here.';
+        } else if (window.taskTab === 'assigned-by-me') {
+            emptyIcon = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>`;
+            emptyTitle = 'No tasks assigned';
+            emptyDesc = 'You haven\'t assigned any tasks to your team yet.';
+        } else {
+            emptyIcon = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+            emptyTitle = 'You\'re all clear!';
+            emptyDesc = 'You don\'t have any pending tasks right now.';
+        }
+
+        list.innerHTML = `
+            <div style="padding: 60px 20px; text-align: center; background: var(--bg-surface); border: 1px dashed var(--bd-color); border-radius: var(--rad-outer); display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 10px;">
+                <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--bg-page); display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: var(--tx-muted);">
+                    ${emptyIcon}
+                </div>
+                <div style="color: var(--tx-main); font-weight: 800; font-size: 1.15rem; margin-bottom: 6px; letter-spacing: -0.01em;">${emptyTitle}</div>
+                <div style="color: var(--tx-muted); font-weight: 500; font-size: 0.95rem; max-width: 250px;">${emptyDesc}</div>
+            </div>`;
+        return;
+      }
+
+      tasksToRender.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+      list.innerHTML = tasksToRender.map(t => {
+        const isTaskOverdue = t.status !== 'done' && isOverdue(t.dueDate);
+        const showPriority = window.taskTab !== 'done' && window.taskTab !== 'declined';
+        
+        let assignText = (window.taskTab === 'assigned-to-me') 
+            ? `Assigned by: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedByName || 'Manager')}</span>`
+            : `Assigned to: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedToName || 'Team Member')}</span>`;
+        
+        return `
+        <div class="premium-task-card" id="task-${t.id}">
+          <div style="flex:1; width:100%;">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:4px; gap:12px; width:100%;">
+              <div class="card-title ${t.status === 'done' ? 'done' : ''}">${esc(t.title)}</div>
+              ${(window.CU.role === 'owner' || window.CU.role === 'manager') && window.taskTab === 'assigned-by-me' ? `
+                <button class="btn-icon-danger" onclick="window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                </button>` : ''}
+            </div>
+            
+            <div style="font-size:0.85rem;color:var(--tx-muted);margin-bottom:12px;">${assignText}</div>
+            <div style="font-size:0.95rem;color:var(--tx-muted);margin-bottom:20px;line-height:1.5;">${getDescHTML(t.description, t.id)}</div>
+            
+            <div style="display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="display:flex;gap:10px;align-items:center;font-size:0.78rem;font-weight:700;flex-wrap:wrap;">
+                   ${showPriority ? `<span style="background:var(--bg-page);color:var(--tx-muted);padding:6px 12px;border-radius:8px;border:1px solid var(--bd-color);">Priority: ${t.priority || 'Medium'}</span>` : ''}
+                   ${t.dueDate && t.status !== 'done' ? `<span style="background:var(--ac-light);color:var(--ac);padding:6px 12px;border-radius:8px;">Due: ${formatDateIN(t.dueDate)}</span>` : ''}
+                   ${t.status === 'done' ? `<span style="background:var(--success-light);color:var(--success);padding:6px 12px;border-radius:8px;display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Completed: ${t.completedAt ? formatDateIN(t.completedAt) : 'Recently'}</span>` : ''}
+                   ${t.status === 'declined' ? `<span style="background:var(--danger-light);color:var(--danger);padding:6px 12px;border-radius:8px;">Declined</span>` : ''}
+                   ${isTaskOverdue && t.status !== 'declined' && t.status !== 'done' ? `<span style="background:var(--danger-light);color:var(--danger);padding:6px 12px;border-radius:8px;">Overdue</span>` : ''}
+                </div>
+
+                ${(t.status === 'pending' || t.status === 'unread') && window.taskTab === 'assigned-to-me' && !isTaskOverdue ? `
+                  <div style="display:flex; gap:8px;">
+                    <button class="btn btn-ghost" style="padding:6px 12px; font-size:0.8rem; border-radius:8px; color:var(--tx-muted); background:var(--bg-page); border:1px solid var(--bd-color);" onclick="window.openDeclineModal('${t.id}', '${esc(t.title)}')">Decline</button>
+                    <button class="btn btn-primary" style="padding:6px 16px; font-size:0.8rem; border-radius:8px; background:#10B981; border:none; box-shadow:0 4px 10px rgba(16,185,129,0.25);" onclick="window.doAcceptTask('${t.id}')">✓ Done</button>
+                  </div>` : ''}
+            </div>
+
+            ${t.status === 'declined' && t.reason ? `
+                <div style="margin-top: 16px; padding: 14px 18px; background: var(--bg-page); border: 1px dashed var(--bd-color); border-radius: 12px; font-size: 0.9rem; color: var(--tx-main); line-height: 1.5;">
+                    <strong style="font-weight: 800; display: block; margin-bottom: 6px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--danger);">Decline Reason</strong>
+                    ${esc(t.reason)}
+                </div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    };
 
     window.renderRecentTasks = function() {
       const r = document.getElementById('recent-tasks');
@@ -1789,15 +1888,12 @@ window.commitProfileUpdates = async function() {
       
       const tasks = (taskPool || []).filter(t => t.status !== 'done' && t.status !== 'declined' && !isOverdue(t.dueDate)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, displayCount);
       
-      // If there are no tasks, show a simple clean message!
-      // If there are no tasks, show a simple clean message!
       if (!tasks.length) {
          r.innerHTML = `
             <div style="padding: 40px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent;">
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.5;"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="2"></rect><line x1="9" y1="14" x2="15" y2="14"></line></svg>
                 <span style="color: var(--tx-muted); font-weight: 600; font-size: 0.95rem;">All caught up! No recent tasks.</span>
-            </div>
-         `;
+            </div>`;
          return;
       }
       
