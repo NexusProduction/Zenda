@@ -292,7 +292,14 @@
       .team-card-actions { width: 100% !important; flex-direction: column !important; padding: 0 !important; gap: 8px !important; border: none !important; margin-top: 0 !important;}
       .team-card-actions .btn-secondary { width: 100% !important; padding: 12px 16px !important; font-size: 0.9rem !important; }
       
-      #task-tab-row { overflow-x: auto; scrollbar-width: none; white-space: nowrap; padding-bottom: 8px; }
+      #topbar-upgrade-btn { padding: 6px 10px !important; font-size: 0.75rem !important; }
+      
+      #task-tab-row { 
+          overflow-x: auto; scrollbar-width: none; white-space: nowrap; padding-bottom: 8px; 
+          padding-right: 32px; /* Extra space to scroll into */
+          -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+          mask-image: linear-gradient(to right, black 85%, transparent 100%);
+      }
       #task-tab-row::-webkit-scrollbar { display: none; }
       
       .bottom-nav { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; height: 80px !important; background: rgba(255,255,255,0.9) !important; backdrop-filter: blur(10px); border-top: 1px solid var(--bd-color) !important; display: flex !important; align-items: center !important; padding: 0 16px 16px !important; z-index: 900 !important; }
@@ -730,6 +737,7 @@
 
     // ── UPGRADE BUTTON HANDLER ──
     window.handleUpgradeClick = async function() {
+      const btn = document.getElementById('topbar-upgrade-btn');
       if (window.CU.role === 'owner') {
         window.location.href = 'subscription.html';
         return;
@@ -738,6 +746,7 @@
         const staff = allStaff.find(s => s.role === 'owner');
         const ownerId = staff ? staff.uid : null;
         if (!ownerId) { window.showToast('Could not find owner.', 'error'); return; }
+        
         await addDoc(collection(db, 'users', ownerId, 'notifications'), {
           type: 'upgrade_request',
           message: `${window.CU.name} is requesting to upgrade the account to Premium.`,
@@ -747,7 +756,14 @@
           read: false,
           status: 'unread'
         });
-        window.showToast('Upgrade request sent to owner! ✓', 'success');
+        
+        if (btn) {
+            btn.style.background = 'linear-gradient(135deg, #34C759, #28A745)';
+            btn.style.boxShadow = '0 4px 12px rgba(52, 199, 89, 0.25)';
+            btn.innerHTML = '✓ Requested';
+            btn.disabled = true;
+        }
+        window.showToast('Upgrade request sent to owner!', 'success');
       } catch(e) { window.showToast('Failed to send request.', 'error'); }
     };
 
@@ -766,14 +782,16 @@
       setTimeout(() => card.remove(), 300);
       try {
         await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-        await addDoc(collection(db, 'users', requesterId, 'notifications'), {
-          type: 'general',
-          message: `${window.CU.name} (Owner) declined your request to upgrade the account.`,
-          createdAt: Date.now(),
-          read: false,
-          status: 'unread'
-        });
-        window.showToast('Request declined. Staff has been notified.', 'success');
+        if (requesterId && requesterId !== 'undefined') {
+            await addDoc(collection(db, 'users', requesterId, 'notifications'), {
+              type: 'general',
+              message: `Owner declined your request to upgrade the account.`,
+              createdAt: Date.now(),
+              read: false,
+              status: 'unread'
+            });
+        }
+        window.showToast('Request declined. Staff notified.', 'success');
       } catch(e) { window.showToast('Error.', 'error'); }
     };
     
@@ -1419,8 +1437,10 @@
             actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.acceptTaskNotif(this)">Accept</button>
                            <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.showDenyInput(this)">Deny</button>`;
         } else if (n.type === 'upgrade_request') {
-            actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;" onclick="window.approveUpgradeRequest(this, '${n.id}')">✓ Approve</button>
-                           <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;" onclick="window.declineUpgradeRequest(this, '${n.id}','${n.requesterId}','${esc(n.requesterName||'')}')">✕ Decline</button>`;
+            actionsHtml = `<div style="display:flex;gap:10px;width:100%;margin-top:6px;">
+                             <button class="btn btn-secondary w-full" style="padding:8px 14px;font-size:0.85rem;background:#FEE2E2;color:#DC2626;border:none;" onclick="window.declineUpgradeRequest(this, '${n.id}','${n.requesterId}','${esc(n.requesterName||'')}')">Decline</button>
+                             <button class="btn btn-primary w-full" style="padding:8px 14px;font-size:0.85rem;background:#10B981;border:none;box-shadow:0 4px 10px rgba(16,185,129,0.25);" onclick="window.approveUpgradeRequest(this, '${n.id}')">Upgrade</button>
+                           </div>`;
         } else if (n.type === 'staff_add_request') {
         const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData || {}))));
         const pd = n.pendingData || {};
@@ -1841,18 +1861,28 @@ window.commitProfileUpdates = async function() {
             <div style="display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                 <div style="display:flex;gap:10px;align-items:center;font-size:0.8rem;font-weight:700;flex-wrap:wrap;">
                    ${showPriority ? `<span style="background:var(--bg-page);color:var(--tx-muted);padding:6px 12px;border-radius:8px;border:1px solid var(--bd-color);">Priority: ${t.priority || 'Medium'}</span>` : ''}
-                   ${t.dueDate ? `<span style="background:var(--ac-light);color:var(--ac);padding:6px 12px;border-radius:8px;">Due: ${formatDateIN(t.dueDate)}</span>` : ''}
+                   ${t.dueDate && t.status !== 'done' ? `<span style="background:var(--ac-light);color:var(--ac);padding:6px 12px;border-radius:8px;">Due: ${formatDateIN(t.dueDate)}</span>` : ''}
+                   ${t.status === 'done' ? `<span style="background:var(--success-light);color:var(--success);padding:6px 12px;border-radius:8px;">Completed: ${t.completedAt ? formatDateIN(t.completedAt) : 'Done'}</span>` : ''}
                    ${t.status === 'declined' ? `<span style="background:var(--danger-light);color:var(--danger);padding:6px 12px;border-radius:8px;">Declined</span>` : ''}
-                   ${isTaskOverdue && t.status !== 'declined' ? `<span style="background:var(--danger-light);color:var(--danger);padding:6px 12px;border-radius:8px;">Overdue</span>` : ''}
+                   ${isTaskOverdue && t.status !== 'declined' && t.status !== 'done' ? `<span style="background:var(--danger-light);color:var(--danger);padding:6px 12px;border-radius:8px;">Overdue</span>` : ''}
                 </div>
 
                 ${(t.status === 'pending' || t.status === 'unread') && window.taskTab === 'assigned-to-me' && !isTaskOverdue ? `
                   <div style="display:flex; gap:8px; margin-left: auto;">
-                    <button class="btn btn-secondary" style="padding:6px 14px; font-size:0.85rem; border-radius:8px; color:var(--danger); background:var(--danger-light); border-color:rgba(255,59,48,0.2);" onclick="window.openDeclineModal('${t.id}', '${esc(t.title)}')">Decline</button>
-                    <button class="btn btn-primary" style="padding:6px 14px; font-size:0.85rem; border-radius:8px; background:#10B981; border:none; box-shadow:0 4px 10px rgba(16,185,129,0.25);" onclick="window.doAcceptTask('${t.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Done</button>
+                    <button class="btn btn-ghost" style="padding:6px 12px; font-size:0.8rem; border-radius:8px; color:var(--tx-muted); background:var(--bg-page); border:1px solid var(--bd-color);" onclick="window.openDeclineModal('${t.id}', '${esc(t.title)}')">Decline</button>
+                    <button class="btn btn-primary" style="padding:6px 16px; font-size:0.8rem; border-radius:8px; background:#10B981; border:none; box-shadow:0 4px 10px rgba(16,185,129,0.25);" onclick="window.doAcceptTask('${t.id}')">✓ Done</button>
                   </div>
                 ` : ''}
             </div>
+
+            ${t.status === 'declined' && t.reason ? `
+                <div style="margin-top: 16px; padding: 14px 18px; background: var(--bg-page); border: 1px dashed var(--bd-color); border-radius: 12px; font-size: 0.9rem; color: var(--tx-main); line-height: 1.5;">
+                    <strong style="font-weight: 800; display: block; margin-bottom: 6px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--danger);">Decline Reason</strong>
+                    ${esc(t.reason)}
+                </div>
+            ` : ''}
+          </div>
+        </div>
 
             ${t.status === 'declined' && t.reason ? `
                 <div style="margin-top: 16px; padding: 12px 16px; background: var(--danger-light); border-left: 4px solid var(--danger); border-radius: 8px; font-size: 0.9rem; color: var(--danger); line-height: 1.4;">
@@ -2270,16 +2300,16 @@ window.handleAssign = async function() {
             
             const topUpgradeBtn = document.getElementById('topbar-upgrade-btn');
             if (topUpgradeBtn) {
-            // Hide only if owner AND already premium. Staff/manager always see it.
-            if (ip && role === 'owner') {
-              topUpgradeBtn.classList.add('hidden');
-              topUpgradeBtn.style.display = 'none';
-            } else {
-            topUpgradeBtn.classList.remove('hidden');
-            topUpgradeBtn.style.display = 'flex';
-            topUpgradeBtn.textContent = role === 'owner' ? '👑 Upgrade' : '👑 Request Upgrade';
+              if (ip) {
+                // Hide for EVERYONE if the company is already Premium
+                topUpgradeBtn.classList.add('hidden');
+                topUpgradeBtn.style.display = 'none';
+              } else {
+                topUpgradeBtn.classList.remove('hidden');
+                topUpgradeBtn.style.display = 'flex';
+                topUpgradeBtn.textContent = role === 'owner' ? '👑 Upgrade' : '👑 Request Upgrade';
+              }
             }
-          }
 
             const subCard = document.getElementById('sidebar-footer');
             if (subCard) {
