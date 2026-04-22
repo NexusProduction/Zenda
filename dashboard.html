@@ -1343,6 +1343,41 @@
         } catch(e) {}
     };
 
+    window.handleInlineStaffApprove = async function(btn) {
+    const notifId = btn.getAttribute('data-id');
+    const reqId = btn.getAttribute('data-requester-id');
+    const reqName = btn.getAttribute('data-requester-name');
+    let payload;
+    try {
+        payload = JSON.parse(decodeURIComponent(escape(atob(btn.getAttribute('data-pending')))));
+    } catch(e) {
+        window.showToast('Error reading staff data.', 'error');
+        return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Processing…';
+    try {
+        if (typeof createStaff === 'function') {
+            await createStaff({ ...payload, createdAt: Date.now() });
+        }
+        await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+        if (reqId && reqId !== 'undefined') {
+            await addDoc(collection(db, 'users', reqId, 'notifications'), {
+                type: 'general',
+                message: `Owner approved your request to add ${payload.name || 'new staff'}.`,
+                createdAt: Date.now(), read: false, status: 'unread'
+            });
+        }
+        window.showToast(`${payload.name || 'Staff'} added successfully! ✓`, 'success');
+        const card = btn.closest('.notif-card');
+        if (card) { card.classList.add('slide-left-out'); setTimeout(() => card.remove(), 350); }
+    } catch(e) {
+        window.showToast(e.message || 'Failed to approve.', 'error');
+        btn.disabled = false;
+        btn.textContent = '✓ Accept';
+    }
+};
+
     window.renderNotifs = function(items) {
       const el = document.getElementById('notif-body');
       if (!el) return;
