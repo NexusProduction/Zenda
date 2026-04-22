@@ -1100,6 +1100,7 @@
             };
 
             let success = false;
+            let createError = '';
             try {
                 if (typeof createStaff === 'function') {
                     await createStaff(newStaffData);
@@ -1107,10 +1108,14 @@
                 }
             } catch (err) {
                 console.warn("createStaff function failed.", err);
+                createError = err.message || 'Unknown error';
             }
-
+            
             if (!success) {
-                window.showToast("Staff creation failed. Please try again.", "error");
+                const msg = createError.toLowerCase().includes('already') 
+                    ? 'This email is already registered. Use a different email.' 
+                    : (createError || 'Staff creation failed. Please try again.');
+                window.showToast(msg, "error");
                 document.getElementById('staff-otp-container').classList.add('hidden');
                 document.getElementById('staff-form-container').classList.remove('hidden');
                 return;
