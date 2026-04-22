@@ -2133,8 +2133,15 @@ window.handleAssign = async function() {
     function subscribeAll() {
       const { uid, companyId, role } = window.CU;
       const cs = role === 'owner' || role === 'manager', ca = role === 'owner' || role === 'manager';
-      import('./notifications.js').then(module => { if (module.listenNotifications) { unsubs.push(module.listenNotifications(uid, (it) => { window.renderNotifs(it); })); } }).catch(e => console.error(e));
-      
+      const notifQ = query(
+            collection(db, 'users', uid, 'notifications'),
+            orderBy('createdAt', 'desc'),
+            limit(50)
+        );
+        unsubs.push(onSnapshot(notifQ, (snap) => {
+            const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            window.renderNotifs(items);
+        }, (err) => console.warn('Notif listener error:', err)));      
       import('./tasks.js').then(module => {
         if (module.listenMyTasks) { unsubs.push(module.listenMyTasks(uid, tasks => { 
             window.myTasks = tasks; 
