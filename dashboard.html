@@ -343,13 +343,9 @@
       .desk-only-text { display: none; }
       /* Increase inner padding to make mobile cards look bigger and spacious */
       .premium-task-card { padding: 28px 24px !important; } 
-      /* Mobile header stacking to remove horizontal space */
-      .mobile-hdr-stack { flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; }
-      .mobile-actions-left { margin-left: 0 !important; width: 100%; justify-content: space-between; }
-      
-      /* Hide tick icon and stack badge text tightly to the left */
+      /* Hide tick icon and stack badge tightly to the RIGHT */
       .done-tick-icon { display: none !important; }
-      .done-badge-solid { flex-direction: column; align-items: flex-start; gap: 0px; padding: 6px 12px; border-radius: 8px; }
+      .done-badge-solid { flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px; padding: 6px 10px; border-radius: 8px; text-align: right; }
       .done-badge-date::before { content: ""; }
     }
   </style>
@@ -1656,16 +1652,20 @@
         <div class="premium-task-card" id="task-${t.id}">
           <div style="flex:1; width:100%;">
             
-            <div class="mobile-hdr-stack" style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:4px; gap:12px; width:100%;">
-              <div class="card-title ${t.status === 'done' ? 'done' : ''}" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                 ${isDeclineTab && isTaskOverdue && t.status !== 'declined' ? `<span style="background:var(--danger-light);color:var(--danger);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">OVERDUE</span>` : ''}
-                 ${esc(t.title)}
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; width:100%; margin-bottom:12px;">
+              
+              <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
+                  <div class="card-title ${t.status === 'done' ? 'done' : ''}" style="margin:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; line-height: 1.2;">
+                     ${isDeclineTab && isTaskOverdue && t.status !== 'declined' ? `<span style="background:var(--danger-light);color:var(--danger);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">OVERDUE</span>` : ''}
+                     ${esc(t.title)}
+                  </div>
+                  <div style="font-size:0.85rem;color:var(--tx-muted); margin:0; line-height: 1.2;">${assignText}</div>
               </div>
               
-              <div class="mobile-actions-left" style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+              <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                   ${t.status === 'done' ? `
                     <div class="done-badge-solid">
-                      <div style="display:flex; align-items:center; gap:4px;">
+                      <div style="display:flex; align-items:center; justify-content:flex-end; gap:4px;">
                         <svg class="done-tick-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 
                         Completed
                       </div>
@@ -1678,8 +1678,6 @@
                     </button>` : ''}
               </div>
             </div>
-            
-            <div style="font-size:0.85rem;color:var(--tx-muted);margin-bottom:12px;">${assignText}</div>
             
             ${(!t.description && (t.status === 'done' || t.status === 'declined')) ? '' : `
             <div style="font-size:0.95rem;color:var(--tx-muted);margin-bottom:20px;line-height:1.5;">${getDescHTML(t.description, t.id)}</div>
@@ -1733,7 +1731,7 @@
               recAssignText = `Assigned by: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedByName || 'Manager')}</span>`;
           }
           
-          return `<div class="premium-task-card" style="margin-bottom:12px;padding:16px 20px;cursor:pointer;flex-direction:row;align-items:center;" onclick="window.setTaskTab('${window.CU.role === 'owner' ? 'assigned-by-me' : 'assigned-to-me'}');window.showView('tasks');"><div style="flex:1;"><div class="card-title" style="margin-bottom:4px;font-size:1rem;">${esc(t.title)}</div><div style="font-size:0.8rem;color:var(--tx-muted);font-weight:500;">${recAssignText}</div></div>${t.dueDate ? `<div style="font-size:0.75rem;background:var(--ac-light);color:var(--ac);padding:6px 12px;border-radius:8px;font-weight:700;">Due: ${formatDateIN(t.dueDate)}</div>` : ''}</div>`;
+          return `<div class="premium-task-card" style="margin-bottom:12px;padding:16px 20px;cursor:pointer;flex-direction:row;align-items:center;" onclick="window.setTaskTab('${window.CU.role === 'owner' ? 'assigned-by-me' : 'assigned-to-me'}');window.showView('tasks');"><div style="flex:1;"><div class="card-title" style="margin-bottom:2px;font-size:1rem;line-height:1.2;">${esc(t.title)}</div><div style="font-size:0.8rem;color:var(--tx-muted);font-weight:500;margin:0;line-height:1.2;">${recAssignText}</div></div>${t.dueDate ? `<div style="font-size:0.75rem;background:var(--ac-light);color:var(--ac);padding:6px 12px;border-radius:8px;font-weight:700;">Due: ${formatDateIN(t.dueDate)}</div>` : ''}</div>`;
       }).join('');
     };
 
