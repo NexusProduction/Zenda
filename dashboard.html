@@ -1386,11 +1386,43 @@
             actionsHtml = `<button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;background:#10B981;" onclick="window.approveUpgradeRequest(this, '${n.id}')">✓ Approve</button>
                            <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;background:#FEE2E2;color:#DC2626;" onclick="window.declineUpgradeRequest(this, '${n.id}','${n.requesterId}','${esc(n.requesterName||'')}')">✕ Decline</button>`;
         } else if (n.type === 'staff_add_request') {
-            const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData))));
-            actionsHtml = `<button class="btn btn-primary w-full" style="padding:8px 16px;font-size:0.85rem;" 
-                            data-type="add" data-id="${n.id}" data-pending="${safeData}" 
-                            data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}"
-                            onclick="window.openStaffRequestModal(this)">Review Request →</button>`;
+        const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData || {}))));
+        const pd = n.pendingData || {};
+        actionsHtml = `
+            <div style="background:var(--bg-page);border:1px solid var(--bd-color);border-radius:14px;padding:14px 16px;margin-top:4px;">
+                <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
+                        <span style="color:var(--tx-muted);font-weight:600;">Name</span>
+                        <span style="color:var(--tx-main);font-weight:700;">${esc(pd.name || '—')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
+                        <span style="color:var(--tx-muted);font-weight:600;">Email</span>
+                        <span style="color:var(--tx-main);font-weight:600;">${esc(pd.email || '—')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
+                        <span style="color:var(--tx-muted);font-weight:600;">Role</span>
+                        <span style="color:var(--tx-main);font-weight:600;">${esc(pd.designation || 'Staff')}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
+                        <span style="color:var(--tx-muted);font-weight:600;">Password</span>
+                        <span style="color:var(--tx-main);font-weight:600;font-family:var(--font-mono)">${esc(pd.password || '—')}</span>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn w-full" style="padding:9px 14px;font-size:0.85rem;background:var(--danger-light);color:var(--danger);border:1px solid rgba(255,59,48,0.2);border-radius:10px;font-weight:700;"
+                        data-type="add" data-id="${n.id}" data-pending="${safeData}"
+                        data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}"
+                        onclick="window.executeStaffRequest('decline');this.closest('.notif-card').querySelector('[data-action=approve]').disabled=true;this.disabled=true;">
+                        ✕ Decline
+                    </button>
+                    <button class="btn w-full" style="padding:9px 14px;font-size:0.85rem;background:#10B981;color:white;border:none;border-radius:10px;font-weight:700;box-shadow:0 2px 8px rgba(16,185,129,0.25);"
+                        data-action="approve" data-type="add" data-id="${n.id}" data-pending="${safeData}"
+                        data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}"
+                        onclick="window.handleInlineStaffApprove(this)">
+                        ✓ Accept
+                    </button>
+                </div>
+            </div>`;
         } else if (n.type === 'staff_delete_request') {
             actionsHtml = `<button class="btn btn-danger w-full" style="padding:8px 16px;font-size:0.85rem;" 
                             data-type="delete" data-id="${n.id}" data-target-uid="${n.targetUid || ''}" 
