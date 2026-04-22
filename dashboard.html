@@ -913,7 +913,14 @@
       else { btn.disabled = false; if (restoreText) btn.textContent = restoreText; else if (btn._origHTML) btn.innerHTML = btn._origHTML; }
     }
 
-    function esc(s = '') { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function esc(s = '') { 
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/'/g, '&#39;')
+            .replace(/"/g, '&quot;'); 
+    }
     function ago(iso) { if (!iso) return ''; const d = Date.now() - new Date(iso); if (d < 60000) return 'just now'; if (d < 3600000) return Math.floor(d / 60000) + 'm ago'; if (d < 86400000) return Math.floor(d / 3600000) + 'h ago'; return Math.floor(d / 86400000) + 'd ago'; }
     function last7() { const o = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); o.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }), date: d.toDateString() }); } return o; }
 
@@ -1972,12 +1979,28 @@ window.commitProfileUpdates = async function() {
     
     window.confirmDecline = async function() {
       const reason = document.getElementById('decline-reason')?.value.trim();
-      const btn = document.getElementById('confirm-decline-btn'); loadBtn(btn, true);
       
+      // FIX 1: Enforce the required reason so the UI doesn't break
+      if (!reason) {
+          window.showToast("Please provide a reason for declining.", "error");
+          return;
+      }
+
+      const btn = document.getElementById('confirm-decline-btn'); 
+      loadBtn(btn, true);
+      
+      // FIX 2: Attach the reason to the local objects so the text block renders instantly!
       const obj1 = (window.myTasks || []).find(t => t.id === pendingDeclineId); 
-      if (obj1) obj1.status = 'declined';
+      if (obj1) {
+          obj1.status = 'declined';
+          obj1.reason = reason;
+      }
+      
       const obj2 = (window.assignedByMeTasks || []).find(t => t.id === pendingDeclineId); 
-      if (obj2) obj2.status = 'declined';
+      if (obj2) {
+          obj2.status = 'declined';
+          obj2.reason = reason;
+      }
 
       try { 
           await updateDoc(doc(db, 'tasks', pendingDeclineId), { status: 'declined', reason: reason }); 
@@ -1987,13 +2010,24 @@ window.commitProfileUpdates = async function() {
           window.renderRecentTasks();
 
           if (obj1 && obj1.assignedBy) {
-             await addDoc(collection(db, 'users', obj1.assignedBy, 'notifications'), { type: 'task_update', message: `${window.CU.name} declined task "${obj1.title}". Reason: ${reason}`, taskId: pendingDeclineId, createdAt: Date.now(), read: false, status: 'unread' });
+             await addDoc(collection(db, 'users', obj1.assignedBy, 'notifications'), { 
+                 type: 'task_update', 
+                 message: `${window.CU.name} declined task "${obj1.title}". Reason: ${reason}`, 
+                 taskId: pendingDeclineId, 
+                 createdAt: Date.now(), 
+                 read: false, 
+                 status: 'unread' 
+             });
           }
           
           window.closeModal('decline-modal'); 
           window.showToast('Task declined.', 'success'); 
       } 
-      catch (e) { window.showToast(e.message, 'error'); } finally { loadBtn(btn, false, 'Decline Task'); }
+      catch (e) { 
+          window.showToast(e.message, 'error'); 
+      } finally { 
+          loadBtn(btn, false, 'Decline Task'); 
+      }
     };
 
     function buildAssignSelect(staff) { const sel = document.getElementById('assign-to'); if (!sel) return; sel.innerHTML = '<option value="" disabled selected>Select team member…</option>' + staff.filter(s => s.uid !== window.CU?.uid).map(s => `<option value="${s.uid}">${esc(s.name)}</option>`).join(''); }
