@@ -72,18 +72,18 @@ export async function markTaskDeclined(taskId, reason = '') {
 }
 
 export function listenMyTasks(userId, onUpdate) {
-  const q = query(collection(db,'tasks'), where('assignedTo','==',userId), orderBy('createdAt','desc'));
-  return onSnapshot(q, snap => onUpdate(snap.docs.map(d => ({id:d.id,...d.data()}))));
+  const q = query(collection(db,'tasks'), where('assignedTo','==',userId));
+  return onSnapshot(q, snap => onUpdate(snap.docs.map(d => ({id:d.id,...d.data()}))), err => console.warn("MyTasks Error:", err));
 }
 
 export function listenAssignedByMe(userId, onUpdate) {
-  const q = query(collection(db,'tasks'), where('assignedBy','==',userId), orderBy('createdAt','desc'));
-  return onSnapshot(q, snap => onUpdate(snap.docs.map(d => ({id:d.id,...d.data()}))));
+  const q = query(collection(db,'tasks'), where('assignedBy','==',userId));
+  return onSnapshot(q, snap => onUpdate(snap.docs.map(d => ({id:d.id,...d.data()}))), err => console.warn("AssignedByMe Error:", err));
 }
 
 export function listenCompanyTasks(companyId, onUpdate) {
-  const q = query(collection(db,'tasks'), where('companyId','==',companyId), orderBy('createdAt','desc'));
-  return onSnapshot(q, snap => onUpdate(snap.docs.map(d => ({id:d.id,...d.data()}))));
+  const q = query(collection(db,'tasks'), where('companyId','==',companyId));
+  return onSnapshot(q, snap => onUpdate(snap.docs.map(d => ({id:d.id,...d.data()}))), err => console.warn("CompanyTasks Error:", err));
 }
 
 function formatDueDate(date, time) {
