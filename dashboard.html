@@ -266,6 +266,7 @@
       .stat-card { padding: 20px 16px !important; }
       .sc-val { font-size: 1.8rem !important; }
       .sc-lbl { font-size: 0.8rem !important; }
+      .sc-info { padding-left: 8px !important; }
       .sc-ico { width: 44px !important; height: 44px !important; border-radius: 12px !important; }
       .sc-ico svg { width: 20px !important; height: 20px !important; }
       
@@ -1769,17 +1770,33 @@ window.commitProfileUpdates = async function() {
       }
 
       if (!tasksToRender || tasksToRender.length === 0) {
+        let emptyIcon, emptyTitle, emptyDesc;
+
+        if (window.taskTab === 'done') {
+            emptyIcon = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+            emptyTitle = 'No completed tasks';
+            emptyDesc = 'Tasks you finish will appear here.';
+        } else if (window.taskTab === 'declined') {
+            emptyIcon = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+            emptyTitle = 'No declined tasks';
+            emptyDesc = 'Tasks that are declined or overdue will show up here.';
+        } else if (window.taskTab === 'assigned-by-me') {
+            emptyIcon = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+            emptyTitle = 'No tasks assigned';
+            emptyDesc = 'You haven\'t assigned any tasks to your team yet.';
+        } else {
+            emptyIcon = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+            emptyTitle = 'You\'re all clear!';
+            emptyDesc = 'You don\'t have any pending tasks right now.';
+        }
+
         list.innerHTML = `
-            <div style="padding: 60px 20px; text-align: center; background: var(--bg-surface); border-radius: var(--rad-outer); border: 1px dashed var(--bd-color); margin-top: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <div style="color: var(--tx-muted); opacity: 0.6; margin-bottom: 12px;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
-                        <rect x="9" y="3" width="6" height="4" rx="2"></rect>
-                        <line x1="9" y1="14" x2="15" y2="14"></line>
-                        <line x1="9" y1="18" x2="15" y2="18"></line>
-                    </svg>
+            <div style="padding: 60px 20px; text-align: center; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 10px;">
+                <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--bg-surface); border: 1px solid var(--bd-color); display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: var(--tx-muted); box-shadow: var(--shadow-sm);">
+                    ${emptyIcon}
                 </div>
-                <div style="color: var(--tx-muted); font-weight: 600; font-size: 1.05rem;">No tasks assigned</div>
+                <div style="color: var(--tx-main); font-weight: 800; font-size: 1.15rem; margin-bottom: 6px; letter-spacing: -0.01em;">${emptyTitle}</div>
+                <div style="color: var(--tx-muted); font-weight: 500; font-size: 0.95rem; max-width: 250px;">${emptyDesc}</div>
             </div>
         `;
         return;
@@ -1855,12 +1872,12 @@ window.commitProfileUpdates = async function() {
       
       const tasks = (taskPool || []).filter(t => t.status !== 'done' && t.status !== 'declined' && !isOverdue(t.dueDate)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, displayCount);
       
-      // If there are no tasks, show this emoji message!
+      // If there are no tasks, show a simple clean message!
       if (!tasks.length) {
          r.innerHTML = `
-            <div style="padding: 60px 20px; text-align: center; color: var(--tx-muted); font-weight: 600; font-size: 1.1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-surface); border-radius: var(--rad-outer); border: 1px dashed var(--bd-color);">
-                <span style="font-size: 2.5rem; margin-bottom: 12px;">🎉</span>
-                <span>No recent tasks! You're all caught up.</span>
+            <div style="padding: 40px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent;">
+                <span style="font-size: 2rem; margin-bottom: 8px; opacity: 0.8;">🌴</span>
+                <span style="color: var(--tx-muted); font-weight: 600; font-size: 0.95rem;">All caught up! No recent tasks.</span>
             </div>
          `;
          return;
