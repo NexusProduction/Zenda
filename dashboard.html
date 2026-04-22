@@ -1274,33 +1274,47 @@
         loadBtn(actionBtn, true);
         
         try {
+            // 1. Execute Database changes if approved
             if (action === 'approve') {
                 if (req.type === 'add') {
                     if (typeof createStaff === 'function') {
-                        await createStaff({ ...req.payload, createdAt: Date.now() });
+                        // FIX: Forcefully inject the missing Company and Creator data to satisfy Security Rules!
+                        await createStaff({ 
+                            ...req.payload, 
+                            companyId: window.CU.companyId,
+                            companyName: window.CU.companyName || '',
+                            createdBy: window.CU.uid,
+                            createdAt: Date.now() 
+                        });
                     }
                 } else if (req.type === 'delete') {
                     await deleteStaffMember(req.targetUid, req.targetEmail, req.targetPwd);
                 }
             }
             
+            // 2. Update Notification Status
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', req.notifId), { read: true, status: 'read' });
             
+            // 3. Send RETURN notification back to staff member securely
             if (req.reqId && req.reqId.trim() !== '' && req.reqId !== 'undefined' && req.reqId !== 'null') {
                 const actionText = action === 'approve' ? 'approved' : 'declined';
                 const typeText = req.type === 'add' ? `add a new staff member` : `remove a staff member`;
+                
                 try {
                     await addDoc(collection(db, 'users', req.reqId, 'notifications'), {
                         type: 'general',
                         message: `Owner ${actionText} your request to ${typeText}.`,
-                        createdAt: Date.now(), read: false, status: 'unread'
+                        createdAt: Date.now(), 
+                        read: false, 
+                        status: 'unread'
                     });
-                } catch(err) { console.error(err); }
+                } catch(err) {
+                    console.error("Return Notif Error:", err);
+                }
             }
             
+            // 4. UI Cleanup
             window.showToast(`Request ${action === 'approve' ? 'Approved' : 'Declined'}!`, action === 'approve' ? 'success' : 'info');
-            
-            // Close just the modal overlay!
             document.getElementById('staff-request-modal').classList.remove('open');
             
             const card = req.btn.closest('.notif-card');
@@ -1309,90 +1323,12 @@
                 setTimeout(() => card.remove(), 350);
             }
         } catch(e) {
+            console.error(e);
             window.showToast(e.message, 'error');
         } finally {
             loadBtn(actionBtn, false, action === 'approve' ? 'Approve' : 'Decline');
         }
     };
-    window.approveStaffDelete = async function(btn, notifId, targetUid, targetEmail, targetPwd, requesterId) {
-        const card = btn.closest('.notif-card');
-        loadBtn(btn, true);
-        try {
-            await deleteStaffMember(targetUid, targetEmail, targetPwd);
-            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-            
-            // Send success notification back to requester
-            if (requesterId) {
-                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
-                    type: 'general',
-                    message: `Owner approved your request to remove a staff member.`,
-                    createdAt: Date.now(),
-                    read: false,
-                    status: 'unread'
-                });
-            }
-
-            window.showToast("Staff removed successfully!", "success");
-            card.classList.add('slide-left-out');
-            setTimeout(() => card.remove(), 350);
-        } catch(e) {
-            window.showToast(e.message, 'error');
-            loadBtn(btn, false, 'Approve');
-        }
-    };
-
-    window.declineStaffDelete = async function(btn, notifId, requesterId) {
-        const card = btn.closest('.notif-card');
-        card.classList.add('slide-left-out');
-        setTimeout(() => card.remove(), 350);
-        try {
-            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-            if (requesterId) {
-                await addDoc(collection(db, 'users', requesterId, 'notifications'), {
-                    type: 'general',
-                    message: `Owner declined your request to remove a staff member.`,
-                    createdAt: Date.now(),
-                    read: false,
-                    status: 'unread'
-                });
-            }
-        } catch(e) {}
-    };
-
-    window.handleInlineStaffApprove = async function(btn) {
-    const notifId = btn.getAttribute('data-id');
-    const reqId = btn.getAttribute('data-requester-id');
-    const reqName = btn.getAttribute('data-requester-name');
-    let payload;
-    try {
-        payload = JSON.parse(decodeURIComponent(escape(atob(btn.getAttribute('data-pending')))));
-    } catch(e) {
-        window.showToast('Error reading staff data.', 'error');
-        return;
-    }
-    btn.disabled = true;
-    btn.textContent = 'Processing…';
-    try {
-        if (typeof createStaff === 'function') {
-            await createStaff({ ...payload, createdAt: Date.now() });
-        }
-        await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-        if (reqId && reqId !== 'undefined') {
-            await addDoc(collection(db, 'users', reqId, 'notifications'), {
-                type: 'general',
-                message: `Owner approved your request to add ${payload.name || 'new staff'}.`,
-                createdAt: Date.now(), read: false, status: 'unread'
-            });
-        }
-        window.showToast(`${payload.name || 'Staff'} added successfully! ✓`, 'success');
-        const card = btn.closest('.notif-card');
-        if (card) { card.classList.add('slide-left-out'); setTimeout(() => card.remove(), 350); }
-    } catch(e) {
-        window.showToast(e.message || 'Failed to approve.', 'error');
-        btn.disabled = false;
-        btn.textContent = '✓ Accept';
-    }
-};
 
     window.renderNotifs = function(items) {
       const el = document.getElementById('notif-body');
@@ -1439,45 +1375,14 @@
                              <button class="btn btn-primary w-full" style="padding:8px 14px;font-size:0.85rem;background:#10B981;border:none;box-shadow:0 4px 10px rgba(16,185,129,0.25);" onclick="window.approveUpgradeRequest(this, '${n.id}')">Upgrade</button>
                            </div>`;
         } else if (n.type === 'staff_add_request') {
-        const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData || {}))));
-        const pd = n.pendingData || {};
-        actionsHtml = `
-            <div style="background:var(--bg-page);border:1px solid var(--bd-color);border-radius:14px;padding:14px 16px;margin-top:4px;">
-                <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
-                        <span style="color:var(--tx-muted);font-weight:600;">Name</span>
-                        <span style="color:var(--tx-main);font-weight:700;">${esc(pd.name || '—')}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
-                        <span style="color:var(--tx-muted);font-weight:600;">Email</span>
-                        <span style="color:var(--tx-main);font-weight:600;">${esc(pd.email || '—')}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
-                        <span style="color:var(--tx-muted);font-weight:600;">Role</span>
-                        <span style="color:var(--tx-main);font-weight:600;">${esc(pd.designation || 'Staff')}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
-                        <span style="color:var(--tx-muted);font-weight:600;">Password</span>
-                        <span style="color:var(--tx-main);font-weight:600;font-family:var(--font-mono)">${esc(pd.password || '—')}</span>
-                    </div>
-                </div>
-                <div style="display:flex;gap:10px;">
-                    <button class="btn w-full" style="padding:9px 14px;font-size:0.85rem;background:var(--danger-light);color:var(--danger);border:1px solid rgba(255,59,48,0.2);border-radius:10px;font-weight:700;"
-                        data-type="add" data-id="${n.id}" data-pending="${safeData}"
-                        data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}"
-                        onclick="window.executeStaffRequest('decline');this.closest('.notif-card').querySelector('[data-action=approve]').disabled=true;this.disabled=true;">
-                        ✕ Decline
-                    </button>
-                    <button class="btn w-full" style="padding:9px 14px;font-size:0.85rem;background:#10B981;color:white;border:none;border-radius:10px;font-weight:700;box-shadow:0 2px 8px rgba(16,185,129,0.25);"
-                        data-action="approve" data-type="add" data-id="${n.id}" data-pending="${safeData}"
-                        data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}"
-                        onclick="window.handleInlineStaffApprove(this)">
-                        ✓ Accept
-                    </button>
-                </div>
-            </div>`;
+            const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData || {}))));
+            // FIX: Removed the squeezed inline card and restored the clean "Review Request" button!
+            actionsHtml = `<button class="btn w-full" style="padding:8px 16px;font-size:0.85rem;background:#10B981;color:white;border:none;border-radius:10px;font-weight:700;box-shadow:0 2px 8px rgba(16,185,129,0.25);" 
+                            data-type="add" data-id="${n.id}" data-pending="${safeData}" 
+                            data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}"
+                            onclick="window.openStaffRequestModal(this)">Review Request →</button>`;
         } else if (n.type === 'staff_delete_request') {
-            actionsHtml = `<button class="btn btn-danger w-full" style="padding:8px 16px;font-size:0.85rem;" 
+            actionsHtml = `<button class="btn w-full" style="padding:8px 16px;font-size:0.85rem;background:var(--danger);color:white;border:none;border-radius:10px;font-weight:700;box-shadow:0 2px 8px rgba(255,59,48,0.25);" 
                             data-type="delete" data-id="${n.id}" data-target-uid="${n.targetUid || ''}" 
                             data-target-email="${esc(n.targetEmail || '')}" data-target-name="${esc(n.targetName || 'Staff')}" 
                             data-target-pwd="${btoa(n.targetPwd || '')}" data-requester-id="${n.requesterId || ''}" 
@@ -2336,19 +2241,14 @@ window.handleAssign = async function() {
       const greetEl = document.getElementById('home-greeting'); if (greetEl) greetEl.innerHTML = `${greet}, <span class="greeting-name">${esc(fn)}</span>`;
       const subEl = document.getElementById('home-sub'); if (subEl) subEl.textContent = { owner: 'Overview of your company and team', manager: 'Your team tasks and activity', staff: 'Your assignments and progress' }[role] || '';
 
-      const canAssign = role === 'owner' || role === 'manager', isOwner = role === 'owner';
-      // Staff tabs made accessible
+      const isOwner = role === 'owner';
       const canSeeStaff = true; 
 
+      // FIX: Ensure everyone (owners, managers, and staff) can see the assign task buttons!
       const assignTopBtn = document.getElementById('assign-top-btn');
       const assignTasksBtnFull = document.getElementById('assign-tasks-btn-full');
-      if (canAssign) { 
-          if (assignTopBtn) assignTopBtn.style.display = ''; 
-          if (assignTasksBtnFull) assignTasksBtnFull.style.display = 'flex'; 
-      } else {
-          if (assignTopBtn) assignTopBtn.style.display = 'none';
-          if (assignTasksBtnFull) assignTasksBtnFull.style.display = 'none';
-      }
+      if (assignTopBtn) assignTopBtn.style.display = ''; 
+      if (assignTasksBtnFull) assignTasksBtnFull.style.display = 'flex';
 
       const tr = document.getElementById('task-tab-row');
       if (tr) {
