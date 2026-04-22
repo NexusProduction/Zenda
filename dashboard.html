@@ -1460,11 +1460,31 @@
 
     window.uploadAvatar = async function(e, suffix) {
       const file = e.target.files[0]; if (!file) return;
+      
+      // FIX: Compress the image in the background so it never hits the Firebase 1MB size limit!
+      const img = new Image();
       const reader = new FileReader();
-      reader.onload = async function(ev) {
-        const dataUrl = ev.target.result;
+      
+      reader.onload = function(ev) { img.src = ev.target.result; };
+      
+      img.onload = async function() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const MAX_SIZE = 256; // Shrink to a tiny profile picture size
+        let width = img.width, height = img.height;
+        
+        if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } 
+        else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+        
+        canvas.width = width; canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Export as a compressed JPEG
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8); 
+        
         localStorage.setItem('zenda_logo_' + window.CU.uid, dataUrl);
         window.CU.avatarData = dataUrl;
+        
         document.querySelectorAll('.prof-av-display').forEach(el => { el.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`; });
         const ini = getInitials(window.CU.name), col = avatarColor(window.CU.name);
         setAv('topbar-avatar', ini, col, 38, dataUrl);
@@ -1472,173 +1492,14 @@
         
         try {
             await updateDoc(doc(db, 'users', window.CU.uid), { avatarData: dataUrl });
-            window.showToast("Profile logo updated successfully!", "success");
+            window.showToast("Profile photo updated successfully!", "success");
         } catch(err) {
             console.error(err);
-            window.showToast("Logo saved locally, but cloud sync failed.", "error");
+            window.showToast("Cloud sync failed. Image still too large.", "error");
         }
       };
+      
       reader.readAsDataURL(file);
-    };
-
-    window.enableProfileEdit = function(suffix) {
-      ['name', 'email'].forEach(f => { const el = document.getElementById(`prof-${f}-${suffix}`); if (el) { el.removeAttribute('readonly'); el.classList.remove('prof-input-readonly'); } });
-      const saveBtn = document.getElementById(`btn-save-prof-${suffix}`);
-      if (saveBtn) saveBtn.style.display = 'flex';
-      document.getElementById(`prof-name-${suffix}`)?.focus();
-    };
-
-    window.disableProfileEdit = function(suffix) {
-      ['name', 'email'].forEach(f => { const el = document.getElementById(`prof-${f}-${suffix}`); if (el) { el.setAttribute('readonly', 'true'); el.classList.add('prof-input-readonly'); } });
-      const saveBtn = document.getElementById(`btn-save-prof-${suffix}`);
-      if (saveBtn) saveBtn.style.display = 'none';
-    };
-
-    window.pendingProfileUpdates = {};
-    
-    window.saveProfileData = async function(suffix) {
-      const btn = document.getElementById('btn-save-prof-' + suffix);
-      const newName = document.getElementById('prof-name-' + suffix)?.value.trim();
-      const newEmail = document.getElementById('prof-email-' + suffix)?.value.trim();
-      
-      if (!newName || !newEmail) return;
-      
-      const nameChanged = newName !== window.CU.name, emailChanged = newEmail !== window.CU.email;
-      
-      if (!nameChanged && !emailChanged) { 
-          window.showToast('No changes made.', 'info'); 
-          window.disableProfileEdit(suffix); 
-          return; 
-      }
-      
-      loadBtn(btn, true);
-      
-      window.pendingProfileUpdates = { newName, newEmail, nameChanged, emailChanged, suffix, btn };
-      
-      if (emailChanged) {
-        try {
-          window.tempOTP = Math.floor(100000 + Math.random() * 900000).toString();
-          if(typeof emailjs !== 'undefined' && emailjs.send) {
-              await emailjs.send(
-                  "YOUR_SERVICE_ID",   
-                  "YOUR_TEMPLATE_ID",  
-                  {
-                    to_email: window.CU.email,
-                    to_name: window.CU.name,
-                    otp_code: window.tempOTP,
-                    company_name: 'Zenda Security'
-                  },
-                  "YOUR_PUBLIC_KEY"    
-              );
-          } else {
-              throw new Error("EmailJS not configured");
-          }
-          window.openModal('email-otp-modal');
-          const stepEl = document.getElementById('email-otp-step'); if (stepEl) stepEl.textContent = 'Step 1: Verify Current Email';
-          const targetEl = document.getElementById('email-otp-target'); if (targetEl) targetEl.textContent = window.CU.email;
-          window.emailOTPState = 'current';
-          loadBtn(btn, false, 'Save Changes');
-        } catch (e) { 
-            console.warn("EmailJS failed, falling back to console OTP: ", window.tempOTP);
-            alert(`TEST MODE ACTIVE: Check the console, or use OTP: ${window.tempOTP}`);
-            window.openModal('email-otp-modal');
-            const stepEl = document.getElementById('email-otp-step'); if (stepEl) stepEl.textContent = 'Step 1: Verify Current Email';
-            const targetEl = document.getElementById('email-otp-target'); if (targetEl) targetEl.textContent = window.CU.email;
-            window.emailOTPState = 'current';
-            loadBtn(btn, false, 'Save Changes');
-        }
-      } else { 
-          await window.commitProfileUpdates(); 
-      }
-    };
-
-    window.verifyEmailChangeOTP = async function() {
-      const otp = document.getElementById('email-otp-input')?.value;
-      if (!otp || otp.length < 6) return window.showToast('Enter 6 digits', 'error');
-      
-      if (otp !== window.tempOTP) {
-          window.showToast('Invalid OTP. Try again.', 'error');
-          return;
-      }
-      
-      const btn = document.getElementById('btn-verify-email-otp'); loadBtn(btn, true);
-      
-      try {
-        if (window.emailOTPState === 'current') {
-          window.emailOTPState = 'new';
-          const otpInput = document.getElementById('email-otp-input'); if (otpInput) otpInput.value = '';
-          
-          window.tempOTP = Math.floor(100000 + Math.random() * 900000).toString();
-          
-          try {
-              if(typeof emailjs !== 'undefined' && emailjs.send) {
-                  await emailjs.send(
-                      "YOUR_SERVICE_ID",   
-                      "YOUR_TEMPLATE_ID",  
-                      {
-                        to_email: window.pendingProfileUpdates.newEmail,
-                        to_name: window.pendingProfileUpdates.newName,
-                        otp_code: window.tempOTP,
-                        company_name: 'Zenda Security'
-                      },
-                      "YOUR_PUBLIC_KEY"    
-                  );
-              } else {
-                  throw new Error("EmailJS not configured");
-              }
-          } catch(e) {
-              console.warn("EmailJS failed, falling back to console OTP: ", window.tempOTP);
-              alert(`TEST MODE ACTIVE: New Email OTP is: ${window.tempOTP}`);
-          }
-          
-          const stepEl = document.getElementById('email-otp-step'); if (stepEl) stepEl.textContent = 'Step 2: Verify New Email';
-          const targetEl = document.getElementById('email-otp-target'); if (targetEl) targetEl.textContent = window.pendingProfileUpdates.newEmail;
-          window.showToast('Code sent to new email!', 'success');
-        } else if (window.emailOTPState === 'new') {
-          window.closeModal('email-otp-modal');
-          await window.commitProfileUpdates();
-        }
-      } catch (e) { window.showToast(e.message, 'error'); } finally { loadBtn(btn, false, 'Verify Code'); }
-    };
-
-window.commitProfileUpdates = async function() {
-      const { newName, newEmail, nameChanged, emailChanged, suffix, btn } = window.pendingProfileUpdates;
-      try {
-        const userRef = doc(db, 'users', window.CU.uid);
-        const updates = {}; 
-        
-        if (nameChanged) {
-          updates.name = newName; 
-          if (auth.currentUser) await updateProfile(auth.currentUser, { displayName: newName }); 
-        }
-        
-        if (emailChanged) {
-          if (auth.currentUser) await updateEmail(auth.currentUser, newEmail); 
-          updates.email = newEmail; 
-        }
-        
-        // 1. Update the database FIRST
-        if (Object.keys(updates).length > 0) {
-            await updateDoc(userRef, updates); 
-        }
-        
-        // 2. Update local variables ONLY if database save succeeds
-        if (nameChanged) window.CU.name = newName;
-        if (emailChanged) window.CU.email = newEmail;
-        
-        window.showToast('Changes applied!', 'success');
-        window.disableProfileEdit(suffix); 
-        window.buildProfile();
-      } catch (e) {
-        console.error("Profile Save Error:", e);
-        if (e.code === 'auth/requires-recent-login') { 
-            window.showToast('Please log out and log back in to change your email.', 'error'); 
-        } else { 
-            window.showToast(e.message, 'error'); 
-        }
-      } finally {
-        if (btn) loadBtn(btn, false, 'Save Changes');
-      }
     };
 
     window.buildProfile = function() {
@@ -1665,7 +1526,8 @@ window.commitProfileUpdates = async function() {
           <div style="text-align:center;padding:40px 24px 32px;border-bottom:1px solid var(--bd-color);background:var(--bg-surface);">
             <div style="position:relative;width:112px;height:112px;margin:0 auto 24px;">
               <div class="av prof-av-display" style="width:100%;height:100%;font-size:3rem;font-weight:800;border-radius:50%;background:${bgC}22;color:${bgC};display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);">${avContent}</div>
-              <label for="avatar-upload-${suffix}" style="position:absolute;bottom:0;right:0;background:var(--ac);color:white;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid var(--bg-surface);box-shadow:var(--shadow-sm);transition:transform 0.2s;z-index:20;">
+              
+              <label for="avatar-upload-${suffix}" style="position:absolute;bottom:0;right:0;background:var(--ac);color:white;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid var(--bg-surface);box-shadow:var(--shadow-sm);transition:transform 0.2s;z-index:50;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></label>
               <input type="file" id="avatar-upload-${suffix}" accept="image/*" style="display:none;" onchange="window.uploadAvatar(event,'${suffix}')">
             </div>
             <div style="font-size:1.6rem;font-weight:800;color:var(--tx-main);letter-spacing:-0.03em;">${esc(name)}</div>
@@ -1746,9 +1608,18 @@ window.commitProfileUpdates = async function() {
         const showPriority = window.taskTab !== 'done' && window.taskTab !== 'declined';
         const isDeclineTab = window.taskTab === 'declined';
         
-        let assignText = (window.taskTab === 'assigned-to-me') 
-            ? `Assigned by: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedByName || 'Manager')}</span>`
-            : `Assigned to: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedToName || 'Team Member')}</span>`;
+        let assignText = '';
+        if (t.assignedBy === window.CU.uid) {
+            // If YOU assigned the task to someone else...
+            if (t.status === 'done') {
+                assignText = `Done by: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedToName || 'Team Member')}</span>`;
+            } else {
+                assignText = `Assigned to: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedToName || 'Team Member')}</span>`;
+            }
+        } else {
+            // If someone else assigned the task to YOU...
+            assignText = `Assigned by: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedByName || 'Manager')}</span>`;
+        }
         
         return `
         <div class="premium-task-card" id="task-${t.id}">
@@ -1809,7 +1680,16 @@ window.commitProfileUpdates = async function() {
          return;
       }
       
-      r.innerHTML = tasks.map(t => `<div class="premium-task-card" style="margin-bottom:12px;padding:16px 20px;cursor:pointer;flex-direction:row;align-items:center;" onclick="window.setTaskTab('${window.CU.role === 'owner' ? 'assigned-by-me' : 'assigned-to-me'}');window.showView('tasks');"><div style="flex:1;"><div class="card-title" style="margin-bottom:4px;font-size:1rem;">${esc(t.title)}</div><div style="font-size:0.8rem;color:var(--tx-muted);font-weight:500;">${window.CU.role === 'owner' ? `Assigned to: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedToName || 'Team')}</span>` : `Assigned by: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedByName || 'Manager')}</span>`}</div></div>${t.dueDate ? `<div style="font-size:0.75rem;background:var(--ac-light);color:var(--ac);padding:6px 12px;border-radius:8px;font-weight:700;">Due: ${formatDateIN(t.dueDate)}</div>` : ''}</div>`).join('');
+      r.innerHTML = tasks.map(t => {
+          let recAssignText = '';
+          if (t.assignedBy === window.CU.uid) {
+              recAssignText = `Assigned to: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedToName || 'Team')}</span>`;
+          } else {
+              recAssignText = `Assigned by: <span style="font-weight:700;color:var(--tx-main);">${esc(t.assignedByName || 'Manager')}</span>`;
+          }
+          
+          return `<div class="premium-task-card" style="margin-bottom:12px;padding:16px 20px;cursor:pointer;flex-direction:row;align-items:center;" onclick="window.setTaskTab('${window.CU.role === 'owner' ? 'assigned-by-me' : 'assigned-to-me'}');window.showView('tasks');"><div style="flex:1;"><div class="card-title" style="margin-bottom:4px;font-size:1rem;">${esc(t.title)}</div><div style="font-size:0.8rem;color:var(--tx-muted);font-weight:500;">${recAssignText}</div></div>${t.dueDate ? `<div style="font-size:0.75rem;background:var(--ac-light);color:var(--ac);padding:6px 12px;border-radius:8px;font-weight:700;">Due: ${formatDateIN(t.dueDate)}</div>` : ''}</div>`;
+      }).join('');
     };
 
     window.setTaskTab = function(tab, btn) {
