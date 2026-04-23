@@ -1844,32 +1844,6 @@
       finally { loadBtn(btn, false, 'Delete Task'); deleteTaskTargetId = null; }
     };
     
-    window.doAcceptTask = async function(id) {
-      const el = document.getElementById('task-' + id);
-      if (el) { const ti = el.querySelector('.card-title'); if (ti) ti.classList.add('done'); el.classList.add('completed-state'); el.querySelectorAll('button').forEach(b => b.style.display = 'none'); }
-      
-      const obj1 = (window.myTasks || []).find(t => t.id === id); 
-      if (obj1) obj1.status = 'done';
-      const obj2 = (window.assignedByMeTasks || []).find(t => t.id === id); 
-      if (obj2) obj2.status = 'done';
-      
-      try { 
-        await updateDoc(doc(db, 'tasks', id), { status: 'done', completedAt: Date.now() }); 
-        window.showToast('Task completed! 🎉', 'success'); 
-        
-        window.updateAllStats();
-        window.renderTasksList();
-        window.renderRecentTasks();
-        
-        if (obj1 && obj1.assignedBy) {
-            await addDoc(collection(db, 'users', obj1.assignedBy, 'notifications'), { type: 'task_update', message: `${window.CU.name} completed the task: ${obj1.title}`, taskId: id, createdAt: Date.now(), read: false, status: 'unread' });
-        }
-      } 
-      catch (e) { if (obj1) obj1.status = 'pending'; if (obj2) obj2.status = 'pending'; if (el) { el.classList.remove('completed-state'); const ti = el.querySelector('.card-title'); if (ti) ti.classList.remove('done'); el.querySelectorAll('button').forEach(b => b.style.display = 'block'); } window.showToast(e.message, 'error'); }
-    };
-    
-    window.openDeclineModal = function(id, title) { pendingDeclineId = id; const el = document.getElementById('decline-task-title'); if (el) el.textContent = title; const r = document.getElementById('decline-reason'); if (r) r.value = ''; window.openModal('decline-modal'); };
-    
     window.confirmDecline = async function() {
       const reasonInput = document.getElementById('decline-reason');
       const reason = reasonInput?.value.trim();
@@ -1918,6 +1892,16 @@
              });
           }
           
+          // --- NEW: Automatically clear the notification if it exists in the panel! ---
+          const notifCard = document.querySelector(`.notif-card[data-task-id="${pendingDeclineId}"]`);
+          if (notifCard) {
+              const notifId = notifCard.getAttribute('data-id');
+              if (notifId) {
+                  await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+              }
+          }
+          // ----------------------------------------------------------------------------
+
           window.closeModal('decline-modal'); 
           window.showToast('Task declined.', 'success'); 
       } 
