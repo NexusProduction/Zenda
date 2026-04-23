@@ -503,7 +503,7 @@
       
     </main>
   </div>
-
+  <div class="mobile-fade-bg"></div>
   <nav class="bottom-nav" id="bottom-nav" style="display:none;">
     <div class="bn-items">
       <button class="bn-item active" id="bn-home" onclick="window.showView('home')">
@@ -747,12 +747,8 @@
           
           <div style="font-size:0.8rem;color:var(--tx-muted);margin-bottom:16px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">Target Staff Details</div>
           
-          <div style="display:flex;flex-direction:column;gap:12px;font-size:0.95rem;">
-             <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Name:</span><span style="color:var(--tx-main);font-weight:800;" id="sr-target-name"></span></div>
-             <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Email:</span><span style="color:var(--tx-main);font-weight:700;" id="sr-target-email"></span></div>
-             <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Role:</span><span style="color:var(--tx-main);font-weight:700;" id="sr-target-role"></span></div>
-             <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Password:</span><span style="color:var(--tx-main);font-family:var(--font-mono);font-weight:700;" id="sr-target-pwd"></span></div>
-          </div>
+          <div id="sr-dynamic-details" style="display:flex;flex-direction:column;gap:12px;font-size:0.95rem;"></div>
+          
         </div>
         
         <div style="display:flex;gap:16px;">
@@ -771,6 +767,8 @@
     #custom-toast-container { position: fixed; bottom: 32px; right: 32px; z-index: 99999 !important; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
     
     @media (max-width: 768px) {
+      /* Creates the smooth gradient fade effect behind the mobile navigation pill */
+      .mobile-fade-bg { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; height: 140px; background: linear-gradient(to top, var(--bg-page) 30%, transparent); pointer-events: none; z-index: 890; }
         #custom-toast-container { bottom: 100px; right: 16px; left: 16px; align-items: center; justify-content: center; }
     }
 
@@ -1309,7 +1307,6 @@
         
         window.currentStaffRequest = { btn, type, notifId, reqId };
         
-        // Grab the requester's uploaded avatar if they have one
         const requesterUser = allStaff.find(s => s.uid === reqId) || {};
         const reqAvatarHtml = requesterUser.avatarData ? `<img src="${requesterUser.avatarData}" style="width:100%;height:100%;object-fit:cover;">` : reqName.charAt(0).toUpperCase();
         
@@ -1320,26 +1317,38 @@
             document.getElementById('sr-modal-title').textContent = 'New Staff Request';
             const pendingData = JSON.parse(decodeURIComponent(escape(atob(btn.getAttribute('data-pending')))));
             
-            document.getElementById('sr-target-name').textContent = pendingData.name;
-            document.getElementById('sr-target-email').textContent = pendingData.email;
-            document.getElementById('sr-target-role').textContent = pendingData.designation || 'Staff';
-            document.getElementById('sr-target-pwd').textContent = pendingData.password;
+            document.getElementById('sr-dynamic-details').innerHTML = `
+                 <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Name:</span><span style="color:var(--tx-main);font-weight:800;">${esc(pendingData.name)}</span></div>
+                 <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Email:</span><span style="color:var(--tx-main);font-weight:700;">${esc(pendingData.email)}</span></div>
+                 <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Role:</span><span style="color:var(--tx-main);font-weight:700;">${esc(pendingData.designation || 'Staff')}</span></div>
+                 <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Password:</span><span style="color:var(--tx-main);font-family:var(--font-mono);font-weight:700;">${esc(pendingData.password)}</span></div>
+            `;
             
             window.currentStaffRequest.payload = pendingData;
-            
             document.getElementById('sr-btn-approve').textContent = 'Approve Addition';
             document.getElementById('sr-btn-decline').textContent = 'Decline Addition';
+            
         } else {
             document.getElementById('sr-modal-title').textContent = 'Remove Staff Request';
             
             const reason = btn.getAttribute('data-reason') || 'No reason provided';
-            document.getElementById('sr-target-name').textContent = btn.getAttribute('data-target-name') || 'Unknown';
-            document.getElementById('sr-target-email').textContent = btn.getAttribute('data-target-email') || 'Unknown';
-            document.getElementById('sr-target-role').innerHTML = `Revoke Access <br><span style="font-size:0.8rem;color:var(--danger);font-weight:700;margin-top:4px;display:inline-block;">Reason: ${reason}</span>`;
-            document.getElementById('sr-target-pwd').textContent = '*** (Hidden)';
+            const tName = btn.getAttribute('data-target-name') || 'Unknown';
+            const tEmail = btn.getAttribute('data-target-email') || 'Unknown';
+            
+            // FIX: Custom layout for Deletion Requests (No Password row, cleanly formatted Reason box)
+            document.getElementById('sr-dynamic-details').innerHTML = `
+                 <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Name:</span><span style="color:var(--tx-main);font-weight:800;">${esc(tName)}</span></div>
+                 <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Email:</span><span style="color:var(--tx-main);font-weight:700;">${esc(tEmail)}</span></div>
+                 <div style="display:flex;justify-content:space-between;"><span style="color:var(--tx-muted);font-weight:600;">Action:</span><span style="color:var(--danger);font-weight:800;">Revoke Access</span></div>
+                 
+                 <div style="margin-top: 12px; padding: 14px 16px; background: var(--danger-light); border-left: 3px solid var(--danger); border-radius: 8px;">
+                     <div style="font-size: 0.75rem; font-weight: 800; color: var(--danger); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Reason for Removal</div>
+                     <div style="font-size: 0.9rem; color: var(--tx-main); font-weight: 600; line-height: 1.4;">${esc(reason)}</div>
+                 </div>
+            `;
             
             window.currentStaffRequest.targetUid = btn.getAttribute('data-target-uid');
-            window.currentStaffRequest.targetEmail = btn.getAttribute('data-target-email');
+            window.currentStaffRequest.targetEmail = tEmail;
             window.currentStaffRequest.targetPwd = atob(btn.getAttribute('data-target-pwd'));
             
             document.getElementById('sr-btn-approve').textContent = 'Approve Deletion';
@@ -1349,7 +1358,6 @@
         document.getElementById('sr-btn-approve').onclick = () => window.executeStaffRequest('approve');
         document.getElementById('sr-btn-decline').onclick = () => window.executeStaffRequest('decline');
         
-        // Render on TOP of notifications without closing notifications!
         document.getElementById('staff-request-modal').classList.add('open');
     };
 
