@@ -313,7 +313,7 @@
       }
       #task-tab-row::-webkit-scrollbar { display: none; }
       
-      .bottom-nav { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; height: 80px !important; background: rgba(255,255,255,0.9) !important; backdrop-filter: blur(10px); border-top: 1px solid var(--bd-color) !important; display: flex !important; align-items: center !important; padding: 0 16px 16px !important; z-index: 900 !important; }
+      .bottom-nav { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; height: 80px !important; background: rgba(255,255,255,0.9) !important; backdrop-filter: blur(10px); border-top: 1px solid rgba(0,0,0,0.12) !important; box-shadow: 0 -4px 16px rgba(0,0,0,0.05) !important; display: flex !important; align-items: center !important; padding: 0 16px 16px !important; z-index: 900 !important; }
       .bn-items { display: flex !important; width: 100% !important; justify-content: space-around !important; align-items: center !important; }
       .bn-item { flex: 1 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 6px !important; color: var(--tx-muted) !important; background: transparent !important; border: none !important; min-height: 56px !important; cursor: pointer !important; padding: 6px; border-radius: 12px; transition: all 0.2s; }
       .bn-item span:not(.bn-dot) { font-family: inherit !important; font-size: 11px !important; font-weight: 700 !important; }
@@ -2124,6 +2124,151 @@ window.handleAssign = async function() {
         } 
     };
 
+    // --- PROFILE EDIT & EMAIL CHANGE ENGINE ---
+    window.enableProfileEdit = function(suffix) {
+        const nameEl = document.getElementById('prof-name-' + suffix);
+        const emailEl = document.getElementById('prof-email-' + suffix);
+        const btn = document.getElementById('btn-save-prof-' + suffix);
+
+        // Unlock the inputs
+        nameEl.readOnly = false;
+        emailEl.readOnly = false;
+        nameEl.classList.remove('prof-input-readonly');
+        emailEl.classList.remove('prof-input-readonly');
+        
+        // Add a clean blue border to show they are editable
+        nameEl.style.border = "1px solid var(--ac)";
+        emailEl.style.border = "1px solid var(--ac)";
+        
+        nameEl.focus();
+        btn.style.display = 'flex';
+    };
+
+    window.saveProfileData = async function(suffix) {
+        const newName = document.getElementById('prof-name-' + suffix).value.trim();
+        const newEmail = document.getElementById('prof-email-' + suffix).value.trim();
+        const btn = document.getElementById('btn-save-prof-' + suffix);
+        
+        if(!newName || !newEmail) { window.showToast('Fields cannot be empty', 'error'); return; }
+
+        loadBtn(btn, true);
+
+        let emailChanged = (newEmail !== window.CU.email);
+        let nameChanged = (newName !== window.CU.name);
+
+        if (!emailChanged && !nameChanged) {
+            window.showToast('No changes made', 'info');
+            loadBtn(btn, false, 'Save Changes');
+            window.buildProfile(); // Resets the UI back to readonly
+            return;
+        }
+
+        try {
+            if (nameChanged && !emailChanged) {
+                // If only name changed, save immediately
+                await updateDoc(doc(db, 'users', window.CU.uid), { name: newName });
+                if(auth.currentUser) await updateProfile(auth.currentUser, { displayName: newName });
+                window.CU.name = newName;
+                window.showToast('Profile updated!', 'success');
+                window.buildProfile(); 
+                setupUI(); 
+            } else if (emailChanged) {
+                // If Email changed, start the 2-Step OTP Flow!
+                window.pendingProfileUpdate = { name: newName, newEmail: newEmail, suffix: suffix };
+                window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
+                window.emailChangeStep = 1; 
+                
+                try {
+                    if(typeof emailjs !== 'undefined') {
+                        await emailjs.send("service_dc7ge9b", "template_4turj9r", {
+                            to_email: window.CU.email,
+                            to_name: window.CU.name,
+                            otp_code: window.tempEmailOTP,
+                            company_name: window.CU.companyName || 'Zenda'
+                        }, "dg8t6B0d-DhPa3Tl6");
+                    }
+                } catch(e) { console.warn("EmailJS failed, check console for OTP", window.tempEmailOTP); }
+
+                document.getElementById('email-otp-step').textContent = 'Step 1: Verify Current Email';
+                document.getElementById('email-otp-target').textContent = window.CU.email;
+                document.getElementById('email-otp-input').value = '';
+                window.openModal('email-otp-modal');
+            }
+        } catch(e) {
+            window.showToast('Error: ' + e.message, 'error');
+        } finally {
+            loadBtn(btn, false, 'Save Changes');
+        }
+    };
+
+    window.verifyEmailChangeOTP = async function() {
+        const input = document.getElementById('email-otp-input').value.trim();
+        const btn = document.getElementById('btn-verify-email-otp');
+        
+        if (input !== window.tempEmailOTP) {
+            window.showToast('Invalid code. Try again.', 'error');
+            return;
+        }
+
+        loadBtn(btn, true);
+
+        if (window.emailChangeStep === 1) {
+            // STEP 1 Success: Send code to the NEW email
+            window.emailChangeStep = 2;
+            window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
+            const pending = window.pendingProfileUpdate;
+
+            try {
+                if(typeof emailjs !== 'undefined') {
+                    await emailjs.send("service_dc7ge9b", "template_4turj9r", {
+                        to_email: pending.newEmail,
+                        to_name: pending.name,
+                        otp_code: window.tempEmailOTP,
+                        company_name: window.CU.companyName || 'Zenda'
+                    }, "dg8t6B0d-DhPa3Tl6");
+                }
+            } catch(e) { console.warn("EmailJS failed, check console for OTP", window.tempEmailOTP); }
+
+            document.getElementById('email-otp-step').textContent = 'Step 2: Verify New Email';
+            document.getElementById('email-otp-target').textContent = pending.newEmail;
+            document.getElementById('email-otp-input').value = '';
+            loadBtn(btn, false, 'Verify Code');
+            window.showToast('Code sent to new email address!', 'info');
+
+        } else if (window.emailChangeStep === 2) {
+            // STEP 2 Success: Save everything to Firebase!
+            const pending = window.pendingProfileUpdate;
+            try {
+                if (auth.currentUser) {
+                    await updateEmail(auth.currentUser, pending.newEmail);
+                    await updateProfile(auth.currentUser, { displayName: pending.name });
+                }
+                await updateDoc(doc(db, 'users', window.CU.uid), { 
+                    name: pending.name, 
+                    email: pending.newEmail 
+                });
+
+                window.CU.name = pending.name;
+                window.CU.email = pending.newEmail;
+                
+                window.closeModal('email-otp-modal');
+                window.showToast('Profile and Email successfully updated!', 'success');
+                window.buildProfile();
+                setupUI();
+            } catch(e) {
+                console.error(e);
+                if(e.message.includes('requires-recent-login')) {
+                     window.showToast('Security alert: Please sign out and sign back in to change your email.', 'error');
+                     window.closeModal('email-otp-modal');
+                } else {
+                     window.showToast('Failed to update email: ' + e.message, 'error');
+                }
+            } finally {
+                loadBtn(btn, false, 'Verify Code');
+            }
+        }
+    };
+    
     function subscribeAll() {
       const { uid, companyId, role } = window.CU;
       const cs = role === 'owner' || role === 'manager', ca = role === 'owner' || role === 'manager';
