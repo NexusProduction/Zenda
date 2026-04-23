@@ -245,8 +245,13 @@
       .recent-wrap-order { order: 0; }
     }
 
+    /* Hide mobile buttons on PC, hide PC buttons on Mobile */
+    .mob-actions { display: none !important; }
+    .desk-actions { display: flex !important; }
     /* --- RESPONSIVE DESIGN (MOBILE) --- */
     @media (max-width: 768px) {
+      .mob-actions { display: flex !important; }
+      .desk-actions { display: none !important; }
       /* Force task action buttons to be large, equal-width, and easily tappable on phones */
       .mobile-actions-footer { width: 100% !important; margin-left: 0 !important; margin-top: 8px; }
       .mobile-actions-footer button { flex: 1; justify-content: center; }
@@ -1681,7 +1686,14 @@
                   <div style="font-size:0.85rem;color:var(--tx-muted); margin:0;">${assignText}</div>
               </div>
               
-              <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+              <div style="display:flex; align-items:center; gap:10px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;">
+                  
+                  ${(t.status === 'pending' || t.status === 'unread') && window.taskTab === 'assigned-to-me' && !isTaskOverdue ? `
+                    <div class="desk-actions" style="gap:10px;">
+                      <button class="btn btn-ghost" style="padding:6px 14px; font-size:0.8rem; border-radius:8px; color:var(--danger); background:var(--danger-light); border:none; font-weight:800;" onclick="window.openDeclineModal('${t.id}', '${esc(t.title)}')">Decline</button>
+                      <button class="btn btn-primary" style="padding:6px 16px; font-size:0.8rem; border-radius:8px; background:#10B981; color: white; border:none; box-shadow:0 4px 10px rgba(16,185,129,0.2); font-weight:800;" onclick="window.doAcceptTask('${t.id}')">✓ Mark as Done</button>
+                    </div>` : ''}
+
                   ${t.status === 'done' ? `
                     <div class="done-badge-solid">
                       <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
@@ -1723,7 +1735,7 @@
                 </div>` : ''}
 
             ${(showPriority || (t.dueDate && t.status !== 'done' && !isDeclineTab) || ((t.status === 'pending' || t.status === 'unread') && window.taskTab === 'assigned-to-me' && !isTaskOverdue)) ? `
-            <div style="display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; width: 100%; padding-top: 16px; border-top: 1px solid var(--bd-color);">
+            <div style="display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; width: 100%; padding-top: 6px;">
                 
                 <div style="display:flex;gap:8px;align-items:center;font-size:0.75rem;font-weight:700;flex-wrap:wrap;">
                    ${showPriority ? `<span style="background:var(--bg-page);color:var(--tx-muted);padding:6px 10px;border-radius:6px;border:1px solid var(--bd-color);">Priority: ${t.priority || 'Medium'}</span>` : ''}
@@ -1731,7 +1743,7 @@
                 </div>
 
                 ${(t.status === 'pending' || t.status === 'unread') && window.taskTab === 'assigned-to-me' && !isTaskOverdue ? `
-                  <div class="mobile-actions-footer" style="display:flex; gap:10px; margin-left:auto; flex-wrap:wrap;">
+                  <div class="mobile-actions-footer mob-actions" style="gap:10px; margin-left:auto; flex-wrap:wrap;">
                     <button class="btn btn-ghost" style="padding:8px 16px; font-size:0.85rem; border-radius:8px; color:var(--danger); background:var(--danger-light); border:none; font-weight:800;" onclick="window.openDeclineModal('${t.id}', '${esc(t.title)}')">Decline</button>
                     <button class="btn btn-primary" style="padding:8px 20px; font-size:0.85rem; border-radius:8px; background:#10B981; color: white; border:none; box-shadow:0 4px 10px rgba(16,185,129,0.2); font-weight:800;" onclick="window.doAcceptTask('${t.id}')">✓ Mark as Done</button>
                   </div>` : ''}
