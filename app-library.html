@@ -82,17 +82,16 @@ a { text-decoration: none; color: inherit; }
   font-weight: 800; font-size: 1.15rem; color: var(--tx1); letter-spacing: -0.02em;
 }
 
-/* Redesigned Desktop Search (Expanding Icon) */
 .ab-search-wrap { position: relative; display: flex; align-items: center; justify-content: flex-end; }
 .ab-search {
-  display: flex; align-items: center; justify-content: center; gap: 8px; 
+  display: flex; align-items: center; justify-content: center; gap: 0; /* Gap 0 keeps icon centered when collapsed */
   background: var(--sf2); border: 1.5px solid var(--bd);
   border-radius: 22px; width: 44px; height: 44px; padding: 0; cursor: pointer;
   transition: all 0.4s cubic-bezier(0.22,1,0.36,1); overflow: hidden;
 }
 .ab-search input { 
   border: none; background: transparent; font-family: var(--fd); font-size: 0.9rem; color: var(--tx1); 
-  width: 0; opacity: 0; outline: none; pointer-events: none; transition: opacity 0.3s ease; 
+  width: 0; opacity: 0; outline: none; pointer-events: none; padding: 0; margin: 0; transition: opacity 0.3s ease; 
 }
 .ab-search input::placeholder { color: var(--tx3); font-weight: 500; }
 
@@ -101,10 +100,10 @@ a { text-decoration: none; color: inherit; }
 /* Expanded State for PC */
 .ab-search.expanded {
   width: 260px; justify-content: flex-start; padding: 0 16px; border-color: var(--ac); 
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: var(--sf); cursor: text;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: var(--sf); cursor: text; gap: 8px;
 }
 .ab-search.expanded .search-icon-svg { color: var(--ac); }
-.ab-search.expanded input { width: 100%; opacity: 1; pointer-events: auto; margin-left: 4px; }
+.ab-search.expanded input { width: 100%; opacity: 1; pointer-events: auto; }
 
 .search-dropdown {
   position: absolute; top: calc(100% + 12px); right: 0; width: 320px; background: var(--sf);
@@ -120,10 +119,12 @@ a { text-decoration: none; color: inherit; }
 /* Mobile View Adjustments */
 @media(max-width: 680px) {
   .appbar { padding: 0 16px; }
-  /* Completely hide search on mobile */
+  .desk-only { display: none; }
+  
+  /* Pushed text slightly right in phone view */
+  .ab-center { margin-left: 12px; }
+
   .ab-search-wrap { display: none; }
-  /* Ensure the center text stays perfectly balanced */
-  .ab-center { display: block; }
 }
 
 /* ─────────────────────────────────────────
@@ -208,7 +209,7 @@ a { text-decoration: none; color: inherit; }
 .btn-icon { max-width: 0; opacity: 0; transform: translateX(-10px); transition: all 0.3s ease; display: inline-block; }
 .btn-remove:hover .btn-icon, .btn-notify:hover .btn-icon { max-width: 16px; margin-left: 6px; opacity: 1; transform: translateX(0); }
 
-/* specific button styling */
+/* Buttons with brightened hover states */
 .btn-open { background: transparent; color: var(--ac); border: 1.5px solid var(--bd); }
 .btn-open:hover { background: var(--ac); color: white; border-color: var(--ac); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
 
@@ -217,12 +218,13 @@ a { text-decoration: none; color: inherit; }
 .btn-install:active { transform: scale(0.96); }
 
 .btn-remove { background: var(--red); color: white; border: 1.5px solid var(--red); }
-.btn-remove:hover { background: #B91C1C; border-color: #B91C1C; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,0.2); }
+/* Hover is now #F87171 (Lighter, brighter red) instead of dark crimson */
+.btn-remove:hover { background: #F87171; border-color: #F87171; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,0.25); }
 
 .btn-notify { background: var(--green); color: white; border: 1.5px solid var(--green); }
-.btn-notify:hover { background: #047857; border-color: #047857; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,0.2); }
+/* Hover is now #34D399 (Lighter, brighter emerald) instead of dark green */
+.btn-notify:hover { background: #34D399; border-color: #34D399; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,0.25); }
 
-/* Hollow out the Notify button when it's already clicked */
 .btn-notify.notified { background: transparent; color: var(--tx2); border-color: var(--bd); box-shadow: none; transform: translateY(0); }
 .btn-notify.notified:hover { background: var(--sf2); color: var(--tx1); }
 
@@ -240,7 +242,7 @@ a { text-decoration: none; color: inherit; }
   
   <div class="ab-center">App Library</div>
   
-  <div class="ab-search-wrap">
+  <div class="ab-search-wrap desk-only">
     <div class="ab-search" id="ab-search">
       <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="global-search" placeholder="Find an app..." autocomplete="off" oninput="handleSearch(this.value)">
@@ -439,30 +441,33 @@ function render() {
 }
 
 // ─────────────────────────────────────────────────
-// SMOOTH DESKTOP SEARCH LOGIC
+// DESKTOP SEARCH LOGIC
 // ─────────────────────────────────────────────────
 const searchContainer = document.getElementById('ab-search');
 const searchInput = document.getElementById('global-search');
 const searchDropdown = document.getElementById('search-dropdown');
 
-searchContainer.addEventListener('click', (e) => {
-  if (window.innerWidth > 680 && !searchContainer.classList.contains('expanded')) {
-    searchContainer.classList.add('expanded');
-    setTimeout(() => { searchInput.focus(); }, 100);
-    e.stopPropagation();
-  }
-});
+// Only run JS search expansion on Desktop
+if (searchContainer) {
+  searchContainer.addEventListener('click', (e) => {
+    if (window.innerWidth > 680 && !searchContainer.classList.contains('expanded')) {
+      searchContainer.classList.add('expanded');
+      setTimeout(() => { searchInput.focus(); }, 100);
+      e.stopPropagation();
+    }
+  });
+}
 
 document.addEventListener('click', (e) => {
-  if (searchContainer.classList.contains('expanded') && !searchContainer.contains(e.target) && !searchDropdown.contains(e.target)) {
+  if (searchContainer && searchContainer.classList.contains('expanded') && !searchContainer.contains(e.target) && !searchDropdown.contains(e.target)) {
     closeSearch();
   }
 });
 
 function closeSearch() {
-  searchDropdown.classList.remove('active');
-  searchContainer.classList.remove('expanded');
-  searchInput.value = '';
+  if(searchDropdown) searchDropdown.classList.remove('active');
+  if(searchContainer) searchContainer.classList.remove('expanded');
+  if(searchInput) searchInput.value = '';
 }
 
 window.handleSearch = function(val) {
