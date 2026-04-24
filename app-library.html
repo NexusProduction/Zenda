@@ -50,7 +50,7 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 .cal-day.today .cal-date{background:var(--ac);color:white;font-weight:800}
 .cal-day.selected{background:#EEF2FF;outline:2px solid var(--ac)}
 .cal-day.selected .cal-date{background:var(--ac);color:white}
-.cal-event-pill{border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;max-width:100%;} 
+.cal-event-pill{border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;max-width:100%; background:#D1FAE5;color:#065F46;} 
 .pill-low{background:#D1FAE5;color:#065F46}
 .pill-task{background:#EEF2FF;color:var(--ac)}
 .cal-more-events{font-size:.58rem;color:var(--tx3);padding:1px 4px;font-weight:600}
@@ -62,7 +62,7 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 .cal-card-ttl{font-family:var(--fd);font-weight:700;font-size:.9rem;color:var(--tx1)}
 .cal-event-count{font-family:var(--fd);font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#EEF2FF;color:var(--ac)}
 .day-events-list{padding:10px;max-height:260px;overflow-y:auto}
-.event-item{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;transition:all .15s;cursor:default;}
+.event-item{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;transition:all .15s;cursor:default; border-color:var(--green);background:#F0FDF4;}
 .event-item:hover{filter:brightness(.97)}
 .event-item.low{border-color:var(--green);background:#F0FDF4}
 .event-item.task{border-color:var(--ac);background:#EEF2FF}
@@ -264,11 +264,11 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 
 <script type="module">
 import { auth, db } from './firebase-config.js';
+import { requireAuth, getCurrentUser } from './auth.js';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const syncEl = document.getElementById('sync-status'); 
-if(syncEl) syncEl.className = 'ab-sync sync-connecting';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 window.events = [];
@@ -280,11 +280,14 @@ window.companyStaff = [];
 let curDate = new Date();
 let selectedDay = new Date();
 window.CU = { uid: null, role: 'staff', companyId: null };
-
 window.selectedStaffUIDs = new Set();
 
+function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function isToday(d) { const n = new Date(); return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear(); }
+function isSameDay(a,b) { return a.getDate()===b.getDate() && a.getMonth()===b.getMonth() && a.getFullYear()===b.getFullYear(); }
+
 // ── 1. SECURE AUTH VERIFICATION ──
-// We wait for Firebase to confirm the login before running any database queries.
+// Eliminates race conditions by waiting for valid login token
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
         window.location.replace('login.html');
@@ -301,13 +304,14 @@ onAuthStateChanged(auth, async (user) => {
                 companyId: data.companyId || null,
                 name: data.name || 'User'
             };
-            window.selectedStaffUIDs.add(window.CU.uid);
+            window.selectedStaffUIDs.add(window.CU.uid); // Lock user selection
             
             checkPremiumStatus();
             loadAllRealtime();
         } else {
             // Fallback
             window.CU = { uid: user.uid, role: 'staff', companyId: null };
+            window.selectedStaffUIDs.add(window.CU.uid);
             loadAllRealtime();
         }
     } catch(err) {
@@ -319,13 +323,10 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// Render immediately to avoid blank screen while auth is verifying
+// Render UI frame instantly
 renderCalendar();
 showDayEvents(selectedDay);
-
-function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function isToday(d) { const n = new Date(); return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear(); }
-function isSameDay(a,b) { return a.getDate()===b.getDate() && a.getMonth()===b.getMonth() && a.getFullYear()===b.getFullYear(); }
+renderAddForm();
 
 // --- 2. PREMIUM BADGE LOGIC ---
 async function checkPremiumStatus() {
@@ -370,7 +371,7 @@ function loadAllRealtime() {
   if (unsubTasksByMe) unsubTasksByMe();
   if (unsubStaff) unsubStaff();
 
-  // Load Custom Staff Menu List
+  // Load Custom Staff List
   if (window.CU.companyId) {
       const staffQ = query(collection(db, 'users'), where('companyId', '==', window.CU.companyId));
       unsubStaff = onSnapshot(staffQ, (snap) => {
@@ -465,7 +466,6 @@ function renderCalendar() {
   for(let day=1; day<=daysInMonth; day++) {
     const d = new Date(y,m,day);
     const key = dateKey(d);
-    // Sort by creation time so newer events are appended
     const dayEvs = allEvs.filter(e => e.date === key).sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
     const todayCls = isToday(d) ? ' today' : '';
     const selCls = isSameDay(d,selectedDay) ? ' selected' : '';
@@ -584,7 +584,7 @@ function showDayEvents(d) {
 
 function visLabel(v) { const m={all:'Everyone',custom:'Custom Staff',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
 
-// --- 5. STREAMLINED ADD EVENT & DELETE ---
+// --- 5. INSTANT ADD EVENT ---
 window.addEvent = async function(btnContext) {
   const formWrap = btnContext.closest('.add-form') || document;
   const title = (formWrap.querySelector('.ae-title')?.value || '').trim();
@@ -598,7 +598,8 @@ window.addEvent = async function(btnContext) {
   try {
     const newEv = { 
       title, 
-      date: dateKey(selectedDay), // <-- Uses the clicked date dynamically!
+      date: dateKey(selectedDay), // <-- Always relies strictly on the calendar grid click!
+      priority: 'low', 
       visibility: vis, 
       type: 'event', 
       companyId: window.CU.companyId || null, 
@@ -610,13 +611,19 @@ window.addEvent = async function(btnContext) {
         newEv.visibleToUIDs = Array.from(window.selectedStaffUIDs);
     }
     
-    // Add to Firebase. The real-time onSnapshot listener will catch it 
-    // instantly and update the UI automatically.
-    await addDoc(collection(db, 'calendar'), newEv);
+    // Add instantly to local arrays so it renders immediately
+    newEv.id = 'temp_' + Date.now();
+    if (vis === 'self') { window.events.push(newEv); } 
+    else { window.companyEvents.push(newEv); }
+    updateCalendarUI();
+
+    // Now save to Firebase quietly in the background
+    if (window.CU.uid) {
+      await addDoc(collection(db, 'calendar'), newEv);
+    }
     
-    // Clear inputs on success
+    // Clear the title input
     document.querySelectorAll('.ae-title').forEach(el => el.value = '');
-    
     toast('Event added! 📅','success');
   } catch(e) { 
       toast('Failed to save. Check database rules.','error');
@@ -628,25 +635,17 @@ window.addEvent = async function(btnContext) {
 
 window.delEvent = async function(id) {
   try {
-    await deleteDoc(doc(db, 'calendar', id));
+    if(window.CU.uid && !id.startsWith('temp_')) { 
+      await deleteDoc(doc(db, 'calendar', id));
+    }
+    window.events = window.events.filter(e => e.id !== id);
+    window.companyEvents = window.companyEvents.filter(e => e.id !== id);
+    updateCalendarUI();
     toast('Event deleted.','success');
   } catch(e) { toast('Error: '+e.message,'error'); }
 };
 
-function toast(msg, type='info') {
-  let c = document.getElementById('toast-container');
-  const t = document.createElement('div');
-  t.className = 'toast toast-'+type;
-  t.innerHTML = `<span>${msg}</span>`;
-  c.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
-
-function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-</script>
-
-<script>
-// ── MODAL LOGIC ──
+// --- 6. MODALS & UI HELPERS ---
 window.openModal = function(id) { document.getElementById(id).classList.add('open'); };
 window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
 
@@ -673,7 +672,7 @@ window.toggleCustomStaff = function(selectEl) {
 };
 
 window.toggleStaffSel = function(uid) {
-    if (!window.CU || uid === window.CU.uid) return; 
+    if (uid === window.CU.uid) return; 
     if (window.selectedStaffUIDs.has(uid)) window.selectedStaffUIDs.delete(uid);
     else window.selectedStaffUIDs.add(uid);
     
@@ -723,7 +722,7 @@ window.renderCustomStaffList = function(container) {
     container.innerHTML = html;
 };
 
-// ── RENDER ADD FORM (Streamlined) ──
+// ── 7. STREAMLINED RENDER ADD FORM ──
 window.renderAddForm = function() {
   const html = `
     <div>
@@ -747,8 +746,16 @@ window.renderAddForm = function() {
   if (mForm) mForm.innerHTML = html;
 };
 
-// Launch UI
-renderAddForm();
+function toast(msg, type='info') {
+  let c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast toast-'+type;
+  t.innerHTML = `<span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 </script>
 </body>
 </html>
