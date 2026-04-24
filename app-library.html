@@ -269,10 +269,18 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 <div id="toast-container"></div>
 
 <script type="module">
-// FIX: Imported directly from firebase-config.js to share connection and active session
 import { auth, db } from './firebase-config.js';
 import { requireAuth, getCurrentUser } from './auth.js';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// --- CORE SECURITY LISTENER ---
+// Instantly redirects unauthenticated users or users who log out in another tab
+onAuthStateChanged(auth, (user) => {
+    if (!user) {
+        window.location.replace('login.html');
+    }
+});
 
 const syncEl = document.getElementById('sync-status'); if(syncEl) syncEl.className = 'ab-sync sync-connecting';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -315,20 +323,17 @@ function format12hr(t) {
 
 async function init() {
   try {
-    // FIX: This forces the app to correctly check for an authenticated user session
-    await requireAuth('login.html');
     const cu = await getCurrentUser();
     
     if (!cu || !cu.uid) {
       syncEl.textContent = 'Offline Mode';
       syncEl.className='ab-sync sync-err';
-      window.location.href = 'login.html';
+      window.location.replace('login.html');
       return;
     }
 
     window.CU = cu;
     
-    // Fetch premium status safely
     try {
       if (window.CU.companyId) {
           const compSnap = await getDoc(doc(db, 'companies', window.CU.companyId));
@@ -351,7 +356,7 @@ async function init() {
       }
     }
 
-    // Load Staff for Custom Staff UI immediately
+    // Load Staff for Custom Staff UI
     if (window.CU.companyId) {
         const staffQ = query(collection(db, 'users'), where('companyId', '==', window.CU.companyId));
         onSnapshot(staffQ, (snap) => {
@@ -398,7 +403,7 @@ function loadAllRealtime() {
         .filter(ev => {
            if (ev.visibility === 'all') return true;
            if (ev.visibility === 'custom') { return ev.visibleToUIDs && ev.visibleToUIDs.includes(window.CU.uid); }
-           // Fallback logic for legacy events
+           
            if (window.CU.role === 'owner' && (ev.visibility === 'owner' || ev.visibility === 'manager')) return true;
            if (window.CU.role === 'manager' && ev.visibility === 'manager') return true;
            if (window.CU.role === 'staff' && ev.visibility === 'staff') return true;
