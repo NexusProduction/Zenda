@@ -162,6 +162,9 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
     </div>
   </div>
   <div class="ab-right" style="display: flex; align-items: center; gap: 12px;">
+    <div id="premium-badge" class="hidden" style="background: linear-gradient(135deg, #0F172A, #1D1D1F); color: white; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 11px; display: none; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.1);">
+       </div>
+    
     <button id="globalUpgradeBtn" class="hidden" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; padding: 0 12px; height: 32px; border-radius: 8px; font-weight: 600; font-size: 12px; display: none; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(245,158,11,0.3);" onclick="window.location.href='subscription.html'">
       👑 Upgrade
     </button>
@@ -269,18 +272,11 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 <div id="toast-container"></div>
 
 <script type="module">
+// FIX: Using your established config to share auth states!
 import { auth, db } from './firebase-config.js';
 import { requireAuth, getCurrentUser } from './auth.js';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-// --- CORE SECURITY LISTENER ---
-// Instantly redirects unauthenticated users or users who log out in another tab
-onAuthStateChanged(auth, (user) => {
-    if (!user) {
-        window.location.replace('login.html');
-    }
-});
 
 const syncEl = document.getElementById('sync-status'); if(syncEl) syncEl.className = 'ab-sync sync-connecting';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -298,7 +294,7 @@ window.CU = { uid: null, role: 'staff', companyId: null };
 
 window.selectedStaffUIDs = new Set();
 
-// ── RENDER UI IMMEDIATELY ──
+// ── OPTIMISTIC RENDER UI IMMEDIATELY ──
 renderCalendar();
 showDayEvents(selectedDay);
 
@@ -321,69 +317,97 @@ function format12hr(t) {
   return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
 }
 
-async function init() {
-  try {
-    const cu = await getCurrentUser();
-    
-    if (!cu || !cu.uid) {
-      syncEl.textContent = 'Offline Mode';
-      syncEl.className='ab-sync sync-err';
-      window.location.replace('login.html');
-      return;
-    }
 
-    window.CU = cu;
-    
+// --- 1. INSTANT LOAD FROM CACHE ---
+function fastInit() {
     try {
-      if (window.CU.companyId) {
-          const compSnap = await getDoc(doc(db, 'companies', window.CU.companyId));
-          if (compSnap.exists()) {
+        const rawSession = sessionStorage.getItem('zenda_user');
+        if (rawSession) {
+            window.CU = JSON.parse(rawSession);
+            loadAllRealtime();
+            checkPremiumStatus();
+        }
+    } catch(e) {}
+}
+fastInit(); // Triggers immediately before hitting Firebase
+
+
+// --- 2. SECURE BACKGROUND AUTH VERIFICATION ---
+// Redirects unauthorized users directly to login instantly!
+onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+        window.location.replace('login.html');
+        return;
+    }
+    
+    // Sync current user database credentials securely
+    if (!window.CU || window.CU.uid !== user.uid) {
+        const cu = await getCurrentUser();
+        if (cu && cu.uid) {
+            window.CU = cu;
+            loadAllRealtime();
+            checkPremiumStatus();
+        } else {
+            window.location.replace('login.html');
+        }
+    }
+});
+
+
+// --- 3. PREMIUM BADGE LOGIC ---
+async function checkPremiumStatus() {
+    if (!window.CU || !window.CU.companyId) return;
+    try {
+        const compSnap = await getDoc(doc(db, 'companies', window.CU.companyId));
+        const upgBtn = document.getElementById('globalUpgradeBtn');
+        const prmBadge = document.getElementById('premium-badge');
+        
+        if (compSnap.exists()) {
             const compData = compSnap.data();
             window.CU.isPremium = compData.isPremium === true;
             if (window.CU.isPremium && compData.subscriptionExpiry && new Date() > new Date(compData.subscriptionExpiry)) {
                 window.CU.isPremium = false;
             }
-          } else { window.CU.isPremium = false; }
-      }
-    } catch(e) { window.CU.isPremium = false; }
-
-    const upgBtn = document.getElementById('globalUpgradeBtn');
-    if (upgBtn) {
-      if (!window.CU.isPremium) {
-        upgBtn.classList.remove('hidden'); upgBtn.style.display = 'flex';
-      } else {
-        upgBtn.classList.add('hidden'); upgBtn.style.display = 'none';
-      }
-    }
-
-    // Load Staff for Custom Staff UI
-    if (window.CU.companyId) {
-        const staffQ = query(collection(db, 'users'), where('companyId', '==', window.CU.companyId));
-        onSnapshot(staffQ, (snap) => {
-            window.companyStaff = snap.docs.map(d => ({uid: d.id, ...d.data()}));
-            const listContainer = document.getElementById('modal-staff-list');
-            if (listContainer && document.getElementById('custom-staff-modal').classList.contains('open')) {
-                window.renderCustomStaffList(listContainer);
+            
+            if (window.CU.isPremium) {
+                if(upgBtn) { upgBtn.style.display = 'none'; upgBtn.classList.add('hidden'); }
+                if(prmBadge) { 
+                    prmBadge.style.display = 'flex'; 
+                    prmBadge.classList.remove('hidden');
+                    const exp = compData.subscriptionExpiry ? new Date(compData.subscriptionExpiry).toLocaleDateString() : 'Lifetime';
+                    prmBadge.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#FF9500" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Premium till ${exp}`;
+                }
+            } else {
+                if(upgBtn) { upgBtn.style.display = 'flex'; upgBtn.classList.remove('hidden'); }
+                if(prmBadge) { prmBadge.style.display = 'none'; prmBadge.classList.add('hidden'); }
             }
-        });
-    }
-
-    loadAllRealtime();
-
-  } catch(fatalErr) {
-    console.error("Fatal Calendar Init Error:", fatalErr);
-    syncEl.textContent = 'Sync Failed';
-    syncEl.className='ab-sync sync-err';
-  }
+        }
+    } catch(e) { console.warn("Failed fetching premium status", e); }
 }
 
-let unsubPersonal = null, unsubCompany = null, unsubTasksToMe = null, unsubTasksByMe = null;
+
+let unsubPersonal = null, unsubCompany = null, unsubTasksToMe = null, unsubTasksByMe = null, unsubStaff = null;
 
 function loadAllRealtime() {
+  if (!window.CU || !window.CU.uid) return;
+
   if (unsubPersonal) unsubPersonal();
   if (unsubCompany) unsubCompany();
   if (unsubTasksToMe) unsubTasksToMe();
   if (unsubTasksByMe) unsubTasksByMe();
+  if (unsubStaff) unsubStaff();
+
+  // Load Staff for Custom Staff Selection Options
+  if (window.CU.companyId) {
+      const staffQ = query(collection(db, 'users'), where('companyId', '==', window.CU.companyId));
+      unsubStaff = onSnapshot(staffQ, (snap) => {
+          window.companyStaff = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+          const listContainer = document.getElementById('modal-staff-list');
+          if (listContainer && document.getElementById('custom-staff-modal').classList.contains('open')) {
+              window.renderCustomStaffList(listContainer);
+          }
+      });
+  }
 
   // 1. Personal Events
   const q1 = query(collection(db, 'calendar'), where('uid', '==', window.CU.uid));
@@ -394,7 +418,7 @@ function loadAllRealtime() {
     syncEl.textContent = 'Sync Failed'; syncEl.className='ab-sync sync-err';
   });
 
-  // 2. Company Events (Respecting New Visibility Settings)
+  // 2. Company Events (Includes new Custom Visibility and the "All" sync rules)
   if (window.CU.companyId) {
     const q2 = query(collection(db, 'calendar'), where('companyId', '==', window.CU.companyId));
     unsubCompany = onSnapshot(q2, (snap2) => {
@@ -594,7 +618,8 @@ function showDayEvents(d) {
 
 function visLabel(v) { const m={all:'Everyone',custom:'Custom Staff',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
 
-window.addEvent = async function(btnContext) {
+// --- 4. NON-BLOCKING EVENT SUBMISSION ---
+window.addEvent = function(btnContext) {
   const formWrap = btnContext.closest('.add-form') || document;
   const title = (formWrap.querySelector('.ae-title')?.value || '').trim();
   const date = formWrap.querySelector('.ae-date')?.value || '';
@@ -605,40 +630,43 @@ window.addEvent = async function(btnContext) {
   if(!date)  { toast('Pick a date.','error'); return; }
 
   const allBtns = document.querySelectorAll('.add-btn');
+  // Visually disable button to prevent double-clicking
   allBtns.forEach(b => { b.disabled = true; b.textContent = 'Adding...'; });
 
-  try {
-    const newEv = { 
-      title, date, time, 
-      priority: window.selectedPrio, 
-      visibility: vis, 
-      type: 'event', 
-      companyId: window.CU.companyId || null, 
-      uid: window.CU.uid || null 
-    };
-    
-    if (vis === 'custom') {
-        newEv.visibleToUIDs = Array.from(window.selectedStaffUIDs);
-    }
-    
-    if (window.CU.uid) {
-      await addDoc(collection(db, 'calendar'), newEv);
-    } else {
-      newEv.id = Date.now().toString();
-      window.events.push(newEv);
-      updateCalendarUI();
-    }
-    
-    document.querySelectorAll('.ae-title').forEach(el => el.value = '');
-    document.querySelectorAll('.ae-time').forEach(el => el.value = '');
-    window.setPrio('high');
-    
-    const [yyyy,mm,dd] = date.split('-').map(Number);
-    selectedDay = new Date(yyyy,mm-1,dd);
-    
-    toast('Event added! 📅','success');
-  } catch(e) { toast('Failed: '+e.message,'error'); }
-  finally { allBtns.forEach(b => { b.disabled=false; b.textContent='Add Event ✓'; }); }
+  const newEv = { 
+    title, date, time, 
+    priority: window.selectedPrio, 
+    visibility: vis, 
+    type: 'event', 
+    companyId: window.CU.companyId || null, 
+    uid: window.CU.uid || null 
+  };
+  
+  if (vis === 'custom') {
+      newEv.visibleToUIDs = Array.from(window.selectedStaffUIDs);
+  }
+  
+  if (window.CU.uid) {
+    // DO NOT AWAIT THIS! Allow the UI to unlock immediately so it doesn't hang infinitely.
+    addDoc(collection(db, 'calendar'), newEv).then(() => {
+        toast('Event added! 📅','success');
+    }).catch((e) => {
+        console.error(e);
+        toast('Failed to sync. Please check firestore.rules!', 'error');
+    });
+  } else {
+    toast('Not logged in. Offline mode.', 'error');
+  }
+  
+  // IMMEDIATELY reset the form inputs (Optimistic Update)
+  document.querySelectorAll('.ae-title').forEach(el => el.value = '');
+  document.querySelectorAll('.ae-time').forEach(el => el.value = '');
+  window.setPrio('high');
+  
+  const [yyyy,mm,dd] = date.split('-').map(Number);
+  selectedDay = new Date(yyyy,mm-1,dd);
+  
+  allBtns.forEach(b => { b.disabled=false; b.textContent='Add Event ✓'; });
 };
 
 window.delEvent = async function(id) {
@@ -663,8 +691,6 @@ function toast(msg, type='info') {
 }
 
 function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-init();
 </script>
 
 <script>
