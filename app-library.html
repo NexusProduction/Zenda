@@ -2,575 +2,836 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>App Library — Zenda</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calendar — Zenda</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text x='16' y='23' font-size='22' font-family='sans-serif' font-weight='900' fill='white' text-anchor='middle'>Z</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text y='23' x='5' font-size='20'>📅</text></svg>">
 <style>
-/* ─────────────────────────────────────────
-   DESIGN TOKENS — Clean White Enterprise
-───────────────────────────────────────── */
-:root {
-  --bg:   #FFFFFF;
-  --sf:   #FFFFFF;
-  --sf2:  #F9FAFB;
-  --sf3:  #F3F4F6;
-  --bd:   #6B7280; 
-  --bd2:  rgba(0,0,0,0.15); 
-  --tx1:  #111827;
-  --tx2:  #4B5563;
-  --tx3:  #9CA3AF;
-  --ac:   #2563EB;
-  --ach:  #1D4ED8;
-  --aca:  #EFF6FF;
-  --green:#10B981;
-  --red:  #EF4444;
-  --fd:   'Plus Jakarta Sans', system-ui, sans-serif;
+:root{--bg:#F9FAFB;--sf:#FFFFFF;--sf2:#F3F4F6;--bd:#E5E7EB;--tx1:#111827;--tx2:#6B7280;--tx3:#9CA3AF;--ac:#4F46E5;--ach:#4338CA;--acs:rgba(79,70,229,.08);--green:#10B981;--red:#EF4444;--amber:#F59E0B;--fd:'Plus Jakarta Sans',system-ui,sans-serif;--fb:'DM Sans',system-ui,sans-serif;--fm:'DM Mono',monospace}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--fb);-webkit-font-smoothing:antialiased;color:var(--tx1)}
 
-  --slide-a-bg: linear-gradient(135deg, #FF9500 0%, #E68600 100%);
-  --slide-b-bg: linear-gradient(135deg, #0066CC 0%, #0055B3 100%);
-  --slide-c-bg: linear-gradient(135deg, #34C759 0%, #28A745 100%);
-  --slide-d-bg: linear-gradient(135deg, #FF3B30 0%, #E3342B 100%);
-}
+/* ── APPBAR ── */
+.appbar{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(17,24,39,.04)}
+.ab-left{display:flex;align-items:center;gap:10px}
+.ab-back{background:none;border:1.5px solid var(--bd);cursor:pointer;color:var(--tx2);padding:6px 12px;border-radius:10px;font-size:.8125rem;display:flex;align-items:center;gap:5px;transition:all .15s;font-family:var(--fb);font-weight:500}
+.ab-back:hover{background:var(--sf2);color:var(--tx1)}
+.ab-brand{display:flex;align-items:center;gap:8px;font-family:var(--fd);font-weight:700;font-size:.9375rem;color:var(--tx1);padding-left:12px;border-left:1px solid var(--bd);margin-left:4px}
+.ab-icon{width:28px;height:28px;background:#EEF2FF;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem}
+.ab-sync{font-size:.75rem;font-family:var(--fd);font-weight:600;padding:4px 10px;border-radius:99px}
+.sync-live{color:var(--green);background:#D1FAE5}
+.sync-connecting{color:var(--amber);background:#FEF3C7}
+.sync-err{color:var(--red);background:#FEE2E2}
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── DESKTOP LAYOUT (≥900px) ── */
+.cal-layout{flex:1;display:none;gap:16px;max-width:1200px;margin:0 auto;width:100%;padding:24px}
+@media(min-width:900px){.cal-layout{display:flex;align-items:flex-start}}
 
-body {
-  background: var(--bg);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  font-family: var(--fd);
-  color: var(--tx1);
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
+/* ── CALENDAR PANEL ── */
+.cal-panel{background:var(--sf);border-radius:20px;border:1px solid var(--bd);overflow:hidden;box-shadow:0 2px 8px rgba(17,24,39,.05);flex:1}
+.cal-head{background:linear-gradient(135deg,#1E1B4B,#312E81,var(--ac));padding:18px 20px;display:flex;align-items:center;justify-content:space-between}
+.cal-nav{width:34px;height:34px;background:rgba(255,255,255,.15);border:none;color:white;border-radius:9px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0;font-family:var(--fd)}
+.cal-nav:hover{background:rgba(255,255,255,.25)}
+.cal-head-center{text-align:center}
+.cal-month{font-family:var(--fd);font-weight:800;font-size:1.15rem;color:white;letter-spacing:-.01em}
+.cal-year{font-size:.75rem;color:rgba(255,255,255,.6);margin-top:1px}
+.today-btn{background:rgba(255,255,255,.15);border:none;color:rgba(255,255,255,.9);padding:5px 12px;border-radius:20px;font-family:var(--fd);font-size:.72rem;font-weight:700;cursor:pointer;transition:background .15s}
+.today-btn:hover{background:rgba(255,255,255,.25)}
+.cal-daynames{display:grid;grid-template-columns:repeat(7,1fr);padding:10px 12px 4px;border-bottom:1px solid var(--bd)}
+.cal-dayname{text-align:center;font-family:var(--fd);font-size:.65rem;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;padding:3px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:6px 8px 10px;gap:2px}
+.cal-day{min-height:52px;border-radius:9px;cursor:pointer;transition:all .15s;padding:5px 5px 4px;display:flex;flex-direction:column;gap:2px}
+.cal-day:hover:not(.empty){background:#EEF2FF}
+.cal-day.empty{cursor:default;pointer-events:none}
+.cal-day.other-month .cal-date{color:#D1D5DB}
+.cal-day .cal-date{font-family:var(--fd);font-size:.8rem;font-weight:600;color:var(--tx2);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
+.cal-day.today .cal-date{background:var(--ac);color:white;font-weight:800}
+.cal-day.selected{background:#EEF2FF;outline:2px solid var(--ac)}
+.cal-day.selected .cal-date{background:var(--ac);color:white}
+.cal-event-pill{border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;max-width:100%}
+.pill-high{background:#FEE2E2;color:#991B1B}.pill-med{background:#FEF3C7;color:#B45309}.pill-low{background:#D1FAE5;color:#065F46}.pill-task{background:#EEF2FF;color:var(--ac)}
+.cal-more-events{font-size:.58rem;color:var(--tx3);padding:1px 4px;font-weight:600}
 
-a { text-decoration: none; color: inherit; }
-:focus-visible { outline: 2px solid var(--ac); outline-offset: 3px; border-radius: 8px; }
+/* ── DESKTOP RIGHT PANEL ── */
+.cal-right{display:flex;flex-direction:column;gap:12px;width:320px;flex-shrink:0}
+.cal-card{background:var(--sf);border-radius:18px;border:1px solid var(--bd);overflow:hidden;box-shadow:0 2px 8px rgba(17,24,39,.05)}
+.cal-card-hdr{padding:14px 16px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+.cal-card-ttl{font-family:var(--fd);font-weight:700;font-size:.9rem;color:var(--tx1)}
+.cal-event-count{font-family:var(--fd);font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#EEF2FF;color:var(--ac)}
+.day-events-list{padding:10px;max-height:260px;overflow-y:auto}
+.event-item{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;transition:all .15s;cursor:default}
+.event-item:hover{filter:brightness(.97)}
+.event-item.high{border-color:var(--red);background:#FEF2F2}
+.event-item.med{border-color:var(--amber);background:#FFFBEB}
+.event-item.low{border-color:var(--green);background:#F0FDF4}
+.event-item.task{border-color:var(--ac);background:#EEF2FF}
+.event-content{flex:1;min-width:0}
+.event-title{font-size:.82rem;font-weight:600;color:var(--tx1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event-time{font-size:.7rem;color:var(--tx3);margin-top:2px;font-family:var(--fm)}
+.event-visibility{font-size:.62rem;font-weight:700;color:var(--tx2);margin-top:2px}
+.event-del{background:none;border:none;cursor:pointer;color:var(--tx3);padding:3px;border-radius:5px;flex-shrink:0;opacity:0;align-self:flex-start;margin-top:2px;transition:all .15s}
+.event-item:hover .event-del{opacity:1}
+.event-del:hover{color:var(--red);background:#FEE2E2}
+.no-events{text-align:center;padding:28px 16px;color:var(--tx3);font-size:.82rem;line-height:1.6}
 
-/* ─────────────────────────────────────────
-   APP BAR & SEARCH
-───────────────────────────────────────── */
-.appbar {
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1.5px solid var(--bd); 
-  padding: 0 28px;
-  height: 70px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
+/* ── ADD EVENT FORM ── */
+.add-form{padding:16px;display:flex;flex-direction:column;gap:10px}
+.ae-lbl{font-family:var(--fd);font-size:.72rem;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block}
+.ae-inp,.ae-sel{width:100%;padding:9px 12px;border:1.5px solid var(--bd);border-radius:10px;font-family:var(--fb);font-size:.85rem;outline:none;transition:all .15s;background:var(--bg);color:var(--tx1)}
+.ae-inp:focus,.ae-sel:focus{border-color:var(--ac);background:var(--sf);box-shadow:0 0 0 3px var(--acs)}
+.ae-inp::placeholder{color:var(--tx3)}
+.ae-sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-color:var(--bg);padding-right:32px;cursor:pointer}
+.ae-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.prio-btns{display:flex;gap:6px}
+.prio-btn{flex:1;padding:7px 4px;border:1.5px solid var(--bd);border-radius:8px;font-family:var(--fd);font-size:.72rem;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;background:var(--sf);color:var(--tx2)}
+.prio-btn.sel-high{background:#FEE2E2;border-color:var(--red);color:var(--red)}
+.prio-btn.sel-med{background:#FEF3C7;border-color:var(--amber);color:var(--amber)}
+.prio-btn.sel-low{background:#D1FAE5;border-color:var(--green);color:var(--green)}
+.add-btn{width:100%;padding:11px;background:var(--ac);color:#fff;border:none;border-radius:11px;font-family:var(--fd);font-weight:700;font-size:.9rem;cursor:pointer;transition:all .15s;box-shadow:0 1px 3px rgba(79,70,229,.22)}
+.add-btn:hover{background:var(--ach);transform:translateY(-1px);box-shadow:0 4px 12px rgba(79,70,229,.28)}
+.add-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-.ab-left { display: flex; align-items: center; gap: 16px; transition: opacity 0.2s ease; }
+/* ── MODAL & STAFF SELECTION CARDS ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1002; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); opacity: 0; visibility: hidden; transition: all 0.3s; }
+.modal-overlay.open { opacity: 1; visibility: visible; }
+.modal { transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.modal-overlay.open .modal { transform: scale(1); }
 
-.ab-back-btn {
-  display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--tx2);
-  font-weight: 700; padding: 8px 16px 8px 12px; border: 1.5px solid var(--bd); border-radius: 10px;
-  cursor: pointer; background: var(--sf); font-family: var(--fd); transition: all 0.2s cubic-bezier(0.22,1,0.36,1);
-}
-.ab-back-btn:hover { background: var(--sf3); color: var(--tx1); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.staff-card-mini { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border:1px solid var(--bd); border-radius:12px; background:var(--sf); cursor:pointer; transition:all .2s; }
+.staff-card-mini:hover { border-color:var(--ac); box-shadow:0 2px 6px rgba(79,70,229,.1); }
+.staff-card-mini.selected { border-color:var(--ac); background:#EEF2FF; }
+.staff-card-mini.disabled { cursor:default; opacity:0.8; }
+.staff-card-mini.disabled:hover { border-color:var(--bd); box-shadow:none; }
+.checkbox-mini { width:22px; height:22px; border-radius:6px; border:2px solid var(--bd); display:flex; align-items:center; justify-content:center; transition:all .2s; background: var(--sf); }
+.checkbox-mini.checked { background:var(--ac); border-color:var(--ac); }
 
-.ab-center {
-  position: absolute; left: 50%; transform: translateX(-50%);
-  font-weight: 800; font-size: 1.15rem; color: var(--tx1); letter-spacing: -0.02em;
-}
+/* ── MOBILE LAYOUT (<900px) ── */
+.mob-cal-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden}
+@media(min-width:900px){.mob-cal-wrap{display:none}}
+.mob-cal-panel{background:var(--sf);border-bottom:1px solid var(--bd)}
+.mob-cal-head{background:linear-gradient(135deg,#1E1B4B,#312E81,var(--ac));padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.mob-cal-nav{width:32px;height:32px;background:rgba(255,255,255,.15);border:none;color:white;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .15s;font-family:var(--fd)}
+.mob-cal-nav:hover{background:rgba(255,255,255,.25)}
+.mob-cal-month{font-family:var(--fd);font-weight:800;font-size:.9375rem;color:white;letter-spacing:-.01em}
+.mob-cal-year{font-size:.72rem;color:rgba(255,255,255,.6);text-align:center}
+.mob-today-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);color:white;padding:5px 11px;border-radius:16px;font-family:var(--fd);font-size:.7rem;font-weight:700;cursor:pointer;transition:background .15s}
+.mob-today-btn:hover{background:rgba(255,255,255,.28)}
+.mob-daynames{display:grid;grid-template-columns:repeat(7,1fr);padding:8px 10px 2px;border-bottom:1px solid var(--bd)}
+.mob-dayname{text-align:center;font-family:var(--fd);font-size:.6rem;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;padding:2px}
+.mob-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:4px 6px 8px;gap:1px}
+.mob-day{min-height:38px;border-radius:7px;cursor:pointer;transition:all .12s;padding:3px 2px;display:flex;flex-direction:column;align-items:center;gap:1px}
+.mob-day:hover:not(.empty){background:#EEF2FF}
+.mob-day.empty{cursor:default;pointer-events:none}
+.mob-day.other-month .mob-date{color:#D1D5DB}
+.mob-date{font-family:var(--fd);font-size:.78rem;font-weight:600;color:var(--tx2);width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
+.mob-day.today .mob-date{background:var(--ac);color:white;font-weight:800}
+.mob-day.selected{background:#EEF2FF}
+.mob-day.selected .mob-date{background:var(--ac);color:white}
+.mob-event-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
 
-/* Expanding Desktop Search */
-.ab-search-wrap { position: relative; display: flex; align-items: center; justify-content: flex-end; }
-.ab-search {
-  display: flex; align-items: center; justify-content: center; gap: 0; 
-  background: var(--sf2); border: 1.5px solid var(--bd);
-  border-radius: 22px; width: 44px; height: 44px; padding: 0; cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.22,1,0.36,1); overflow: hidden;
-}
-.ab-search input { 
-  border: none; background: transparent; font-family: var(--fd); font-size: 0.9rem; color: var(--tx1); 
-  width: 0; opacity: 0; outline: none; pointer-events: none; padding: 0; margin: 0; transition: opacity 0.3s ease; 
-}
-.ab-search input::placeholder { color: var(--tx3); font-weight: 500; }
+/* ── MOBILE BOTTOM SHEET ── */
+.mob-sheet{flex:1;overflow-y:auto;background:var(--bg)}
+.mob-tabs{display:flex;background:var(--sf);border-bottom:1px solid var(--bd);padding:0 16px;position:sticky;top:0;z-index:10}
+.mob-tab{flex:1;padding:11px 8px;border:none;background:none;font-family:var(--fd);font-size:.82rem;font-weight:600;color:var(--tx3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;text-align:center}
+.mob-tab.on{color:var(--tx1);border-bottom-color:var(--ac)}
+.mob-tab-content{padding:14px}
+.mob-tab-content.hidden{display:none}
+.mob-day-ttl{font-family:var(--fd);font-size:.875rem;font-weight:700;color:var(--tx1);margin-bottom:10px}
 
-.search-icon-svg { flex-shrink: 0; color: var(--tx3); transition: color 0.3s; width: 18px; height: 18px; }
-
-.ab-search.expanded {
-  width: 260px; justify-content: flex-start; padding: 0 16px; border-color: var(--ac); 
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: var(--sf); cursor: text; gap: 8px;
-}
-.ab-search.expanded .search-icon-svg { color: var(--ac); }
-.ab-search.expanded input { width: 100%; opacity: 1; pointer-events: auto; }
-
-.search-dropdown {
-  position: absolute; top: calc(100% + 12px); right: 0; width: 320px; background: var(--sf);
-  border: 1.5px solid var(--bd); border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);
-  display: none; flex-direction: column; z-index: 200; overflow: hidden;
-}
-.search-dropdown.active { display: flex; animation: slideDown 0.2s cubic-bezier(0.22,1,0.36,1); }
-.sd-item { padding: 14px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; border-bottom: 1px solid var(--sf2); transition: background 0.2s; }
-.sd-item:hover { background: var(--sf2); }
-.sd-item:last-child { border-bottom: none; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-/* Mobile View Adjustments */
-@media(max-width: 680px) {
-  .appbar { padding: 0 16px; }
-  .desk-only { display: none; }
-  .ab-center { margin-left: 12px; }
-  .ab-search-wrap { display: none; }
-}
-
-/* ─────────────────────────────────────────
-   PAGE LAYOUT & CAROUSEL
-───────────────────────────────────────── */
-.page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; width: 100%; transition: margin-top 0.2s ease; }
-
-.featured-wrap { position: relative; border-radius: 24px; overflow: hidden; margin-bottom: 48px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
-.carousel-track { display: flex; }
-
-.featured-slide {
-  min-width: 100%; padding: 48px; color: white; position: relative; overflow: hidden;
-  min-height: 240px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center;
-}
-
-.slide-a { background: var(--slide-a-bg); }
-.slide-b { background: var(--slide-b-bg); }
-.slide-c { background: var(--slide-c-bg); }
-.slide-d { background: var(--slide-d-bg); }
-
-.featured-slide::before { content: ''; position: absolute; top: -50px; right: -50px; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%); border-radius: 50%; pointer-events: none; }
-
-.fs-inner { position: relative; z-index: 1; max-width: 500px; }
-.fs-eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; opacity: 0.8; margin-bottom: 14px; }
-.fs-name { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: 12px; }
-.fs-desc { font-size: 0.95rem; color: rgba(255,255,255,0.8); line-height: 1.6; margin-bottom: 32px; font-weight: 500; }
-
-.btn-fs-primary { background: var(--tx1); color: white; border: none; padding: 12px 24px; border-radius: 12px; font-family: inherit; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-.btn-fs-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
-
-.fs-icon-deco { position: absolute; right: 60px; top: 50%; transform: translateY(-50%); width: 140px; height: 140px; opacity: 0.2; pointer-events: none; }
-@media(max-width: 680px) { .fs-icon-deco { display: none; } .featured-slide { padding: 32px 24px; } .fs-name { font-size: 1.8rem; } }
-
-/* ─────────────────────────────────────────
-   SECTIONS & GRIDS
-───────────────────────────────────────── */
-.section { margin-bottom: 64px; }
-.section-hdr { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; }
-.section-ttl { font-size: 1.25rem; font-weight: 800; color: var(--tx1); letter-spacing: -0.02em; }
-
-.app-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-@media(max-width: 1024px) { .app-grid { grid-template-columns: repeat(2, 1fr); } }
-@media(max-width: 680px) { .app-grid { grid-template-columns: 1fr; } }
-
-.app-card {
-  background: var(--sf); border: 1.5px solid var(--bd); border-radius: 16px; padding: 24px;
-  display: flex; flex-direction: column; position: relative;
-  transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease, border-color 0.3s ease;
-}
-.app-card:hover { transform: translateY(-4px); box-shadow: 0 16px 32px rgba(0,0,0,0.06); border-color: var(--bd2); }
-
-@keyframes pulseHighlight {
-  0% { box-shadow: 0 0 0 0 rgba(37,99,235, 0.4); border-color: var(--ac); }
-  70% { box-shadow: 0 0 0 12px rgba(37,99,235, 0); border-color: var(--bd); }
-  100% { box-shadow: 0 0 0 0 rgba(37,99,235, 0); border-color: var(--bd); }
-}
-.highlight-pulse { animation: pulseHighlight 1.5s ease-out forwards; }
-
-.ac-top { display: flex; align-items: flex-start; gap: 16px; width: 100%; margin-bottom: 16px; }
-.ac-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
-.ac-icon svg { width: 28px; height: 28px; }
-
-.ac-text { display: flex; flex-direction: column; gap: 4px; }
-.ac-name { font-size: 1.1rem; font-weight: 800; color: var(--tx1); letter-spacing: -0.01em; line-height: 1; }
-.ac-cat  { font-size: 0.75rem; color: var(--ac); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: var(--aca); padding: 4px 10px; border-radius: 8px; display: inline-block; width: max-content;}
-
-.ac-desc { font-size: 0.95rem; color: var(--tx2); line-height: 1.5; font-weight: 500; margin-bottom: 24px; }
-
-.ac-footer-min { margin-top: auto; display: flex; width: 100%; }
-.ac-btns { display: flex; gap: 10px; width: 100%; }
-
-.btn-open, .btn-install, .btn-remove, .btn-notify {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; 
-  cursor: pointer; transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  padding: 10px 14px;
-}
-
-/* Icon Slide-in Animations */
-.btn-icon { max-width: 0; opacity: 0; transform: translateX(-10px); transition: all 0.3s ease; display: inline-block; }
-.btn-remove:hover .btn-icon, .btn-notify:hover .btn-icon, .btn-install:hover .btn-icon { max-width: 16px; margin-left: 6px; opacity: 1; transform: translateX(0); }
-
-/* ─────────────────────────────────────────
-   BUTTON STYLES & CLICK ANIMATIONS
-───────────────────────────────────────── */
-.btn-open { background: transparent; color: var(--ac); border: 1.5px solid var(--bd); }
-.btn-open:hover { background: var(--ac); color: white; border-color: var(--ac); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
-/* Open click: Soft scale down and slightly darker blue */
-.btn-open:active { transform: scale(0.95); background: var(--ach); border-color: var(--ach); box-shadow: none; }
-
-.btn-install { background: var(--ac); color: white; border: 1.5px solid var(--ac); }
-.btn-install:hover { background: var(--ach); border-color: var(--ach); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
-/* Install click: Heavy physical press with inner shadow */
-.btn-install:active { transform: translateY(1px) scale(0.94); background: #1E3A8A; border-color: #1E3A8A; box-shadow: inset 0 3px 6px rgba(0,0,0,0.25); }
-
-.btn-remove { background: var(--red); color: white; border: 1.5px solid var(--red); }
-/* Max saturation, highly vibrant red for hover */
-.btn-remove:hover { background: #FF1A1A; border-color: #FF1A1A; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,26,26,0.3); }
-/* Remove click: Aggressive, sharp click with a slight tilt for destructive action */
-.btn-remove:active { transform: scale(0.92) rotate(-1.5deg); background: #991B1B; border-color: #991B1B; box-shadow: inset 0 4px 8px rgba(0,0,0,0.3); }
-
-.btn-notify { background: var(--green); color: white; border: 1.5px solid var(--green); }
-/* Max saturation, ultra-vibrant neon green for hover */
-.btn-notify:hover { background: #00E676; border-color: #00E676; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 230, 118, 0.4); }
-/* Notify click: Deep, satisfying press */
-.btn-notify:active { transform: scale(0.94); background: #047857; border-color: #047857; box-shadow: inset 0 3px 6px rgba(0,0,0,0.2); }
-
-/* Unsubscribe state (Red outline, fills solid red on hover) */
-.btn-notify.notified { background: transparent; color: var(--red); border-color: var(--red); box-shadow: none; transform: translateY(0); }
-.btn-notify.notified:hover { background: var(--red); color: white; border-color: var(--red); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,0.25); }
-.btn-notify.notified:active { transform: scale(0.94); background: #991B1B; color: white; border-color: #991B1B; box-shadow: inset 0 3px 6px rgba(0,0,0,0.2); }
-
+/* TOAST */
+#toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:11px 15px;border-radius:13px;font-family:var(--fb);font-size:.83rem;font-weight:500;box-shadow:0 8px 32px rgba(17,24,39,.1);min-width:200px;animation:tIn .25s ease;border:1px solid}
+.toast-success{background:#F0FDF4;border-color:#BBF7D0;color:#166534}
+.toast-error{background:#FFF5F5;border-color:#FECACA;color:#991B1B}
+.toast-info{background:#EEF2FF;border-color:#C7D2FE;color:var(--ac)}
+@keyframes tIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
 </style>
 </head>
 <body>
 
-<header class="appbar">
-  <div class="ab-left" id="ab-left">
-    <a href="dashboard.html" class="ab-back-btn">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      Back
-    </a>
-  </div>
-  
-  <div class="ab-center">App Library</div>
-  
-  <div class="ab-search-wrap desk-only">
-    <div class="ab-search" id="ab-search">
-      <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="global-search" placeholder="Find an app..." autocomplete="off" oninput="handleSearch(this.value)">
-    </div>
-    <div class="search-dropdown" id="search-dropdown"></div>
-  </div>
-</header>
-
-<main class="page">
-  <div class="featured-wrap">
-    <div class="carousel-track" id="carousel-track">
-      <div class="featured-slide slide-a">
-        <svg class="fs-icon-deco" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-        <div class="fs-inner">
-          <div class="fs-eyebrow">Featured Utility</div>
-          <div class="fs-name">Inventory</div>
-          <div class="fs-desc">Stop counting on your fingers. Track every widget and gizmo like a warehouse wizard in real-time.</div>
-          <button class="btn-fs-primary" onclick="openApp('inventory')">Open Workspace</button>
-        </div>
-      </div>
-
-      <div class="featured-slide slide-b">
-        <svg class="fs-icon-deco" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>
-        <div class="fs-inner">
-          <div class="fs-eyebrow">Core Tool</div>
-          <div class="fs-name">Calculator Pro</div>
-          <div class="fs-desc">Math, minus the brain sweat. Cloud-synced so your whole team knows you can actually add.</div>
-          <button class="btn-fs-primary" onclick="openApp('calculator')">Launch App</button>
-        </div>
-      </div>
-
-      <div class="featured-slide slide-c">
-        <svg class="fs-icon-deco" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <div class="fs-inner">
-          <div class="fs-eyebrow">Team Favorite</div>
-          <div class="fs-name">Calendar</div>
-          <div class="fs-desc">Where meetings go to live. Syncs perfectly across the company so no one has an excuse.</div>
-          <button class="btn-fs-primary" onclick="openApp('calendar')">View Schedule</button>
-        </div>
-      </div>
-
-      <div class="featured-slide slide-d">
-        <svg class="fs-icon-deco" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-        <div class="fs-inner">
-          <div class="fs-eyebrow">Finance Flow</div>
-          <div class="fs-name">Expense Tracker</div>
-          <div class="fs-desc">Money goes out, tears come in. Track the company cash burn with beautiful, painful clarity.</div>
-          <button class="btn-fs-primary" onclick="openApp('expenses')">Manage Costs</button>
-        </div>
-      </div>
+<div class="appbar">
+  <div class="ab-left">
+    <button class="ab-back" onclick="window.history.length>1?window.history.back():window.close()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="ab-brand">
+      <div class="ab-icon">📅</div>
+      Calendar
     </div>
   </div>
+  <div class="ab-right" style="display: flex; align-items: center; gap: 12px;">
+    <button id="globalUpgradeBtn" class="hidden" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; padding: 0 12px; height: 32px; border-radius: 8px; font-weight: 600; font-size: 12px; display: none; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(245,158,11,0.3);" onclick="window.location.href='subscription.html'">
+      👑 Upgrade
+    </button>
+    <div class="ab-sync sync-connecting" id="sync-status">Connecting…</div>
+  </div>
+</div>
 
-  <div class="section" id="section-installed">
-    <div class="section-hdr">
-      <div class="section-ttl">My Apps</div>
+<div class="cal-layout">
+  <div class="cal-panel">
+    <div class="cal-head">
+      <button class="cal-nav" onclick="window.nav(-1)">&#8249;</button>
+      <div class="cal-head-center">
+        <div class="cal-month" id="cal-month-d">Month</div>
+        <div class="cal-year" id="cal-year-d"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="today-btn" onclick="window.goToday()">Today</button>
+        <button class="cal-nav" onclick="window.nav(1)">&#8250;</button>
+      </div>
     </div>
-    <div class="app-grid" id="installed-grid"></div>
+    <div class="cal-daynames">
+      <div class="cal-dayname">Sun</div><div class="cal-dayname">Mon</div>
+      <div class="cal-dayname">Tue</div><div class="cal-dayname">Wed</div>
+      <div class="cal-dayname">Thu</div><div class="cal-dayname">Fri</div>
+      <div class="cal-dayname">Sat</div>
+    </div>
+    <div class="cal-grid" id="cal-grid-d"></div>
   </div>
 
-  <div class="section" id="section-coming">
-    <div class="section-hdr">
-      <div class="section-ttl">Coming Soon</div>
+  <div class="cal-right">
+    <div class="cal-card">
+      <div class="cal-card-hdr">
+        <div class="cal-card-ttl" id="day-events-title-d">Today</div>
+        <span class="cal-event-count" id="day-events-count-d" style="display:none">0</span>
+      </div>
+      <div class="day-events-list" id="day-events-list-d">
+        <div class="no-events">Select a day</div>
+      </div>
     </div>
-    <div class="app-grid" id="coming-grid"></div>
+    <div class="cal-card">
+      <div class="cal-card-hdr">
+        <div class="cal-card-ttl" style="display:flex;align-items:center;gap:6px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Add Event
+        </div>
+      </div>
+      <div class="add-form" id="add-form-d">
+        </div>
+    </div>
   </div>
-</main>
+</div>
+
+<div class="mob-cal-wrap">
+  <div class="mob-cal-panel">
+    <div class="mob-cal-head">
+      <button class="mob-cal-nav" onclick="window.nav(-1)">&#8249;</button>
+      <div style="text-align:center">
+        <div class="mob-cal-month" id="cal-month-m">Month</div>
+        <div class="mob-cal-year" id="cal-year-m"></div>
+      </div>
+      <div style="display:flex;gap:5px;align-items:center">
+        <button class="mob-today-btn" onclick="window.goToday()">Today</button>
+        <button class="mob-cal-nav" onclick="window.nav(1)">&#8250;</button>
+      </div>
+    </div>
+    <div class="mob-daynames">
+      <div class="mob-dayname">S</div><div class="mob-dayname">M</div><div class="mob-dayname">T</div>
+      <div class="mob-dayname">W</div><div class="mob-dayname">T</div><div class="mob-dayname">F</div><div class="mob-dayname">S</div>
+    </div>
+    <div class="mob-grid" id="cal-grid-m"></div>
+  </div>
+
+  <div class="mob-sheet">
+    <div class="mob-tabs">
+      <button class="mob-tab on" id="mob-tab-events" onclick="showMobTab('events')">
+        <span id="mob-day-label">Today</span>
+      </button>
+      <button class="mob-tab" id="mob-tab-add" onclick="showMobTab('add')">+ Add Event</button>
+    </div>
+    <div class="mob-tab-content" id="mob-events-content">
+      <div class="no-events" id="mob-events-empty" style="padding:32px 16px;text-align:center;color:var(--tx3)">✨ No events — enjoy your day!</div>
+      <div id="day-events-list-m"></div>
+    </div>
+    <div class="mob-tab-content hidden" id="mob-add-content">
+      <div id="add-form-m" style="display:flex;flex-direction:column;gap:12px;padding:4px 0">
+        </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="custom-staff-modal" onclick="if(event.target === this) window.closeModal('custom-staff-modal')">
+  <div class="modal" style="background: var(--sf); width: 100%; max-width: 420px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); overflow:hidden; border: 1px solid var(--bd); margin:0 16px;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--bd); display: flex; justify-content: space-between; align-items: center; background: var(--bg);">
+      <div style="font-size: 1.1rem; font-weight: 800; font-family: var(--fd);">Select Staff</div>
+      <button style="background: none; border: none; font-size: 1.2rem; color: var(--tx2); cursor: pointer;" onclick="window.closeModal('custom-staff-modal')">✕</button>
+    </div>
+    <div id="modal-staff-list" style="padding: 16px 20px; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+       </div>
+    <div style="padding: 16px 20px; border-top: 1px solid var(--bd); background: var(--bg);">
+       <button class="add-btn" onclick="window.closeModal('custom-staff-modal')">Confirm Selection</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
 
 <script type="module">
-// ─────────────────────────────────────────────────
-// FIREBASE SYNC ENGINE (Fully Connected to apps.js)
-// ─────────────────────────────────────────────────
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getInstalledApps, installApp, uninstallApp } from './apps.js';
+// FIX: Imported directly from firebase-config.js to share connection and active session
+import { auth, db } from './firebase-config.js';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const ZCFG = {
-  apiKey: "AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",
-  authDomain: "zenda-app-fe1c2.firebaseapp.com",
-  projectId: "zenda-app-fe1c2",
-  storageBucket: "zenda-app-fe1c2.appspot.com",
-  messagingSenderId: "764717910838",
-  appId: "1:764717910838:web:18a9ac7772ba91f4928197"
+const syncEl = document.getElementById('sync-status'); if(syncEl) syncEl.className = 'ab-sync sync-connecting';
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+let events = [];
+let companyEvents = [];
+let myTasks = [];
+let assignedByMeTasks = [];
+let companyStaff = []; // For the custom UI selection
+
+let curDate = new Date();
+let selectedDay = new Date();
+let selectedPrio = 'high';
+let CU = { uid: null, role: 'staff', companyId: null };
+
+window.selectedStaffUIDs = new Set(); // Stores UIDs chosen in Custom Staff
+
+// ── RENDER UI IMMEDIATELY ──
+renderCalendar();
+showDayEvents(selectedDay);
+
+// Make functions attached to global window
+window.setPrio = function(p) {
+  selectedPrio = p;
+  ['high','med','low'].forEach(x => {
+    document.querySelectorAll('#prio-' + x).forEach(btn => {
+      btn.className = 'prio-btn';
+      if(x === p) btn.classList.add('sel-' + x);
+    });
+  });
 };
 
-const zA = getApps().find(a=>a.name==='[DEFAULT]') || initializeApp(ZCFG);
-const auth = getAuth(zA);
-const db = getFirestore(zA);
-
-const SVGS = {
-  calculator: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>`,
-  calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
-  inventory: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
-  expenses: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
-  billing: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
-  chat: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
-  analytics: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`
-};
-
-const APPS = [
-  { id:'calculator', name:'Calculator Pro', icon:SVGS.calculator, cat:'Productivity', desc:'Math, minus the brain sweat. Cloud-synced so your team knows you can add.', bg:'linear-gradient(135deg,#0066CC,#0055B3)', default:true, file:'calculator.html' },
-  { id:'calendar',   name:'Calendar',       icon:SVGS.calendar,   cat:'Organization', desc:'Where meetings go to live. Syncs perfectly so no one has an excuse.', bg:'linear-gradient(135deg,#34C759,#28A745)', default:false, file:'calendar.html' },
-  { id:'inventory',  name:'Inventory',      icon:SVGS.inventory,  cat:'Operations',   desc:'Track every widget and gizmo like a warehouse wizard. No fingers needed.', bg:'linear-gradient(135deg,#FF9500,#E68600)', default:false, file:'inventory.html' },
-  { id:'expenses',   name:'Expense Tracker',icon:SVGS.expenses,   cat:'Finance',      desc:'Money goes out, tears come in. Track the cash burn with beautiful clarity.', bg:'linear-gradient(135deg,#FF3B30,#E3342B)', default:false, file:'expenses.html' }
-];
-
-const COMING_SOON = [
-  { id:'billing',   name:'Billing App', icon:SVGS.billing,   cat:'Finance', desc:'Get paid faster than you can say "Invoice attached".', bg:'linear-gradient(135deg,#8B5CF6,#6D28D9)' },
-  { id:'chat',      name:'Team Chat',   icon:SVGS.chat,      cat:'Comms',   desc:'Because emails are so 2010. Real-time banter & GIF sharing.', bg:'linear-gradient(135deg,#EC4899,#BE185D)' },
-  { id:'analytics', name:'Analytics',   icon:SVGS.analytics, cat:'Data',    desc:'Beautiful pie charts that make you look exceptionally smart.', bg:'linear-gradient(135deg,#06B6D4,#0369A1)' }
-];
-
-let CU = null;
-let installedIds = ['calculator'];
-let notifyList = [];
+function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function isToday(d) { const n = new Date(); return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear(); }
+function isSameDay(a,b) { return a.getDate()===b.getDate() && a.getMonth()===b.getMonth() && a.getFullYear()===b.getFullYear(); }
+function format12hr(t) {
+  if(!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+}
 
 async function init() {
-  let uid = null;
   try {
-    const raw = sessionStorage.getItem('zenda_user');
-    if(raw) { uid = JSON.parse(raw).uid; }
-  } catch(e) {}
-  
-  if(!uid) {
-    uid = await new Promise(r => { 
-      const u = onAuthStateChanged(auth, x => { u(); r(x ? x.uid : null); }); 
-      setTimeout(()=>r(null), 1500); 
+    let activeUid = new URLSearchParams(location.search).get('uid');
+    
+    if (!activeUid) {
+      try {
+        const rawSession = sessionStorage.getItem('zenda_user');
+        if (rawSession) {
+          const sessionUser = JSON.parse(rawSession);
+          activeUid = sessionUser.uid;
+          CU.role = sessionUser.role || 'staff';
+          CU.companyId = sessionUser.companyId || null;
+        }
+      } catch(err) { console.warn("Session error", err); }
+    }
+
+    if (!activeUid) {
+      const authUser = await new Promise(r => {
+        const unsub = onAuthStateChanged(auth, u => { unsub(); r(u); });
+        setTimeout(() => r(null), 3000); 
+      });
+      if(authUser) activeUid = authUser.uid;
+    }
+    
+    if (!activeUid) {
+      syncEl.textContent = 'Offline Mode';
+      syncEl.className='ab-sync sync-err';
+      return;
+    }
+
+    CU.uid = activeUid;
+    
+    try {
+      const uSnap = await getDoc(doc(db, 'users', activeUid));
+      if (uSnap.exists()) {
+        CU.role = uSnap.data().role || 'staff';
+        CU.companyId = uSnap.data().companyId || activeUid;
+      }
+    } catch (e) { console.warn("DB Fetch Error", e); }
+
+    // Fetch premium status
+    try {
+      const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
+      if (compSnap.exists()) {
+        const compData = compSnap.data();
+        CU.isPremium = compData.isPremium === true;
+        if (CU.isPremium && compData.subscriptionExpiry && new Date() > new Date(compData.subscriptionExpiry)) {
+            CU.isPremium = false;
+        }
+      } else { CU.isPremium = false; }
+    } catch(e) { CU.isPremium = false; }
+
+    const upgBtn = document.getElementById('globalUpgradeBtn');
+    if (upgBtn) {
+      if (!CU.isPremium) {
+        upgBtn.classList.remove('hidden'); upgBtn.style.display = 'flex';
+      } else {
+        upgBtn.classList.add('hidden'); upgBtn.style.display = 'none';
+      }
+    }
+
+    // Load Staff for Custom Staff Modal UI
+    if (CU.companyId) {
+        const staffQ = query(collection(db, 'users'), where('companyId', '==', CU.companyId));
+        onSnapshot(staffQ, (snap) => {
+            companyStaff = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+            const listContainer = document.getElementById('modal-staff-list');
+            if (listContainer && document.getElementById('custom-staff-modal').classList.contains('open')) {
+                window.renderCustomStaffList(listContainer);
+            }
+        });
+    }
+
+    loadAllRealtime();
+
+  } catch(fatalErr) {
+    console.error("Fatal Calendar Init Error:", fatalErr);
+    syncEl.textContent = 'Sync Failed';
+    syncEl.className='ab-sync sync-err';
+  }
+}
+
+let unsubPersonal = null, unsubCompany = null, unsubTasksToMe = null, unsubTasksByMe = null;
+
+function loadAllRealtime() {
+  if (unsubPersonal) unsubPersonal();
+  if (unsubCompany) unsubCompany();
+  if (unsubTasksToMe) unsubTasksToMe();
+  if (unsubTasksByMe) unsubTasksByMe();
+
+  // 1. Personal Events
+  const q1 = query(collection(db, 'calendar'), where('uid', '==', CU.uid));
+  unsubPersonal = onSnapshot(q1, (snap1) => {
+    events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
+    updateCalendarUI();
+  }, (e) => {
+    syncEl.textContent = 'Sync Failed'; syncEl.className='ab-sync sync-err';
+  });
+
+  // 2. Company Events (Respecting New Visibility Settings)
+  if (CU.companyId) {
+    const q2 = query(collection(db, 'calendar'), where('companyId', '==', CU.companyId));
+    unsubCompany = onSnapshot(q2, (snap2) => {
+      companyEvents = snap2.docs
+        .map(d => ({id: d.id, companyEvent: true, ...d.data()}))
+        .filter(ev => {
+           // Everyone
+           if (ev.visibility === 'all') return true;
+           // Custom staff parsing
+           if (ev.visibility === 'custom') {
+               return ev.visibleToUIDs && ev.visibleToUIDs.includes(CU.uid);
+           }
+           // Fallback rules for legacy data
+           if (CU.role === 'owner' && (ev.visibility === 'owner' || ev.visibility === 'manager')) return true;
+           if (CU.role === 'manager' && ev.visibility === 'manager') return true;
+           if (CU.role === 'staff' && ev.visibility === 'staff') return true;
+           return false;
+        })
+        .sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
+      updateCalendarUI();
     });
   }
-  
-  if(uid) {
-    CU = { uid };
-    try {
-      const snap = await getDoc(doc(db,'users',uid));
-      if(snap.exists()) { notifyList = snap.data().notifyApps || []; }
-    } catch(e) {}
-    
-    installedIds = await getInstalledApps(uid).catch(()=>['calculator']);
+
+  // 3. Tasks Assigned To Me
+  const q3 = query(collection(db, 'tasks'), where('assignedTo', '==', CU.uid));
+  unsubTasksToMe = onSnapshot(q3, (snap) => {
+    myTasks = snap.docs.map(d => {
+      const t = d.data();
+      return { id: d.id, title: t.title, date: t.dueDate, time: t.dueTime, type: 'task', status: t.status, priority: t.priority === 'High' ? 'high' : t.priority === 'Low' ? 'low' : 'med' };
+    }).filter(t => t.date);
+    updateCalendarUI();
+  });
+
+  // 4. Tasks Assigned By Me
+  if (CU.role === 'owner' || CU.role === 'manager') {
+    const q4 = query(collection(db, 'tasks'), where('assignedBy', '==', CU.uid));
+    unsubTasksByMe = onSnapshot(q4, (snap) => {
+      assignedByMeTasks = snap.docs.map(d => {
+        const t = d.data();
+        return { id: d.id, title: t.title, date: t.dueDate, time: t.dueTime, type: 'task', status: t.status, priority: t.priority === 'High' ? 'high' : t.priority === 'Low' ? 'low' : 'med' };
+      }).filter(t => t.date);
+      updateCalendarUI();
+    });
   }
-  
-  render();
-  startAuto();
 }
 
-function render() {
-  const igrid = document.getElementById('installed-grid');
-  igrid.innerHTML = APPS.map(app => {
-    const inst = installedIds.includes(app.id);
-    return `
-      <div class="app-card" id="app-card-${app.id}">
-        <div class="ac-top">
-          <div class="ac-icon" style="background:${app.bg}">${app.icon}</div>
-          <div class="ac-text">
-            <div class="ac-name">${app.name}</div>
-            <div class="ac-cat">${app.cat}</div>
-          </div>
-        </div>
-        <div class="ac-desc">${app.desc}</div>
-        
-        <div class="ac-footer-min">
-          <div class="ac-btns">
-            ${inst
-              ? `<button class="btn-open" onclick="openApp('${app.id}')"><span>Open</span></button>
-                 ${!app.default ? `<button class="btn-remove" onclick="doUninstall('${app.id}')"><span>Remove</span><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>` : ''}`
-              : `<button class="btn-install" onclick="doInstall('${app.id}')"><span>Install</span><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>`}
-          </div>
-        </div>
-      </div>`;
-  }).join('');
-
-  const cgrid = document.getElementById('coming-grid');
-  cgrid.innerHTML = COMING_SOON.map(app => {
-    const noted = notifyList.includes(app.id);
-    return `
-      <div class="app-card" id="app-card-${app.id}">
-        <div class="ac-top">
-          <div class="ac-icon" style="background:${app.bg}">${app.icon}</div>
-          <div class="ac-text">
-            <div class="ac-name">${app.name}</div>
-            <div class="ac-cat">${app.cat}</div>
-          </div>
-        </div>
-        <div class="ac-desc">${app.desc}</div>
-        
-        <div class="ac-footer-min">
-          <div class="ac-btns">
-            <button class="btn-notify ${noted ? 'notified' : ''}" onclick="toggleNotify('${app.id}')">
-              <span>${noted ? 'Unsubscribe' : 'Notify me'}</span>
-              ${!noted 
-                ? `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>` 
-                : `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`}
-            </button>
-          </div>
-        </div>
-      </div>`;
-  }).join('');
+function updateCalendarUI() {
+  syncEl.textContent = '✓ Live'; syncEl.className='ab-sync sync-live';
+  renderCalendar();
+  showDayEvents(selectedDay);
 }
 
-// ─────────────────────────────────────────────────
-// DESKTOP SEARCH LOGIC
-// ─────────────────────────────────────────────────
-const searchContainer = document.getElementById('ab-search');
-const searchInput = document.getElementById('global-search');
-const searchDropdown = document.getElementById('search-dropdown');
-
-if (searchContainer) {
-  searchContainer.addEventListener('click', (e) => {
-    if (window.innerWidth > 680 && !searchContainer.classList.contains('expanded')) {
-      searchContainer.classList.add('expanded');
-      setTimeout(() => { searchInput.focus(); }, 100);
-      e.stopPropagation();
-    }
+function getAllEvents() {
+  const seen = new Set();
+  return [...events, ...companyEvents, ...myTasks, ...assignedByMeTasks].filter(e => {
+    if(!e.date) return false;
+    if(seen.has(e.id)) return false;
+    seen.add(e.id); return true;
   });
 }
 
-document.addEventListener('click', (e) => {
-  if (searchContainer && searchContainer.classList.contains('expanded') && !searchContainer.contains(e.target) && !searchDropdown.contains(e.target)) {
-    closeSearch();
-  }
-});
+function renderCalendar() {
+  const y = curDate.getFullYear(), m = curDate.getMonth();
+  ['cal-month-d','cal-month-m'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=MONTHS[m]; });
+  ['cal-year-d','cal-year-m'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=y; });
 
-function closeSearch() {
-  if(searchDropdown) searchDropdown.classList.remove('active');
-  if(searchContainer) searchContainer.classList.remove('expanded');
-  if(searchInput) searchInput.value = '';
+  const firstDay = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const prevDays = new Date(y,m,0).getDate();
+  const allEvs = getAllEvents();
+
+  let html = '';
+  for(let i=firstDay-1; i>=0; i--) {
+    html += `<div class="cal-day empty other-month"><div class="cal-date">${prevDays-i}</div></div>`;
+  }
+  for(let day=1; day<=daysInMonth; day++) {
+    const d = new Date(y,m,day);
+    const key = dateKey(d);
+    const dayEvs = allEvs.filter(e => e.date === key).sort((a,b) => (a.time||'').localeCompare(b.time||''));
+    const todayCls = isToday(d) ? ' today' : '';
+    const selCls = isSameDay(d,selectedDay) ? ' selected' : '';
+    const hasCls = dayEvs.length ? ' has-events' : '';
+
+    const pills = dayEvs.slice(0,2).map(ev => {
+      const pillCls = `pill-${ev.type==='task' ? 'task' : ev.priority||'low'}`;
+      const label = ev.time ? format12hr(ev.time)+' '+ev.title : ev.title;
+      return `<div class="cal-event-pill ${pillCls}">${escHtml(label)}</div>`;
+    }).join('');
+    const more = dayEvs.length > 2 ? `<div class="cal-more-events">+${dayEvs.length-2}</div>` : '';
+
+    html += `<div class="cal-day${todayCls}${selCls}${hasCls}" onclick="window.selectDay(${y},${m},${day})">
+      <div class="cal-date">${day}</div>
+      ${pills}${more}
+    </div>`;
+  }
+
+  const total = firstDay + daysInMonth;
+  const rows = Math.ceil(total/7);
+  const cells = rows*7;
+  for(let i=1; i<=cells-total; i++) {
+    html += `<div class="cal-day empty other-month"><div class="cal-date">${i}</div></div>`;
+  }
+
+  // Build mobile grid 
+  let mobHtml = '';
+  const mobFirstDay = new Date(y,m,1).getDay();
+  const mobPrevDays = new Date(y,m,0).getDate();
+  for(let i=mobFirstDay-1;i>=0;i--) {
+    mobHtml += '<div class="mob-day empty other-month"><div class="mob-date">' + (mobPrevDays-i) + '</div></div>';
+  }
+  for(let day=1;day<=daysInMonth;day++){
+    const d=new Date(y,m,day);
+    const key=dateKey(d);
+    const dayEvs=allEvs.filter(e=>e.date===key);
+    const todayCls=isToday(d)?' today':'';
+    const selCls=isSameDay(d,selectedDay)?' selected':'';
+    
+    let dotColor = '#10B981';
+    if (dayEvs.length) {
+       if (dayEvs[0].type === 'task') dotColor = '#4F46E5';
+       else if (dayEvs[0].priority === 'high') dotColor = '#EF4444';
+       else if (dayEvs[0].priority === 'med') dotColor = '#F59E0B';
+    }
+    const dot = dayEvs.length ? `<div class="mob-event-dot" style="background:${dotColor}"></div>` : '';
+    
+    mobHtml += '<div class="mob-day' + todayCls + selCls + '" onclick="window.selectDay(' + y + ',' + m + ',' + day + ')"><div class="mob-date">' + day + '</div>' + dot + '</div>';
+  }
+  const mobTotal = mobFirstDay + daysInMonth;
+  const mobRows = Math.ceil(mobTotal/7);
+  for(let i=1;i<=mobRows*7-mobTotal;i++) mobHtml += '<div class="mob-day empty other-month"><div class="mob-date">' + i + '</div></div>';
+
+  const dgrid = document.getElementById('cal-grid-d'); if(dgrid) dgrid.innerHTML = html;
+  const mgrid = document.getElementById('cal-grid-m'); if(mgrid) mgrid.innerHTML = mobHtml;
 }
 
-window.handleSearch = function(val) {
-  const query = val.trim().toLowerCase();
-  if (!query) { searchDropdown.classList.remove('active'); return; }
-  
-  const results = [...APPS, ...COMING_SOON].filter(a => a.name.toLowerCase().includes(query) || a.cat.toLowerCase().includes(query) || a.desc.toLowerCase().includes(query));
-  
-  if (results.length) {
-    searchDropdown.innerHTML = results.map(a => `
-      <div class="sd-item" onclick="scrollToApp('${a.id}')">
-        <div style="width:40px;height:40px;border-radius:10px;background:${a.bg};display:flex;align-items:center;justify-content:center;">
-          <div style="width:20px;height:20px;">${a.icon}</div>
-        </div>
-        <div>
-          <div style="font-size:0.9rem;font-weight:800;color:var(--tx1);">${a.name}</div>
-          <div style="font-size:0.75rem;color:var(--tx3);font-weight:600;">${a.cat}</div>
-        </div>
-      </div>`).join('');
-  } else {
-    searchDropdown.innerHTML = '<div style="padding:20px;text-align:center;color:var(--tx3);font-weight:600;">No apps found matching query.</div>';
-  }
-  searchDropdown.classList.add('active');
+window.selectDay = function(y,m,day) {
+  selectedDay = new Date(y,m,day);
+  const dk = dateKey(selectedDay);
+  document.querySelectorAll('.ae-date').forEach(el => el.value = dk);
+  renderCalendar(); showDayEvents(selectedDay);
 };
 
-window.scrollToApp = function(id) {
-  searchDropdown.classList.remove('active');
-  closeSearch();
-  
-  const el = document.getElementById('app-card-' + id);
-  if (el) {
-    const yOffset = -100; 
-    const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
-    
-    window.scrollTo({ top: y, behavior: 'smooth' });
-    
-    el.classList.remove('highlight-pulse');
-    void el.offsetWidth; 
-    el.classList.add('highlight-pulse');
-  }
+window.goToday = function() {
+  curDate = new Date(); selectedDay = new Date();
+  const dk = dateKey(selectedDay);
+  document.querySelectorAll('.ae-date').forEach(el => el.value = dk);
+  renderCalendar(); showDayEvents(selectedDay);
 };
 
-// Infinite Loop Carousel
-const track = document.getElementById('carousel-track');
-const slides = Array.from(document.querySelectorAll('.featured-slide'));
-const firstClone = slides[0].cloneNode(true);
-track.appendChild(firstClone);
+window.nav = function(dir) {
+  curDate = new Date(curDate.getFullYear(), curDate.getMonth()+dir, 1);
+  renderCalendar();
+};
 
-let cIdx = 0;
-let cTimer;
+function showDayEvents(d) {
+  const key = dateKey(d);
+  const allEvs = getAllEvents();
+  const dayEvs = allEvs.filter(e => e.date === key).sort((a,b) => (a.time||'').localeCompare(b.time||''));
 
-function slideNext() {
-  cIdx++;
-  track.style.transition = 'transform 0.8s cubic-bezier(0.22,1,0.36,1)';
-  track.style.transform = `translateX(calc(-${cIdx * 100}%))`;
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const titleStr = isToday(d) ? `Today, ${d.getDate()} ${months[d.getMonth()]}` : `${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
 
-  if (cIdx === slides.length) {
-    setTimeout(() => {
-      track.style.transition = 'none'; 
-      cIdx = 0;
-      track.style.transform = `translateX(0)`;
-    }, 800); 
+  const dtitle = document.getElementById('day-events-title-d'); if(dtitle) dtitle.textContent = titleStr;
+  const countEl = document.getElementById('day-events-count-d');
+  if(countEl){ if(dayEvs.length){countEl.textContent=dayEvs.length;countEl.style.display='';}else{countEl.style.display='none';} }
+
+  const mobTab = document.getElementById('mob-tab-events');
+  if(mobTab){ const sp = mobTab.querySelector('span'); if(sp) sp.textContent = titleStr + (dayEvs.length ? ' ('+dayEvs.length+')' : ''); }
+
+  const list = document.getElementById('day-events-list-d');
+  const mobEmpty = document.getElementById('mob-events-empty');
+  const mobList = document.getElementById('day-events-list-m');
+  
+  if(!dayEvs.length) {
+    if(list) list.innerHTML='<div class="no-events">✨ No events — enjoy your day!</div>';
+    if(mobEmpty) mobEmpty.style.display='';
+    if(mobList) mobList.innerHTML='';
+    return;
   }
+  if(mobEmpty) mobEmpty.style.display='none';
+
+  const evHtml = dayEvs.map(ev => {
+    const cls = ev.type==='task'?'task':(ev.priority||'low');
+    const vis = ev.visibility && ev.visibility!=='self' ? visLabel(ev.visibility) : '';
+    const isOwn = (ev.uid === CU.uid || !ev.companyEvent) && ev.type !== 'task'; 
+    return `<div class="event-item ${cls}">
+      <div class="event-content">
+        <div class="event-title">${escHtml(ev.title)}</div>
+        ${ev.time ? `<div class="event-time">⏰ ${format12hr(ev.time)}</div>` : ''}
+        ${vis ? `<div class="event-visibility">👁 ${vis}</div>` : ''}
+        ${ev.type==='task' ? `<div class="event-visibility" style="color:#6366F1">📋 ${ev.status === 'done' ? 'Completed Task' : 'Pending Task'}</div>` : ''}
+      </div>
+      ${isOwn ? `<button class="event-del" onclick="window.delEvent('${ev.id}')" title="Delete Event">✕</button>` : ''}
+    </div>`;
+  }).join('');
+  
+  if(list) list.innerHTML = evHtml;
+  if(mobList) mobList.innerHTML = evHtml;
 }
 
-function startAuto() { cTimer = setInterval(slideNext, 6000); } 
-document.querySelector('.featured-wrap').addEventListener('mouseenter', () => clearInterval(cTimer));
-document.querySelector('.featured-wrap').addEventListener('mouseleave', startAuto);
+function visLabel(v) { const m={all:'Everyone',custom:'Custom Staff',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
 
-// ACTION HANDLERS (Push to Firebase to keep dashboard synced)
-window.openApp = function(id) { 
-    window.location.href = `${id}.html`; 
+window.addEvent = async function(btnContext) {
+  const formWrap = btnContext.closest('.add-form') || document;
+  const title = (formWrap.querySelector('.ae-title')?.value || '').trim();
+  const date = formWrap.querySelector('.ae-date')?.value || '';
+  const time = formWrap.querySelector('.ae-time')?.value || '';
+  const vis = formWrap.querySelector('.ae-visibility')?.value || 'self';
+
+  if(!title){ toast('Enter an event title.','error'); return; }
+  if(!date)  { toast('Pick a date.','error'); return; }
+
+  // Sync state between Mobile and Desktop form submissions
+  const allBtns = document.querySelectorAll('.add-btn');
+  allBtns.forEach(b => { b.disabled = true; b.textContent = 'Adding...'; });
+
+  try {
+    const newEv = { 
+      title, date, time, 
+      priority: selectedPrio, 
+      visibility: vis, 
+      type: 'event', 
+      companyId: CU.companyId || null, 
+      uid: CU.uid || null 
+    };
+    
+    if (vis === 'custom') {
+        newEv.visibleToUIDs = Array.from(window.selectedStaffUIDs);
+    }
+    
+    if (CU.uid) {
+      await addDoc(collection(db, 'calendar'), newEv);
+    } else {
+      newEv.id = Date.now().toString();
+      events.push(newEv);
+      updateCalendarUI();
+    }
+    
+    // Clear inputs
+    document.querySelectorAll('.ae-title').forEach(el => el.value = '');
+    document.querySelectorAll('.ae-time').forEach(el => el.value = '');
+    window.setPrio('high');
+    
+    const [yyyy,mm,dd] = date.split('-').map(Number);
+    selectedDay = new Date(yyyy,mm-1,dd);
+    
+    toast('Event added! 📅','success');
+  } catch(e) { toast('Failed: '+e.message,'error'); }
+  finally { allBtns.forEach(b => { b.disabled=false; b.textContent='Add Event ✓'; }); }
 };
 
-window.doInstall = async function(id) { 
-    installedIds = [...new Set([...installedIds, id])];
-    render(); 
-    if(CU) installApp(CU.uid, id).catch(()=>{}); 
+window.delEvent = async function(id) {
+  try {
+    if(CU.uid) { 
+      await deleteDoc(doc(db, 'calendar', id));
+    } else {
+      events = events.filter(e => e.id !== id);
+      updateCalendarUI();
+    }
+    toast('Event deleted.','success');
+  } catch(e) { toast('Error: '+e.message,'error'); }
 };
 
-window.doUninstall = async function(id) { 
-    if(id === 'calculator') return; 
-    installedIds = installedIds.filter(x => x !== id); 
-    render(); 
-    if(CU) uninstallApp(CU.uid, id).catch(()=>{}); 
-};
+function toast(msg, type='info') {
+  let c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast toast-'+type;
+  t.innerHTML = `<span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
 
-window.toggleNotify = function(id) {
-  const noted = notifyList.includes(id);
-  if(noted) notifyList = notifyList.filter(x => x !== id);
-  else notifyList.push(id);
-  render();
-  if(CU) updateDoc(doc(db,'users',CU.uid), { notifyApps: notifyList }).catch(()=>{});
-};
+function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 init();
+</script>
+
+<script>
+// ── MODAL LOGIC ──
+window.openModal = function(id) { document.getElementById(id).classList.add('open'); };
+window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
+
+// ── MOBILE TAB SWITCHER ──
+window.showMobTab = function(tab) {
+  document.getElementById('mob-tab-events').classList.toggle('on', tab === 'events');
+  document.getElementById('mob-tab-add').classList.toggle('on', tab === 'add');
+  document.getElementById('mob-events-content').classList.toggle('hidden', tab !== 'events');
+  document.getElementById('mob-add-content').classList.toggle('hidden', tab !== 'add');
+};
+
+// ── CUSTOM STAFF SYNC ──
+window.toggleCustomStaff = function(selectEl) {
+    const val = selectEl.value;
+    
+    // Update all visibility selects to keep desktop & mobile forms in sync
+    document.querySelectorAll('.ae-visibility').forEach(sel => sel.value = val);
+    document.querySelectorAll('.edit-custom-btn').forEach(btn => {
+        if(val === 'custom') btn.classList.remove('hidden');
+        else btn.classList.add('hidden');
+    });
+
+    if (val === 'custom') {
+        window.openModal('custom-staff-modal');
+        window.renderCustomStaffList(document.getElementById('modal-staff-list'));
+    }
+};
+
+window.toggleStaffSel = function(uid) {
+    if (uid === window.CU.uid) return; // Prevent deselecting self
+    if (window.selectedStaffUIDs.has(uid)) window.selectedStaffUIDs.delete(uid);
+    else window.selectedStaffUIDs.add(uid);
+    
+    // Re-render open lists
+    window.renderCustomStaffList(document.getElementById('modal-staff-list'));
+};
+
+window.renderCustomStaffList = function(container) {
+    if (!window.CU.uid) return;
+    window.selectedStaffUIDs.add(window.CU.uid); // Always select self
+    
+    let html = '';
+    window.companyStaff.forEach(staff => {
+        const isMe = staff.uid === window.CU.uid;
+        const isSelected = window.selectedStaffUIDs.has(staff.uid);
+        
+        const initials = (staff.name || 'U').substring(0,2).toUpperCase();
+        const colors = ['#3B82F6', '#10B981', '#FF9500', '#FF3B30', '#AF52DE'];
+        let h = 0; for(let i=0;i<(staff.name||'').length;i++) h=staff.name.charCodeAt(i)+((h<<5)-h);
+        const bgColor = colors[Math.abs(h)%colors.length];
+        const roleLabel = staff.role === 'owner' ? 'Owner' : staff.designation || staff.role || 'Staff';
+
+        html += `
+        <div class="staff-card-mini ${isSelected ? 'selected' : ''} ${isMe ? 'disabled' : ''}" onclick="window.toggleStaffSel('${staff.uid}')">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:36px; height:36px; border-radius:50%; background:${bgColor}22; color:${bgColor}; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800;">
+                    ${initials}
+                </div>
+                <div style="display:flex; flex-direction:column;">
+                    <span style="font-size:0.9rem; font-weight:700; color:var(--tx1); line-height:1.2;">
+                        ${String(staff.name).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')} ${isMe ? '<span style="color:var(--tx3); font-size:0.75rem; margin-left:4px;">(You)</span>' : ''}
+                    </span>
+                    <span style="font-size:0.7rem; font-weight:800; color:var(--ac); background:var(--ac-light, #EEF2FF); padding:2px 8px; border-radius:4px; width:fit-content; margin-top:4px; text-transform:uppercase;">
+                        ${String(roleLabel).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+                    </span>
+                </div>
+            </div>
+            <div class="checkbox-mini ${isSelected ? 'checked' : ''}">
+                ${isSelected ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+            </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+};
+
+// ── RENDER ADD FORM (shared desktop + mobile) ──
+window.renderAddForm = function() {
+  const html = `
+    <div>
+      <span class="ae-lbl">Event Title</span>
+      <input class="ae-inp ae-title" type="text" placeholder="Team meeting, deadline…" maxlength="60">
+    </div>
+    <div class="ae-row">
+      <div>
+        <span class="ae-lbl">Date</span>
+        <input class="ae-inp ae-date" type="date">
+      </div>
+      <div>
+        <span class="ae-lbl">Time (optional)</span>
+        <select class="ae-sel ae-time">
+          <option value="">No time</option>
+          <option value="06:00">6:00 AM</option><option value="07:00">7:00 AM</option>
+          <option value="08:00">8:00 AM</option><option value="09:00">9:00 AM</option>
+          <option value="10:00">10:00 AM</option><option value="11:00">11:00 AM</option>
+          <option value="12:00">12:00 PM</option><option value="13:00">1:00 PM</option>
+          <option value="14:00">2:00 PM</option><option value="15:00">3:00 PM</option>
+          <option value="16:00">4:00 PM</option><option value="17:00">5:00 PM</option>
+          <option value="18:00">6:00 PM</option><option value="19:00">7:00 PM</option>
+          <option value="20:00">8:00 PM</option><option value="21:00">9:00 PM</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <span class="ae-lbl">Priority</span>
+      <div class="prio-btns">
+        <button type="button" class="prio-btn sel-high" id="prio-high" onclick="window.setPrio('high')">🔴 High</button>
+        <button type="button" class="prio-btn" id="prio-med" onclick="window.setPrio('med')">🟡 Med</button>
+        <button type="button" class="prio-btn" id="prio-low" onclick="window.setPrio('low')">🟢 Low</button>
+      </div>
+    </div>
+    <div class="vis-section">
+      <span class="ae-lbl">Visible To</span>
+      <select class="ae-sel ae-visibility" onchange="window.toggleCustomStaff(this)">
+        <option value="self">Only me</option>
+        <option value="all">Everyone in company</option>
+        <option value="custom">Custom staff</option>
+      </select>
+      <button type="button" class="edit-custom-btn hidden" onclick="window.openModal('custom-staff-modal'); window.renderCustomStaffList(document.getElementById('modal-staff-list'));" style="margin-top:8px; padding:8px; font-size:0.75rem; background:var(--sf); color:var(--tx1); border:1.5px solid var(--bd); border-radius:10px; cursor:pointer; width:100%; font-weight:700; font-family:var(--fd); transition:all 0.2s;">👥 Edit Staff Selection</button>
+    </div>
+    <button type="button" class="add-btn" onclick="window.addEvent(this)" style="margin-top:4px">Add Event ✓</button>
+  `;
+  const dForm = document.getElementById('add-form-d');
+  const mForm = document.getElementById('add-form-m');
+  if (dForm) dForm.innerHTML = html;
+  if (mForm) mForm.innerHTML = html;
+
+  // Set today's date
+  const today = dateKeyNow();
+  document.querySelectorAll('.ae-date').forEach(el => el.value = today);
+};
+
+function dateKeyNow() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// Init the forms
+window.renderAddForm();
 </script>
 </body>
 </html>
