@@ -50,7 +50,7 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 .cal-day.today .cal-date{background:var(--ac);color:white;font-weight:800}
 .cal-day.selected{background:#EEF2FF;outline:2px solid var(--ac)}
 .cal-day.selected .cal-date{background:var(--ac);color:white}
-.cal-event-pill{border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;max-width:100%; background:#D1FAE5;color:#065F46;} 
+.cal-event-pill{border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;max-width:100%;} 
 .pill-low{background:#D1FAE5;color:#065F46}
 .pill-task{background:#EEF2FF;color:var(--ac)}
 .cal-more-events{font-size:.58rem;color:var(--tx3);padding:1px 4px;font-weight:600}
@@ -62,7 +62,7 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 .cal-card-ttl{font-family:var(--fd);font-weight:700;font-size:.9rem;color:var(--tx1)}
 .cal-event-count{font-family:var(--fd);font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#EEF2FF;color:var(--ac)}
 .day-events-list{padding:10px;max-height:260px;overflow-y:auto}
-.event-item{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;transition:all .15s;cursor:default; border-color:var(--green);background:#F0FDF4;}
+.event-item{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;transition:all .15s;cursor:default;}
 .event-item:hover{filter:brightness(.97)}
 .event-item.low{border-color:var(--green);background:#F0FDF4}
 .event-item.task{border-color:var(--ac);background:#EEF2FF}
@@ -241,7 +241,7 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
     </div>
     <div class="mob-tab-content hidden" id="mob-add-content">
       <div id="add-form-m" style="display:flex;flex-direction:column;gap:12px;padding:4px 0">
-        </div>
+         </div>
     </div>
   </div>
 </div>
@@ -264,30 +264,11 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 
 <script type="module">
 import { auth, db } from './firebase-config.js';
-import { requireAuth, getCurrentUser } from './auth.js';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// --- 1. SECURE BACKGROUND AUTH VERIFICATION ---
-onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-        window.location.replace('login.html');
-        return;
-    }
-    if (!window.CU || window.CU.uid !== user.uid) {
-        const cu = await getCurrentUser();
-        if (cu && cu.uid) {
-            window.CU = cu;
-            window.selectedStaffUIDs.add(window.CU.uid);
-            loadAllRealtime();
-            checkPremiumStatus();
-        } else {
-            window.location.replace('login.html');
-        }
-    }
-});
-
-const syncEl = document.getElementById('sync-status'); if(syncEl) syncEl.className = 'ab-sync sync-connecting';
+const syncEl = document.getElementById('sync-status'); 
+if(syncEl) syncEl.className = 'ab-sync sync-connecting';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 window.events = [];
@@ -302,7 +283,43 @@ window.CU = { uid: null, role: 'staff', companyId: null };
 
 window.selectedStaffUIDs = new Set();
 
-// Ensure UI renders while waiting for Firebase
+// ── 1. SECURE AUTH VERIFICATION ──
+// We wait for Firebase to confirm the login before running any database queries.
+onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+        window.location.replace('login.html');
+        return;
+    }
+    
+    try {
+        const uSnap = await getDoc(doc(db, 'users', user.uid));
+        if (uSnap.exists()) {
+            const data = uSnap.data();
+            window.CU = {
+                uid: user.uid,
+                role: data.role || 'staff',
+                companyId: data.companyId || null,
+                name: data.name || 'User'
+            };
+            window.selectedStaffUIDs.add(window.CU.uid);
+            
+            checkPremiumStatus();
+            loadAllRealtime();
+        } else {
+            // Fallback
+            window.CU = { uid: user.uid, role: 'staff', companyId: null };
+            loadAllRealtime();
+        }
+    } catch(err) {
+        console.error("Auth state error:", err);
+        if (syncEl) {
+            syncEl.textContent = 'Sync Failed';
+            syncEl.className = 'ab-sync sync-err';
+        }
+    }
+});
+
+// Render immediately to avoid blank screen while auth is verifying
 renderCalendar();
 showDayEvents(selectedDay);
 
@@ -310,7 +327,7 @@ function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padSta
 function isToday(d) { const n = new Date(); return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear(); }
 function isSameDay(a,b) { return a.getDate()===b.getDate() && a.getMonth()===b.getMonth() && a.getFullYear()===b.getFullYear(); }
 
-// --- 3. PREMIUM BADGE LOGIC ---
+// --- 2. PREMIUM BADGE LOGIC ---
 async function checkPremiumStatus() {
     if (!window.CU || !window.CU.companyId) return;
     try {
@@ -341,6 +358,7 @@ async function checkPremiumStatus() {
     } catch(e) { console.warn("Failed fetching premium status", e); }
 }
 
+// --- 3. DATABASE QUERIES ---
 let unsubPersonal = null, unsubCompany = null, unsubTasksToMe = null, unsubTasksByMe = null, unsubStaff = null;
 
 function loadAllRealtime() {
@@ -352,7 +370,7 @@ function loadAllRealtime() {
   if (unsubTasksByMe) unsubTasksByMe();
   if (unsubStaff) unsubStaff();
 
-  // Load Staff for Custom Staff Selection Options
+  // Load Custom Staff Menu List
   if (window.CU.companyId) {
       const staffQ = query(collection(db, 'users'), where('companyId', '==', window.CU.companyId));
       unsubStaff = onSnapshot(staffQ, (snap) => {
@@ -364,16 +382,16 @@ function loadAllRealtime() {
       });
   }
 
-  // 1. Personal Events
+  // Personal Events
   const q1 = query(collection(db, 'calendar'), where('uid', '==', window.CU.uid));
   unsubPersonal = onSnapshot(q1, (snap1) => {
-    window.events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
+    window.events = snap1.docs.map(d => ({id: d.id, ...d.data()}));
     updateCalendarUI();
   }, (e) => {
     if (syncEl) { syncEl.textContent = 'Sync Failed'; syncEl.className='ab-sync sync-err'; }
   });
 
-  // 2. Company Events
+  // Company Events
   if (window.CU.companyId) {
     const q2 = query(collection(db, 'calendar'), where('companyId', '==', window.CU.companyId));
     unsubCompany = onSnapshot(q2, (snap2) => {
@@ -382,18 +400,16 @@ function loadAllRealtime() {
         .filter(ev => {
            if (ev.visibility === 'all') return true;
            if (ev.visibility === 'custom') { return ev.visibleToUIDs && ev.visibleToUIDs.includes(window.CU.uid); }
-           
            if (window.CU.role === 'owner' && (ev.visibility === 'owner' || ev.visibility === 'manager')) return true;
            if (window.CU.role === 'manager' && ev.visibility === 'manager') return true;
            if (window.CU.role === 'staff' && ev.visibility === 'staff') return true;
            return false;
-        })
-        .sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
+        });
       updateCalendarUI();
     });
   }
 
-  // 3. Tasks Assigned To Me
+  // Tasks To Me
   const q3 = query(collection(db, 'tasks'), where('assignedTo', '==', window.CU.uid));
   unsubTasksToMe = onSnapshot(q3, (snap) => {
     window.myTasks = snap.docs.map(d => {
@@ -403,7 +419,7 @@ function loadAllRealtime() {
     updateCalendarUI();
   });
 
-  // 4. Tasks Assigned By Me
+  // Tasks By Me
   if (window.CU.role === 'owner' || window.CU.role === 'manager') {
     const q4 = query(collection(db, 'tasks'), where('assignedBy', '==', window.CU.uid));
     unsubTasksByMe = onSnapshot(q4, (snap) => {
@@ -416,6 +432,7 @@ function loadAllRealtime() {
   }
 }
 
+// --- 4. CALENDAR UI UPDATES ---
 function updateCalendarUI() {
   if (syncEl) { syncEl.textContent = '✓ Live'; syncEl.className='ab-sync sync-live'; }
   renderCalendar();
@@ -448,13 +465,14 @@ function renderCalendar() {
   for(let day=1; day<=daysInMonth; day++) {
     const d = new Date(y,m,day);
     const key = dateKey(d);
-    const dayEvs = allEvs.filter(e => e.date === key).sort((a,b) => (a.time||'').localeCompare(b.time||''));
+    // Sort by creation time so newer events are appended
+    const dayEvs = allEvs.filter(e => e.date === key).sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
     const todayCls = isToday(d) ? ' today' : '';
     const selCls = isSameDay(d,selectedDay) ? ' selected' : '';
     const hasCls = dayEvs.length ? ' has-events' : '';
 
     const pills = dayEvs.slice(0,2).map(ev => {
-      const pillCls = ev.type==='task' ? 'pill-task' : '';
+      const pillCls = ev.type==='task' ? 'pill-task' : 'pill-low';
       return `<div class="cal-event-pill ${pillCls}">${escHtml(ev.title)}</div>`;
     }).join('');
     const more = dayEvs.length > 2 ? `<div class="cal-more-events">+${dayEvs.length-2}</div>` : '';
@@ -471,6 +489,7 @@ function renderCalendar() {
     html += `<div class="cal-day empty other-month"><div class="cal-date">${i}</div></div>`;
   }
 
+  // Build mobile grid 
   let mobHtml = '';
   const mobFirstDay = new Date(y,m,1).getDay();
   const mobPrevDays = new Date(y,m,0).getDate();
@@ -520,7 +539,7 @@ window.nav = function(dir) {
 function showDayEvents(d) {
   const key = dateKey(d);
   const allEvs = getAllEvents();
-  const dayEvs = allEvs.filter(e => e.date === key).sort((a,b) => (a.time||'').localeCompare(b.time||''));
+  const dayEvs = allEvs.filter(e => e.date === key).sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
 
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -546,7 +565,7 @@ function showDayEvents(d) {
   if(mobEmpty) mobEmpty.style.display='none';
 
   const evHtml = dayEvs.map(ev => {
-    const cls = ev.type==='task' ? 'task' : '';
+    const cls = ev.type==='task' ? 'task' : 'low';
     const vis = ev.visibility && ev.visibility!=='self' ? visLabel(ev.visibility) : '';
     const isOwn = (ev.uid === window.CU.uid || !ev.companyEvent) && ev.type !== 'task'; 
     return `<div class="event-item ${cls}">
@@ -565,7 +584,7 @@ function showDayEvents(d) {
 
 function visLabel(v) { const m={all:'Everyone',custom:'Custom Staff',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
 
-// --- 4. ASYNC FIX: PROPERLY AWAIT SAVES & UPDATE LOCAL ARRAY ---
+// --- 5. STREAMLINED ADD EVENT & DELETE ---
 window.addEvent = async function(btnContext) {
   const formWrap = btnContext.closest('.add-form') || document;
   const title = (formWrap.querySelector('.ae-title')?.value || '').trim();
@@ -580,34 +599,22 @@ window.addEvent = async function(btnContext) {
     const newEv = { 
       title, 
       date: dateKey(selectedDay), // <-- Uses the clicked date dynamically!
-      priority: 'low', 
       visibility: vis, 
       type: 'event', 
       companyId: window.CU.companyId || null, 
-      uid: window.CU.uid || null 
+      uid: window.CU.uid || null,
+      createdAt: Date.now()
     };
     
     if (vis === 'custom') {
         newEv.visibleToUIDs = Array.from(window.selectedStaffUIDs);
     }
     
-    if (window.CU.uid) {
-      const docRef = await addDoc(collection(db, 'calendar'), newEv);
-      
-      // Instantly push to local array so it renders without refresh
-      newEv.id = docRef.id;
-      if (vis === 'self') window.events.push(newEv);
-      else window.companyEvents.push(newEv);
-
-    } else {
-      newEv.id = Date.now().toString();
-      window.events.push(newEv);
-    }
+    // Add to Firebase. The real-time onSnapshot listener will catch it 
+    // instantly and update the UI automatically.
+    await addDoc(collection(db, 'calendar'), newEv);
     
-    // Force UI refresh
-    updateCalendarUI();
-
-    // Clear the title input
+    // Clear inputs on success
     document.querySelectorAll('.ae-title').forEach(el => el.value = '');
     
     toast('Event added! 📅','success');
@@ -621,17 +628,7 @@ window.addEvent = async function(btnContext) {
 
 window.delEvent = async function(id) {
   try {
-    if(window.CU.uid) { 
-      await deleteDoc(doc(db, 'calendar', id));
-      
-      // Update local arrays instantly
-      window.events = window.events.filter(e => e.id !== id);
-      window.companyEvents = window.companyEvents.filter(e => e.id !== id);
-      updateCalendarUI();
-    } else {
-      window.events = window.events.filter(e => e.id !== id);
-      updateCalendarUI();
-    }
+    await deleteDoc(doc(db, 'calendar', id));
     toast('Event deleted.','success');
   } catch(e) { toast('Error: '+e.message,'error'); }
 };
@@ -676,7 +673,7 @@ window.toggleCustomStaff = function(selectEl) {
 };
 
 window.toggleStaffSel = function(uid) {
-    if (uid === window.CU.uid) return; 
+    if (!window.CU || uid === window.CU.uid) return; 
     if (window.selectedStaffUIDs.has(uid)) window.selectedStaffUIDs.delete(uid);
     else window.selectedStaffUIDs.add(uid);
     
@@ -750,7 +747,7 @@ window.renderAddForm = function() {
   if (mForm) mForm.innerHTML = html;
 };
 
-// Launch!
+// Launch UI
 renderAddForm();
 </script>
 </body>
