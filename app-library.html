@@ -50,7 +50,7 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 .cal-day.today .cal-date{background:var(--ac);color:white;font-weight:800}
 .cal-day.selected{background:#EEF2FF;outline:2px solid var(--ac)}
 .cal-day.selected .cal-date{background:var(--ac);color:white}
-.cal-event-pill{border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;max-width:100%; background:#D1FAE5;color:#065F46;} /* Simplified pill style as priority is removed */
+.cal-event-pill{border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;max-width:100%; background:#D1FAE5;color:#065F46;} /* Standardized single style */
 .pill-task{background:#EEF2FF;color:var(--ac)}
 .cal-more-events{font-size:.58rem;color:var(--tx3);padding:1px 4px;font-weight:600}
 
@@ -61,12 +61,11 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 .cal-card-ttl{font-family:var(--fd);font-weight:700;font-size:.9rem;color:var(--tx1)}
 .cal-event-count{font-family:var(--fd);font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#EEF2FF;color:var(--ac)}
 .day-events-list{padding:10px;max-height:260px;overflow-y:auto}
-.event-item{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;transition:all .15s;cursor:default; border-color:var(--green);background:#F0FDF4;} /* Simplified item style */
+.event-item{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;transition:all .15s;cursor:default; border-color:var(--green);background:#F0FDF4;}
 .event-item:hover{filter:brightness(.97)}
 .event-item.task{border-color:var(--ac);background:#EEF2FF}
 .event-content{flex:1;min-width:0}
 .event-title{font-size:.82rem;font-weight:600;color:var(--tx1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.event-time{font-size:.7rem;color:var(--tx3);margin-top:2px;font-family:var(--fm)}
 .event-visibility{font-size:.62rem;font-weight:700;color:var(--tx2);margin-top:2px}
 .event-del{background:none;border:none;cursor:pointer;color:var(--tx3);padding:3px;border-radius:5px;flex-shrink:0;opacity:0;align-self:flex-start;margin-top:2px;transition:all .15s}
 .event-item:hover .event-del{opacity:1}
@@ -154,8 +153,7 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
   </div>
   <div class="ab-right" style="display: flex; align-items: center; gap: 12px;">
     <div id="premium-badge" class="hidden" style="background: linear-gradient(135deg, #0F172A, #1D1D1F); color: white; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 11px; display: none; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.1);">
-       </div>
-    
+    </div>
     <button id="globalUpgradeBtn" class="hidden" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; padding: 0 12px; height: 32px; border-radius: 8px; font-weight: 600; font-size: 12px; display: none; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(245,158,11,0.3);" onclick="window.location.href='subscription.html'">
       👑 Upgrade
     </button>
@@ -297,8 +295,6 @@ window.companyStaff = [];
 
 let curDate = new Date();
 let selectedDay = new Date();
-// Default priority is set, but no longer exposed in the UI
-window.selectedPrio = 'low'; 
 window.CU = { uid: null, role: 'staff', companyId: null };
 
 window.selectedStaffUIDs = new Set();
@@ -365,7 +361,6 @@ function loadAllRealtime() {
   if (unsubTasksByMe) unsubTasksByMe();
   if (unsubStaff) unsubStaff();
 
-  // Load Staff for Custom Staff Selection Options
   if (window.CU.companyId) {
       const staffQ = query(collection(db, 'users'), where('companyId', '==', window.CU.companyId));
       unsubStaff = onSnapshot(staffQ, (snap) => {
@@ -383,10 +378,10 @@ function loadAllRealtime() {
     window.events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
     updateCalendarUI();
   }, (e) => {
-    syncEl.textContent = 'Sync Failed'; syncEl.className='ab-sync sync-err';
+    if (syncEl) { syncEl.textContent = 'Sync Failed'; syncEl.className='ab-sync sync-err'; }
   });
 
-  // 2. Company Events (Includes new Custom Visibility and the "All" sync rules)
+  // 2. Company Events 
   if (window.CU.companyId) {
     const q2 = query(collection(db, 'calendar'), where('companyId', '==', window.CU.companyId));
     unsubCompany = onSnapshot(q2, (snap2) => {
@@ -395,7 +390,6 @@ function loadAllRealtime() {
         .filter(ev => {
            if (ev.visibility === 'all') return true;
            if (ev.visibility === 'custom') { return ev.visibleToUIDs && ev.visibleToUIDs.includes(window.CU.uid); }
-           
            if (window.CU.role === 'owner' && (ev.visibility === 'owner' || ev.visibility === 'manager')) return true;
            if (window.CU.role === 'manager' && ev.visibility === 'manager') return true;
            if (window.CU.role === 'staff' && ev.visibility === 'staff') return true;
@@ -430,7 +424,7 @@ function loadAllRealtime() {
 }
 
 function updateCalendarUI() {
-  syncEl.textContent = '✓ Live'; syncEl.className='ab-sync sync-live';
+  if (syncEl) { syncEl.textContent = '✓ Live'; syncEl.className='ab-sync sync-live'; }
   renderCalendar();
   showDayEvents(selectedDay);
 }
@@ -477,7 +471,6 @@ function renderCalendar() {
       ${pills}${more}
     </div>`;
   }
-
   const total = firstDay + daysInMonth;
   const rows = Math.ceil(total/7);
   const cells = rows*7;
@@ -485,7 +478,6 @@ function renderCalendar() {
     html += `<div class="cal-day empty other-month"><div class="cal-date">${i}</div></div>`;
   }
 
-  // Build mobile grid 
   let mobHtml = '';
   const mobFirstDay = new Date(y,m,1).getDay();
   const mobPrevDays = new Date(y,m,0).getDate();
@@ -580,7 +572,7 @@ function showDayEvents(d) {
 
 function visLabel(v) { const m={all:'Everyone',custom:'Custom Staff',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
 
-// --- 4. ASYNC FIX: PROPERLY AWAIT SAVES & RESET BUTTON TEXT ---
+// --- 4. STREAMLINED ADD EVENT ---
 window.addEvent = async function(btnContext) {
   const formWrap = btnContext.closest('.add-form') || document;
   const title = (formWrap.querySelector('.ae-title')?.value || '').trim();
@@ -594,7 +586,7 @@ window.addEvent = async function(btnContext) {
   try {
     const newEv = { 
       title, 
-      date: dateKey(selectedDay), // Uses the date selected on the calendar
+      date: dateKey(selectedDay), // <-- Uses the clicked date dynamically!
       priority: 'low', 
       visibility: vis, 
       type: 'event', 
@@ -607,21 +599,14 @@ window.addEvent = async function(btnContext) {
     }
     
     if (window.CU.uid) {
-      const docRef = await addDoc(collection(db, 'calendar'), newEv);
-      
-      // Update local array instantly
-      newEv.id = docRef.id;
-      if(vis === 'self') window.events.push(newEv);
-      else window.companyEvents.push(newEv);
-      
-      updateCalendarUI();
+      await addDoc(collection(db, 'calendar'), newEv);
     } else {
       newEv.id = Date.now().toString();
       window.events.push(newEv);
       updateCalendarUI();
     }
     
-    // Clear inputs ONLY on success
+    // Clear the title input
     document.querySelectorAll('.ae-title').forEach(el => el.value = '');
     
     toast('Event added! 📅','success');
@@ -637,12 +622,6 @@ window.delEvent = async function(id) {
   try {
     if(window.CU.uid) { 
       await deleteDoc(doc(db, 'calendar', id));
-      
-      // Update local arrays instantly
-      window.events = window.events.filter(e => e.id !== id);
-      window.companyEvents = window.companyEvents.filter(e => e.id !== id);
-      updateCalendarUI();
-      
     } else {
       window.events = window.events.filter(e => e.id !== id);
       updateCalendarUI();
@@ -668,7 +647,6 @@ function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&l
 window.openModal = function(id) { document.getElementById(id).classList.add('open'); };
 window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
 
-// ── MOBILE TAB SWITCHER ──
 window.showMobTab = function(tab) {
   document.getElementById('mob-tab-events').classList.toggle('on', tab === 'events');
   document.getElementById('mob-tab-add').classList.toggle('on', tab === 'add');
@@ -676,7 +654,6 @@ window.showMobTab = function(tab) {
   document.getElementById('mob-add-content').classList.toggle('hidden', tab !== 'add');
 };
 
-// ── CUSTOM STAFF SYNC ──
 window.toggleCustomStaff = function(selectEl) {
     const val = selectEl.value;
     
@@ -743,7 +720,7 @@ window.renderCustomStaffList = function(container) {
     container.innerHTML = html;
 };
 
-// ── STREAMLINED RENDER ADD FORM ──
+// ── RENDER ADD FORM (Streamlined) ──
 window.renderAddForm = function() {
   const html = `
     <div>
@@ -769,7 +746,6 @@ window.renderAddForm = function() {
 
 // Launch!
 renderAddForm();
-init();
 </script>
 </body>
 </html>
