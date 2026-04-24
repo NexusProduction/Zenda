@@ -82,6 +82,7 @@ a { text-decoration: none; color: inherit; }
   font-weight: 800; font-size: 1.15rem; color: var(--tx1); letter-spacing: -0.02em;
 }
 
+/* Expanding Desktop Search */
 .ab-search-wrap { position: relative; display: flex; align-items: center; justify-content: flex-end; }
 .ab-search {
   display: flex; align-items: center; justify-content: center; gap: 0; 
@@ -115,6 +116,7 @@ a { text-decoration: none; color: inherit; }
 .sd-item:last-child { border-bottom: none; }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
+/* Mobile View Adjustments */
 @media(max-width: 680px) {
   .appbar { padding: 0 16px; }
   .desk-only { display: none; }
@@ -198,8 +200,8 @@ a { text-decoration: none; color: inherit; }
   padding: 10px 14px;
 }
 
+/* Icon Slide-in Animations */
 .btn-icon { max-width: 0; opacity: 0; transform: translateX(-10px); transition: all 0.3s ease; display: inline-block; }
-/* Added install to hover icon slide animation */
 .btn-remove:hover .btn-icon, .btn-notify:hover .btn-icon, .btn-install:hover .btn-icon { max-width: 16px; margin-left: 6px; opacity: 1; transform: translateX(0); }
 
 /* ─────────────────────────────────────────
@@ -227,10 +229,10 @@ a { text-decoration: none; color: inherit; }
 /* Notify click: Deep, satisfying press */
 .btn-notify:active { transform: scale(0.94); background: #047857; border-color: #047857; box-shadow: inset 0 3px 6px rgba(0,0,0,0.2); }
 
-.btn-notify.notified { background: transparent; color: var(--tx2); border-color: var(--bd); box-shadow: none; transform: translateY(0); }
-.btn-notify.notified:hover { background: var(--sf2); color: var(--tx1); }
-/* Notified click: Simple soft tap */
-.btn-notify.notified:active { transform: scale(0.96); background: var(--bd); color: white; border-color: var(--bd); }
+/* Unsubscribe state (Red outline, fills solid red on hover) */
+.btn-notify.notified { background: transparent; color: var(--red); border-color: var(--red); box-shadow: none; transform: translateY(0); }
+.btn-notify.notified:hover { background: var(--red); color: white; border-color: var(--red); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,0.25); }
+.btn-notify.notified:active { transform: scale(0.94); background: #991B1B; color: white; border-color: #991B1B; box-shadow: inset 0 3px 6px rgba(0,0,0,0.2); }
 
 </style>
 </head>
@@ -317,7 +319,7 @@ a { text-decoration: none; color: inherit; }
 
 <script type="module">
 // ─────────────────────────────────────────────────
-// FIREBASE SYNC ENGINE
+// FIREBASE SYNC ENGINE (Fully Connected to apps.js)
 // ─────────────────────────────────────────────────
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -435,8 +437,10 @@ function render() {
         <div class="ac-footer-min">
           <div class="ac-btns">
             <button class="btn-notify ${noted ? 'notified' : ''}" onclick="toggleNotify('${app.id}')">
-              <span>${noted ? '✓ Notified' : 'Notify me'}</span>
-              ${!noted ? `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>` : ''}
+              <span>${noted ? 'Unsubscribe' : 'Notify me'}</span>
+              ${!noted 
+                ? `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>` 
+                : `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`}
             </button>
           </div>
         </div>
@@ -540,7 +544,7 @@ function startAuto() { cTimer = setInterval(slideNext, 6000); }
 document.querySelector('.featured-wrap').addEventListener('mouseenter', () => clearInterval(cTimer));
 document.querySelector('.featured-wrap').addEventListener('mouseleave', startAuto);
 
-// ACTION HANDLERS
+// ACTION HANDLERS (Push to Firebase to keep dashboard synced)
 window.openApp = function(id) { 
     window.location.href = `${id}.html`; 
 };
