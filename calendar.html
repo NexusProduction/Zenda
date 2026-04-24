@@ -93,6 +93,15 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 .add-btn:hover{background:var(--ach);transform:translateY(-1px);box-shadow:0 4px 12px rgba(79,70,229,.28)}
 .add-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
+/* ── STAFF SELECTION CARDS ── */
+.staff-card-mini { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border:1px solid var(--bd); border-radius:12px; background:var(--sf); cursor:pointer; transition:all .2s; }
+.staff-card-mini:hover { border-color:var(--ac); box-shadow:0 2px 6px rgba(79,70,229,.1); }
+.staff-card-mini.selected { border-color:var(--ac); background:#EEF2FF; }
+.staff-card-mini.disabled { cursor:default; opacity:0.8; }
+.staff-card-mini.disabled:hover { border-color:var(--ac); box-shadow:none; }
+.checkbox-mini { width:20px; height:20px; border-radius:6px; border:2px solid var(--bd); display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.checkbox-mini.checked { background:var(--ac); border-color:var(--ac); }
+
 /* ── MOBILE LAYOUT (<900px) ── */
 .mob-cal-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden}
 @media(min-width:900px){.mob-cal-wrap{display:none}}
@@ -265,14 +274,16 @@ let events = [];
 let companyEvents = [];
 let myTasks = [];
 let assignedByMeTasks = [];
+let companyStaff = []; // For the custom UI selection
 
 let curDate = new Date();
 let selectedDay = new Date();
 let selectedPrio = 'high';
 let CU = { uid: null, role: 'staff', companyId: null };
 
-// ── RENDER UI IMMEDIATELY (DECOUPLED FROM FIREBASE) ──
-// date set by renderAddForm()
+window.selectedStaffUIDs = new Set(); // Stores UIDs chosen in Custom Staff
+
+// ── RENDER UI IMMEDIATELY ──
 renderCalendar();
 showDayEvents(selectedDay);
 
@@ -302,7 +313,6 @@ function format12hr(t) {
   return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
 }
 
-// Initialize Auth Safely
 async function init() {
   try {
     let activeUid = new URLSearchParams(location.search).get('uid');
@@ -343,16 +353,14 @@ async function init() {
       }
     } catch (e) { console.warn("DB Fetch Error", e); }
 
-    // Check Premium Status & Expiry Date
+    // Fetch premium status
     try {
       const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
       if (compSnap.exists()) {
         const compData = compSnap.data();
         CU.isPremium = compData.isPremium === true;
-        if (CU.isPremium && compData.subscriptionExpiry) {
-          if (new Date() > new Date(compData.subscriptionExpiry)) {
-            CU.isPremium = false; // Plan expired
-          }
+        if (CU.isPremium && compData.subscriptionExpiry && new Date() > new Date(compData.subscriptionExpiry)) {
+            CU.isPremium = false;
         }
       } else { CU.isPremium = false; }
     } catch(e) { CU.isPremium = false; }
@@ -360,13 +368,21 @@ async function init() {
     const upgBtn = document.getElementById('globalUpgradeBtn');
     if (upgBtn) {
       if (!CU.isPremium) {
-        upgBtn.classList.remove('hidden');
-        upgBtn.style.display = 'flex';
+        upgBtn.classList.remove('hidden'); upgBtn.style.display = 'flex';
       } else {
-        upgBtn.classList.add('hidden');
-        upgBtn.style.display = 'none';
+        upgBtn.classList.add('hidden'); upgBtn.style.display = 'none';
       }
     }
+
+    // Load Staff for Custom Staff UI
+    const staffQ = query(collection(db, 'users'), where('companyId', '==', CU.companyId));
+    onSnapshot(staffQ, (snap) => {
+      companyStaff = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+      // Re-render the custom staff list if the dropdown is currently set to "custom"
+      document.querySelectorAll('.custom-staff-list').forEach(c => {
+          if(!c.classList.contains('hidden')) window.renderCustomStaffList(c);
+      });
+    });
 
     loadAllRealtime();
 
@@ -377,11 +393,7 @@ async function init() {
   }
 }
 
-// Replaced static getDocs with Real-time onSnapshot listeners
-let unsubPersonal = null;
-let unsubCompany = null;
-let unsubTasksToMe = null;
-let unsubTasksByMe = null;
+let unsubPersonal = null, unsubCompany = null, unsubTasksToMe = null, unsubTasksByMe = null;
 
 function loadAllRealtime() {
   if (unsubPersonal) unsubPersonal();
@@ -395,27 +407,30 @@ function loadAllRealtime() {
     events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
     updateCalendarUI();
   }, (e) => {
-    syncEl.textContent = 'Sync Failed';
-    syncEl.className='ab-sync sync-err';
-    console.error("Personal events error:", e);
+    syncEl.textContent = 'Sync Failed'; syncEl.className='ab-sync sync-err';
   });
 
-  // 2. Company Events
+  // 2. Company Events (Respecting New Visibility Settings)
   if (CU.companyId) {
-    let vis = ['all'];
-    if (CU.role === 'owner') vis.push('owner', 'manager');
-    if (CU.role === 'manager') vis.push('manager');
-    if (CU.role === 'staff') vis.push('staff');
-
     const q2 = query(collection(db, 'calendar'), where('companyId', '==', CU.companyId));
     unsubCompany = onSnapshot(q2, (snap2) => {
       companyEvents = snap2.docs
         .map(d => ({id: d.id, companyEvent: true, ...d.data()}))
-        .filter(ev => vis.includes(ev.visibility))
+        .filter(ev => {
+           // Everyone
+           if (ev.visibility === 'all') return true;
+           // Custom staff parsing
+           if (ev.visibility === 'custom') {
+               return ev.visibleToUIDs && ev.visibleToUIDs.includes(CU.uid);
+           }
+           // Fallback rules for legacy data (if any old events exist)
+           if (CU.role === 'owner' && (ev.visibility === 'owner' || ev.visibility === 'manager')) return true;
+           if (CU.role === 'manager' && ev.visibility === 'manager') return true;
+           if (CU.role === 'staff' && ev.visibility === 'staff') return true;
+           return false;
+        })
         .sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
       updateCalendarUI();
-    }, (e) => {
-      console.warn("Company sync error", e);
     });
   }
 
@@ -424,16 +439,8 @@ function loadAllRealtime() {
   unsubTasksToMe = onSnapshot(q3, (snap) => {
     myTasks = snap.docs.map(d => {
       const t = d.data();
-      return {
-        id: d.id,
-        title: t.title,
-        date: t.dueDate,
-        time: t.dueTime,
-        type: 'task',
-        status: t.status,
-        priority: t.priority === 'High' ? 'high' : t.priority === 'Low' ? 'low' : 'med'
-      };
-    }).filter(t => t.date); // Only show tasks that have a Due Date
+      return { id: d.id, title: t.title, date: t.dueDate, time: t.dueTime, type: 'task', status: t.status, priority: t.priority === 'High' ? 'high' : t.priority === 'Low' ? 'low' : 'med' };
+    }).filter(t => t.date);
     updateCalendarUI();
   });
 
@@ -443,15 +450,7 @@ function loadAllRealtime() {
     unsubTasksByMe = onSnapshot(q4, (snap) => {
       assignedByMeTasks = snap.docs.map(d => {
         const t = d.data();
-        return {
-          id: d.id,
-          title: t.title,
-          date: t.dueDate,
-          time: t.dueTime,
-          type: 'task',
-          status: t.status,
-          priority: t.priority === 'High' ? 'high' : t.priority === 'Low' ? 'low' : 'med'
-        };
+        return { id: d.id, title: t.title, date: t.dueDate, time: t.dueTime, type: 'task', status: t.status, priority: t.priority === 'High' ? 'high' : t.priority === 'Low' ? 'low' : 'med' };
       }).filter(t => t.date);
       updateCalendarUI();
     });
@@ -467,7 +466,7 @@ function updateCalendarUI() {
 function getAllEvents() {
   const seen = new Set();
   return [...events, ...companyEvents, ...myTasks, ...assignedByMeTasks].filter(e => {
-    if(!e.date) return false; // Must have a date to appear on the calendar
+    if(!e.date) return false;
     if(seen.has(e.id)) return false;
     seen.add(e.id); return true;
   });
@@ -475,7 +474,6 @@ function getAllEvents() {
 
 function renderCalendar() {
   const y = curDate.getFullYear(), m = curDate.getMonth();
-  // Update both desktop and mobile month/year
   ['cal-month-d','cal-month-m'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=MONTHS[m]; });
   ['cal-year-d','cal-year-m'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=y; });
 
@@ -485,12 +483,9 @@ function renderCalendar() {
   const allEvs = getAllEvents();
 
   let html = '';
-  const grids = [document.getElementById('cal-grid-d'), document.getElementById('cal-grid-m')];
-
   for(let i=firstDay-1; i>=0; i--) {
     html += `<div class="cal-day empty other-month"><div class="cal-date">${prevDays-i}</div></div>`;
   }
-
   for(let day=1; day<=daysInMonth; day++) {
     const d = new Date(y,m,day);
     const key = dateKey(d);
@@ -519,7 +514,7 @@ function renderCalendar() {
     html += `<div class="cal-day empty other-month"><div class="cal-date">${i}</div></div>`;
   }
 
-  // Build mobile grid with simpler cells
+  // Build mobile grid 
   let mobHtml = '';
   const mobFirstDay = new Date(y,m,1).getDay();
   const mobPrevDays = new Date(y,m,0).getDate();
@@ -533,8 +528,7 @@ function renderCalendar() {
     const todayCls=isToday(d)?' today':'';
     const selCls=isSameDay(d,selectedDay)?' selected':'';
     
-    // Check if it's a task or event to assign correct dot color
-    let dotColor = '#10B981'; // default low
+    let dotColor = '#10B981';
     if (dayEvs.length) {
        if (dayEvs[0].type === 'task') dotColor = '#4F46E5';
        else if (dayEvs[0].priority === 'high') dotColor = '#EF4444';
@@ -548,26 +542,21 @@ function renderCalendar() {
   const mobRows = Math.ceil(mobTotal/7);
   for(let i=1;i<=mobRows*7-mobTotal;i++) mobHtml += '<div class="mob-day empty other-month"><div class="mob-date">' + i + '</div></div>';
 
-  // Set desktop grid
-  const dgrid = document.getElementById('cal-grid-d');
-  if(dgrid) dgrid.innerHTML = html;
-  // Set mobile grid
-  const mgrid = document.getElementById('cal-grid-m');
-  if(mgrid) mgrid.innerHTML = mobHtml;
+  const dgrid = document.getElementById('cal-grid-d'); if(dgrid) dgrid.innerHTML = html;
+  const mgrid = document.getElementById('cal-grid-m'); if(mgrid) mgrid.innerHTML = mobHtml;
 }
 
 window.selectDay = function(y,m,day) {
   selectedDay = new Date(y,m,day);
   const dk = dateKey(selectedDay);
-  document.querySelectorAll('#ae-date').forEach(el => el.value = dk);
-  renderCalendar();
-  showDayEvents(selectedDay);
+  document.querySelectorAll('.ae-date').forEach(el => el.value = dk);
+  renderCalendar(); showDayEvents(selectedDay);
 };
 
 window.goToday = function() {
   curDate = new Date(); selectedDay = new Date();
   const dk = dateKey(selectedDay);
-  document.querySelectorAll('#ae-date').forEach(el => el.value = dk);
+  document.querySelectorAll('.ae-date').forEach(el => el.value = dk);
   renderCalendar(); showDayEvents(selectedDay);
 };
 
@@ -583,20 +572,15 @@ function showDayEvents(d) {
 
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const isTod = isToday(d);
-  const titleStr = isTod ? `Today, ${d.getDate()} ${months[d.getMonth()]}` : `${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+  const titleStr = isToday(d) ? `Today, ${d.getDate()} ${months[d.getMonth()]}` : `${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
 
-  // Update desktop title and count
-  const dtitle = document.getElementById('day-events-title-d');
-  if(dtitle) dtitle.textContent = titleStr;
+  const dtitle = document.getElementById('day-events-title-d'); if(dtitle) dtitle.textContent = titleStr;
   const countEl = document.getElementById('day-events-count-d');
   if(countEl){ if(dayEvs.length){countEl.textContent=dayEvs.length;countEl.style.display='';}else{countEl.style.display='none';} }
 
-  // Update mobile tab label
   const mobTab = document.getElementById('mob-tab-events');
   if(mobTab){ const sp = mobTab.querySelector('span'); if(sp) sp.textContent = titleStr + (dayEvs.length ? ' ('+dayEvs.length+')' : ''); }
 
-  // Desktop list
   const list = document.getElementById('day-events-list-d');
   const mobEmpty = document.getElementById('mob-events-empty');
   const mobList = document.getElementById('day-events-list-m');
@@ -612,7 +596,7 @@ function showDayEvents(d) {
   const evHtml = dayEvs.map(ev => {
     const cls = ev.type==='task'?'task':(ev.priority||'low');
     const vis = ev.visibility && ev.visibility!=='self' ? visLabel(ev.visibility) : '';
-    const isOwn = (ev.uid === CU.uid || !ev.companyEvent) && ev.type !== 'task'; // Prevent deleting tasks from Calendar UI
+    const isOwn = (ev.uid === CU.uid || !ev.companyEvent) && ev.type !== 'task'; 
     return `<div class="event-item ${cls}">
       <div class="event-content">
         <div class="event-title">${escHtml(ev.title)}</div>
@@ -624,29 +608,25 @@ function showDayEvents(d) {
     </div>`;
   }).join('');
   
-  // FIX: Properly inject the generated HTML into the lists!
   if(list) list.innerHTML = evHtml;
   if(mobList) mobList.innerHTML = evHtml;
 }
 
-function visLabel(v) { const m={all:'Everyone',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
+function visLabel(v) { const m={all:'Everyone',custom:'Custom Staff',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
 
-window.addEvent = async function() {
-  // Get values from whichever form is visible
-  const allTitles = document.querySelectorAll('#ae-title');
-  const title = (allTitles[0]?.value||'').trim() || (allTitles[1]?.value||'').trim();
-  const allDates = document.querySelectorAll('#ae-date');
-  const date = allDates[0]?.value || allDates[1]?.value || '';
-  const allTimes = document.querySelectorAll('#ae-time');
-  const time = allTimes[0]?.value || allTimes[1]?.value || '';
-  const allVis = document.querySelectorAll('#ae-visibility');
-  const vis = allVis[0]?.value || allVis[1]?.value || 'self';
+window.addEvent = async function(btnContext) {
+  const formWrap = btnContext.closest('.add-form') || document;
+  const title = (formWrap.querySelector('.ae-title')?.value || '').trim();
+  const date = formWrap.querySelector('.ae-date')?.value || '';
+  const time = formWrap.querySelector('.ae-time')?.value || '';
+  const vis = formWrap.querySelector('.ae-visibility')?.value || 'self';
 
   if(!title){ toast('Enter an event title.','error'); return; }
   if(!date)  { toast('Pick a date.','error'); return; }
 
-  const btn = document.querySelector('#add-event-btn');
-  if(btn){ btn.disabled = true; btn.textContent = 'Adding...'; }
+  // Sync state between Mobile and Desktop form submissions
+  const allBtns = document.querySelectorAll('.add-btn');
+  allBtns.forEach(b => { b.disabled = true; b.textContent = 'Adding...'; });
 
   try {
     const newEv = { 
@@ -658,6 +638,10 @@ window.addEvent = async function() {
       uid: CU.uid || null 
     };
     
+    if (vis === 'custom') {
+        newEv.visibleToUIDs = Array.from(window.selectedStaffUIDs);
+    }
+    
     if (CU.uid) {
       await addDoc(collection(db, 'calendar'), newEv);
     } else {
@@ -666,8 +650,9 @@ window.addEvent = async function() {
       updateCalendarUI();
     }
     
-    document.getElementById('ae-title').value = '';
-    document.getElementById('ae-time').value = '';
+    // Clear inputs
+    document.querySelectorAll('.ae-title').forEach(el => el.value = '');
+    document.querySelectorAll('.ae-time').forEach(el => el.value = '');
     window.setPrio('high');
     
     const [yyyy,mm,dd] = date.split('-').map(Number);
@@ -675,7 +660,7 @@ window.addEvent = async function() {
     
     toast('Event added! 📅','success');
   } catch(e) { toast('Failed: '+e.message,'error'); }
-  finally { document.querySelectorAll('#add-event-btn').forEach(b => { b.disabled=false; b.textContent='Add Event ✓'; }); }
+  finally { allBtns.forEach(b => { b.disabled=false; b.textContent='Add Event ✓'; }); }
 };
 
 window.delEvent = async function(id) {
@@ -701,11 +686,8 @@ function toast(msg, type='info') {
 
 function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// Start execution
 init();
 </script>
-</body>
-</html>
 
 <script>
 // ── MOBILE TAB SWITCHER ──
@@ -716,21 +698,87 @@ window.showMobTab = function(tab) {
   document.getElementById('mob-add-content').classList.toggle('hidden', tab !== 'add');
 };
 
+// ── CUSTOM STAFF SYNC ──
+window.toggleCustomStaff = function(selectEl) {
+    const val = selectEl.value;
+    
+    // Update all visibility selects to keep desktop & mobile forms in sync
+    document.querySelectorAll('.ae-visibility').forEach(sel => {
+        sel.value = val;
+        const listContainer = sel.parentNode.querySelector('.custom-staff-list');
+        if (val === 'custom') {
+            listContainer.classList.remove('hidden');
+            window.renderCustomStaffList(listContainer);
+        } else {
+            listContainer.classList.add('hidden');
+        }
+    });
+};
+
+window.toggleStaffSel = function(uid) {
+    if (uid === window.CU.uid) return; // Prevent deselecting self
+    if (window.selectedStaffUIDs.has(uid)) window.selectedStaffUIDs.delete(uid);
+    else window.selectedStaffUIDs.add(uid);
+    
+    // Re-render open lists
+    document.querySelectorAll('.custom-staff-list').forEach(c => {
+        if (!c.classList.contains('hidden')) window.renderCustomStaffList(c);
+    });
+};
+
+window.renderCustomStaffList = function(container) {
+    if (!window.CU.uid) return;
+    window.selectedStaffUIDs.add(window.CU.uid); // Always select self
+    
+    let html = '';
+    window.companyStaff.forEach(staff => {
+        const isMe = staff.uid === window.CU.uid;
+        const isSelected = window.selectedStaffUIDs.has(staff.uid);
+        
+        const initials = (staff.name || 'U').substring(0,2).toUpperCase();
+        const colors = ['#3B82F6', '#10B981', '#FF9500', '#FF3B30', '#AF52DE'];
+        let h = 0; for(let i=0;i<(staff.name||'').length;i++) h=staff.name.charCodeAt(i)+((h<<5)-h);
+        const bgColor = colors[Math.abs(h)%colors.length];
+        const roleLabel = staff.role === 'owner' ? 'Owner' : staff.designation || staff.role || 'Staff';
+
+        html += `
+        <div class="staff-card-mini ${isSelected ? 'selected' : ''} ${isMe ? 'disabled' : ''}" onclick="window.toggleStaffSel('${staff.uid}')">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:34px; height:34px; border-radius:50%; background:${bgColor}22; color:${bgColor}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;">
+                    ${initials}
+                </div>
+                <div style="display:flex; flex-direction:column;">
+                    <span style="font-size:0.85rem; font-weight:700; color:var(--tx1); line-height:1.2;">
+                        ${String(staff.name).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')} ${isMe ? '<span style="color:var(--tx3); font-size:0.75rem;">(You)</span>' : ''}
+                    </span>
+                    <span style="font-size:0.65rem; font-weight:800; color:var(--ac); background:var(--ac-light, #EEF2FF); padding:2px 6px; border-radius:4px; width:fit-content; margin-top:2px; text-transform:uppercase;">
+                        ${String(roleLabel).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+                    </span>
+                </div>
+            </div>
+            <div class="checkbox-mini ${isSelected ? 'checked' : ''}">
+                ${isSelected ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+            </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+};
+
 // ── RENDER ADD FORM (shared desktop + mobile) ──
 window.renderAddForm = function() {
   const html = `
     <div>
       <span class="ae-lbl">Event Title</span>
-      <input class="ae-inp" id="ae-title" type="text" placeholder="Team meeting, deadline…" maxlength="60">
+      <input class="ae-inp ae-title" type="text" placeholder="Team meeting, deadline…" maxlength="60">
     </div>
     <div class="ae-row">
       <div>
         <span class="ae-lbl">Date</span>
-        <input class="ae-inp" id="ae-date" type="date">
+        <input class="ae-inp ae-date" type="date">
       </div>
       <div>
         <span class="ae-lbl">Time (optional)</span>
-        <select class="ae-sel" id="ae-time">
+        <select class="ae-sel ae-time">
           <option value="">No time</option>
           <option value="06:00">6:00 AM</option><option value="07:00">7:00 AM</option>
           <option value="08:00">8:00 AM</option><option value="09:00">9:00 AM</option>
@@ -751,17 +799,17 @@ window.renderAddForm = function() {
         <button class="prio-btn" id="prio-low" onclick="window.setPrio('low')">🟢 Low</button>
       </div>
     </div>
-    <div id="vis-section">
+    <div class="vis-section">
       <span class="ae-lbl">Visible To</span>
-      <select class="ae-sel" id="ae-visibility">
+      <select class="ae-sel ae-visibility" onchange="window.toggleCustomStaff(this)">
         <option value="self">Only me</option>
         <option value="all">Everyone in company</option>
-        <option value="owner">Owner only</option>
-        <option value="manager">Managers & Owner</option>
-        <option value="staff">Staff only</option>
+        <option value="custom">Custom staff</option>
       </select>
+      <div class="custom-staff-list hidden" style="margin-top:12px; display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding:2px;">
+         </div>
     </div>
-    <button class="add-btn" id="add-event-btn" onclick="window.addEvent()" style="margin-top:4px">Add Event ✓</button>
+    <button class="add-btn" onclick="window.addEvent(this)" style="margin-top:4px">Add Event ✓</button>
   `;
   const dForm = document.getElementById('add-form-d');
   const mForm = document.getElementById('add-form-m');
@@ -770,7 +818,7 @@ window.renderAddForm = function() {
 
   // Set today's date
   const today = dateKeyNow();
-  document.querySelectorAll('#ae-date').forEach(el => el.value = today);
+  document.querySelectorAll('.ae-date').forEach(el => el.value = today);
 };
 
 function dateKeyNow() {
