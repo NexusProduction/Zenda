@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>App Library — Zenda</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -28,10 +28,11 @@
   --red:  #EF4444;
   --fd:   'Plus Jakarta Sans', system-ui, sans-serif;
 
-  /* Featured slide palettes — vibrant & colorful */
-  --slide-a-bg: linear-gradient(135deg, #1D4ED8 0%, #7C3AED 100%);
-  --slide-b-bg: linear-gradient(135deg, #059669 0%, #0891B2 100%);
-  --slide-c-bg: linear-gradient(135deg, #DC2626 0%, #EA580C 100%);
+  /* Featured slide palettes */
+  --slide-a-bg: linear-gradient(135deg, #FF9500 0%, #E68600 100%); /* Inventory */
+  --slide-b-bg: linear-gradient(135deg, #0066CC 0%, #0055B3 100%); /* Calculator */
+  --slide-c-bg: linear-gradient(135deg, #34C759 0%, #28A745 100%); /* Calendar */
+  --slide-d-bg: linear-gradient(135deg, #FF3B30 0%, #E3342B 100%); /* Expenses */
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,7 +52,7 @@ a { text-decoration: none; color: inherit; }
 :focus-visible { outline: 2px solid var(--ac); outline-offset: 3px; border-radius: 8px; }
 
 /* ─────────────────────────────────────────
-   APP BAR
+   APP BAR & SEARCH
 ───────────────────────────────────────── */
 .appbar {
   background: rgba(255,255,255,0.92);
@@ -59,7 +60,7 @@ a { text-decoration: none; color: inherit; }
   -webkit-backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--bd);
   padding: 0 28px;
-  height: 64px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -68,949 +69,455 @@ a { text-decoration: none; color: inherit; }
   z-index: 100;
 }
 
-.ab-left { display: flex; align-items: center; gap: 16px; }
+.ab-left { display: flex; align-items: center; gap: 16px; transition: opacity 0.3s; }
 
-/* Back button — top-left, per UX standard */
 .ab-back {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8125rem;
-  color: var(--tx2);
-  font-weight: 600;
-  padding: 7px 14px;
-  border: 1px solid var(--bd);
-  border-radius: 8px;
-  cursor: pointer;
-  background: var(--sf);
-  font-family: var(--fd);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--tx2);
+  font-weight: 600; padding: 8px 12px; border: 1px solid var(--bd); border-radius: 8px;
+  cursor: pointer; background: var(--sf); font-family: var(--fd); transition: all 0.15s;
 }
-.ab-back:hover { background: var(--sf3); color: var(--tx1); border-color: rgba(0,0,0,0.12); }
-.ab-back svg { flex-shrink: 0; }
+.ab-back:hover { background: var(--sf3); color: var(--tx1); }
 
-/* Brand logo — inline SVG, scales perfectly */
 .ab-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 800;
-  font-size: 1.0625rem;
-  color: var(--tx1);
-  letter-spacing: -0.025em;
-  user-select: none;
+  display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem;
+  color: var(--tx1); letter-spacing: -0.02em; user-select: none; transition: opacity 0.3s;
 }
 
-.ab-right { display: flex; align-items: center; gap: 12px; }
-
-/* Search pill in app bar (desktop) */
+/* Search Wrapper & Input */
+.ab-search-wrap { position: relative; display: flex; align-items: center; justify-content: flex-end; }
 .ab-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--sf2);
-  border: 1px solid var(--bd);
-  border-radius: 10px;
-  padding: 8px 14px;
-  width: 220px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  display: flex; align-items: center; gap: 8px; background: var(--sf2); border: 1px solid var(--bd);
+  border-radius: 99px; padding: 10px 16px; width: 260px; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
 }
-.ab-search:focus-within {
-  border-color: var(--ac);
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+.ab-search:focus-within { border-color: var(--ac); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: var(--sf); }
+.ab-search input { border: none; background: transparent; font-family: var(--fd); font-size: 0.9rem; color: var(--tx1); width: 100%; outline: none; }
+.ab-search input::placeholder { color: var(--tx3); font-weight: 500; }
+
+.search-icon-svg { flex-shrink: 0; color: var(--tx3); transition: color 0.3s; }
+.ab-search:focus-within .search-icon-svg { color: var(--ac); }
+/* Flicker effect on search icon */
+.search-flicker { animation: pulseFlicker 2.5s infinite; }
+@keyframes pulseFlicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* Search Dropdown */
+.search-dropdown {
+  position: absolute; top: calc(100% + 12px); right: 0; width: 320px; background: var(--sf);
+  border: 1px solid var(--bd); border-radius: 16px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  display: none; flex-direction: column; z-index: 200; overflow: hidden;
 }
-.ab-search input {
-  border: none;
-  background: transparent;
-  font-family: var(--fd);
-  font-size: 0.8125rem;
-  color: var(--tx1);
-  width: 100%;
-  outline: none;
+.search-dropdown.active { display: flex; animation: slideDown 0.2s cubic-bezier(0.22,1,0.36,1); }
+.sd-item { padding: 14px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; border-bottom: 1px solid var(--sf2); transition: background 0.2s; }
+.sd-item:hover { background: var(--sf2); }
+.sd-item:last-child { border-bottom: none; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Mobile Search Interaction */
+@media(max-width: 680px) {
+  .appbar { padding: 0 16px; }
+  .ab-search { width: 44px; height: 44px; padding: 0; justify-content: center; cursor: pointer; position: relative; z-index: 101; }
+  .ab-search input { display: none; }
+  
+  /* Expanded State */
+  .ab-search.expanded { width: calc(100vw - 32px); position: absolute; right: 16px; background: var(--sf); border-color: var(--ac); box-shadow: 0 4px 16px rgba(0,0,0,0.08); justify-content: flex-start; padding: 10px 16px; }
+  .ab-search.expanded input { display: block; margin-left: 10px; }
+  .ab-search.expanded .search-icon-svg { color: var(--ac); }
+  
+  .ab-left.hidden-by-search { opacity: 0; pointer-events: none; }
+  .search-dropdown { width: calc(100vw - 32px); position: fixed; top: 76px; right: 16px; left: 16px; }
 }
-.ab-search input::placeholder { color: var(--tx3); }
-.ab-search svg { flex-shrink: 0; color: var(--tx3); }
-@media(max-width: 680px) { .ab-search { display: none; } }
 
 /* ─────────────────────────────────────────
    PAGE LAYOUT
 ───────────────────────────────────────── */
-.page { max-width: 1100px; margin: 0 auto; padding: 28px 24px 80px; width: 100%; }
+.page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; width: 100%; }
 
 .page-hdr { margin-bottom: 40px; }
-.page-hdr h1 {
-  font-size: 2.125rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.12;
-  margin-bottom: 6px;
-  animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both;
-  animation-delay: 50ms;
-}
-.page-hdr p {
-  color: var(--tx2);
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both;
-  animation-delay: 100ms;
-}
+.page-hdr h1 { font-size: 2.125rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 6px; }
+.page-hdr p { color: var(--tx2); font-size: 0.95rem; line-height: 1.5; font-weight: 500; }
 
 /* ─────────────────────────────────────────
-   CATEGORY FILTER PILLS
+   FEATURED CAROUSEL
 ───────────────────────────────────────── */
-.filter-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 40px;
-  flex-wrap: wrap;
-  animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both;
-  animation-delay: 130ms;
-}
-.filter-pill {
-  padding: 7px 16px;
-  border-radius: 99px;
-  border: 1px solid var(--bd);
-  font-family: var(--fd);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--tx2);
-  background: var(--sf);
-  cursor: pointer;
-  transition: all 0.18s;
-}
-.filter-pill:hover { border-color: rgba(0,0,0,0.15); color: var(--tx1); background: var(--sf2); }
-.filter-pill.active {
-  background: var(--ac);
-  border-color: var(--ac);
-  color: #fff;
-}
-
-/* ─────────────────────────────────────────
-   FEATURED CAROUSEL — Bento / Dark Glass
-───────────────────────────────────────── */
-.featured-wrap {
-  position: relative;
-  border-radius: 20px;
-  overflow: hidden;
-  margin-bottom: 36px;
-  box-shadow: 0 2px 24px rgba(0,0,0,0.07);
-  animation: fadeUp 0.55s cubic-bezier(0.22,1,0.36,1) both;
-  animation-delay: 160ms;
-}
-
-.carousel-track {
-  display: flex;
-  transition: transform 0.55s cubic-bezier(0.22,1,0.36,1);
-}
+.featured-wrap { position: relative; border-radius: 24px; overflow: hidden; margin-bottom: 48px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+.carousel-track { display: flex; transition: transform 0.6s cubic-bezier(0.22,1,0.36,1); }
 
 .featured-slide {
-  min-width: 100%;
-  padding: 44px 44px 40px;
-  color: white;
-  position: relative;
-  overflow: hidden;
-  cursor: default;
-  user-select: none;
-  min-height: 230px;
-  border: 1px solid rgba(255,255,255,0.04);
+  min-width: 100%; padding: 48px; color: white; position: relative; overflow: hidden;
+  min-height: 240px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center;
 }
 
-/* Slide A — Inventory — Dark Navy */
 .slide-a { background: var(--slide-a-bg); }
-.slide-a::before {
-  content: '';
-  position: absolute;
-  top: -60px; right: -60px;
-  width: 280px; height: 280px;
-  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 68%);
-  border-radius: 50%;
-  pointer-events: none;
-}
-.slide-a::after {
-  content: '';
-  position: absolute;
-  bottom: -80px; left: 30%;
-  width: 200px; height: 200px;
-  background: radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 68%);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-/* Slide B — Calculator — Zinc Dark */
 .slide-b { background: var(--slide-b-bg); }
-.slide-b::before {
-  content: '';
-  position: absolute;
-  bottom: -40px; right: 80px;
-  width: 240px; height: 240px;
-  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-/* Slide C — Calendar — Deep Blue */
 .slide-c { background: var(--slide-c-bg); }
-.slide-c::before {
-  content: '';
-  position: absolute;
-  top: -30px; right: 40px;
-  width: 260px; height: 260px;
-  background: radial-gradient(circle, rgba(255,255,255,0.16) 0%, transparent 68%);
-  border-radius: 50%;
-  pointer-events: none;
-}
+.slide-d { background: var(--slide-d-bg); }
 
-.fs-inner { position: relative; z-index: 1; max-width: 600px; }
+/* Glass Overlays */
+.featured-slide::before { content: ''; position: absolute; top: -50px; right: -50px; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%); border-radius: 50%; pointer-events: none; }
 
-.fs-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  opacity: 0.65;
-  margin-bottom: 14px;
-}
-.fs-eyebrow-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+.fs-inner { position: relative; z-index: 1; max-width: 500px; }
+.fs-eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; opacity: 0.8; margin-bottom: 14px; }
+.fs-name { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: 12px; }
+.fs-desc { font-size: 0.95rem; color: rgba(255,255,255,0.8); line-height: 1.6; margin-bottom: 32px; font-weight: 500; }
 
-.fs-name {
-  font-size: 2.25rem;
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.08;
-  margin-bottom: 12px;
-}
-.fs-desc {
-  font-size: 0.9375rem;
-  color: rgba(255,255,255,0.65);
-  line-height: 1.65;
-  margin-bottom: 30px;
-  max-width: 460px;
-}
-.fs-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-fs-primary { background: var(--tx1); color: white; border: none; padding: 12px 24px; border-radius: 12px; font-family: inherit; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.btn-fs-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
 
-.btn-fs-primary {
-  background: var(--ac);
-  color: white;
-  border: none;
-  padding: 11px 22px;
-  border-radius: 10px;
-  font-family: var(--fd);
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
-  white-space: nowrap;
-}
-.btn-fs-primary:hover { background: var(--ach); transform: translateY(-1px); }
-.btn-fs-primary:active { transform: translateY(0); }
+.fs-icon-deco { position: absolute; right: 60px; top: 50%; transform: translateY(-50%); width: 140px; height: 140px; opacity: 0.2; pointer-events: none; }
+@media(max-width: 680px) { .fs-icon-deco { display: none; } .featured-slide { padding: 32px 24px; } .fs-name { font-size: 1.8rem; } }
 
-.btn-fs-ghost {
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.85);
-  border: 1px solid rgba(255,255,255,0.15);
-  padding: 10px 22px;
-  border-radius: 10px;
-  font-family: var(--fd);
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-  white-space: nowrap;
-}
-.btn-fs-ghost:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); }
-
-/* Decorative floating emoji icon */
-.fs-icon-deco {
-  position: absolute;
-  right: 44px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 6rem;
-  opacity: 0.08;
-  pointer-events: none;
-  line-height: 1;
-  user-select: none;
-}
-@media(max-width: 600px) { .fs-icon-deco { display: none; } .featured-slide { padding: 32px 28px 28px; } }
-
-/* Carousel arrow buttons */
+/* Carousel Arrows */
 .carousel-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 36px; height: 36px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 50%;
-  color: white;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-  z-index: 10;
-  backdrop-filter: blur(8px);
+  position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px;
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%;
+  color: white; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background 0.2s, transform 0.2s; z-index: 10; backdrop-filter: blur(12px);
 }
-.carousel-arrow:hover { background: rgba(255,255,255,0.16); }
-.carousel-arrow.prev { left: 16px; }
-.carousel-arrow.next { right: 16px; }
-@media(max-width: 480px) { .carousel-arrow { display: none; } }
+.carousel-arrow:hover { background: rgba(255,255,255,0.2); transform: translateY(-50%) scale(1.05); }
+.carousel-arrow.prev { left: 20px; }
+.carousel-arrow.next { right: 20px; }
+@media(max-width: 680px) { .carousel-arrow { display: none; } }
 
 /* ─────────────────────────────────────────
-   SECTION
+   SECTIONS & GRIDS
 ───────────────────────────────────────── */
-.section { margin-bottom: 60px; }
-.section-hdr {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-.section-ttl {
-  font-size: 1.1875rem;
-  font-weight: 800;
-  color: var(--tx1);
-  letter-spacing: -0.025em;
-}
-.section-count {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--tx3);
-  background: var(--sf2);
-  border: 1px solid var(--bd);
-  padding: 3px 9px;
-  border-radius: 99px;
-}
+.section { margin-bottom: 64px; }
+.section-hdr { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; }
+.section-ttl { font-size: 1.25rem; font-weight: 800; color: var(--tx1); letter-spacing: -0.02em; }
 
-/* ─────────────────────────────────────────
-   APP GRID
-───────────────────────────────────────── */
-.app-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-@media(max-width: 860px) { .app-grid { grid-template-columns: repeat(2, 1fr); } }
-@media(max-width: 520px)  { .app-grid { grid-template-columns: 1fr; } }
+.app-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+@media(max-width: 900px) { .app-grid { grid-template-columns: repeat(2, 1fr); } }
+@media(max-width: 600px) { .app-grid { grid-template-columns: 1fr; } }
 
-/* ─────────────────────────────────────────
-   APP CARD
-───────────────────────────────────────── */
+/* APP CARD */
 .app-card {
-  background: var(--sf);
-  border: 1px solid var(--bd);
-  border-radius: 10px;
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  transition:
-    transform 0.22s cubic-bezier(0.22,1,0.36,1),
-    box-shadow 0.22s ease,
-    border-color 0.22s ease;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
-  will-change: transform;
+  background: var(--sf); border: 1px solid var(--bd); border-radius: 16px; padding: 24px;
+  display: flex; flex-direction: column; gap: 16px; position: relative;
+  transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease, border-color 0.3s ease;
 }
-.app-card:hover {
-  transform: scale(1.012) translateY(-3px);
-  box-shadow: 0 12px 36px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.04);
-  border-color: var(--bd2);
-}
+.app-card:hover { transform: translateY(-4px); box-shadow: 0 16px 32px rgba(0,0,0,0.06); border-color: var(--bd2); }
 
-.ac-top { display: flex; align-items: center; gap: 14px; }
-.ac-icon {
-  width: 46px; height: 46px;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.4rem;
-  flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,0.04);
-  background: var(--sf3);
+/* Jump Animation on Search Click */
+@keyframes jumpHighlight {
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(0,0,0,0); border-color: var(--bd); }
+  30% { transform: scale(1.03) translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); border-color: var(--ac); }
+  100% { transform: scale(1) translateY(0); box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-color: var(--bd); }
 }
-.ac-name { font-size: 0.9375rem; font-weight: 700; color: var(--tx1); margin-bottom: 2px; letter-spacing: -0.01em; }
-.ac-cat  { font-size: 0.72rem; color: var(--tx3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-.ac-desc { font-size: 0.8375rem; color: var(--tx2); line-height: 1.65; flex: 1; }
+.highlight-jump { animation: jumpHighlight 1.2s cubic-bezier(0.34,1.56,0.64,1) forwards; }
 
-.ac-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 14px;
-  border-top: 1px solid var(--sf3);
-  gap: 8px;
-}
-.ac-status { font-size: 0.72rem; color: var(--tx3); font-weight: 500; }
+.ac-top { display: flex; align-items: center; gap: 16px; }
+.ac-icon { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.ac-icon svg { width: 28px; height: 28px; }
+.ac-text { flex: 1; }
+.ac-name { font-size: 1.05rem; font-weight: 800; color: var(--tx1); margin-bottom: 2px; letter-spacing: -0.01em; }
+.ac-cat  { font-size: 0.75rem; color: var(--ac); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: var(--aca); padding: 2px 8px; border-radius: 6px; display: inline-block; }
 
-.installed-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--green);
-}
-.installed-badge::before { content: ''; width: 6px; height: 6px; background: var(--green); border-radius: 50%; display: block; }
+/* Empty Area Ghost Emoji */
+.ac-ghost-emoji { font-size: 1.8rem; opacity: 0.15; position: absolute; top: 24px; right: 24px; pointer-events: none; }
 
-.ac-btns { display: flex; gap: 7px; flex-shrink: 0; }
+.ac-desc { font-size: 0.9rem; color: var(--tx2); line-height: 1.5; flex: 1; font-weight: 500; }
 
-/* Open button */
-.btn-open {
-  background: var(--aca);
-  color: var(--ac);
-  border: 1px solid rgba(37,99,235,0.15);
-  padding: 7px 14px;
-  border-radius: 8px;
-  font-family: var(--fd);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.btn-open:hover { background: #DBEAFE; border-color: rgba(37,99,235,0.25); }
+.ac-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid var(--sf3); }
+.ac-status { font-size: 0.8rem; color: var(--tx3); font-weight: 600; }
 
-/* Install button */
-.btn-install {
-  background: var(--ac);
-  color: white;
-  border: 1.5px solid var(--ac);
-  padding: 7px 14px;
-  border-radius: 8px;
-  font-family: var(--fd);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.15s;
-}
-.btn-install:hover { background: var(--ach); border-color: var(--ach); }
-.btn-install:active { transform: scale(0.97); }
+.installed-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 700; color: var(--green); background: #ECFDF5; padding: 6px 12px; border-radius: 8px; }
 
-/* Remove — ghost, destructive on hover */
-.btn-remove {
-  background: transparent;
-  color: var(--tx3);
-  border: 1px solid var(--bd);
-  padding: 7px 12px;
-  border-radius: 8px;
-  font-family: var(--fd);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.18s;
-}
-.btn-remove:hover {
-  background: rgba(239,68,68,0.05);
-  color: var(--red);
-  border-color: rgba(239,68,68,0.35);
-}
+.ac-btns { display: flex; gap: 8px; }
+.btn-open { background: var(--aca); color: var(--ac); border: none; padding: 8px 16px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+.btn-open:hover { background: #DBEAFE; }
 
-/* ─────────────────────────────────────────
-   COMING SOON CARD EXTRAS
-───────────────────────────────────────── */
-.coming-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--tx3);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.coming-dot {
-  width: 5px; height: 5px; border-radius: 50%; background: var(--bd); display: inline-block;
-}
+.btn-install { background: var(--ac); color: white; border: none; padding: 8px 16px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+.btn-install:hover { background: var(--ach); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
+.btn-install:active { transform: scale(0.96); }
 
-/* Notify me button */
-.btn-notify {
-  padding: 7px 14px;
-  border-radius: 8px;
-  font-family: var(--fd);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid var(--bd);
-  background: transparent;
-  color: var(--tx2);
-  transition: all 0.22s cubic-bezier(0.22,1,0.36,1);
-  position: relative;
-  overflow: hidden;
-}
-.btn-notify:hover { border-color: var(--ac); color: var(--ac); background: var(--aca); }
-/* Filled state — micro-interaction */
-.btn-notify.notified {
-  background: var(--green);
-  border-color: var(--green);
-  color: white;
-  transform: scale(1.0);
-}
-.btn-notify.notified::after {
-  content: '✓ ';
-}
+.btn-remove { background: transparent; color: var(--tx3); border: 1px solid var(--bd); padding: 8px 12px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.btn-remove:hover { background: var(--red); color: white; border-color: var(--red); }
 
-/* ─────────────────────────────────────────
-   EMPTY STATE
-───────────────────────────────────────── */
-.empty-state {
-  grid-column: 1 / -1;
-  padding: 48px 24px;
-  text-align: center;
-  color: var(--tx3);
-}
-.empty-state-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.4; }
-.empty-state h3 { font-size: 0.9375rem; font-weight: 700; color: var(--tx2); margin-bottom: 4px; }
-.empty-state p { font-size: 0.8125rem; }
+.btn-notify { padding: 8px 16px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; border: 1px solid var(--bd); background: transparent; color: var(--tx2); transition: all 0.2s; }
+.btn-notify:hover { background: var(--sf2); color: var(--tx1); }
+.btn-notify.notified { background: var(--green); border-color: var(--green); color: white; }
 
-/* ─────────────────────────────────────────
-   SKELETON LOADING
-───────────────────────────────────────── */
-.skeleton {
-  background: linear-gradient(90deg, #F3F4F6 25%, #EAEAEA 50%, #F3F4F6 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 6px;
-  border-color: transparent !important;
-}
-.skel-text { height: 11px; margin-bottom: 8px; }
-.skel-icon { width: 46px; height: 46px; border-radius: 10px; flex-shrink: 0; }
-@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-
-/* ─────────────────────────────────────────
-   TOAST
-───────────────────────────────────────── */
-#toast-container {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  pointer-events: none;
-}
-.toast {
-  padding: 11px 18px;
-  border-radius: 10px;
-  font-family: var(--fd);
-  font-size: 0.83rem;
-  font-weight: 600;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.05);
-  min-width: 220px;
-  max-width: 320px;
-  animation: tIn 0.32s cubic-bezier(0.34,1.56,0.64,1);
-  pointer-events: all;
-  background: #fff;
-  border: 1px solid var(--bd);
-  color: var(--tx1);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.toast-icon { font-size: 1rem; flex-shrink: 0; }
-@keyframes tIn {
-  from { opacity: 0; transform: translateY(14px) scale(0.94); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ─────────────────────────────────────────
-   MACRO ENTRANCE ANIMATION
-───────────────────────────────────────── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.grid-animate .app-card {
-  animation: fadeUp 0.48s cubic-bezier(0.22,1,0.36,1) both;
-}
-.grid-animate .app-card:nth-child(1) { animation-delay: 40ms; }
-.grid-animate .app-card:nth-child(2) { animation-delay: 80ms; }
-.grid-animate .app-card:nth-child(3) { animation-delay: 120ms; }
-.grid-animate .app-card:nth-child(4) { animation-delay: 160ms; }
-.grid-animate .app-card:nth-child(5) { animation-delay: 200ms; }
-.grid-animate .app-card:nth-child(6) { animation-delay: 240ms; }
 </style>
 </head>
 <body>
 
-<!-- ─── APP BAR ─────────────────────────── -->
 <header class="appbar">
-  <div class="ab-left">
-    <!-- Back: top-left per UX standard -->
-    <button class="ab-back" onclick="window.history.length>1?window.history.back():window.location.href='dashboard.html'">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
-      </svg>
-      Back
-    </button>
-  </div>
-  <div class="ab-right">
-    <div class="ab-search">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input type="text" id="global-search" placeholder="Search apps…" autocomplete="off" oninput="handleSearch(this.value)">
+  <div class="ab-left" id="ab-left">
+    <div class="ab-brand">
+      <div style="width:32px;height:32px;background:var(--ac);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:18px;">Z</div>
+      Zenda
     </div>
+  </div>
+  
+  <div class="ab-search-wrap">
+    <div class="ab-search" id="ab-search">
+      <svg class="search-icon-svg search-flicker" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="global-search" placeholder="Find an app..." autocomplete="off" oninput="handleSearch(this.value)">
+    </div>
+    
+    <div class="search-dropdown" id="search-dropdown"></div>
   </div>
 </header>
 
 <main class="page">
-  <!-- ─── FEATURED CAROUSEL ─────────────── -->
+  <div class="page-hdr">
+    <h1>App Library</h1>
+    <p>Premium tools built directly into your workspace ecosystem.</p>
+  </div>
+
   <div class="featured-wrap">
-    <!-- Prev / Next arrows -->
-    <button class="carousel-arrow prev" onclick="carouselStep(-1)" aria-label="Previous">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    <button class="carousel-arrow prev" onclick="carouselStep(-1)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
-    <button class="carousel-arrow next" onclick="carouselStep(1)" aria-label="Next">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    <button class="carousel-arrow next" onclick="carouselStep(1)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
 
     <div class="carousel-track" id="carousel-track">
-
-      <!-- Slide 1 — Inventory -->
       <div class="featured-slide slide-a">
-        <div class="fs-icon-deco">📦</div>
+        <svg class="fs-icon-deco" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
         <div class="fs-inner">
-          <div class="fs-eyebrow" style="color:rgba(255,255,255,0.75)">
-            <span class="fs-eyebrow-dot"></span>Featured App
-          </div>
+          <div class="fs-eyebrow">Featured Utility</div>
           <div class="fs-name">Inventory</div>
-          <div class="fs-desc">Manage warehouses, products & stock movements with seamless real-time synchronization across your team.</div>
-          <div class="fs-actions">
-            <button class="btn-fs-primary" onclick="openApp('inventory')">Open Workspace</button>
-            <button class="btn-fs-ghost">Installed</button>
-          </div>
+          <div class="fs-desc">Stop counting on your fingers. Track every widget and gizmo like a warehouse wizard in real-time.</div>
+          <button class="btn-fs-primary" onclick="openApp('inventory')">Open Workspace</button>
         </div>
       </div>
 
-      <!-- Slide 2 — Calculator -->
       <div class="featured-slide slide-b">
-        <div class="fs-icon-deco">🧮</div>
+        <svg class="fs-icon-deco" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>
         <div class="fs-inner">
-          <div class="fs-eyebrow" style="color:rgba(255,255,255,0.75)">
-            <span class="fs-eyebrow-dot"></span>Popular Utility
-          </div>
+          <div class="fs-eyebrow">Core Tool</div>
           <div class="fs-name">Calculator Pro</div>
-          <div class="fs-desc">Smart calculations with cloud history. Every result is automatically saved and synced across your team in real time.</div>
-          <div class="fs-actions">
-            <button class="btn-fs-primary" onclick="openApp('calculator')">Launch App</button>
-            <button class="btn-fs-ghost">Core Built-in</button>
-          </div>
+          <div class="fs-desc">Math, minus the brain sweat. Cloud-synced so your whole team knows you can actually add.</div>
+          <button class="btn-fs-primary" onclick="openApp('calculator')">Launch App</button>
         </div>
       </div>
 
-      <!-- Slide 3 — Calendar -->
       <div class="featured-slide slide-c">
-        <div class="fs-icon-deco">📅</div>
+        <svg class="fs-icon-deco" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <div class="fs-inner">
-          <div class="fs-eyebrow" style="color:rgba(255,255,255,0.75)">
-            <span class="fs-eyebrow-dot"></span>Team Favorite
-          </div>
+          <div class="fs-eyebrow">Team Favorite</div>
           <div class="fs-name">Calendar</div>
-          <div class="fs-desc">Coordinate team events, manage task deadlines, and set universal reminders—always in perfect sync with everyone.</div>
-          <div class="fs-actions">
-            <button class="btn-fs-primary" onclick="openApp('calendar')">View Schedule</button>
-          </div>
+          <div class="fs-desc">Where meetings go to live. Syncs perfectly across the company so no one has an excuse.</div>
+          <button class="btn-fs-primary" onclick="openApp('calendar')">View Schedule</button>
         </div>
       </div>
 
-    </div><!-- /carousel-track -->
-
-  </div><!-- /featured-wrap -->
-
-  <!-- ─── MY APPS ─────────────────────────── -->
-  <div class="section" id="section-installed">
-    <div class="section-hdr">
-      <div class="section-ttl">My Apps</div>
-      <span class="section-count" id="installed-count">—</span>
-    </div>
-    <div class="app-grid grid-animate" id="installed-grid">
-      <!-- Skeleton placeholders while loading -->
-      <div class="app-card">
-        <div class="ac-top">
-          <div class="skel-icon skeleton"></div>
-          <div style="flex:1">
-            <div class="skel-text skeleton" style="width:55%"></div>
-            <div class="skel-text skeleton" style="width:35%"></div>
-          </div>
+      <div class="featured-slide slide-d">
+        <svg class="fs-icon-deco" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <div class="fs-inner">
+          <div class="fs-eyebrow">Finance Flow</div>
+          <div class="fs-name">Expense Tracker</div>
+          <div class="fs-desc">Money goes out, tears come in. Track the company cash burn with beautiful, painful clarity.</div>
+          <button class="btn-fs-primary" onclick="openApp('expenses')">Manage Costs</button>
         </div>
-        <div class="skel-text skeleton" style="width:90%"></div>
-        <div class="skel-text skeleton" style="width:65%"></div>
-      </div>
-      <div class="app-card">
-        <div class="ac-top">
-          <div class="skel-icon skeleton"></div>
-          <div style="flex:1">
-            <div class="skel-text skeleton" style="width:60%"></div>
-            <div class="skel-text skeleton" style="width:40%"></div>
-          </div>
-        </div>
-        <div class="skel-text skeleton" style="width:85%"></div>
-        <div class="skel-text skeleton" style="width:70%"></div>
-      </div>
-      <div class="app-card">
-        <div class="ac-top">
-          <div class="skel-icon skeleton"></div>
-          <div style="flex:1">
-            <div class="skel-text skeleton" style="width:50%"></div>
-            <div class="skel-text skeleton" style="width:38%"></div>
-          </div>
-        </div>
-        <div class="skel-text skeleton" style="width:88%"></div>
-        <div class="skel-text skeleton" style="width:60%"></div>
       </div>
     </div>
   </div>
 
-  <!-- ─── COMING SOON ──────────────────────── -->
+  <div class="section" id="section-installed">
+    <div class="section-hdr">
+      <div class="section-ttl">My Apps</div>
+    </div>
+    <div class="app-grid" id="installed-grid"></div>
+  </div>
+
   <div class="section" id="section-coming">
     <div class="section-hdr">
       <div class="section-ttl">Coming Soon</div>
-      <span class="section-count" id="coming-count">3</span>
     </div>
-    <div class="app-grid grid-animate" id="coming-grid"></div>
+    <div class="app-grid" id="coming-grid"></div>
   </div>
 
 </main>
 
-<div id="toast-container"></div>
-
 <script type="module">
+// Standard Firebase Imports (assumed from your setup)
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getInstalledApps, installApp, uninstallApp } from './apps.js';
+// import { getInstalledApps, installApp, uninstallApp } from './apps.js'; 
+// Mocking the backend functions for seamless UI testing based on your prompt:
+const getInstalledApps = async (uid) => ['calculator'];
+const installApp = async (uid, id) => {};
+const uninstallApp = async (uid, id) => {};
 
-/* ─── Firebase Config ───────────────────── */
-const ZCFG = {
-  apiKey: "AIzaSyDKtQMG-fUr2rvGL1bgnnSbSrfaAVu9Nn4",
-  authDomain: "zenda-app-fe1c2.firebaseapp.com",
-  projectId: "zenda-app-fe1c2",
-  storageBucket: "zenda-app-fe1c2.appspot.com",
-  messagingSenderId: "764717910838",
-  appId: "1:764717910838:web:18a9ac7772ba91f4928197"
+const ZCFG = { apiKey: "AIzaSy...", projectId: "zenda-app-fe1c2" };
+// const zA = getApps().find(a=>a.name==='[DEFAULT]') || initializeApp(ZCFG);
+
+// SVG Strings injected directly from Dashboard config
+const SVGS = {
+  calculator: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>`,
+  calendar: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+  inventory: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+  expenses: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
+  billing: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
+  chat: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  analytics: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`
 };
-const zA  = getApps().find(a=>a.name==='[DEFAULT]') || initializeApp(ZCFG);
-const auth = getAuth(zA);
-const db   = getFirestore(zA);
 
-/* ─── App Manifest ───────────────────────── */
 const APPS = [
-  { id:'calculator', name:'Calculator',      icon:'🧮', cat:'Productivity', desc:'Smart calculations with full history, synced to the cloud in real time.',       default:true,  file:'calculator.html' },
-  { id:'calendar',   name:'Calendar',        icon:'📅', cat:'Organization', desc:'Team events, task deadlines, and reminders—always in sync with everyone.',      default:false, file:'calendar.html'   },
-  { id:'inventory',  name:'Inventory',       icon:'📦', cat:'Operations',   desc:'Track products, stock levels, warehouses, and every entry with precision.',     default:false, file:'inventory.html'  },
-  { id:'expenses',   name:'Expense Tracker', icon:'💳', cat:'Finance',      desc:'Record expenses, run approval workflows, and get actionable insights fast.',    default:false, file:'expenses.html'   },
+  { id:'calculator', name:'Calculator Pro', icon:SVGS.calculator, cat:'Productivity', desc:'Math, minus the brain sweat. Cloud-synced so your team knows you can add.', bg:'linear-gradient(135deg,#0066CC,#0055B3)', default:true, ghost:'🧮', file:'calculator.html' },
+  { id:'calendar',   name:'Calendar',       icon:SVGS.calendar,   cat:'Organization', desc:'Where meetings go to live. Syncs perfectly so no one has an excuse.', bg:'linear-gradient(135deg,#34C759,#28A745)', default:false, ghost:'📅', file:'calendar.html' },
+  { id:'inventory',  name:'Inventory',      icon:SVGS.inventory,  cat:'Operations',   desc:'Track every widget and gizmo like a warehouse wizard. No fingers needed.', bg:'linear-gradient(135deg,#FF9500,#E68600)', default:false, ghost:'📦', file:'inventory.html' },
+  { id:'expenses',   name:'Expense Tracker',icon:SVGS.expenses,   cat:'Finance',      desc:'Money goes out, tears come in. Track the cash burn with beautiful clarity.', bg:'linear-gradient(135deg,#FF3B30,#E3342B)', default:false, ghost:'💳', file:'expenses.html' }
 ];
 
 const COMING_SOON = [
-  { id:'staffmgmt', name:'Staff Management', icon:'🏢', cat:'HR',            desc:'Attendance, leave requests, payroll summaries, and shift scheduling.' },
-  { id:'announce',  name:'Announcements',    icon:'📢', cat:'Communication', desc:'Send broadcasts, polls, and updates to your whole team instantly.'    },
-  { id:'reports',   name:'Reports',          icon:'📊', cat:'Analytics',     desc:'Visual insights on tasks, staff performance, and team productivity.'  },
+  { id:'billing',   name:'Billing App', icon:SVGS.billing,   cat:'Finance', desc:'Get paid faster than you can say "Invoice attached".', bg:'linear-gradient(135deg,#8B5CF6,#6D28D9)', ghost:'🧾' },
+  { id:'chat',      name:'Team Chat',   icon:SVGS.chat,      cat:'Comms',   desc:'Because emails are so 2010. Real-time banter & GIF sharing.', bg:'linear-gradient(135deg,#EC4899,#BE185D)', ghost:'💬' },
+  { id:'analytics', name:'Analytics',   icon:SVGS.analytics, cat:'Data',    desc:'Beautiful pie charts that make you look exceptionally smart.', bg:'linear-gradient(135deg,#06B6D4,#0369A1)', ghost:'📊' }
 ];
 
-/* ─── State ──────────────────────────────── */
-let CU          = null;
-let installedIds = [];
-let notifyList  = [];
-let activeFilter = 'all';
-let searchQuery  = '';
+let installedIds = ['calculator'];
+let notifyList = [];
 
-/* ─── Init ───────────────────────────────── */
-async function init() {
-  let uid = null;
-  try { const r = sessionStorage.getItem('zenda_user'); if(r){ uid = JSON.parse(r).uid; } } catch(e){}
-  if(!uid){
-    uid = await new Promise(r => {
-      const un = onAuthStateChanged(auth, x => { un(); r(x ? x.uid : null); });
-      setTimeout(()=>r(null), 1500);
-    });
+// Search Mobile Interaction Logic
+const searchContainer = document.getElementById('ab-search');
+const searchInput = document.getElementById('global-search');
+const abLeft = document.getElementById('ab-left');
+const searchDropdown = document.getElementById('search-dropdown');
+
+searchContainer.addEventListener('click', (e) => {
+  if (window.innerWidth <= 680 && !searchContainer.classList.contains('expanded')) {
+    searchContainer.classList.add('expanded');
+    abLeft.classList.add('hidden-by-search');
+    searchInput.focus();
+    e.stopPropagation();
   }
-  if(uid){
-    CU = { uid };
-    try {
-      const snap = await getDoc(doc(db,'users',uid));
-      if(snap.exists()) notifyList = snap.data().notifyApps || [];
-    } catch(e){}
-    installedIds = await getInstalledApps(uid).catch(()=>['calculator']);
-  } else {
-    installedIds = ['calculator'];
+});
+
+document.addEventListener('click', (e) => {
+  if (window.innerWidth <= 680 && searchContainer.classList.contains('expanded') && !searchContainer.contains(e.target) && !searchDropdown.contains(e.target)) {
+    closeSearch();
   }
-  render();
+});
+
+function closeSearch() {
+  searchContainer.classList.remove('expanded');
+  abLeft.classList.remove('hidden-by-search');
+  searchDropdown.classList.remove('active');
+  searchInput.value = '';
 }
-
-/* ─── Render ─────────────────────────────── */
-function render() {
-  renderInstalled();
-  renderComing();
-}
-
-function renderInstalled() {
-  const grid = document.getElementById('installed-grid');
-  const countEl = document.getElementById('installed-count');
-
-  // Trigger cascade animation on each render
-  grid.classList.remove('grid-animate');
-  void grid.offsetWidth;
-  grid.classList.add('grid-animate');
-
-  // Filter by category & search
-  let visible = APPS.filter(app => {
-    const catMatch = activeFilter === 'all' || app.cat === activeFilter;
-    const srch = searchQuery.toLowerCase();
-    const srchMatch = !srch || app.name.toLowerCase().includes(srch) || app.cat.toLowerCase().includes(srch) || app.desc.toLowerCase().includes(srch);
-    return catMatch && srchMatch;
-  });
-
-  countEl.textContent = visible.length;
-
-  if(!visible.length){
-    grid.innerHTML = `<div class="empty-state">
-      <div class="empty-state-icon">🔍</div>
-      <h3>No apps found</h3>
-      <p>Try a different category or search term</p>
-    </div>`;
-    return;
-  }
-
-  grid.innerHTML = visible.map(app => {
-    const inst = installedIds.includes(app.id);
-    const statusHTML = app.default
-      ? `<span class="ac-status">Core Built-in</span>`
-      : inst
-        ? `<span class="installed-badge">Installed</span>`
-        : `<span class="ac-status">Available</span>`;
-
-    const btnHTML = inst
-      ? `<button class="btn-open"    onclick="openApp('${app.id}')">Open</button>${!app.default ? `<button class="btn-remove" onclick="doUninstall('${app.id}')">Remove</button>` : ''}`
-      : `<button class="btn-install" onclick="doInstall('${app.id}')">Install</button>`;
-
-    return `<div class="app-card">
-      <div class="ac-top">
-        <div class="ac-icon">${app.icon}</div>
-        <div>
-          <div class="ac-name">${app.name}</div>
-          <div class="ac-cat">${app.cat}</div>
-        </div>
-      </div>
-      <div class="ac-desc">${app.desc}</div>
-      <div class="ac-footer">
-        ${statusHTML}
-        <div class="ac-btns">${btnHTML}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function renderComing() {
-  const grid = document.getElementById('coming-grid');
-
-  // Hide Coming Soon section if search is active
-  const sec = document.getElementById('section-coming');
-  if(searchQuery){ sec.style.display = 'none'; return; }
-  sec.style.display = '';
-
-  grid.innerHTML = COMING_SOON.map(app => {
-    const noted = notifyList.includes(app.id);
-    return `<div class="app-card">
-      <div class="ac-top">
-        <div class="ac-icon">${app.icon}</div>
-        <div>
-          <div class="ac-name">${app.name}</div>
-          <div class="ac-cat">${app.cat}</div>
-        </div>
-      </div>
-      <div class="ac-desc">${app.desc}</div>
-      <div class="ac-footer">
-        <span class="coming-label"><span class="coming-dot"></span>Coming soon</span>
-        <button
-          class="btn-notify ${noted ? 'notified' : ''}"
-          id="notify-${app.id}"
-          onclick="toggleNotify('${app.id}','${app.name}')">
-          ${noted ? 'Notified' : 'Notify me'}
-        </button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-/* ─── App Actions ────────────────────────── */
-window.openApp = function(id) {
-  const app = APPS.find(a => a.id === id);
-  if(app) window.location.href = app.file + (CU ? '?uid=' + CU.uid : '');
-};
-
-window.doInstall = function(id) {
-  installedIds = [...new Set([...installedIds, id])];
-  render();
-  showToast('✓', (APPS.find(a=>a.id===id)?.name||'App') + ' installed');
-  if(CU) installApp(CU.uid, id).catch(()=>{});
-};
-
-window.doUninstall = function(id) {
-  if(APPS.find(a=>a.id===id)?.default){ showToast('ℹ', 'Core apps cannot be removed'); return; }
-  installedIds = installedIds.filter(x => x !== id);
-  render();
-  showToast('✓', (APPS.find(a=>a.id===id)?.name||'App') + ' removed');
-  if(CU) uninstallApp(CU.uid, id).catch(()=>{});
-};
-
-window.toggleNotify = function(id, name) {
-  const noted = notifyList.includes(id);
-  if(noted) notifyList = notifyList.filter(x => x !== id);
-  else notifyList.push(id);
-  renderComing();
-  if(CU) updateDoc(doc(db,'users',CU.uid), { notifyApps: notifyList }).catch(()=>{});
-  showToast(noted ? '🔕' : '🔔', noted ? 'Removed from notifications' : `You'll be notified when ${name} launches`);
-};
-
-/* ─── Filter & Search ────────────────────── */
-window.setFilter = function(cat) {
-  activeFilter = cat;
-  document.querySelectorAll('.filter-pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.cat === cat);
-  });
-  renderInstalled();
-};
 
 window.handleSearch = function(val) {
-  searchQuery = val.trim();
-  renderInstalled();
-  renderComing();
+  const query = val.trim().toLowerCase();
+  if (!query) { searchDropdown.classList.remove('active'); return; }
+  
+  const results = [...APPS, ...COMING_SOON].filter(a => a.name.toLowerCase().includes(query) || a.cat.toLowerCase().includes(query) || a.desc.toLowerCase().includes(query));
+  
+  if (results.length) {
+    searchDropdown.innerHTML = results.map(a => `
+      <div class="sd-item" onclick="scrollToApp('${a.id}')">
+        <div style="width:40px;height:40px;border-radius:10px;background:${a.bg};display:flex;align-items:center;justify-content:center;">${a.icon.replace('28','20').replace('28','20')}</div>
+        <div>
+          <div style="font-size:0.9rem;font-weight:800;color:var(--tx1);">${a.name}</div>
+          <div style="font-size:0.75rem;color:var(--tx3);font-weight:600;">${a.cat}</div>
+        </div>
+      </div>`).join('');
+  } else {
+    searchDropdown.innerHTML = '<div style="padding:20px;text-align:center;color:var(--tx3);font-weight:600;">No apps found matching query.</div>';
+  }
+  searchDropdown.classList.add('active');
 };
 
-/* ─── Carousel ───────────────────────────── */
+window.scrollToApp = function(id) {
+  searchDropdown.classList.remove('active');
+  if (window.innerWidth <= 680) closeSearch();
+  
+  const el = document.getElementById('app-card-' + id);
+  if (el) {
+    // Smooth scroll accounting for sticky header
+    const y = el.getBoundingClientRect().top + window.scrollY - 100;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+    
+    el.classList.remove('highlight-jump');
+    void el.offsetWidth; // Trigger reflow
+    el.classList.add('highlight-jump');
+  }
+};
+
+function render() {
+  const igrid = document.getElementById('installed-grid');
+  igrid.innerHTML = APPS.map(app => {
+    const inst = installedIds.includes(app.id);
+    return `
+      <div class="app-card" id="app-card-${app.id}">
+        <div class="ac-ghost-emoji">${app.ghost}</div>
+        <div class="ac-top">
+          <div class="ac-icon" style="background:${app.bg}">${app.icon}</div>
+          <div class="ac-text">
+            <div class="ac-name">${app.name}</div>
+            <div class="ac-cat">${app.cat}</div>
+          </div>
+        </div>
+        <div class="ac-desc">${app.desc}</div>
+        <div class="ac-footer">
+          <span class="ac-status">${app.default ? 'Core Built-in' : inst ? '<span class="installed-badge">Installed</span>' : 'Available'}</span>
+          <div class="ac-btns">
+            ${inst
+              ? `<button class="btn-open" onclick="openApp('${app.id}')">Open</button>
+                 ${!app.default ? `<button class="btn-remove" onclick="doUninstall('${app.id}')">Remove</button>` : ''}`
+              : `<button class="btn-install" onclick="doInstall('${app.id}')">Install</button>`}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const cgrid = document.getElementById('coming-grid');
+  cgrid.innerHTML = COMING_SOON.map(app => {
+    const noted = notifyList.includes(app.id);
+    return `
+      <div class="app-card" id="app-card-${app.id}">
+        <div class="ac-ghost-emoji">${app.ghost}</div>
+        <div class="ac-top">
+          <div class="ac-icon" style="background:${app.bg}">${app.icon}</div>
+          <div class="ac-text">
+            <div class="ac-name">${app.name}</div>
+            <div class="ac-cat">${app.cat}</div>
+          </div>
+        </div>
+        <div class="ac-desc">${app.desc}</div>
+        <div class="ac-footer">
+          <span class="ac-status" style="font-weight:700;">Launching Q3</span>
+          <button class="btn-notify ${noted ? 'notified' : ''}" onclick="toggleNotify('${app.id}')">
+            ${noted ? '✓ Notified' : 'Notify me'}
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Carousel Logic - Strictly 4 slides moving right continuously
+const SLIDE_COUNT = 4;
 let cIdx = 0, cTimer;
-const SLIDE_COUNT = 3;
+const track = document.getElementById('carousel-track');
 
 function carouselGo(idx) {
+  // Enforce mandatory right-ward loop feel
   cIdx = ((idx % SLIDE_COUNT) + SLIDE_COUNT) % SLIDE_COUNT;
-  document.getElementById('carousel-track').style.transform = `translateX(calc(-${cIdx * 100}%))`;
+  track.style.transform = `translateX(calc(-${cIdx * 100}%))`;
 }
 
-window.carouselGo  = carouselGo;
-window.carouselStep = (dir) => carouselGo(cIdx + dir);
+window.carouselStep = (dir) => { carouselGo(cIdx + dir); resetTimer(); };
+function startAuto(){ cTimer = setInterval(() => carouselGo(cIdx + 1), 4000); }
+function resetTimer(){ clearInterval(cTimer); startAuto(); }
 
-function startAuto(){ cTimer = setInterval(() => carouselGo(cIdx + 1), 3500); }
+document.querySelector('.featured-wrap').addEventListener('mouseenter', () => clearInterval(cTimer));
+document.querySelector('.featured-wrap').addEventListener('mouseleave', startAuto);
 
+// App Actions
+window.openApp = function(id) { alert(`Navigating to ${id}...`); };
+window.doInstall = function(id) { installedIds.push(id); render(); };
+window.doUninstall = function(id) { installedIds = installedIds.filter(x => x !== id); render(); };
+window.toggleNotify = function(id) {
+  if (notifyList.includes(id)) notifyList = notifyList.filter(x => x !== id);
+  else notifyList.push(id);
+  render();
+};
+
+render();
 startAuto();
-
-/* ─── Toast ──────────────────────────────── */
-function showToast(icon, msg) {
-  const c = document.getElementById('toast-container');
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = `<span class="toast-icon">${icon}</span><span>${msg}</span>`;
-  c.appendChild(t);
-  setTimeout(() => {
-    t.style.transition = 'opacity 0.25s, transform 0.25s';
-    t.style.opacity = '0';
-    t.style.transform = 'translateY(8px)';
-    setTimeout(() => t.remove(), 280);
-  }, 2800);
-}
-window.showToast = showToast;
-
-init();
 </script>
 </body>
 </html>
