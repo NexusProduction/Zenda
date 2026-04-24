@@ -239,10 +239,10 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 
   <div class="mob-sheet">
     <div class="mob-tabs">
-      <button class="mob-tab on" id="mob-tab-events" onclick="showMobTab('events')">
+      <button class="mob-tab on" id="mob-tab-events" onclick="window.showMobTab('events')">
         <span id="mob-day-label">Today</span>
       </button>
-      <button class="mob-tab" id="mob-tab-add" onclick="showMobTab('add')">+ Add Event</button>
+      <button class="mob-tab" id="mob-tab-add" onclick="window.showMobTab('add')">+ Add Event</button>
     </div>
     <div class="mob-tab-content" id="mob-events-content">
       <div class="no-events" id="mob-events-empty" style="padding:32px 16px;text-align:center;color:var(--tx3)">✨ No events — enjoy your day!</div>
@@ -272,32 +272,12 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 <div id="toast-container"></div>
 
 <script type="module">
+// We import directly from your existing secure dashboard files
 import { auth, db } from './firebase-config.js';
 import { requireAuth, getCurrentUser } from './auth.js';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// --- 1. SECURE BACKGROUND AUTH VERIFICATION ---
-onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-        window.location.replace('login.html');
-        return;
-    }
-    if (!window.CU || window.CU.uid !== user.uid) {
-        const cu = await getCurrentUser();
-        if (cu && cu.uid) {
-            window.CU = cu;
-            loadAllRealtime();
-            checkPremiumStatus();
-        } else {
-            window.location.replace('login.html');
-        }
-    }
-});
-
-const syncEl = document.getElementById('sync-status'); if(syncEl) syncEl.className = 'ab-sync sync-connecting';
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
+// Global Variables
 window.events = [];
 window.companyEvents = [];
 window.myTasks = [];
@@ -311,42 +291,39 @@ window.CU = { uid: null, role: 'staff', companyId: null };
 
 window.selectedStaffUIDs = new Set();
 
-// ── 2. INSTANT LOAD FROM CACHE ──
-function fastInit() {
-    try {
-        const rawSession = sessionStorage.getItem('zenda_user');
-        if (rawSession) {
-            window.CU = JSON.parse(rawSession);
-            loadAllRealtime();
-            checkPremiumStatus();
-        }
-    } catch(e) {}
-}
-fastInit(); 
+const syncEl = document.getElementById('sync-status'); 
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-renderCalendar();
-showDayEvents(selectedDay);
+// --- 1. INITIALIZE APP SECURELY ---
+async function init() {
+  if (syncEl) syncEl.className = 'ab-sync sync-connecting';
+  
+  try {
+    // This waits for Firebase Auth to confirm the user token BEFORE running queries
+    await requireAuth('login.html');
+    const cu = await getCurrentUser();
+    
+    if (!cu || !cu.uid) {
+      window.location.replace('login.html');
+      return;
+    }
 
-window.setPrio = function(p) {
-  window.selectedPrio = p;
-  ['high','med','low'].forEach(x => {
-    document.querySelectorAll('#prio-' + x).forEach(btn => {
-      btn.className = 'prio-btn';
-      if(x === p) btn.classList.add('sel-' + x);
-    });
-  });
-};
+    window.CU = cu;
+    window.selectedStaffUIDs.add(window.CU.uid); // Ensure user is selected
+    
+    checkPremiumStatus();
+    loadAllRealtime();
 
-function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function isToday(d) { const n = new Date(); return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear(); }
-function isSameDay(a,b) { return a.getDate()===b.getDate() && a.getMonth()===b.getMonth() && a.getFullYear()===b.getFullYear(); }
-function format12hr(t) {
-  if(!t) return '';
-  const [h,m] = t.split(':').map(Number);
-  return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+  } catch (err) {
+    console.error("Init Auth Error:", err);
+    if (syncEl) {
+      syncEl.textContent = 'Sync Failed';
+      syncEl.className='ab-sync sync-err';
+    }
+  }
 }
 
-// --- 3. PREMIUM BADGE LOGIC ---
+// --- 2. PREMIUM STATUS CHECK ---
 async function checkPremiumStatus() {
     if (!window.CU || !window.CU.companyId) return;
     try {
@@ -356,12 +333,12 @@ async function checkPremiumStatus() {
         
         if (compSnap.exists()) {
             const compData = compSnap.data();
-            window.CU.isPremium = compData.isPremium === true;
-            if (window.CU.isPremium && compData.subscriptionExpiry && new Date() > new Date(compData.subscriptionExpiry)) {
-                window.CU.isPremium = false;
+            let isPremium = compData.isPremium === true;
+            if (isPremium && compData.subscriptionExpiry && new Date() > new Date(compData.subscriptionExpiry)) {
+                isPremium = false;
             }
             
-            if (window.CU.isPremium) {
+            if (isPremium) {
                 if(upgBtn) { upgBtn.style.display = 'none'; upgBtn.classList.add('hidden'); }
                 if(prmBadge) { 
                     prmBadge.style.display = 'flex'; 
@@ -374,21 +351,23 @@ async function checkPremiumStatus() {
                 if(prmBadge) { prmBadge.style.display = 'none'; prmBadge.classList.add('hidden'); }
             }
         }
-    } catch(e) { console.warn("Failed fetching premium status", e); }
+    } catch(e) { console.warn("Premium check error", e); }
 }
 
-let unsubPersonal = null, unsubCompany = null, unsubTasksToMe = null, unsubTasksByMe = null, unsubStaff = null;
+// --- 3. DATABASE QUERIES ---
+let unsubPersonal, unsubCompany, unsubTasksToMe, unsubTasksByMe, unsubStaff;
 
 function loadAllRealtime() {
   if (!window.CU || !window.CU.uid) return;
 
+  // Cleanup old listeners
   if (unsubPersonal) unsubPersonal();
   if (unsubCompany) unsubCompany();
   if (unsubTasksToMe) unsubTasksToMe();
   if (unsubTasksByMe) unsubTasksByMe();
   if (unsubStaff) unsubStaff();
 
-  // Load Staff for Custom Staff Selection Options
+  // Load Custom Staff Menu List
   if (window.CU.companyId) {
       const staffQ = query(collection(db, 'users'), where('companyId', '==', window.CU.companyId));
       unsubStaff = onSnapshot(staffQ, (snap) => {
@@ -400,16 +379,16 @@ function loadAllRealtime() {
       });
   }
 
-  // 1. Personal Events
+  // Personal Events
   const q1 = query(collection(db, 'calendar'), where('uid', '==', window.CU.uid));
   unsubPersonal = onSnapshot(q1, (snap1) => {
     window.events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
     updateCalendarUI();
   }, (e) => {
-    syncEl.textContent = 'Sync Failed'; syncEl.className='ab-sync sync-err';
+    if (syncEl) { syncEl.textContent = 'Sync Failed'; syncEl.className='ab-sync sync-err'; }
   });
 
-  // 2. Company Events (Includes new Custom Visibility and the "All" sync rules)
+  // Company Events
   if (window.CU.companyId) {
     const q2 = query(collection(db, 'calendar'), where('companyId', '==', window.CU.companyId));
     unsubCompany = onSnapshot(q2, (snap2) => {
@@ -418,7 +397,7 @@ function loadAllRealtime() {
         .filter(ev => {
            if (ev.visibility === 'all') return true;
            if (ev.visibility === 'custom') { return ev.visibleToUIDs && ev.visibleToUIDs.includes(window.CU.uid); }
-           
+           // Fallback for legacy events
            if (window.CU.role === 'owner' && (ev.visibility === 'owner' || ev.visibility === 'manager')) return true;
            if (window.CU.role === 'manager' && ev.visibility === 'manager') return true;
            if (window.CU.role === 'staff' && ev.visibility === 'staff') return true;
@@ -429,7 +408,7 @@ function loadAllRealtime() {
     });
   }
 
-  // 3. Tasks Assigned To Me
+  // Tasks To Me
   const q3 = query(collection(db, 'tasks'), where('assignedTo', '==', window.CU.uid));
   unsubTasksToMe = onSnapshot(q3, (snap) => {
     window.myTasks = snap.docs.map(d => {
@@ -439,7 +418,7 @@ function loadAllRealtime() {
     updateCalendarUI();
   });
 
-  // 4. Tasks Assigned By Me
+  // Tasks By Me
   if (window.CU.role === 'owner' || window.CU.role === 'manager') {
     const q4 = query(collection(db, 'tasks'), where('assignedBy', '==', window.CU.uid));
     unsubTasksByMe = onSnapshot(q4, (snap) => {
@@ -452,8 +431,9 @@ function loadAllRealtime() {
   }
 }
 
+// --- 4. CALENDAR UI UPDATES ---
 function updateCalendarUI() {
-  syncEl.textContent = '✓ Live'; syncEl.className='ab-sync sync-live';
+  if (syncEl) { syncEl.textContent = '✓ Live'; syncEl.className='ab-sync sync-live'; }
   renderCalendar();
   showDayEvents(selectedDay);
 }
@@ -501,7 +481,6 @@ function renderCalendar() {
       ${pills}${more}
     </div>`;
   }
-
   const total = firstDay + daysInMonth;
   const rows = Math.ceil(total/7);
   const cells = rows*7;
@@ -609,7 +588,17 @@ function showDayEvents(d) {
 
 function visLabel(v) { const m={all:'Everyone',custom:'Custom Staff',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
 
-// --- 4. ASYNC FIX: PROPERLY AWAIT SAVES & RESET BUTTON TEXT ---
+// --- 5. EVENT CREATION / DELETION ---
+window.setPrio = function(p) {
+  window.selectedPrio = p;
+  ['high','med','low'].forEach(x => {
+    document.querySelectorAll('#prio-' + x).forEach(btn => {
+      btn.className = 'prio-btn';
+      if(x === p) btn.classList.add('sel-' + x);
+    });
+  });
+};
+
 window.addEvent = async function(btnContext) {
   const formWrap = btnContext.closest('.add-form') || document;
   const title = (formWrap.querySelector('.ae-title')?.value || '').trim();
@@ -621,7 +610,6 @@ window.addEvent = async function(btnContext) {
   if(!date)  { toast('Pick a date.','error'); return; }
 
   const allBtns = document.querySelectorAll('.add-btn');
-  // Visual lock
   allBtns.forEach(b => { b.disabled = true; b.textContent = 'Adding...'; });
 
   try {
@@ -639,7 +627,6 @@ window.addEvent = async function(btnContext) {
     }
     
     if (window.CU.uid) {
-      // WAIT for Firebase to finish the save before unlocking UI
       await addDoc(collection(db, 'calendar'), newEv);
     } else {
       newEv.id = Date.now().toString();
@@ -647,7 +634,6 @@ window.addEvent = async function(btnContext) {
       updateCalendarUI();
     }
     
-    // Clear inputs ONLY on success
     document.querySelectorAll('.ae-title').forEach(el => el.value = '');
     document.querySelectorAll('.ae-time').forEach(el => el.value = '');
     window.setPrio('high');
@@ -657,10 +643,9 @@ window.addEvent = async function(btnContext) {
     
     toast('Event added! 📅','success');
   } catch(e) { 
-      toast('Failed to save. Please check your rules.','error');
+      toast('Failed to save. Check database rules.','error');
       console.error(e);
   } finally {
-      // ALWAYS unlock the button, whether it succeeds or fails
       allBtns.forEach(b => { b.disabled = false; b.textContent = 'Add Event ✓'; }); 
   }
 };
@@ -677,24 +662,10 @@ window.delEvent = async function(id) {
   } catch(e) { toast('Error: '+e.message,'error'); }
 };
 
-function toast(msg, type='info') {
-  let c = document.getElementById('toast-container');
-  const t = document.createElement('div');
-  t.className = 'toast toast-'+type;
-  t.innerHTML = `<span>${msg}</span>`;
-  c.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
-
-function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-</script>
-
-<script>
-// ── MODAL LOGIC ──
+// --- 6. MODALS & UI HELPERS ---
 window.openModal = function(id) { document.getElementById(id).classList.add('open'); };
 window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
 
-// ── MOBILE TAB SWITCHER ──
 window.showMobTab = function(tab) {
   document.getElementById('mob-tab-events').classList.toggle('on', tab === 'events');
   document.getElementById('mob-tab-add').classList.toggle('on', tab === 'add');
@@ -702,10 +673,8 @@ window.showMobTab = function(tab) {
   document.getElementById('mob-add-content').classList.toggle('hidden', tab !== 'add');
 };
 
-// ── CUSTOM STAFF SYNC ──
 window.toggleCustomStaff = function(selectEl) {
     const val = selectEl.value;
-    
     document.querySelectorAll('.ae-visibility').forEach(sel => sel.value = val);
     document.querySelectorAll('.edit-custom-btn').forEach(btn => {
         if(val === 'custom') btn.classList.remove('hidden');
@@ -714,16 +683,18 @@ window.toggleCustomStaff = function(selectEl) {
 
     if (val === 'custom') {
         window.openModal('custom-staff-modal');
-        window.renderCustomStaffList(document.getElementById('modal-staff-list'));
+        const listContainer = document.getElementById('modal-staff-list');
+        if(listContainer) window.renderCustomStaffList(listContainer);
     }
 };
 
 window.toggleStaffSel = function(uid) {
-    if (uid === window.CU.uid) return; 
+    if (!window.CU || uid === window.CU.uid) return; 
     if (window.selectedStaffUIDs.has(uid)) window.selectedStaffUIDs.delete(uid);
     else window.selectedStaffUIDs.add(uid);
     
-    window.renderCustomStaffList(document.getElementById('modal-staff-list'));
+    const listContainer = document.getElementById('modal-staff-list');
+    if(listContainer) window.renderCustomStaffList(listContainer);
 };
 
 window.renderCustomStaffList = function(container) {
@@ -769,7 +740,6 @@ window.renderCustomStaffList = function(container) {
     container.innerHTML = html;
 };
 
-// ── RENDER ADD FORM (shared desktop + mobile) ──
 window.renderAddForm = function() {
   const html = `
     <div>
@@ -820,16 +790,25 @@ window.renderAddForm = function() {
   if (dForm) dForm.innerHTML = html;
   if (mForm) mForm.innerHTML = html;
 
-  const today = dateKeyNow();
+  const d = new Date();
+  const today = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   document.querySelectorAll('.ae-date').forEach(el => el.value = today);
 };
 
-function dateKeyNow() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+function toast(msg, type='info') {
+  let c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast toast-'+type;
+  t.innerHTML = `<span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
-window.renderAddForm();
+function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Launch!
+renderAddForm();
+init();
 </script>
 </body>
 </html>
