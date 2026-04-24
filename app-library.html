@@ -268,7 +268,8 @@ import { requireAuth, getCurrentUser } from './auth.js';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const syncEl = document.getElementById('sync-status'); 
+// Global Definitions
+const syncEl = document.getElementById('sync-status');
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 window.events = [];
@@ -276,18 +277,19 @@ window.companyEvents = [];
 window.myTasks = [];
 window.assignedByMeTasks = [];
 window.companyStaff = [];
-
-let curDate = new Date();
-let selectedDay = new Date();
-window.CU = { uid: null, role: 'staff', companyId: null };
 window.selectedStaffUIDs = new Set();
 
+window.CU = { uid: null, role: 'staff', companyId: null };
+let curDate = new Date();
+let selectedDay = new Date();
+
+// Helper Functions
 function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function isToday(d) { const n = new Date(); return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear(); }
 function isSameDay(a,b) { return a.getDate()===b.getDate() && a.getMonth()===b.getMonth() && a.getFullYear()===b.getFullYear(); }
 
-// ── 1. SECURE AUTH VERIFICATION ──
-// Eliminates race conditions by waiting for valid login token
+// --- 1. SECURE LOGIN & AUTH LISTENER ---
+// Ensures we NEVER fetch before verifying token
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
         window.location.replace('login.html');
@@ -304,12 +306,12 @@ onAuthStateChanged(auth, async (user) => {
                 companyId: data.companyId || null,
                 name: data.name || 'User'
             };
-            window.selectedStaffUIDs.add(window.CU.uid); // Lock user selection
+            window.selectedStaffUIDs.add(window.CU.uid); 
             
             checkPremiumStatus();
             loadAllRealtime();
         } else {
-            // Fallback
+            // Safe fallback if user doc is missing
             window.CU = { uid: user.uid, role: 'staff', companyId: null };
             window.selectedStaffUIDs.add(window.CU.uid);
             loadAllRealtime();
@@ -323,12 +325,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// Render UI frame instantly
-renderCalendar();
-showDayEvents(selectedDay);
-renderAddForm();
-
-// --- 2. PREMIUM BADGE LOGIC ---
+// --- 2. PREMIUM STATUS LOGIC ---
 async function checkPremiumStatus() {
     if (!window.CU || !window.CU.companyId) return;
     try {
@@ -338,12 +335,12 @@ async function checkPremiumStatus() {
         
         if (compSnap.exists()) {
             const compData = compSnap.data();
-            window.CU.isPremium = compData.isPremium === true;
-            if (window.CU.isPremium && compData.subscriptionExpiry && new Date() > new Date(compData.subscriptionExpiry)) {
-                window.CU.isPremium = false;
+            let isPremium = compData.isPremium === true;
+            if (isPremium && compData.subscriptionExpiry && new Date() > new Date(compData.subscriptionExpiry)) {
+                isPremium = false;
             }
             
-            if (window.CU.isPremium) {
+            if (isPremium) {
                 if(upgBtn) { upgBtn.style.display = 'none'; upgBtn.classList.add('hidden'); }
                 if(prmBadge) { 
                     prmBadge.style.display = 'flex'; 
@@ -359,7 +356,7 @@ async function checkPremiumStatus() {
     } catch(e) { console.warn("Failed fetching premium status", e); }
 }
 
-// --- 3. DATABASE QUERIES ---
+// --- 3. DATABASE QUERIES & REAL-TIME SYNC ---
 let unsubPersonal = null, unsubCompany = null, unsubTasksToMe = null, unsubTasksByMe = null, unsubStaff = null;
 
 function loadAllRealtime() {
@@ -371,7 +368,7 @@ function loadAllRealtime() {
   if (unsubTasksByMe) unsubTasksByMe();
   if (unsubStaff) unsubStaff();
 
-  // Load Custom Staff List
+  // Custom Staff List query
   if (window.CU.companyId) {
       const staffQ = query(collection(db, 'users'), where('companyId', '==', window.CU.companyId));
       unsubStaff = onSnapshot(staffQ, (snap) => {
@@ -383,7 +380,7 @@ function loadAllRealtime() {
       });
   }
 
-  // Personal Events
+  // Personal Events query
   const q1 = query(collection(db, 'calendar'), where('uid', '==', window.CU.uid));
   unsubPersonal = onSnapshot(q1, (snap1) => {
     window.events = snap1.docs.map(d => ({id: d.id, ...d.data()}));
@@ -392,7 +389,7 @@ function loadAllRealtime() {
     if (syncEl) { syncEl.textContent = 'Sync Failed'; syncEl.className='ab-sync sync-err'; }
   });
 
-  // Company Events
+  // Company Events query
   if (window.CU.companyId) {
     const q2 = query(collection(db, 'calendar'), where('companyId', '==', window.CU.companyId));
     unsubCompany = onSnapshot(q2, (snap2) => {
@@ -401,6 +398,7 @@ function loadAllRealtime() {
         .filter(ev => {
            if (ev.visibility === 'all') return true;
            if (ev.visibility === 'custom') { return ev.visibleToUIDs && ev.visibleToUIDs.includes(window.CU.uid); }
+           // Legacy fallback
            if (window.CU.role === 'owner' && (ev.visibility === 'owner' || ev.visibility === 'manager')) return true;
            if (window.CU.role === 'manager' && ev.visibility === 'manager') return true;
            if (window.CU.role === 'staff' && ev.visibility === 'staff') return true;
@@ -410,7 +408,7 @@ function loadAllRealtime() {
     });
   }
 
-  // Tasks To Me
+  // Tasks To Me query
   const q3 = query(collection(db, 'tasks'), where('assignedTo', '==', window.CU.uid));
   unsubTasksToMe = onSnapshot(q3, (snap) => {
     window.myTasks = snap.docs.map(d => {
@@ -420,7 +418,7 @@ function loadAllRealtime() {
     updateCalendarUI();
   });
 
-  // Tasks By Me
+  // Tasks By Me query
   if (window.CU.role === 'owner' || window.CU.role === 'manager') {
     const q4 = query(collection(db, 'tasks'), where('assignedBy', '==', window.CU.uid));
     unsubTasksByMe = onSnapshot(q4, (snap) => {
@@ -489,7 +487,7 @@ function renderCalendar() {
     html += `<div class="cal-day empty other-month"><div class="cal-date">${i}</div></div>`;
   }
 
-  // Build mobile grid 
+  // Mobile Grid
   let mobHtml = '';
   const mobFirstDay = new Date(y,m,1).getDay();
   const mobPrevDays = new Date(y,m,0).getDate();
@@ -584,8 +582,9 @@ function showDayEvents(d) {
 
 function visLabel(v) { const m={all:'Everyone',custom:'Custom Staff',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
 
-// --- 5. INSTANT ADD EVENT ---
+// --- 5. STREAMLINED ADD EVENT & LOCAL SYNC ---
 window.addEvent = async function(btnContext) {
+  // Grab the specific form that was clicked
   const formWrap = btnContext.closest('.add-form') || document;
   const title = (formWrap.querySelector('.ae-title')?.value || '').trim();
   const vis = formWrap.querySelector('.ae-visibility')?.value || 'self';
@@ -598,8 +597,7 @@ window.addEvent = async function(btnContext) {
   try {
     const newEv = { 
       title, 
-      date: dateKey(selectedDay), // <-- Always relies strictly on the calendar grid click!
-      priority: 'low', 
+      date: dateKey(selectedDay), // Uses the exact date clicked on the calendar grid
       visibility: vis, 
       type: 'event', 
       companyId: window.CU.companyId || null, 
@@ -611,19 +609,21 @@ window.addEvent = async function(btnContext) {
         newEv.visibleToUIDs = Array.from(window.selectedStaffUIDs);
     }
     
-    // Add instantly to local arrays so it renders immediately
+    // Instantly add to local arrays for instant rendering
     newEv.id = 'temp_' + Date.now();
-    if (vis === 'self') { window.events.push(newEv); } 
-    else { window.companyEvents.push(newEv); }
+    if (vis === 'self') window.events.push(newEv);
+    else window.companyEvents.push(newEv);
+    
     updateCalendarUI();
 
-    // Now save to Firebase quietly in the background
+    // Clean inputs immediately
+    document.querySelectorAll('.ae-title').forEach(el => el.value = '');
+    
+    // Save to Firebase silently
     if (window.CU.uid) {
       await addDoc(collection(db, 'calendar'), newEv);
     }
     
-    // Clear the title input
-    document.querySelectorAll('.ae-title').forEach(el => el.value = '');
     toast('Event added! 📅','success');
   } catch(e) { 
       toast('Failed to save. Check database rules.','error');
@@ -638,6 +638,7 @@ window.delEvent = async function(id) {
     if(window.CU.uid && !id.startsWith('temp_')) { 
       await deleteDoc(doc(db, 'calendar', id));
     }
+    // Local delete
     window.events = window.events.filter(e => e.id !== id);
     window.companyEvents = window.companyEvents.filter(e => e.id !== id);
     updateCalendarUI();
@@ -672,7 +673,7 @@ window.toggleCustomStaff = function(selectEl) {
 };
 
 window.toggleStaffSel = function(uid) {
-    if (uid === window.CU.uid) return; 
+    if (!window.CU || uid === window.CU.uid) return; // Prevent deselecting self
     if (window.selectedStaffUIDs.has(uid)) window.selectedStaffUIDs.delete(uid);
     else window.selectedStaffUIDs.add(uid);
     
@@ -722,7 +723,7 @@ window.renderCustomStaffList = function(container) {
     container.innerHTML = html;
 };
 
-// ── 7. STREAMLINED RENDER ADD FORM ──
+// --- 7. RENDER STREAMLINED FORM ONCE AT START ---
 window.renderAddForm = function() {
   const html = `
     <div>
@@ -756,6 +757,12 @@ function toast(msg, type='info') {
 }
 
 function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Launch UI
+renderAddForm();
+renderCalendar();
+showDayEvents(selectedDay);
+
 </script>
 </body>
 </html>
