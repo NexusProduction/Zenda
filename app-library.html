@@ -71,16 +71,18 @@ a { text-decoration: none; color: inherit; }
 
 .ab-left { display: flex; align-items: center; gap: 16px; transition: opacity 0.3s; }
 
-.ab-back {
-  display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--tx2);
-  font-weight: 600; padding: 8px 12px; border: 1px solid var(--bd); border-radius: 8px;
-  cursor: pointer; background: var(--sf); font-family: var(--fd); transition: all 0.15s;
+/* Square Back Button */
+.ab-back-square {
+  display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;
+  color: var(--tx2); border: 1px solid var(--bd); border-radius: 12px;
+  cursor: pointer; background: var(--sf); transition: all 0.2s cubic-bezier(0.22,1,0.36,1);
 }
-.ab-back:hover { background: var(--sf3); color: var(--tx1); }
+.ab-back-square:hover { background: var(--sf3); color: var(--tx1); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 
-.ab-brand {
-  display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem;
-  color: var(--tx1); letter-spacing: -0.02em; user-select: none; transition: opacity 0.3s;
+/* Center Title */
+.ab-center {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  font-weight: 800; font-size: 1.15rem; color: var(--tx1); letter-spacing: -0.02em;
 }
 
 /* Search Wrapper & Input */
@@ -93,11 +95,8 @@ a { text-decoration: none; color: inherit; }
 .ab-search input { border: none; background: transparent; font-family: var(--fd); font-size: 0.9rem; color: var(--tx1); width: 100%; outline: none; }
 .ab-search input::placeholder { color: var(--tx3); font-weight: 500; }
 
-.search-icon-svg { flex-shrink: 0; color: var(--tx3); transition: color 0.3s; }
+.search-icon-svg { flex-shrink: 0; color: var(--tx3); transition: color 0.3s; width: 18px; height: 18px; }
 .ab-search:focus-within .search-icon-svg { color: var(--ac); }
-/* Flicker effect on search icon */
-.search-flicker { animation: pulseFlicker 2.5s infinite; }
-@keyframes pulseFlicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 /* Search Dropdown */
 .search-dropdown {
@@ -114,8 +113,10 @@ a { text-decoration: none; color: inherit; }
 /* Mobile Search Interaction */
 @media(max-width: 680px) {
   .appbar { padding: 0 16px; }
+  .desk-only { display: none; }
   .ab-search { width: 44px; height: 44px; padding: 0; justify-content: center; cursor: pointer; position: relative; z-index: 101; }
   .ab-search input { display: none; }
+  .search-icon-svg { width: 20px; height: 20px; } /* Optimized for touch */
   
   /* Expanded State */
   .ab-search.expanded { width: calc(100vw - 32px); position: absolute; right: 16px; background: var(--sf); border-color: var(--ac); box-shadow: 0 4px 16px rgba(0,0,0,0.08); justify-content: flex-start; padding: 10px 16px; }
@@ -131,15 +132,11 @@ a { text-decoration: none; color: inherit; }
 ───────────────────────────────────────── */
 .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; width: 100%; }
 
-.page-hdr { margin-bottom: 40px; }
-.page-hdr h1 { font-size: 2.125rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 6px; }
-.page-hdr p { color: var(--tx2); font-size: 0.95rem; line-height: 1.5; font-weight: 500; }
-
 /* ─────────────────────────────────────────
-   FEATURED CAROUSEL
+   FEATURED CAROUSEL (Seamless Infinite Loop)
 ───────────────────────────────────────── */
 .featured-wrap { position: relative; border-radius: 24px; overflow: hidden; margin-bottom: 48px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
-.carousel-track { display: flex; transition: transform 0.6s cubic-bezier(0.22,1,0.36,1); }
+.carousel-track { display: flex; /* Transition is handled by JS for seamless looping */ }
 
 .featured-slide {
   min-width: 100%; padding: 48px; color: white; position: relative; overflow: hidden;
@@ -165,18 +162,6 @@ a { text-decoration: none; color: inherit; }
 .fs-icon-deco { position: absolute; right: 60px; top: 50%; transform: translateY(-50%); width: 140px; height: 140px; opacity: 0.2; pointer-events: none; }
 @media(max-width: 680px) { .fs-icon-deco { display: none; } .featured-slide { padding: 32px 24px; } .fs-name { font-size: 1.8rem; } }
 
-/* Carousel Arrows */
-.carousel-arrow {
-  position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px;
-  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%;
-  color: white; display: flex; align-items: center; justify-content: center; cursor: pointer;
-  transition: background 0.2s, transform 0.2s; z-index: 10; backdrop-filter: blur(12px);
-}
-.carousel-arrow:hover { background: rgba(255,255,255,0.2); transform: translateY(-50%) scale(1.05); }
-.carousel-arrow.prev { left: 20px; }
-.carousel-arrow.next { right: 20px; }
-@media(max-width: 680px) { .carousel-arrow { display: none; } }
-
 /* ─────────────────────────────────────────
    SECTIONS & GRIDS
 ───────────────────────────────────────── */
@@ -188,51 +173,48 @@ a { text-decoration: none; color: inherit; }
 @media(max-width: 900px) { .app-grid { grid-template-columns: repeat(2, 1fr); } }
 @media(max-width: 600px) { .app-grid { grid-template-columns: 1fr; } }
 
-/* APP CARD */
+/* APP CARD RE-DESIGN */
 .app-card {
-  background: var(--sf); border: 1px solid var(--bd); border-radius: 16px; padding: 24px;
+  background: var(--sf); border: 1px solid var(--bd); border-radius: 16px; padding: 28px 24px;
   display: flex; flex-direction: column; gap: 16px; position: relative;
   transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease, border-color 0.3s ease;
 }
 .app-card:hover { transform: translateY(-4px); box-shadow: 0 16px 32px rgba(0,0,0,0.06); border-color: var(--bd2); }
 
-/* Jump Animation on Search Click */
-@keyframes jumpHighlight {
-  0% { transform: scale(1); box-shadow: 0 0 0 rgba(0,0,0,0); border-color: var(--bd); }
-  30% { transform: scale(1.03) translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); border-color: var(--ac); }
-  100% { transform: scale(1) translateY(0); box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-color: var(--bd); }
+/* Smooth Pulse Animation on Search Click */
+@keyframes pulseHighlight {
+  0% { box-shadow: 0 0 0 0 rgba(37,99,235, 0.4); border-color: var(--ac); }
+  70% { box-shadow: 0 0 0 12px rgba(37,99,235, 0); border-color: var(--bd); }
+  100% { box-shadow: 0 0 0 0 rgba(37,99,235, 0); border-color: var(--bd); }
 }
-.highlight-jump { animation: jumpHighlight 1.2s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+.highlight-pulse { animation: pulseHighlight 1.5s ease-out forwards; }
 
 .ac-top { display: flex; align-items: center; gap: 16px; }
-.ac-icon { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-.ac-icon svg { width: 28px; height: 28px; }
+.ac-icon { width: 58px; height: 58px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+.ac-icon svg { width: 30px; height: 30px; }
 .ac-text { flex: 1; }
-.ac-name { font-size: 1.05rem; font-weight: 800; color: var(--tx1); margin-bottom: 2px; letter-spacing: -0.01em; }
-.ac-cat  { font-size: 0.75rem; color: var(--ac); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: var(--aca); padding: 2px 8px; border-radius: 6px; display: inline-block; }
+.ac-name { font-size: 1.1rem; font-weight: 800; color: var(--tx1); margin-bottom: 4px; letter-spacing: -0.01em; }
+.ac-cat  { font-size: 0.75rem; color: var(--ac); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: var(--aca); padding: 4px 10px; border-radius: 8px; display: inline-block; }
 
-/* Empty Area Ghost Emoji */
-.ac-ghost-emoji { font-size: 1.8rem; opacity: 0.15; position: absolute; top: 24px; right: 24px; pointer-events: none; }
+.ac-desc { font-size: 0.95rem; color: var(--tx2); line-height: 1.5; flex: 1; font-weight: 500; }
 
-.ac-desc { font-size: 0.9rem; color: var(--tx2); line-height: 1.5; flex: 1; font-weight: 500; }
+.ac-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 18px; border-top: 1px solid var(--sf3); }
+.ac-status { font-size: 0.85rem; color: var(--tx3); font-weight: 600; }
 
-.ac-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid var(--sf3); }
-.ac-status { font-size: 0.8rem; color: var(--tx3); font-weight: 600; }
-
-.installed-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 700; color: var(--green); background: #ECFDF5; padding: 6px 12px; border-radius: 8px; }
+.installed-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; color: var(--green); background: #ECFDF5; padding: 6px 12px; border-radius: 8px; }
 
 .ac-btns { display: flex; gap: 8px; }
-.btn-open { background: var(--aca); color: var(--ac); border: none; padding: 8px 16px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+.btn-open { background: var(--aca); color: var(--ac); border: none; padding: 10px 18px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: background 0.2s; }
 .btn-open:hover { background: #DBEAFE; }
 
-.btn-install { background: var(--ac); color: white; border: none; padding: 8px 16px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+.btn-install { background: var(--ac); color: white; border: none; padding: 10px 18px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: background 0.2s, transform 0.1s; }
 .btn-install:hover { background: var(--ach); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
 .btn-install:active { transform: scale(0.96); }
 
-.btn-remove { background: transparent; color: var(--tx3); border: 1px solid var(--bd); padding: 8px 12px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.btn-remove { background: transparent; color: var(--tx3); border: 1px solid var(--bd); padding: 10px 14px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
 .btn-remove:hover { background: var(--red); color: white; border-color: var(--red); }
 
-.btn-notify { padding: 8px 16px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; border: 1px solid var(--bd); background: transparent; color: var(--tx2); transition: all 0.2s; }
+.btn-notify { padding: 10px 18px; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; border: 1px solid var(--bd); background: transparent; color: var(--tx2); transition: all 0.2s; }
 .btn-notify:hover { background: var(--sf2); color: var(--tx1); }
 .btn-notify.notified { background: var(--green); border-color: var(--green); color: white; }
 
@@ -242,15 +224,16 @@ a { text-decoration: none; color: inherit; }
 
 <header class="appbar">
   <div class="ab-left" id="ab-left">
-    <div class="ab-brand">
-      <div style="width:32px;height:32px;background:var(--ac);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;font-size:18px;">Z</div>
-      Zenda
-    </div>
+    <a href="dashboard.html" class="ab-back-square">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
   </div>
+  
+  <div class="ab-center desk-only">App Library</div>
   
   <div class="ab-search-wrap">
     <div class="ab-search" id="ab-search">
-      <svg class="search-icon-svg search-flicker" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="global-search" placeholder="Find an app..." autocomplete="off" oninput="handleSearch(this.value)">
     </div>
     
@@ -259,19 +242,7 @@ a { text-decoration: none; color: inherit; }
 </header>
 
 <main class="page">
-  <div class="page-hdr">
-    <h1>App Library</h1>
-    <p>Premium tools built directly into your workspace ecosystem.</p>
-  </div>
-
   <div class="featured-wrap">
-    <button class="carousel-arrow prev" onclick="carouselStep(-1)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <button class="carousel-arrow next" onclick="carouselStep(1)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
-
     <div class="carousel-track" id="carousel-track">
       <div class="featured-slide slide-a">
         <svg class="fs-icon-deco" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
@@ -332,41 +303,27 @@ a { text-decoration: none; color: inherit; }
 </main>
 
 <script type="module">
-// Standard Firebase Imports (assumed from your setup)
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-// import { getInstalledApps, installApp, uninstallApp } from './apps.js'; 
-// Mocking the backend functions for seamless UI testing based on your prompt:
-const getInstalledApps = async (uid) => ['calculator'];
-const installApp = async (uid, id) => {};
-const uninstallApp = async (uid, id) => {};
-
-const ZCFG = { apiKey: "AIzaSy...", projectId: "zenda-app-fe1c2" };
-// const zA = getApps().find(a=>a.name==='[DEFAULT]') || initializeApp(ZCFG);
-
-// SVG Strings injected directly from Dashboard config
 const SVGS = {
-  calculator: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>`,
-  calendar: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
-  inventory: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
-  expenses: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
-  billing: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
-  chat: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
-  analytics: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`
+  calculator: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/></svg>`,
+  calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+  inventory: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+  expenses: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
+  billing: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
+  chat: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  analytics: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`
 };
 
 const APPS = [
-  { id:'calculator', name:'Calculator Pro', icon:SVGS.calculator, cat:'Productivity', desc:'Math, minus the brain sweat. Cloud-synced so your team knows you can add.', bg:'linear-gradient(135deg,#0066CC,#0055B3)', default:true, ghost:'🧮', file:'calculator.html' },
-  { id:'calendar',   name:'Calendar',       icon:SVGS.calendar,   cat:'Organization', desc:'Where meetings go to live. Syncs perfectly so no one has an excuse.', bg:'linear-gradient(135deg,#34C759,#28A745)', default:false, ghost:'📅', file:'calendar.html' },
-  { id:'inventory',  name:'Inventory',      icon:SVGS.inventory,  cat:'Operations',   desc:'Track every widget and gizmo like a warehouse wizard. No fingers needed.', bg:'linear-gradient(135deg,#FF9500,#E68600)', default:false, ghost:'📦', file:'inventory.html' },
-  { id:'expenses',   name:'Expense Tracker',icon:SVGS.expenses,   cat:'Finance',      desc:'Money goes out, tears come in. Track the cash burn with beautiful clarity.', bg:'linear-gradient(135deg,#FF3B30,#E3342B)', default:false, ghost:'💳', file:'expenses.html' }
+  { id:'calculator', name:'Calculator Pro', icon:SVGS.calculator, cat:'Productivity', desc:'Math, minus the brain sweat. Cloud-synced so your team knows you can add.', bg:'linear-gradient(135deg,#0066CC,#0055B3)', default:true, file:'calculator.html' },
+  { id:'calendar',   name:'Calendar',       icon:SVGS.calendar,   cat:'Organization', desc:'Where meetings go to live. Syncs perfectly so no one has an excuse.', bg:'linear-gradient(135deg,#34C759,#28A745)', default:false, file:'calendar.html' },
+  { id:'inventory',  name:'Inventory',      icon:SVGS.inventory,  cat:'Operations',   desc:'Track every widget and gizmo like a warehouse wizard. No fingers needed.', bg:'linear-gradient(135deg,#FF9500,#E68600)', default:false, file:'inventory.html' },
+  { id:'expenses',   name:'Expense Tracker',icon:SVGS.expenses,   cat:'Finance',      desc:'Money goes out, tears come in. Track the cash burn with beautiful clarity.', bg:'linear-gradient(135deg,#FF3B30,#E3342B)', default:false, file:'expenses.html' }
 ];
 
 const COMING_SOON = [
-  { id:'billing',   name:'Billing App', icon:SVGS.billing,   cat:'Finance', desc:'Get paid faster than you can say "Invoice attached".', bg:'linear-gradient(135deg,#8B5CF6,#6D28D9)', ghost:'🧾' },
-  { id:'chat',      name:'Team Chat',   icon:SVGS.chat,      cat:'Comms',   desc:'Because emails are so 2010. Real-time banter & GIF sharing.', bg:'linear-gradient(135deg,#EC4899,#BE185D)', ghost:'💬' },
-  { id:'analytics', name:'Analytics',   icon:SVGS.analytics, cat:'Data',    desc:'Beautiful pie charts that make you look exceptionally smart.', bg:'linear-gradient(135deg,#06B6D4,#0369A1)', ghost:'📊' }
+  { id:'billing',   name:'Billing App', icon:SVGS.billing,   cat:'Finance', desc:'Get paid faster than you can say "Invoice attached".', bg:'linear-gradient(135deg,#8B5CF6,#6D28D9)' },
+  { id:'chat',      name:'Team Chat',   icon:SVGS.chat,      cat:'Comms',   desc:'Because emails are so 2010. Real-time banter & GIF sharing.', bg:'linear-gradient(135deg,#EC4899,#BE185D)' },
+  { id:'analytics', name:'Analytics',   icon:SVGS.analytics, cat:'Data',    desc:'Beautiful pie charts that make you look exceptionally smart.', bg:'linear-gradient(135deg,#06B6D4,#0369A1)' }
 ];
 
 let installedIds = ['calculator'];
@@ -409,7 +366,9 @@ window.handleSearch = function(val) {
   if (results.length) {
     searchDropdown.innerHTML = results.map(a => `
       <div class="sd-item" onclick="scrollToApp('${a.id}')">
-        <div style="width:40px;height:40px;border-radius:10px;background:${a.bg};display:flex;align-items:center;justify-content:center;">${a.icon.replace('28','20').replace('28','20')}</div>
+        <div style="width:40px;height:40px;border-radius:10px;background:${a.bg};display:flex;align-items:center;justify-content:center;">
+          <div style="width:20px;height:20px;">${a.icon}</div>
+        </div>
         <div>
           <div style="font-size:0.9rem;font-weight:800;color:var(--tx1);">${a.name}</div>
           <div style="font-size:0.75rem;color:var(--tx3);font-weight:600;">${a.cat}</div>
@@ -421,19 +380,23 @@ window.handleSearch = function(val) {
   searchDropdown.classList.add('active');
 };
 
+// Polished Scroll & Pulse Animation
 window.scrollToApp = function(id) {
   searchDropdown.classList.remove('active');
   if (window.innerWidth <= 680) closeSearch();
   
   const el = document.getElementById('app-card-' + id);
   if (el) {
-    // Smooth scroll accounting for sticky header
-    const y = el.getBoundingClientRect().top + window.scrollY - 100;
+    // Smoother offset to account for sticky header
+    const yOffset = -100; 
+    const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+    
+    // Fallback smooth scroll
     window.scrollTo({ top: y, behavior: 'smooth' });
     
-    el.classList.remove('highlight-jump');
+    el.classList.remove('highlight-pulse');
     void el.offsetWidth; // Trigger reflow
-    el.classList.add('highlight-jump');
+    el.classList.add('highlight-pulse');
   }
 };
 
@@ -443,7 +406,6 @@ function render() {
     const inst = installedIds.includes(app.id);
     return `
       <div class="app-card" id="app-card-${app.id}">
-        <div class="ac-ghost-emoji">${app.ghost}</div>
         <div class="ac-top">
           <div class="ac-icon" style="background:${app.bg}">${app.icon}</div>
           <div class="ac-text">
@@ -469,7 +431,6 @@ function render() {
     const noted = notifyList.includes(app.id);
     return `
       <div class="app-card" id="app-card-${app.id}">
-        <div class="ac-ghost-emoji">${app.ghost}</div>
         <div class="ac-top">
           <div class="ac-icon" style="background:${app.bg}">${app.icon}</div>
           <div class="ac-text">
@@ -488,21 +449,36 @@ function render() {
   }).join('');
 }
 
-// Carousel Logic - Strictly 4 slides moving right continuously
-const SLIDE_COUNT = 4;
-let cIdx = 0, cTimer;
+// ─────────────────────────────────────────────────
+// INFINITE LOOP CAROUSEL LOGIC 
+// ─────────────────────────────────────────────────
 const track = document.getElementById('carousel-track');
+const slides = Array.from(document.querySelectorAll('.featured-slide'));
 
-function carouselGo(idx) {
-  // Enforce mandatory right-ward loop feel
-  cIdx = ((idx % SLIDE_COUNT) + SLIDE_COUNT) % SLIDE_COUNT;
+// Clone the first slide and append it to the end to create a seamless loop
+const firstClone = slides[0].cloneNode(true);
+track.appendChild(firstClone);
+
+let cIdx = 0;
+let cTimer;
+
+function slideNext() {
+  cIdx++;
+  // Smooth, slow transition to the next slide
+  track.style.transition = 'transform 0.8s cubic-bezier(0.22,1,0.36,1)';
   track.style.transform = `translateX(calc(-${cIdx * 100}%))`;
+
+  // If we just slid to the cloned first slide, instantly snap back to the actual first slide invisibly
+  if (cIdx === slides.length) {
+    setTimeout(() => {
+      track.style.transition = 'none'; // Remove transition for the invisible snap
+      cIdx = 0;
+      track.style.transform = `translateX(0)`;
+    }, 800); // Wait for the transition to finish
+  }
 }
 
-window.carouselStep = (dir) => { carouselGo(cIdx + dir); resetTimer(); };
-function startAuto(){ cTimer = setInterval(() => carouselGo(cIdx + 1), 4000); }
-function resetTimer(){ clearInterval(cTimer); startAuto(); }
-
+function startAuto() { cTimer = setInterval(slideNext, 6000); } // Slowed down to 6 seconds
 document.querySelector('.featured-wrap').addEventListener('mouseenter', () => clearInterval(cTimer));
 document.querySelector('.featured-wrap').addEventListener('mouseleave', startAuto);
 
