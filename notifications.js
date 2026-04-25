@@ -84,7 +84,7 @@ export function renderNotifications(items, container) {
     };
     const { icon, cls } = iconMap[item.type] || { icon: '🔔', cls: 'notif-icon-login' };
 
-    // Inject extra buttons if it's a calendar event
+    // Add specific buttons for calendar events
     let actionButtons = '';
     if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
       actionButtons = `
