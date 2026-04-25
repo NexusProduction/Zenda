@@ -31,14 +31,14 @@ html,body{height:100%;overflow-x:hidden}
 body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-smoothing:antialiased}
 .hidden{display:none!important}
 
-/* ── LOADER ── */
-#app-loader{position:fixed;inset:0;background:#fff;z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .4s}
-#app-loader.fade-out{opacity:0;pointer-events:none}
-.loader-logo{width:48px;height:48px;background:var(--ac);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-family:var(--fd);font-weight:900;animation:pulseLoader 1.2s ease-in-out infinite}
-@keyframes pulseLoader{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(79,70,229,.4)}50%{transform:scale(1.06);box-shadow:0 0 0 10px rgba(79,70,229,0)}}
-.loader-bar{width:120px;height:3px;background:var(--bd);border-radius:2px;overflow:hidden}
-.loader-fill{height:100%;background:var(--ac);border-radius:2px;animation:barFill 1.6s ease-in-out infinite}
-@keyframes barFill{0%{width:0;margin-left:0}50%{width:60%}100%{width:0;margin-left:100%}}
+/* ── APP ENTRANCE ANIMATION ── */
+body {
+  animation: appSwipeIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+@keyframes appSwipeIn {
+  0% { opacity: 0; transform: translateX(40px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
 
 /* ── APPBAR ── */
 .appbar{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);height:60px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:var(--sh-xs)}
@@ -217,7 +217,6 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
 </head>
 <body>
 
-<!-- APPBAR -->
 <div class="appbar">
   <div class="ab-left">
     <button class="ab-back" onclick="window.history.length>1?window.history.back():window.location.href='dashboard.html'">
@@ -236,13 +235,10 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
   </div>
 </div>
 
-<!-- NOTIFICATION BANNERS AREA -->
 <div id="notif-banners" style="padding-top:12px"></div>
 
-<!-- DESKTOP LAYOUT -->
 <div class="cal-wrap">
   <div class="cal-main">
-    <!-- CALENDAR -->
     <div class="cal-panel">
       <div class="cal-head">
         <button class="cal-nav" id="prev-btn">&#8249;</button>
@@ -264,9 +260,7 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
       <div class="cal-grid" id="cal-grid-d"></div>
     </div>
 
-    <!-- RIGHT PANEL -->
     <div class="cal-right">
-      <!-- Today's Events -->
       <div class="cal-card">
         <div class="card-hdr">
           <div class="card-ttl" id="day-title-d">Today</div>
@@ -277,7 +271,6 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
         </div>
       </div>
 
-      <!-- Add Event -->
       <div class="cal-card">
         <div class="card-hdr">
           <div class="card-ttl">
@@ -290,7 +283,6 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
     </div>
   </div>
 
-  <!-- MOBILE LAYOUT -->
   <div class="mob-wrap">
     <div style="background:var(--sf);border-bottom:1px solid var(--bd)">
       <div class="mob-cal-head">
@@ -329,7 +321,6 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
   </div>
 </div>
 
-<!-- STAFF PICKER MODAL -->
 <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
   <div class="staff-modal">
     <div class="modal-hdr">
@@ -358,11 +349,9 @@ import {
 /* ── FIREBASE INIT ── */
 let app, auth, db;
 try {
-  // Try importing from existing config
   const { auth: a, db: d } = await import('./firebase-config.js');
   auth = a; db = d;
 } catch(e) {
-  // Fallback: Initialize directly
   const cfg = {
     apiKey:"AIzaSyArQLilynpEoydg-nye9yCQ2cQIVpeuyUI",
     authDomain:"zenda-app-593a8.firebaseapp.com",
@@ -380,10 +369,10 @@ try {
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-let CU = null; // current user object
+let CU = null; 
 let curDate = new Date();
 let selDay = new Date();
-let allEvents = []; // merged deduplicated events
+let allEvents = []; 
 let personalEvents = [];
 let companyEvents = [];
 let taskEvents = [];
@@ -391,7 +380,7 @@ let companyStaff = [];
 let selectedStaffUIDs = new Set();
 let selPriority = 'high';
 let unsubs = [];
-let pendingNotifEvents = []; // new event notifications to show
+let pendingNotifEvents = [];
 
 /* ── HELPERS ── */
 const dk = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -399,15 +388,6 @@ const isToday = d => { const n=new Date(); return d.getDate()===n.getDate()&&d.g
 const sameDay = (a,b) => a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const pEl = id => document.getElementById(id);
-
-/* ── APP ENTRANCE ANIMATION ── */
-body {
-  animation: appSwipeIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both;
-}
-@keyframes appSwipeIn {
-  0% { opacity: 0; transform: translateX(40px); }
-  100% { opacity: 1; transform: translateX(0); }
-}
 
 /* ── SYNC STATUS ── */
 function setSyncStatus(state, text) {
@@ -421,7 +401,6 @@ onAuthStateChanged(auth, async user => {
   if (!user) { window.location.replace('login.html'); return; }
 
   try {
-    // Load user data
     const uSnap = await getDoc(doc(db, 'users', user.uid));
     if (uSnap.exists()) {
       CU = { uid: user.uid, ...uSnap.data() };
@@ -430,18 +409,13 @@ onAuthStateChanged(auth, async user => {
     }
     selectedStaffUIDs.add(CU.uid);
 
-    // Check premium
     await checkPremiumStatus();
 
-    // Load company staff
     if (CU.companyId) {
       await loadCompanyStaff();
     }
 
-    // Start realtime listeners
     startListeners();
-
-    // Check for new notifications (calendar events addressed to this user)
     listenCalendarNotifications();
 
     // Check if opened from a notification URL
@@ -451,10 +425,9 @@ onAuthStateChanged(auth, async user => {
       const [y, m, d] = urlDate.split('-').map(Number);
       curDate = new Date(y, m - 1, 1);
       selDay = new Date(y, m - 1, d);
-      setTimeout(() => setMobTab('events'), 100); // Ensure mobile tab switches
+      setTimeout(() => setMobTab('events'), 100); 
     }
     
-    // Render initial UI
     renderForms();
     renderCalendar();
     showDayEvents(selDay);
@@ -504,26 +477,22 @@ async function loadCompanyStaff() {
 
 /* ── REALTIME LISTENERS ── */
 function startListeners() {
-  // Clean old listeners
   unsubs.forEach(u => u());
   unsubs = [];
   setSyncStatus('connecting', 'Connecting…');
 
-  // Personal events
   const q1 = query(collection(db, 'calendar'), where('uid', '==', CU.uid));
   unsubs.push(onSnapshot(q1, snap => {
     personalEvents = snap.docs.map(d => ({ id: d.id, _src: 'personal', ...d.data() }));
     mergeAndRender();
   }, e => setSyncStatus('err', 'Sync Error')));
 
-  // Company events (all visibility)
   if (CU.companyId) {
     const q2 = query(collection(db, 'calendar'), where('companyId', '==', CU.companyId));
     unsubs.push(onSnapshot(q2, snap => {
       const raw = snap.docs.map(d => ({ id: d.id, _src: 'company', ...d.data() }));
-      // Filter based on visibility rules
       companyEvents = raw.filter(ev => {
-        if (ev.uid === CU.uid) return false; // Personal already covered
+        if (ev.uid === CU.uid) return false; 
         if (ev.visibility === 'all') return true;
         if (ev.visibility === 'custom') {
           return Array.isArray(ev.visibleToUIDs) && ev.visibleToUIDs.includes(CU.uid);
@@ -533,7 +502,6 @@ function startListeners() {
       mergeAndRender();
     }));
 
-    // Tasks
     const q3 = query(collection(db, 'tasks'), where('assignedTo', '==', CU.uid));
     unsubs.push(onSnapshot(q3, snap => {
       taskEvents = snap.docs.map(d => {
@@ -580,7 +548,6 @@ function renderGrid(containerId, y, m, mode) {
 
   let html = '';
 
-  // Prev month filler
   for (let i = firstDay - 1; i >= 0; i--) {
     if (mode === 'desktop') {
       html += `<div class="cal-day other-month"><div class="dn">${prevDays-i}</div></div>`;
@@ -589,7 +556,6 @@ function renderGrid(containerId, y, m, mode) {
     }
   }
 
-  // Current month days
   for (let day = 1; day <= daysInMonth; day++) {
     const d = new Date(y, m, day);
     const key = dk(d);
@@ -620,7 +586,6 @@ function renderGrid(containerId, y, m, mode) {
     }
   }
 
-  // Next month filler
   const total = firstDay + daysInMonth;
   const rows = Math.ceil(total / 7);
   for (let i = 1; i <= rows*7 - total; i++) {
@@ -630,17 +595,14 @@ function renderGrid(containerId, y, m, mode) {
       html += `<div class="mob-day other-month"><div class="mob-dn">${i}</div></div>`;
     }
   }
-
   container.innerHTML = html;
 }
 
-/* ── SELECT DAY ── */
 window.selectDay = function(y, m, day) {
   selDay = new Date(y, m, day);
   renderCalendar();
   showDayEvents(selDay);
   updateDateInputs();
-  // Switch mobile tab to events
   setMobTab('events');
 };
 
@@ -658,7 +620,6 @@ function updateDateInputs() {
   document.querySelectorAll('.ae-date-inp').forEach(el => el.value = dk(selDay));
 }
 
-/* ── SHOW DAY EVENTS ── */
 function showDayEvents(d) {
   const key = dk(d);
   const dayEvs = allEvents.filter(e => e.date === key);
@@ -709,7 +670,6 @@ function format12(t) {
   return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
 }
 
-/* ── DELETE EVENT ── */
 window.deleteEvent = async function(id) {
   try {
     await deleteDoc(doc(db, 'calendar', id));
@@ -717,7 +677,6 @@ window.deleteEvent = async function(id) {
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 };
 
-/* ── PRIORITY SELECTION ── */
 window.setPrio = function(p) {
   selPriority = p;
   document.querySelectorAll('.prio-btn').forEach(b => {
@@ -726,7 +685,6 @@ window.setPrio = function(p) {
   });
 };
 
-/* ── ADD EVENT ── */
 window.addEvent = async function(btn) {
   const form = btn.closest('.add-form') || btn.closest('.mob-add-form');
   const titleEl = form.querySelector('.ae-title');
@@ -739,7 +697,6 @@ window.addEvent = async function(btn) {
 
   if (!title) { toast('Enter event title', 'error'); return; }
 
-  // Validate custom staff selection
   if (visibility === 'custom' && selectedStaffUIDs.size <= 1) {
     toast('Select at least one staff member', 'error');
     return;
@@ -768,14 +725,12 @@ window.addEvent = async function(btn) {
 
     const ref = await addDoc(collection(db, 'calendar'), newEv);
 
-    // Send notifications
     if (visibility === 'all' && CU.companyId) {
       await sendCompanyNotification(ref.id, title, dk(selDay), 'all');
     } else if (visibility === 'custom') {
       await sendCustomNotification(ref.id, title, dk(selDay), Array.from(selectedStaffUIDs));
     }
 
-    // Clear inputs
     titleEl.value = '';
     if (timeEl) timeEl.value = '';
     selPriority = 'high';
@@ -783,7 +738,6 @@ window.addEvent = async function(btn) {
       b.className = 'prio-btn';
       if (b.dataset.prio === 'high') b.classList.add('sel-high');
     });
-    // Reset vis to self
     document.querySelectorAll('.ae-visibility').forEach(s => s.value = 'self');
     document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.add('hidden'));
 
@@ -796,7 +750,6 @@ window.addEvent = async function(btn) {
   }
 };
 
-/* ── SEND NOTIFICATIONS ── */
 async function sendCompanyNotification(eventId, title, date, type) {
   if (!companyStaff.length) await loadCompanyStaff();
   const others = companyStaff.filter(s => s.uid !== CU.uid);
@@ -841,7 +794,6 @@ async function sendCustomNotification(eventId, title, date, uids) {
   await Promise.all(writes);
 }
 
-/* ── LISTEN FOR CALENDAR NOTIFICATIONS ── */
 function listenCalendarNotifications() {
   if (!CU?.uid) return;
 
@@ -859,7 +811,6 @@ function listenCalendarNotifications() {
   });
 }
 
-/* ── RENDER NOTIFICATION BANNERS ── */
 function renderNotifBanners(notifs) {
   const container = pEl('notif-banners');
   if (!container) return;
@@ -869,7 +820,7 @@ function renderNotifBanners(notifs) {
   container.innerHTML = shown.map(n => {
     const isAll = n.type === 'calendar_event_all';
     const typeClass = isAll ? 'all-type' : 'custom-type';
-    const icon = '🗓️'; // Simple calendar sketch icon
+    const icon = '🗓️';
     
     return `<div class="notif-banner ${typeClass}" id="notif-${n.notifId}" style="display:flex;margin:0 20px 10px">
       <div class="notif-banner-icon">${icon}</div>
@@ -881,7 +832,7 @@ function renderNotifBanners(notifs) {
     </div>`;
   }).join('');
 }
-/* ── DISMISS NOTIFICATION ── */
+
 window.dismissNotif = async function(notifId) {
   const bannerEl = pEl('notif-' + notifId);
   if (bannerEl) {
@@ -893,15 +844,11 @@ window.dismissNotif = async function(notifId) {
   try {
     const { updateDoc: upd } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
     await upd(doc(db, 'users', CU.uid, 'notifications', notifId), { read: true, status: 'read' });
-  } catch(e) { console.warn(e); }
+  } catch(e) {}
 };
 
-/* ── VIEW NOTIFICATION EVENT ── */
 window.viewNotifEvent = async function(notifId, eventDate) {
-  // Dismiss the notification
   await dismissNotif(notifId);
-
-  // Navigate to that date on the calendar
   if (eventDate) {
     const [y, m, d] = eventDate.split('-').map(Number);
     curDate = new Date(y, m-1, 1);
@@ -909,30 +856,20 @@ window.viewNotifEvent = async function(notifId, eventDate) {
     renderCalendar();
     showDayEvents(selDay);
     updateDateInputs();
-
-    // On mobile, switch to events tab
     setMobTab('events');
-
-    // Scroll to top smoothly
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 };
 
-/* ── VISIBILITY CHANGE HANDLER ── */
 window.onVisibilityChange = function(sel) {
   const val = sel.value;
-  // Sync all visibility selects
   document.querySelectorAll('.ae-visibility').forEach(s => s.value = val);
-  // Toggle custom staff rows
   document.querySelectorAll('.custom-staff-row').forEach(r => {
     r.classList.toggle('hidden', val !== 'custom');
   });
-  if (val === 'custom') {
-    openStaffModal();
-  }
+  if (val === 'custom') { openStaffModal(); }
 };
 
-/* ── STAFF MODAL ── */
 window.openStaffModal = async function() {
   if (!companyStaff.length) await loadCompanyStaff();
   const container = pEl('staff-list-container');
@@ -944,9 +881,7 @@ window.openStaffModal = async function() {
     return;
   }
 
-  // Ensure current user is always selected
   selectedStaffUIDs.add(CU.uid);
-
   const colors = ['#3B82F6','#10B981','#FF9500','#EF4444','#AF52DE'];
   const colorFor = name => colors[Math.abs([...name].reduce((h,c)=>c.charCodeAt(0)+((h<<5)-h),0)) % colors.length];
 
@@ -969,7 +904,6 @@ window.openStaffModal = async function() {
       </div>
     </div>`;
   }).join('');
-
   pEl('staff-modal').classList.add('open');
 };
 
@@ -989,11 +923,8 @@ window.toggleStaff = function(uid) {
   }
 };
 
-window.closeStaffModal = function() {
-  pEl('staff-modal').classList.remove('open');
-};
+window.closeStaffModal = function() { pEl('staff-modal').classList.remove('open'); };
 
-/* ── MOBILE TAB ── */
 window.setMobTab = function(tab) {
   pEl('mob-tab-ev').classList.toggle('on', tab === 'events');
   pEl('mob-tab-add').classList.toggle('on', tab === 'add');
@@ -1001,7 +932,6 @@ window.setMobTab = function(tab) {
   pEl('mob-add-content').classList.toggle('hidden', tab !== 'add');
 };
 
-/* ── RENDER FORMS ── */
 function renderForms() {
   const formHtml = `
     <div>
@@ -1049,12 +979,10 @@ function renderForms() {
     </div>
     <button type="button" class="add-btn" onclick="addEvent(this)" style="margin-top:4px">Add Event ✓</button>
   `;
-
   const dForm = pEl('add-form-d'); if (dForm) dForm.innerHTML = formHtml;
   const mForm = pEl('add-form-m'); if (mForm) mForm.innerHTML = formHtml;
 }
 
-/* ── TOAST ── */
 function toast(msg, type = 'info') {
   const c = pEl('toast-container');
   const t = document.createElement('div');
@@ -1064,7 +992,6 @@ function toast(msg, type = 'info') {
   setTimeout(() => t.remove(), 3500);
 }
 
-/* ── BUTTON WIRING ── */
 pEl('prev-btn')?.addEventListener('click', () => navMonth(-1));
 pEl('next-btn')?.addEventListener('click', () => navMonth(1));
 pEl('today-btn')?.addEventListener('click', () => goToday());
