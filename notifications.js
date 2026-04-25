@@ -75,12 +75,25 @@ export function renderNotifications(items, container) {
 
   container.innerHTML = items.map(item => {
     const iconMap = {
-      login:          { icon: '🔐', cls: 'notif-icon-login' },
-      task_assigned:  { icon: '📋', cls: 'notif-icon-task' },
-      task_done:      { icon: '✅', cls: 'notif-icon-done' },
-      task_declined:  { icon: '❌', cls: 'notif-icon-declined' },
+      login:                 { icon: '🔐', cls: 'notif-icon-login' },
+      task_assigned:         { icon: '📋', cls: 'notif-icon-task' },
+      task_done:             { icon: '✅', cls: 'notif-icon-done' },
+      task_declined:         { icon: '❌', cls: 'notif-icon-declined' },
+      calendar_event_all:    { icon: '🗓️', cls: 'notif-icon-cal' },
+      calendar_event_custom: { icon: '🗓️', cls: 'notif-icon-cal' }
     };
     const { icon, cls } = iconMap[item.type] || { icon: '🔔', cls: 'notif-icon-login' };
+
+    // Inject extra buttons if it's a calendar event
+    let actionButtons = '';
+    if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
+      actionButtons = `
+        <div style="margin-top: 8px; display: flex; gap: 8px;">
+          <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
+          <button class="btn btn-xs btn-primary" onclick="window.location.href='calendar.html?date=${item.eventDate || ''}'">(Open in app)</button>
+        </div>
+      `;
+    }
 
     return `
       <div class="notif-item ${item.read ? '' : 'unread'}" data-id="${item.id}">
@@ -88,12 +101,12 @@ export function renderNotifications(items, container) {
         <div class="notif-item-content">
           <div class="notif-item-msg">${escapeHtml(item.message)}</div>
           <div class="notif-item-time">${formatTime(item.createdAt)}</div>
+          ${actionButtons}
         </div>
       </div>
     `;
   }).join('');
 }
-
 // ---- Update notification badge count ----
 export function updateBadge(count) {
   const badge = document.getElementById('notif-badge');
