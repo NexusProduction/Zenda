@@ -1493,15 +1493,7 @@
                             onclick="window.openStaffRequestModal(this)">Review Request →</button>`;
         } else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') {
             actionsHtml = `
-              <button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;" onclick="
-                const btn = this; 
-                btn.textContent = 'Opening...'; 
-                import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({ updateDoc, doc }) => { 
-                  updateDoc(doc(db, 'users', window.CU.uid, 'notifications', '${n.id}'), { read: true, status: 'read' }); 
-                }); 
-                window.location.href = 'calendar.html?date=${n.eventDate || ''}'; 
-                setTimeout(() => { const c = btn.closest('.notif-card'); if(c) { c.classList.add('slide-left-out'); setTimeout(() => c.remove(), 350); } }, 3000);
-              ">Open in app</button>
+              <button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.openCalendarApp(this, '${n.id}', '${n.eventDate || ''}')">Open in app</button>
               <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Dismiss</button>
             `;
         } else {
@@ -1538,7 +1530,26 @@
             await markNotificationRead(window.CU.uid, notifId);
         }
     };
-    
+    window.openCalendarApp = async function(btn, notifId, dateStr) {
+        // 1. Change text instantly so you know it's working
+        btn.textContent = 'Opening...';
+        btn.style.opacity = '0.7';
+        btn.style.pointerEvents = 'none';
+
+        // 2. FORCE the database to mark it as read before we leave the page. 
+        // This guarantees it will be permanently gone when you return.
+        try {
+            const { updateDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+        } catch (e) {
+            console.error('DB update failed', e);
+        }
+
+        // 3. Wait just half a second (500ms) so you actually see "Opening...", then redirect!
+        setTimeout(() => {
+            window.location.href = 'calendar.html?date=' + (dateStr || '');
+        }, 500);
+    };
     window.dismissAlert = async function(btn) { 
         const card = btn.closest('.notif-card'); const id = card.dataset.id; btn.textContent = "Done!"; card.classList.add('slide-left-out'); setTimeout(() => card.remove(), 350); 
         try { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' }); } catch (e) { console.error(e); } 
