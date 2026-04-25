@@ -682,11 +682,9 @@ window.addEvent = async function(btn) {
   const form = btn.closest('.add-form') || btn.closest('.mob-add-form');
   const titleEl = form.querySelector('.ae-title');
   const visEl = form.querySelector('.ae-visibility');
-  const timeEl = form.querySelector('.ae-time');
 
   const title = titleEl?.value.trim();
   const visibility = visEl?.value || 'self';
-  const time = timeEl?.value || '';
 
   if (!title) { toast('Enter event title', 'error'); return; }
 
@@ -702,14 +700,14 @@ window.addEvent = async function(btn) {
     const newEv = {
       title,
       date: dk(selDay),
-      time,
-      priority: selPriority,
+      time: '',
+      priority: 'high',
       visibility,
       type: 'event',
       uid: CU.uid,
       companyId: CU.companyId || null,
       _fromName: CU.name || 'Team Member',
-      createdAt: serverTimestamp()
+      createdAt: Date.now()
     };
 
     if (visibility === 'custom') {
@@ -724,13 +722,8 @@ window.addEvent = async function(btn) {
       await sendCustomNotification(ref.id, title, dk(selDay), Array.from(selectedStaffUIDs));
     }
 
+    // Reset fields
     titleEl.value = '';
-    if (timeEl) timeEl.value = '';
-    selPriority = 'high';
-    document.querySelectorAll('.prio-btn').forEach(b => {
-      b.className = 'prio-btn';
-      if (b.dataset.prio === 'high') b.classList.add('sel-high');
-    });
     document.querySelectorAll('.ae-visibility').forEach(s => s.value = 'self');
     document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.add('hidden'));
 
@@ -931,33 +924,8 @@ function renderForms() {
       <span class="ae-lbl">Event Title</span>
       <input class="ae-inp ae-title" type="text" placeholder="Team meeting, deadline…" maxlength="60">
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div>
-        <span class="ae-lbl">Date</span>
-        <input class="ae-inp ae-date-inp" type="date" value="${dk(selDay)}">
-      </div>
-      <div>
-        <span class="ae-lbl">Time (optional)</span>
-        <select class="ae-inp ae-sel ae-time">
-          <option value="">No time</option>
-          ${['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'].map(t => {
-            const [h,m] = t.split(':').map(Number);
-            const label = `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
-            return `<option value="${t}">${label}</option>`;
-          }).join('')}
-        </select>
-      </div>
-    </div>
     <div>
-      <span class="ae-lbl">Priority</span>
-      <div class="prio-row">
-        <button type="button" class="prio-btn sel-high" data-prio="high" onclick="setPrio('high')">🔴 High</button>
-        <button type="button" class="prio-btn" data-prio="med" onclick="setPrio('med')">🟡 Med</button>
-        <button type="button" class="prio-btn" data-prio="low" onclick="setPrio('low')">🟢 Low</button>
-      </div>
-    </div>
-    <div>
-      <span class="ae-lbl">Visible To</span>
+      <span class="ae-lbl" style="margin-top:10px;">Visible To</span>
       <select class="ae-inp ae-sel ae-visibility" onchange="onVisibilityChange(this)">
         <option value="self">Only me</option>
         <option value="all">Everyone in company</option>
@@ -970,7 +938,7 @@ function renderForms() {
         </button>
       </div>
     </div>
-    <button type="button" class="add-btn" onclick="addEvent(this)" style="margin-top:4px">Add Event ✓</button>
+    <button type="button" class="add-btn" onclick="addEvent(this)" style="margin-top:12px">Add Event ✓</button>
   `;
   const dForm = pEl('add-form-d'); if (dForm) dForm.innerHTML = formHtml;
   const mForm = pEl('add-form-m'); if (mForm) mForm.innerHTML = formHtml;
