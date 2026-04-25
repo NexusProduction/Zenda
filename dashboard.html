@@ -790,6 +790,7 @@
     import { copyToClipboard, saveSession } from './utils.js';
     import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, writeBatch, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { markNotificationRead } from './notifications.js';
 
 
     // ── UPGRADE BUTTON HANDLER ──
@@ -1505,6 +1506,17 @@
       });
     };
 
+    window.markNotifRead = async function(notifId) {
+        // Hide it visually instantly
+        const el = document.querySelector(`.notif-item[data-id="${notifId}"]`);
+        if (el) el.style.display = 'none';
+        
+        // Update the database (ensure CU.uid exists here)
+        if (window.CU && window.CU.uid) {
+            await markNotificationRead(window.CU.uid, notifId);
+        }
+    };
+    
     window.dismissAlert = async function(btn) { 
         const card = btn.closest('.notif-card'); const id = card.dataset.id; btn.textContent = "Done!"; card.classList.add('slide-left-out'); setTimeout(() => card.remove(), 350); 
         try { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', id), { read: true, status: 'read' }); } catch (e) { console.error(e); } 
