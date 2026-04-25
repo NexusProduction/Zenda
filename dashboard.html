@@ -1445,6 +1445,8 @@
       activeNotifs.forEach(n => {
         let iconType = '';
         let iconBgClass = '';
+        let iconStyle = ''; // Custom style variable for calendar colors
+
         if (n.type === 'security_login' || n.type === 'security_alert') {
           iconType = `<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>`;
           iconBgClass = 'security';
@@ -1454,9 +1456,14 @@
         } else if (n.type.includes('staff')) {
           iconType = `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>`;
           iconBgClass = 'general';
-        } else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') {
+        } else if (n.type === 'calendar_event_all') {
           iconType = `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>`;
-          iconBgClass = 'task';
+          iconBgClass = ''; 
+          iconStyle = 'background: var(--success-light); color: var(--success);'; // Green Theme
+        } else if (n.type === 'calendar_event_custom') {
+          iconType = `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>`;
+          iconBgClass = ''; 
+          iconStyle = 'background: #F5F3FF; color: #7C3AED;'; // Purple Theme
         } else {
           iconType = `<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>`;
           iconBgClass = 'general';
@@ -1473,7 +1480,6 @@
                            </div>`;
         } else if (n.type === 'staff_add_request') {
             const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData || {}))));
-            // FIX: Removed the squeezed inline card and restored the clean "Review Request" button!
             actionsHtml = `<button class="btn w-full" style="padding:8px 16px;font-size:0.85rem;background:#10B981;color:white;border:none;border-radius:10px;font-weight:700;box-shadow:0 2px 8px rgba(16,185,129,0.25);" 
                             data-type="add" data-id="${n.id}" data-pending="${safeData}" 
                             data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}"
@@ -1488,7 +1494,7 @@
         } else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') {
             actionsHtml = `
               <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Dismiss</button>
-              <button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.location.href='calendar.html?date=${n.eventDate || ''}'">(Open in app)</button>
+              <button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.markNotifRead('${n.id}'); setTimeout(() => window.location.href='calendar.html?date=${n.eventDate || ''}', 100);">Open in app</button>
             `;
         } else {
             actionsHtml = `<button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="window.dismissAlert(this)">Dismiss</button>`;
@@ -1496,7 +1502,7 @@
 
         const html = `
           <div class="notif-card" data-id="${n.id}" data-task-id="${n.taskId || ''}" data-sender-id="${n.senderId || ''}">
-            <div class="notif-icon ${iconBgClass}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconType}</svg></div>
+            <div class="notif-icon ${iconBgClass}" style="${iconStyle}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconType}</svg></div>
             <div class="notif-content-wrap">
               <div class="notif-header"><h4 class="notif-title">${n.type.includes('task') ? 'Task Update' : (n.type.includes('security') ? 'Security Alert' : 'Notification')}</h4><span class="notif-time">${ago(n.createdAt)}</span></div>
               <p class="notif-body">${esc(n.message)}</p>
