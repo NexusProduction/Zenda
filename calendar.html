@@ -217,12 +217,6 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
 </head>
 <body>
 
-<!-- LOADER -->
-<div id="app-loader">
-  <div class="loader-logo">Z</div>
-  <div class="loader-bar"><div class="loader-fill"></div></div>
-</div>
-
 <!-- APPBAR -->
 <div class="appbar">
   <div class="ab-left">
@@ -406,11 +400,13 @@ const sameDay = (a,b) => a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const pEl = id => document.getElementById(id);
 
-/* ── LOADER ── */
-function hideLoader() {
-  const l = pEl('app-loader');
-  l.classList.add('fade-out');
-  setTimeout(() => l.remove(), 500);
+/* ── APP ENTRANCE ANIMATION ── */
+body {
+  animation: appSwipeIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+@keyframes appSwipeIn {
+  0% { opacity: 0; transform: translateX(40px); }
+  100% { opacity: 1; transform: translateX(0); }
 }
 
 /* ── SYNC STATUS ── */
@@ -448,17 +444,24 @@ onAuthStateChanged(auth, async user => {
     // Check for new notifications (calendar events addressed to this user)
     listenCalendarNotifications();
 
+    // Check if opened from a notification URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlDate = urlParams.get('date');
+    if (urlDate) {
+      const [y, m, d] = urlDate.split('-').map(Number);
+      curDate = new Date(y, m - 1, 1);
+      selDay = new Date(y, m - 1, d);
+      setTimeout(() => setMobTab('events'), 100); // Ensure mobile tab switches
+    }
+    
     // Render initial UI
     renderForms();
     renderCalendar();
     showDayEvents(selDay);
 
-    hideLoader();
-
   } catch(err) {
     console.error('Init error:', err);
     setSyncStatus('err', 'Error');
-    hideLoader();
   }
 });
 
@@ -860,27 +863,24 @@ function listenCalendarNotifications() {
 function renderNotifBanners(notifs) {
   const container = pEl('notif-banners');
   if (!container) return;
-
   if (!notifs.length) { container.innerHTML = ''; return; }
 
-  // Show latest 3 banners max
   const shown = notifs.slice(0, 3);
-
   container.innerHTML = shown.map(n => {
     const isAll = n.type === 'calendar_event_all';
     const typeClass = isAll ? 'all-type' : 'custom-type';
-    const icon = isAll ? '📢' : '👥';
+    const icon = '🗓️'; // Simple calendar sketch icon
+    
     return `<div class="notif-banner ${typeClass}" id="notif-${n.notifId}" style="display:flex;margin:0 20px 10px">
       <div class="notif-banner-icon">${icon}</div>
       <div class="notif-banner-txt">${esc(n.message)}</div>
       <div class="notif-actions-row">
         <button class="notif-btn dismiss" onclick="dismissNotif('${n.notifId}')">Dismiss</button>
-        <button class="notif-btn view ${!isAll ? 'purple-btn' : ''}" onclick="viewNotifEvent('${n.notifId}', '${esc(n.eventDate)}')">View</button>
+        <button class="notif-btn view ${!isAll ? 'purple-btn' : ''}" onclick="viewNotifEvent('${n.notifId}', '${esc(n.eventDate)}')">(Open in app)</button>
       </div>
     </div>`;
   }).join('');
 }
-
 /* ── DISMISS NOTIFICATION ── */
 window.dismissNotif = async function(notifId) {
   const bannerEl = pEl('notif-' + notifId);
