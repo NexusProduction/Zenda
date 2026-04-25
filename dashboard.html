@@ -1669,7 +1669,7 @@
             <button class="btn-ghost" style="padding:8px 16px;border-radius:10px;font-size:0.85rem;display:flex;align-items:center;gap:6px;" onclick="window.enableProfileEdit('${suffix}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Edit</button>
           </div>
           <div style="padding:0 24px 40px;display:flex;flex-direction:column;gap:20px;background:var(--bg-surface);">
-            <div class="form-group"><label class="form-label">Full Name</label><input type="text" id="prof-name-${suffix}" class="form-input prof-input-readonly" value="${esc(name)}" maxlength="35" readonly></div>
+            <div class="form-group"><label class="form-label" id="lbl-prof-name-${suffix}">Full Name</label><input type="text" id="prof-name-${suffix}" class="form-input prof-input-readonly" value="${esc(name)}" maxlength="35" oninput="window.checkProfileNameLength(this, '${suffix}')" readonly></div>
             <div class="form-group"><label class="form-label">Email Address</label><input type="email" id="prof-email-${suffix}" class="form-input prof-input-readonly" value="${esc(email)}" readonly></div>
             <button class="btn-primary w-full" id="btn-save-prof-${suffix}" style="display:none;margin-top:12px;padding:14px;border-radius:14px;font-size:1rem;justify-content:center;" onclick="window.saveProfileData('${suffix}')">Save Changes</button>
             <button class="btn-outline-danger w-full" style="margin-top:24px;padding:14px;border-radius:14px;font-size:1rem;display:flex;justify-content:center;" onclick="window.handleLogout()">Sign Out</button>
@@ -2178,7 +2178,7 @@ window.handleAssign = async function() {
             window.checkDelConfirm(); 
         } 
     };
-
+    
     // --- PROFILE EDIT & EMAIL CHANGE ENGINE ---
     window.enableProfileEdit = function(suffix) {
         const nameEl = document.getElementById('prof-name-' + suffix);
@@ -2197,6 +2197,35 @@ window.handleAssign = async function() {
         
         nameEl.focus();
         btn.style.display = 'flex';
+    };
+
+    window.checkProfileNameLength = function(input, suffix) {
+        const btn = document.getElementById('btn-save-prof-' + suffix);
+        const lbl = document.getElementById('lbl-prof-name-' + suffix);
+        
+        if (input.value.length >= 35) {
+            // Reached limit: Highlight red and fade button
+            input.style.borderColor = 'var(--danger)';
+            input.style.color = 'var(--danger)';
+            if (lbl) lbl.style.color = 'var(--danger)';
+            
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+            }
+        } else {
+            // Under limit: Restore normal edit styles (blue border)
+            input.style.borderColor = 'var(--ac)';
+            input.style.color = 'var(--tx-main)';
+            if (lbl) lbl.style.color = 'var(--tx-muted)';
+            
+            if (btn) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+            }
+        }
     };
 
     window.saveProfileData = async function(suffix) {
