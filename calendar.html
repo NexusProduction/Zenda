@@ -8,263 +8,345 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text y='23' x='5' font-size='20'>📅</text></svg>">
 <style>
-:root{--bg:#F9FAFB;--sf:#FFFFFF;--sf2:#F3F4F6;--bd:#E5E7EB;--tx1:#111827;--tx2:#6B7280;--tx3:#9CA3AF;--ac:#4F46E5;--ach:#4338CA;--acs:rgba(79,70,229,.08);--green:#10B981;--red:#EF4444;--amber:#F59E0B;--fd:'Plus Jakarta Sans',system-ui,sans-serif;--fb:'DM Sans',system-ui,sans-serif;--fm:'DM Mono',monospace}
+/* ── TOKENS ── */
+:root {
+  --bg:#F4F5F8;--sf:#FFF;--sf2:#F0F1F5;--bd:#E2E3E9;--bd2:#D0D2DB;
+  --tx1:#0D0F14;--tx2:#3D3F4A;--tx3:#6C6F80;--tx4:#9EA1B0;
+  --ac:#4F46E5;--ach:#4338CA;--acs:rgba(79,70,229,.1);
+  --green:#059669;--green-s:#ECFDF5;--green-b:#A7F3D0;
+  --red:#DC2626;--red-s:#FEF2F2;--red-b:#FECACA;
+  --amber:#D97706;--amber-s:#FFFBEB;--amber-b:#FDE68A;
+  --blue:#2563EB;--blue-s:#EFF6FF;--blue-b:#BFDBFE;
+  --purple:#7C3AED;--purple-s:#F5F3FF;--purple-b:#DDD6FE;
+  --fd:'Plus Jakarta Sans',system-ui,sans-serif;
+  --fb:'DM Sans',system-ui,sans-serif;
+  --fm:'DM Mono',monospace;
+  --sh-xs:0 1px 3px rgba(0,0,0,.04);
+  --sh-sm:0 2px 8px rgba(0,0,0,.06);
+  --sh-md:0 4px 20px rgba(0,0,0,.08);
+  --sh-lg:0 12px 40px rgba(0,0,0,.12);
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--fb);-webkit-font-smoothing:antialiased;color:var(--tx1)}
+html,body{height:100%;overflow-x:hidden}
+body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-smoothing:antialiased}
+.hidden{display:none!important}
+
+/* ── LOADER ── */
+#app-loader{position:fixed;inset:0;background:#fff;z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .4s}
+#app-loader.fade-out{opacity:0;pointer-events:none}
+.loader-logo{width:48px;height:48px;background:var(--ac);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-family:var(--fd);font-weight:900;animation:pulseLoader 1.2s ease-in-out infinite}
+@keyframes pulseLoader{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(79,70,229,.4)}50%{transform:scale(1.06);box-shadow:0 0 0 10px rgba(79,70,229,0)}}
+.loader-bar{width:120px;height:3px;background:var(--bd);border-radius:2px;overflow:hidden}
+.loader-fill{height:100%;background:var(--ac);border-radius:2px;animation:barFill 1.6s ease-in-out infinite}
+@keyframes barFill{0%{width:0;margin-left:0}50%{width:60%}100%{width:0;margin-left:100%}}
 
 /* ── APPBAR ── */
-.appbar{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(17,24,39,.04)}
+.appbar{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);height:60px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:var(--sh-xs)}
 .ab-left{display:flex;align-items:center;gap:10px}
-.ab-back{background:none;border:1.5px solid var(--bd);cursor:pointer;color:var(--tx2);padding:6px 12px;border-radius:10px;font-size:.8125rem;display:flex;align-items:center;gap:5px;transition:all .15s;font-family:var(--fb);font-weight:500}
+.ab-back{background:none;border:1.5px solid var(--bd);cursor:pointer;color:var(--tx3);padding:6px 12px;border-radius:10px;font-size:.8125rem;display:flex;align-items:center;gap:5px;transition:all .15s;font-family:var(--fb);font-weight:500}
 .ab-back:hover{background:var(--sf2);color:var(--tx1)}
 .ab-brand{display:flex;align-items:center;gap:8px;font-family:var(--fd);font-weight:700;font-size:.9375rem;color:var(--tx1);padding-left:12px;border-left:1px solid var(--bd);margin-left:4px}
 .ab-icon{width:28px;height:28px;background:#EEF2FF;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem}
-.ab-sync{font-size:.75rem;font-family:var(--fd);font-weight:600;padding:4px 10px;border-radius:99px}
-.sync-live{color:var(--green);background:#D1FAE5}
-.sync-connecting{color:var(--amber);background:#FEF3C7}
-.sync-err{color:var(--red);background:#FEE2E2}
+.ab-right{display:flex;align-items:center;gap:10px}
+.sync-pill{font-size:.72rem;font-family:var(--fd);font-weight:700;padding:4px 10px;border-radius:20px;transition:all .3s}
+.sync-live{color:var(--green);background:var(--green-s);border:1px solid var(--green-b)}
+.sync-connecting{color:var(--amber);background:var(--amber-s);border:1px solid var(--amber-b)}
+.sync-err{color:var(--red);background:var(--red-s);border:1px solid var(--red-b)}
+.premium-badge{background:linear-gradient(135deg,#0F172A,#1D1D1F);color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;font-family:var(--fd);display:flex;align-items:center;gap:5px}
+.upgrade-btn{background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;padding:0 12px;height:30px;border-radius:8px;font-weight:700;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:var(--fd)}
 
-/* ── DESKTOP LAYOUT (≥900px) ── */
-.cal-layout{flex:1;display:none;gap:16px;max-width:1200px;margin:0 auto;width:100%;padding:24px}
-@media(min-width:900px){.cal-layout{display:flex;align-items:flex-start}}
+/* ── LAYOUT ── */
+.cal-wrap{display:flex;flex:1;min-height:calc(100vh - 60px)}
+.cal-main{flex:1;display:flex;gap:16px;padding:20px;max-width:1200px;margin:0 auto;width:100%;align-items:flex-start}
 
 /* ── CALENDAR PANEL ── */
-.cal-panel{background:var(--sf);border-radius:20px;border:1px solid var(--bd);overflow:hidden;box-shadow:0 2px 8px rgba(17,24,39,.05);flex:1}
+.cal-panel{background:var(--sf);border-radius:20px;border:1px solid var(--bd);box-shadow:var(--sh-xs);flex:1;overflow:hidden;animation:fadeUp .4s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .cal-head{background:linear-gradient(135deg,#1E1B4B,#312E81,var(--ac));padding:18px 20px;display:flex;align-items:center;justify-content:space-between}
-.cal-nav{width:34px;height:34px;background:rgba(255,255,255,.15);border:none;color:white;border-radius:9px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0;font-family:var(--fd)}
+.cal-nav{width:34px;height:34px;background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:9px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:background .15s;font-family:var(--fd)}
 .cal-nav:hover{background:rgba(255,255,255,.25)}
-.cal-head-center{text-align:center}
-.cal-month{font-family:var(--fd);font-weight:800;font-size:1.15rem;color:white;letter-spacing:-.01em}
-.cal-year{font-size:.75rem;color:rgba(255,255,255,.6);margin-top:1px}
+.cal-month-txt{font-family:var(--fd);font-weight:800;font-size:1.15rem;color:#fff;letter-spacing:-.01em;text-align:center}
+.cal-year-txt{font-size:.72rem;color:rgba(255,255,255,.6);text-align:center;margin-top:2px}
 .today-btn{background:rgba(255,255,255,.15);border:none;color:rgba(255,255,255,.9);padding:5px 12px;border-radius:20px;font-family:var(--fd);font-size:.72rem;font-weight:700;cursor:pointer;transition:background .15s}
-.today-btn:hover{background:rgba(255,255,255,.25)}
+.today-btn:hover{background:rgba(255,255,255,.28)}
 .cal-daynames{display:grid;grid-template-columns:repeat(7,1fr);padding:10px 12px 4px;border-bottom:1px solid var(--bd)}
-.cal-dayname{text-align:center;font-family:var(--fd);font-size:.65rem;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;padding:3px}
+.cal-dayname{text-align:center;font-family:var(--fd);font-size:.62rem;font-weight:700;color:var(--tx4);text-transform:uppercase;letter-spacing:.07em}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:6px 8px 10px;gap:2px}
-.cal-day{min-height:52px;border-radius:9px;cursor:pointer;transition:all .15s;padding:5px 5px 4px;display:flex;flex-direction:column;gap:2px}
-.cal-day:hover:not(.empty){background:#EEF2FF}
-.cal-day.empty{cursor:default;pointer-events:none}
-.cal-day.other-month .cal-date{color:#D1D5DB}
-.cal-day .cal-date{font-family:var(--fd);font-size:.8rem;font-weight:600;color:var(--tx2);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
-.cal-day.today .cal-date{background:var(--ac);color:white;font-weight:800}
-.cal-day.selected{background:#EEF2FF;outline:2px solid var(--ac)}
-.cal-day.selected .cal-date{background:var(--ac);color:white}
-.cal-event-pill{border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;max-width:100%}
-.pill-high{background:#FEE2E2;color:#991B1B}.pill-med{background:#FEF3C7;color:#B45309}.pill-low{background:#D1FAE5;color:#065F46}.pill-task{background:#EEF2FF;color:var(--ac)}
-.cal-more-events{font-size:.58rem;color:var(--tx3);padding:1px 4px;font-weight:600}
 
-/* ── DESKTOP RIGHT PANEL ── */
-.cal-right{display:flex;flex-direction:column;gap:12px;width:320px;flex-shrink:0}
-.cal-card{background:var(--sf);border-radius:18px;border:1px solid var(--bd);overflow:hidden;box-shadow:0 2px 8px rgba(17,24,39,.05)}
-.cal-card-hdr{padding:14px 16px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
-.cal-card-ttl{font-family:var(--fd);font-weight:700;font-size:.9rem;color:var(--tx1)}
-.cal-event-count{font-family:var(--fd);font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#EEF2FF;color:var(--ac)}
-.day-events-list{padding:10px;max-height:260px;overflow-y:auto}
-.event-item{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;transition:all .15s;cursor:default}
-.event-item:hover{filter:brightness(.97)}
-.event-item.high{border-color:var(--red);background:#FEF2F2}
-.event-item.med{border-color:var(--amber);background:#FFFBEB}
-.event-item.low{border-color:var(--green);background:#F0FDF4}
-.event-item.task{border-color:var(--ac);background:#EEF2FF}
-.event-content{flex:1;min-width:0}
-.event-title{font-size:.82rem;font-weight:600;color:var(--tx1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.event-time{font-size:.7rem;color:var(--tx3);margin-top:2px;font-family:var(--fm)}
-.event-visibility{font-size:.62rem;font-weight:700;color:var(--tx2);margin-top:2px}
-.event-del{background:none;border:none;cursor:pointer;color:var(--tx3);padding:3px;border-radius:5px;flex-shrink:0;opacity:0;align-self:flex-start;margin-top:2px;transition:all .15s}
-.event-item:hover .event-del{opacity:1}
-.event-del:hover{color:var(--red);background:#FEE2E2}
-.no-events{text-align:center;padding:28px 16px;color:var(--tx3);font-size:.82rem;line-height:1.6}
+/* ── DAY CELLS ── */
+.cal-day{min-height:60px;border-radius:9px;cursor:pointer;transition:all .15s;padding:5px 5px 4px;display:flex;flex-direction:column;gap:2px}
+.cal-day:hover:not(.other-month){background:var(--acs)}
+.cal-day.other-month{opacity:.35;cursor:default;pointer-events:none}
+.cal-day .dn{font-family:var(--fd);font-size:.78rem;font-weight:600;color:var(--tx3);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
+.cal-day.is-today .dn{background:var(--ac);color:#fff;font-weight:800}
+.cal-day.is-selected{background:rgba(79,70,229,.06);outline:2px solid var(--ac);border-radius:9px}
+.cal-day.is-selected .dn{background:var(--ac);color:#fff}
+.ep{border-radius:4px;padding:2px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;animation:epIn .25s ease both}
+@keyframes epIn{from{opacity:0;transform:scaleY(0)}to{opacity:1;transform:scaleY(1)}}
+.ep.self{background:#EEF2FF;color:var(--ac)}
+.ep.all{background:var(--green-s);color:var(--green)}
+.ep.custom{background:var(--purple-s);color:var(--purple)}
+.ep.task{background:var(--amber-s);color:var(--amber)}
+.ep-more{font-size:.58rem;color:var(--tx4);padding:1px 4px;font-weight:600}
 
-/* ── ADD EVENT FORM ── */
-.add-form{padding:16px;display:flex;flex-direction:column;gap:10px}
-.ae-lbl{font-family:var(--fd);font-size:.72rem;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block}
-.ae-inp,.ae-sel{width:100%;padding:9px 12px;border:1.5px solid var(--bd);border-radius:10px;font-family:var(--fb);font-size:.85rem;outline:none;transition:all .15s;background:var(--bg);color:var(--tx1)}
-.ae-inp:focus,.ae-sel:focus{border-color:var(--ac);background:var(--sf);box-shadow:0 0 0 3px var(--acs)}
-.ae-inp::placeholder{color:var(--tx3)}
-.ae-sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-color:var(--bg);padding-right:32px;cursor:pointer}
-.ae-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.prio-btns{display:flex;gap:6px}
-.prio-btn{flex:1;padding:7px 4px;border:1.5px solid var(--bd);border-radius:8px;font-family:var(--fd);font-size:.72rem;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;background:var(--sf);color:var(--tx2)}
-.prio-btn.sel-high{background:#FEE2E2;border-color:var(--red);color:var(--red)}
-.prio-btn.sel-med{background:#FEF3C7;border-color:var(--amber);color:var(--amber)}
-.prio-btn.sel-low{background:#D1FAE5;border-color:var(--green);color:var(--green)}
-.add-btn{width:100%;padding:11px;background:var(--ac);color:#fff;border:none;border-radius:11px;font-family:var(--fd);font-weight:700;font-size:.9rem;cursor:pointer;transition:all .15s;box-shadow:0 1px 3px rgba(79,70,229,.22)}
-.add-btn:hover{background:var(--ach);transform:translateY(-1px);box-shadow:0 4px 12px rgba(79,70,229,.28)}
+/* ── RIGHT PANEL ── */
+.cal-right{width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;animation:fadeUp .4s .1s ease both}
+.cal-card{background:var(--sf);border-radius:18px;border:1px solid var(--bd);overflow:hidden;box-shadow:var(--sh-xs)}
+.card-hdr{padding:14px 16px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+.card-ttl{font-family:var(--fd);font-weight:700;font-size:.9rem;color:var(--tx1);display:flex;align-items:center;gap:6px}
+.ev-count{font-family:var(--fd);font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#EEF2FF;color:var(--ac)}
+
+/* ── EVENTS LIST ── */
+.day-events-list{padding:10px;max-height:280px;overflow-y:auto}
+.no-events{text-align:center;padding:24px 16px;color:var(--tx4);font-size:.82rem;line-height:1.6}
+.ev-item{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:5px;border-left:3px solid;cursor:default;transition:all .15s;animation:evIn .3s ease both}
+@keyframes evIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.ev-item:hover{filter:brightness(.97)}
+.ev-item.self{border-color:var(--ac);background:var(--blue-s)}
+.ev-item.all{border-color:var(--green);background:var(--green-s)}
+.ev-item.custom{border-color:var(--purple);background:var(--purple-s)}
+.ev-item.task{border-color:var(--amber);background:var(--amber-s)}
+.ev-content{flex:1;min-width:0}
+.ev-title{font-size:.82rem;font-weight:600;color:var(--tx1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-meta{font-size:.65rem;color:var(--tx3);margin-top:2px;display:flex;align-items:center;gap:4px}
+.vis-badge{font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:4px}
+.vis-badge.self{background:#EEF2FF;color:var(--ac)}
+.vis-badge.all{background:var(--green-s);color:var(--green)}
+.vis-badge.custom{background:var(--purple-s);color:var(--purple)}
+.ev-del{background:none;border:none;cursor:pointer;color:var(--tx4);padding:3px;border-radius:5px;flex-shrink:0;opacity:0;align-self:flex-start;transition:all .15s}
+.ev-item:hover .ev-del{opacity:1}
+.ev-del:hover{color:var(--red);background:var(--red-s)}
+
+/* ── ADD FORM ── */
+.add-form{padding:14px;display:flex;flex-direction:column;gap:10px}
+.ae-lbl{font-family:var(--fd);font-size:.7rem;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block}
+.ae-inp{width:100%;padding:8px 11px;border:1.5px solid var(--bd);border-radius:9px;font-family:var(--fb);font-size:.84rem;outline:none;transition:all .15s;background:var(--bg);color:var(--tx1)}
+.ae-inp:focus{border-color:var(--ac);background:var(--sf);box-shadow:0 0 0 3px var(--acs)}
+.ae-inp::placeholder{color:var(--tx4)}
+.ae-sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px;cursor:pointer;background-color:var(--bg)}
+.prio-row{display:flex;gap:6px}
+.prio-btn{flex:1;padding:6px 4px;border:1.5px solid var(--bd);border-radius:8px;font-family:var(--fd);font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;background:var(--sf);color:var(--tx3)}
+.prio-btn.sel-high{background:var(--red-s);border-color:var(--red);color:var(--red)}
+.prio-btn.sel-med{background:var(--amber-s);border-color:var(--amber);color:var(--amber)}
+.prio-btn.sel-low{background:var(--green-s);border-color:var(--green);color:var(--green)}
+.add-btn{width:100%;padding:11px;background:var(--ac);color:#fff;border:none;border-radius:11px;font-family:var(--fd);font-weight:700;font-size:.88rem;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(79,70,229,.2);display:flex;align-items:center;justify-content:center;gap:6px}
+.add-btn:hover{background:var(--ach);transform:translateY(-1px);box-shadow:0 4px 14px rgba(79,70,229,.3)}
 .add-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-/* ── MODAL & STAFF SELECTION CARDS ── */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
-.modal-overlay.open { display: flex; }
-.modal { transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-.modal-overlay.open .modal { transform: scale(1); }
+/* ── STAFF PICKER MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);z-index:500;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.open{display:flex}
+.staff-modal{background:var(--sf);width:100%;max-width:440px;border-radius:20px;box-shadow:var(--sh-lg);overflow:hidden;border:1px solid var(--bd);transform:scale(.95);transition:transform .3s cubic-bezier(.16,1,.3,1)}
+.modal-overlay.open .staff-modal{transform:scale(1)}
+.modal-hdr{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:var(--bg)}
+.modal-ttl{font-family:var(--fd);font-weight:800;font-size:1rem;color:var(--tx1)}
+.modal-close{background:none;border:none;font-size:1.2rem;color:var(--tx3);cursor:pointer;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all .15s}
+.modal-close:hover{background:var(--red-s);color:var(--red)}
+.staff-list-container{padding:14px 20px;max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.staff-card{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border:1.5px solid var(--bd);border-radius:12px;cursor:pointer;transition:all .2s}
+.staff-card:hover{border-color:var(--ac);box-shadow:0 2px 8px rgba(79,70,229,.1)}
+.staff-card.selected{border-color:var(--ac);background:#EEF2FF}
+.staff-card.is-self{opacity:.7;cursor:default}
+.staff-card.is-self:hover{border-color:var(--bd);box-shadow:none}
+.staff-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;font-family:var(--fd);flex-shrink:0}
+.staff-info{flex:1;margin-left:10px}
+.staff-name{font-size:.87rem;font-weight:700;color:var(--tx1);line-height:1.2}
+.staff-role-badge{font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:5px;background:#EEF2FF;color:var(--ac);text-transform:uppercase;letter-spacing:.04em;display:inline-block;margin-top:3px}
+.check-box{width:22px;height:22px;border-radius:6px;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;transition:all .2s;background:var(--sf)}
+.check-box.checked{background:var(--ac);border-color:var(--ac)}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--bd);background:var(--bg)}
 
-.staff-card-mini { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border:1px solid var(--bd); border-radius:12px; background:var(--sf); cursor:pointer; transition:all .2s; }
-.staff-card-mini:hover { border-color:var(--ac); box-shadow:0 2px 6px rgba(79,70,229,.1); }
-.staff-card-mini.selected { border-color:var(--ac); background:#EEF2FF; }
-.staff-card-mini.disabled { cursor:default; opacity:0.8; }
-.staff-card-mini.disabled:hover { border-color:var(--bd); box-shadow:none; }
-.checkbox-mini { width:22px; height:22px; border-radius:6px; border:2px solid var(--bd); display:flex; align-items:center; justify-content:center; transition:all .2s; background: var(--sf); }
-.checkbox-mini.checked { background:var(--ac); border-color:var(--ac); }
-
-/* ── MOBILE LAYOUT (<900px) ── */
-.mob-cal-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden}
-@media(min-width:900px){.mob-cal-wrap{display:none}}
-.mob-cal-panel{background:var(--sf);border-bottom:1px solid var(--bd)}
+/* ── MOBILE ── */
+.mob-wrap{display:none;flex-direction:column;flex:1}
 .mob-cal-head{background:linear-gradient(135deg,#1E1B4B,#312E81,var(--ac));padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
-.mob-cal-nav{width:32px;height:32px;background:rgba(255,255,255,.15);border:none;color:white;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .15s;font-family:var(--fd)}
-.mob-cal-nav:hover{background:rgba(255,255,255,.25)}
-.mob-cal-month{font-family:var(--fd);font-weight:800;font-size:.9375rem;color:white;letter-spacing:-.01em}
-.mob-cal-year{font-size:.72rem;color:rgba(255,255,255,.6);text-align:center}
-.mob-today-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);color:white;padding:5px 11px;border-radius:16px;font-family:var(--fd);font-size:.7rem;font-weight:700;cursor:pointer;transition:background .15s}
-.mob-today-btn:hover{background:rgba(255,255,255,.28)}
-.mob-daynames{display:grid;grid-template-columns:repeat(7,1fr);padding:8px 10px 2px;border-bottom:1px solid var(--bd)}
-.mob-dayname{text-align:center;font-family:var(--fd);font-size:.6rem;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;padding:2px}
-.mob-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:4px 6px 8px;gap:1px}
-.mob-day{min-height:38px;border-radius:7px;cursor:pointer;transition:all .12s;padding:3px 2px;display:flex;flex-direction:column;align-items:center;gap:1px}
-.mob-day:hover:not(.empty){background:#EEF2FF}
-.mob-day.empty{cursor:default;pointer-events:none}
-.mob-day.other-month .mob-date{color:#D1D5DB}
-.mob-date{font-family:var(--fd);font-size:.78rem;font-weight:600;color:var(--tx2);width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
-.mob-day.today .mob-date{background:var(--ac);color:white;font-weight:800}
-.mob-day.selected{background:#EEF2FF}
-.mob-day.selected .mob-date{background:var(--ac);color:white}
-.mob-event-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-
-/* ── MOBILE BOTTOM SHEET ── */
+.mob-nav{width:32px;height:32px;background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.mob-nav:hover{background:rgba(255,255,255,.25)}
+.mob-month-txt{font-family:var(--fd);font-weight:800;font-size:.9375rem;color:#fff;letter-spacing:-.01em}
+.mob-today-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);color:#fff;padding:5px 11px;border-radius:16px;font-family:var(--fd);font-size:.7rem;font-weight:700;cursor:pointer}
+.mob-daynames{display:grid;grid-template-columns:repeat(7,1fr);padding:8px 10px 2px;border-bottom:1px solid var(--bd);background:var(--sf)}
+.mob-dayname{text-align:center;font-family:var(--fd);font-size:.6rem;font-weight:700;color:var(--tx4);text-transform:uppercase;letter-spacing:.06em}
+.mob-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:4px 6px 8px;gap:1px;background:var(--sf)}
+.mob-day{min-height:38px;border-radius:7px;cursor:pointer;transition:all .12s;padding:3px 2px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.mob-day:hover:not(.other-month){background:var(--acs)}
+.mob-day.other-month{opacity:.3;cursor:default;pointer-events:none}
+.mob-dn{font-family:var(--fd);font-size:.76rem;font-weight:600;color:var(--tx3);width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.mob-day.is-today .mob-dn{background:var(--ac);color:#fff;font-weight:800}
+.mob-day.is-selected .mob-dn{background:var(--ac);color:#fff}
+.mob-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
 .mob-sheet{flex:1;overflow-y:auto;background:var(--bg)}
 .mob-tabs{display:flex;background:var(--sf);border-bottom:1px solid var(--bd);padding:0 16px;position:sticky;top:0;z-index:10}
-.mob-tab{flex:1;padding:11px 8px;border:none;background:none;font-family:var(--fd);font-size:.82rem;font-weight:600;color:var(--tx3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;text-align:center}
+.mob-tab{flex:1;padding:11px 8px;border:none;background:none;font-family:var(--fd);font-size:.8rem;font-weight:600;color:var(--tx4);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px;transition:all .15s;text-align:center}
 .mob-tab.on{color:var(--tx1);border-bottom-color:var(--ac)}
-.mob-tab-content{padding:14px}
-.mob-tab-content.hidden{display:none}
-.mob-day-ttl{font-family:var(--fd);font-size:.875rem;font-weight:700;color:var(--tx1);margin-bottom:10px}
+.mob-content{padding:14px}
+.mob-content.hidden{display:none}
+.mob-add-form{display:flex;flex-direction:column;gap:12px;padding:4px 0}
 
-/* TOAST */
-#toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
-.toast{padding:11px 15px;border-radius:13px;font-family:var(--fb);font-size:.83rem;font-weight:500;box-shadow:0 8px 32px rgba(17,24,39,.1);min-width:200px;animation:tIn .25s ease;border:1px solid}
-.toast-success{background:#F0FDF4;border-color:#BBF7D0;color:#166534}
-.toast-error{background:#FFF5F5;border-color:#FECACA;color:#991B1B}
+/* ── TOAST ── */
+#toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{padding:11px 15px;border-radius:13px;font-family:var(--fb);font-size:.82rem;font-weight:500;box-shadow:var(--sh-md);min-width:200px;animation:tIn .25s ease;border:1px solid;pointer-events:all}
+.toast-success{background:var(--green-s);border-color:var(--green-b);color:#065F46}
+.toast-error{background:var(--red-s);border-color:var(--red-b);color:#991B1B}
 .toast-info{background:#EEF2FF;border-color:#C7D2FE;color:var(--ac)}
 @keyframes tIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── NOTIF BANNER ── */
+.notif-banner{display:none;align-items:center;gap:12px;padding:12px 20px;margin:0 20px 16px;border-radius:14px;border:1px solid;animation:bannerIn .4s ease both}
+@keyframes bannerIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.notif-banner.all-type{background:var(--green-s);border-color:var(--green-b);color:#065F46}
+.notif-banner.custom-type{background:var(--purple-s);border-color:var(--purple-b);color:#4C1D95}
+.notif-banner-icon{font-size:1.2rem;flex-shrink:0}
+.notif-banner-txt{flex:1;font-size:.83rem;font-weight:600}
+.notif-actions-row{display:flex;gap:6px;flex-shrink:0}
+.notif-btn{padding:5px 12px;border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:var(--fd);border:none;transition:all .15s}
+.notif-btn.dismiss{background:rgba(0,0,0,.08);color:inherit}
+.notif-btn.view{background:var(--ac);color:#fff}
+.notif-btn.view.purple-btn{background:var(--purple)}
+.notif-btn:hover{opacity:.85;transform:translateY(-1px)}
+
+/* ── EDIT STAFF BTN ── */
+.edit-staff-btn{background:var(--bg);border:1.5px solid var(--bd);color:var(--tx2);padding:7px 11px;border-radius:9px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:var(--fd);transition:all .15s;width:100%;display:flex;align-items:center;gap:6px;margin-top:6px}
+.edit-staff-btn:hover{border-color:var(--ac);color:var(--ac);background:#EEF2FF}
+
+/* ── SPINNER ── */
+.spin{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spinAnim .6s linear infinite}
+@keyframes spinAnim{to{transform:rotate(360deg)}}
+
+@media(min-width:900px){.cal-main{display:flex}.mob-wrap{display:none}}
+@media(max-width:899px){.cal-main{display:none}.mob-wrap{display:flex}.cal-wrap{flex-direction:column}}
 </style>
 </head>
 <body>
 
+<!-- LOADER -->
+<div id="app-loader">
+  <div class="loader-logo">Z</div>
+  <div class="loader-bar"><div class="loader-fill"></div></div>
+</div>
+
+<!-- APPBAR -->
 <div class="appbar">
   <div class="ab-left">
-    <button class="ab-back" onclick="window.history.length>1?window.history.back():window.close()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    <button class="ab-back" onclick="window.history.length>1?window.history.back():window.location.href='dashboard.html'">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
     </button>
     <div class="ab-brand">
       <div class="ab-icon">📅</div>
       Calendar
     </div>
   </div>
-  <div class="ab-right" style="display: flex; align-items: center; gap: 12px;">
-    <div id="premium-badge" class="hidden" style="background: linear-gradient(135deg, #0F172A, #1D1D1F); color: white; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 11px; display: none; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.1);">
-       </div>
-    
-    <button id="globalUpgradeBtn" class="hidden" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; padding: 0 12px; height: 32px; border-radius: 8px; font-weight: 600; font-size: 12px; display: none; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(245,158,11,0.3);" onclick="window.location.href='subscription.html'">
-      👑 Upgrade
-    </button>
-    <div class="ab-sync sync-connecting" id="sync-status">Connecting…</div>
+  <div class="ab-right">
+    <div id="premium-badge" class="premium-badge hidden"></div>
+    <button id="upgrade-btn" class="upgrade-btn hidden" onclick="window.location.href='subscription.html'">👑 Upgrade</button>
+    <div class="sync-pill sync-connecting" id="sync-el">Connecting…</div>
   </div>
 </div>
 
-<div class="cal-layout">
-  <div class="cal-panel">
-    <div class="cal-head">
-      <button class="cal-nav" onclick="window.nav(-1)">&#8249;</button>
-      <div class="cal-head-center">
-        <div class="cal-month" id="cal-month-d">Month</div>
-        <div class="cal-year" id="cal-year-d"></div>
+<!-- NOTIFICATION BANNERS AREA -->
+<div id="notif-banners" style="padding-top:12px"></div>
+
+<!-- DESKTOP LAYOUT -->
+<div class="cal-wrap">
+  <div class="cal-main">
+    <!-- CALENDAR -->
+    <div class="cal-panel">
+      <div class="cal-head">
+        <button class="cal-nav" id="prev-btn">&#8249;</button>
+        <div style="text-align:center">
+          <div class="cal-month-txt" id="cal-month">Month</div>
+          <div class="cal-year-txt" id="cal-year"></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="today-btn" id="today-btn">Today</button>
+          <button class="cal-nav" id="next-btn">&#8250;</button>
+        </div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button class="today-btn" onclick="window.goToday()">Today</button>
-        <button class="cal-nav" onclick="window.nav(1)">&#8250;</button>
+      <div class="cal-daynames">
+        <div class="cal-dayname">Sun</div><div class="cal-dayname">Mon</div>
+        <div class="cal-dayname">Tue</div><div class="cal-dayname">Wed</div>
+        <div class="cal-dayname">Thu</div><div class="cal-dayname">Fri</div>
+        <div class="cal-dayname">Sat</div>
+      </div>
+      <div class="cal-grid" id="cal-grid-d"></div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="cal-right">
+      <!-- Today's Events -->
+      <div class="cal-card">
+        <div class="card-hdr">
+          <div class="card-ttl" id="day-title-d">Today</div>
+          <span class="ev-count hidden" id="ev-count-d">0</span>
+        </div>
+        <div class="day-events-list" id="ev-list-d">
+          <div class="no-events">Select a day to view events</div>
+        </div>
+      </div>
+
+      <!-- Add Event -->
+      <div class="cal-card">
+        <div class="card-hdr">
+          <div class="card-ttl">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Add Event
+          </div>
+        </div>
+        <div class="add-form" id="add-form-d"></div>
       </div>
     </div>
-    <div class="cal-daynames">
-      <div class="cal-dayname">Sun</div><div class="cal-dayname">Mon</div>
-      <div class="cal-dayname">Tue</div><div class="cal-dayname">Wed</div>
-      <div class="cal-dayname">Thu</div><div class="cal-dayname">Fri</div>
-      <div class="cal-dayname">Sat</div>
-    </div>
-    <div class="cal-grid" id="cal-grid-d"></div>
   </div>
 
-  <div class="cal-right">
-    <div class="cal-card">
-      <div class="cal-card-hdr">
-        <div class="cal-card-ttl" id="day-events-title-d">Today</div>
-        <span class="cal-event-count" id="day-events-count-d" style="display:none">0</span>
+  <!-- MOBILE LAYOUT -->
+  <div class="mob-wrap">
+    <div style="background:var(--sf);border-bottom:1px solid var(--bd)">
+      <div class="mob-cal-head">
+        <button class="mob-nav" id="mob-prev">&#8249;</button>
+        <div style="text-align:center">
+          <div class="mob-month-txt" id="mob-month">Month</div>
+          <div style="font-size:.7rem;color:rgba(255,255,255,.6)" id="mob-year"></div>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center">
+          <button class="mob-today-btn" id="mob-today">Today</button>
+          <button class="mob-nav" id="mob-next">&#8250;</button>
+        </div>
       </div>
-      <div class="day-events-list" id="day-events-list-d">
-        <div class="no-events">Select a day</div>
+      <div class="mob-daynames">
+        <div class="mob-dayname">S</div><div class="mob-dayname">M</div><div class="mob-dayname">T</div>
+        <div class="mob-dayname">W</div><div class="mob-dayname">T</div><div class="mob-dayname">F</div><div class="mob-dayname">S</div>
       </div>
+      <div class="mob-grid" id="cal-grid-m"></div>
     </div>
-    <div class="cal-card">
-      <div class="cal-card-hdr">
-        <div class="cal-card-ttl" style="display:flex;align-items:center;gap:6px">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-          Add Event
-        </div>
+
+    <div class="mob-sheet">
+      <div class="mob-tabs">
+        <button class="mob-tab on" id="mob-tab-ev" onclick="setMobTab('events')">
+          <span id="mob-day-label">Today</span>
+        </button>
+        <button class="mob-tab" id="mob-tab-add" onclick="setMobTab('add')">+ Add Event</button>
       </div>
-      <div class="add-form" id="add-form-d">
-        </div>
+      <div class="mob-content" id="mob-ev-content">
+        <div class="no-events" id="mob-ev-empty" style="text-align:center;padding:28px 16px">✨ No events today</div>
+        <div id="ev-list-m"></div>
+      </div>
+      <div class="mob-content hidden" id="mob-add-content">
+        <div class="mob-add-form" id="add-form-m"></div>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="mob-cal-wrap">
-  <div class="mob-cal-panel">
-    <div class="mob-cal-head">
-      <button class="mob-cal-nav" onclick="window.nav(-1)">&#8249;</button>
-      <div style="text-align:center">
-        <div class="mob-cal-month" id="cal-month-m">Month</div>
-        <div class="mob-cal-year" id="cal-year-m"></div>
-      </div>
-      <div style="display:flex;gap:5px;align-items:center">
-        <button class="mob-today-btn" onclick="window.goToday()">Today</button>
-        <button class="mob-cal-nav" onclick="window.nav(1)">&#8250;</button>
-      </div>
+<!-- STAFF PICKER MODAL -->
+<div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
+  <div class="staff-modal">
+    <div class="modal-hdr">
+      <div class="modal-ttl">👥 Select Staff</div>
+      <button class="modal-close" onclick="closeStaffModal()">✕</button>
     </div>
-    <div class="mob-daynames">
-      <div class="mob-dayname">S</div><div class="mob-dayname">M</div><div class="mob-dayname">T</div>
-      <div class="mob-dayname">W</div><div class="mob-dayname">T</div><div class="mob-dayname">F</div><div class="mob-dayname">S</div>
+    <div class="staff-list-container" id="staff-list-container">
+      <div style="text-align:center;padding:20px;color:var(--tx4)">Loading team…</div>
     </div>
-    <div class="mob-grid" id="cal-grid-m"></div>
-  </div>
-
-  <div class="mob-sheet">
-    <div class="mob-tabs">
-      <button class="mob-tab on" id="mob-tab-events" onclick="window.showMobTab('events')">
-        <span id="mob-day-label">Today</span>
-      </button>
-      <button class="mob-tab" id="mob-tab-add" onclick="window.showMobTab('add')">+ Add Event</button>
-    </div>
-    <div class="mob-tab-content" id="mob-events-content">
-      <div class="no-events" id="mob-events-empty" style="padding:32px 16px;text-align:center;color:var(--tx3)">✨ No events — enjoy your day!</div>
-      <div id="day-events-list-m"></div>
-    </div>
-    <div class="mob-tab-content hidden" id="mob-add-content">
-      <div id="add-form-m" style="display:flex;flex-direction:column;gap:12px;padding:4px 0">
-        </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="custom-staff-modal" onclick="if(event.target === this) window.closeModal('custom-staff-modal')">
-  <div class="modal" style="background: var(--sf); width: 100%; max-width: 420px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); overflow:hidden; border: 1px solid var(--bd); margin:0 16px;">
-    <div style="padding: 16px 20px; border-bottom: 1px solid var(--bd); display: flex; justify-content: space-between; align-items: center; background: var(--bg);">
-      <div style="font-size: 1.1rem; font-weight: 800; font-family: var(--fd);">Select Staff</div>
-      <button style="background: none; border: none; font-size: 1.2rem; color: var(--tx2); cursor: pointer;" onclick="window.closeModal('custom-staff-modal')">✕</button>
-    </div>
-    <div id="modal-staff-list" style="padding: 16px 20px; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-       </div>
-    <div style="padding: 16px 20px; border-top: 1px solid var(--bd); background: var(--bg);">
-       <button class="add-btn" onclick="window.closeModal('custom-staff-modal')">Confirm Selection</button>
+    <div class="modal-footer">
+      <button class="add-btn" onclick="closeStaffModal()">✓ Confirm Selection</button>
     </div>
   </div>
 </div>
@@ -272,543 +354,724 @@ body{background:var(--bg);display:flex;flex-direction:column;font-family:var(--f
 <div id="toast-container"></div>
 
 <script type="module">
-// We import directly from your existing secure dashboard files
-import { auth, db } from './firebase-config.js';
-import { requireAuth, getCurrentUser } from './auth.js';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, collection, query, where, onSnapshot,
+  addDoc, deleteDoc, doc, getDoc, getDocs, serverTimestamp, orderBy
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// Global Variables
-window.events = [];
-window.companyEvents = [];
-window.myTasks = [];
-window.assignedByMeTasks = [];
-window.companyStaff = [];
+/* ── FIREBASE INIT ── */
+let app, auth, db;
+try {
+  // Try importing from existing config
+  const { auth: a, db: d } = await import('./firebase-config.js');
+  auth = a; db = d;
+} catch(e) {
+  // Fallback: Initialize directly
+  const cfg = {
+    apiKey:"AIzaSyArQLilynpEoydg-nye9yCQ2cQIVpeuyUI",
+    authDomain:"zenda-app-593a8.firebaseapp.com",
+    projectId:"zenda-app-593a8",
+    storageBucket:"zenda-app-593a8.firebasestorage.app",
+    messagingSenderId:"56547460703",
+    appId:"1:56547460703:web:689c2fb2707464ac733dea"
+  };
+  app = getApps().find(a=>a.name==='[DEFAULT]') || initializeApp(cfg);
+  auth = getAuth(app);
+  db = getFirestore(app);
+}
 
-let curDate = new Date();
-let selectedDay = new Date();
-window.selectedPrio = 'high';
-window.CU = { uid: null, role: 'staff', companyId: null };
-
-window.selectedStaffUIDs = new Set();
-
-const syncEl = document.getElementById('sync-status'); 
+/* ── STATE ── */
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+let CU = null; // current user object
+let curDate = new Date();
+let selDay = new Date();
+let allEvents = []; // merged deduplicated events
+let personalEvents = [];
+let companyEvents = [];
+let taskEvents = [];
+let companyStaff = [];
+let selectedStaffUIDs = new Set();
+let selPriority = 'high';
+let unsubs = [];
+let pendingNotifEvents = []; // new event notifications to show
 
-// --- 1. INITIALIZE APP SECURELY ---
-async function init() {
-  if (syncEl) syncEl.className = 'ab-sync sync-connecting';
-  
+/* ── HELPERS ── */
+const dk = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const isToday = d => { const n=new Date(); return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); };
+const sameDay = (a,b) => a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const pEl = id => document.getElementById(id);
+
+/* ── LOADER ── */
+function hideLoader() {
+  const l = pEl('app-loader');
+  l.classList.add('fade-out');
+  setTimeout(() => l.remove(), 500);
+}
+
+/* ── SYNC STATUS ── */
+function setSyncStatus(state, text) {
+  const el = pEl('sync-el');
+  el.className = `sync-pill sync-${state}`;
+  el.textContent = text;
+}
+
+/* ── AUTH GUARD ── */
+onAuthStateChanged(auth, async user => {
+  if (!user) { window.location.replace('login.html'); return; }
+
   try {
-    // This waits for Firebase Auth to confirm the user token BEFORE running queries
-    await requireAuth('login.html');
-    const cu = await getCurrentUser();
-    
-    if (!cu || !cu.uid) {
-      window.location.replace('login.html');
-      return;
+    // Load user data
+    const uSnap = await getDoc(doc(db, 'users', user.uid));
+    if (uSnap.exists()) {
+      CU = { uid: user.uid, ...uSnap.data() };
+    } else {
+      CU = { uid: user.uid, role: 'staff', companyId: null, name: user.email };
+    }
+    selectedStaffUIDs.add(CU.uid);
+
+    // Check premium
+    await checkPremiumStatus();
+
+    // Load company staff
+    if (CU.companyId) {
+      await loadCompanyStaff();
     }
 
-    window.CU = cu;
-    window.selectedStaffUIDs.add(window.CU.uid); // Ensure user is selected
-    
-    checkPremiumStatus();
-    loadAllRealtime();
+    // Start realtime listeners
+    startListeners();
 
-  } catch (err) {
-    console.error("Init Auth Error:", err);
-    if (syncEl) {
-      syncEl.textContent = 'Sync Failed';
-      syncEl.className='ab-sync sync-err';
-    }
+    // Check for new notifications (calendar events addressed to this user)
+    listenCalendarNotifications();
+
+    // Render initial UI
+    renderForms();
+    renderCalendar();
+    showDayEvents(selDay);
+
+    hideLoader();
+
+  } catch(err) {
+    console.error('Init error:', err);
+    setSyncStatus('err', 'Error');
+    hideLoader();
   }
-}
+});
 
-// --- 2. PREMIUM STATUS CHECK ---
+/* ── PREMIUM CHECK ── */
 async function checkPremiumStatus() {
-    if (!window.CU || !window.CU.companyId) return;
-    try {
-        const compSnap = await getDoc(doc(db, 'companies', window.CU.companyId));
-        const upgBtn = document.getElementById('globalUpgradeBtn');
-        const prmBadge = document.getElementById('premium-badge');
-        
-        if (compSnap.exists()) {
-            const compData = compSnap.data();
-            let isPremium = compData.isPremium === true;
-            if (isPremium && compData.subscriptionExpiry && new Date() > new Date(compData.subscriptionExpiry)) {
-                isPremium = false;
-            }
-            
-            if (isPremium) {
-                if(upgBtn) { upgBtn.style.display = 'none'; upgBtn.classList.add('hidden'); }
-                if(prmBadge) { 
-                    prmBadge.style.display = 'flex'; 
-                    prmBadge.classList.remove('hidden');
-                    const exp = compData.subscriptionExpiry ? new Date(compData.subscriptionExpiry).toLocaleDateString() : 'Lifetime';
-                    prmBadge.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#FF9500" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Premium till ${exp}`;
-                }
-            } else {
-                if(upgBtn) { upgBtn.style.display = 'flex'; upgBtn.classList.remove('hidden'); }
-                if(prmBadge) { prmBadge.style.display = 'none'; prmBadge.classList.add('hidden'); }
-            }
+  if (!CU?.companyId) return;
+  try {
+    const cSnap = await getDoc(doc(db, 'companies', CU.companyId));
+    if (!cSnap.exists()) return;
+    const cd = cSnap.data();
+    let isPremium = cd.isPremium === true;
+    if (isPremium && cd.subscriptionExpiry && new Date() > new Date(cd.subscriptionExpiry)) isPremium = false;
+
+    const upgBtn = pEl('upgrade-btn');
+    const prmBadge = pEl('premium-badge');
+    if (isPremium) {
+      if (upgBtn) upgBtn.classList.add('hidden');
+      if (prmBadge) {
+        prmBadge.classList.remove('hidden');
+        const exp = cd.subscriptionExpiry ? new Date(cd.subscriptionExpiry).toLocaleDateString() : '∞';
+        prmBadge.innerHTML = `⭐ Premium till ${exp}`;
+      }
+    } else {
+      if (upgBtn) upgBtn.classList.remove('hidden');
+      if (prmBadge) prmBadge.classList.add('hidden');
+    }
+  } catch(e) {}
+}
+
+/* ── LOAD COMPANY STAFF ── */
+async function loadCompanyStaff() {
+  if (!CU?.companyId) return;
+  try {
+    const snap = await getDocs(query(collection(db, 'users'), where('companyId', '==', CU.companyId)));
+    companyStaff = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  } catch(e) {
+    console.warn('Staff load failed:', e);
+  }
+}
+
+/* ── REALTIME LISTENERS ── */
+function startListeners() {
+  // Clean old listeners
+  unsubs.forEach(u => u());
+  unsubs = [];
+  setSyncStatus('connecting', 'Connecting…');
+
+  // Personal events
+  const q1 = query(collection(db, 'calendar'), where('uid', '==', CU.uid));
+  unsubs.push(onSnapshot(q1, snap => {
+    personalEvents = snap.docs.map(d => ({ id: d.id, _src: 'personal', ...d.data() }));
+    mergeAndRender();
+  }, e => setSyncStatus('err', 'Sync Error')));
+
+  // Company events (all visibility)
+  if (CU.companyId) {
+    const q2 = query(collection(db, 'calendar'), where('companyId', '==', CU.companyId));
+    unsubs.push(onSnapshot(q2, snap => {
+      const raw = snap.docs.map(d => ({ id: d.id, _src: 'company', ...d.data() }));
+      // Filter based on visibility rules
+      companyEvents = raw.filter(ev => {
+        if (ev.uid === CU.uid) return false; // Personal already covered
+        if (ev.visibility === 'all') return true;
+        if (ev.visibility === 'custom') {
+          return Array.isArray(ev.visibleToUIDs) && ev.visibleToUIDs.includes(CU.uid);
         }
-    } catch(e) { console.warn("Premium check error", e); }
-}
-
-// --- 3. DATABASE QUERIES ---
-let unsubPersonal, unsubCompany, unsubTasksToMe, unsubTasksByMe, unsubStaff;
-
-function loadAllRealtime() {
-  if (!window.CU || !window.CU.uid) return;
-
-  // Cleanup old listeners
-  if (unsubPersonal) unsubPersonal();
-  if (unsubCompany) unsubCompany();
-  if (unsubTasksToMe) unsubTasksToMe();
-  if (unsubTasksByMe) unsubTasksByMe();
-  if (unsubStaff) unsubStaff();
-
-  // Load Custom Staff Menu List
-  if (window.CU.companyId) {
-      const staffQ = query(collection(db, 'users'), where('companyId', '==', window.CU.companyId));
-      unsubStaff = onSnapshot(staffQ, (snap) => {
-          window.companyStaff = snap.docs.map(d => ({uid: d.id, ...d.data()}));
-          const listContainer = document.getElementById('modal-staff-list');
-          if (listContainer && document.getElementById('custom-staff-modal').classList.contains('open')) {
-              window.renderCustomStaffList(listContainer);
-          }
+        return false;
       });
-  }
+      mergeAndRender();
+    }));
 
-  // Personal Events
-  const q1 = query(collection(db, 'calendar'), where('uid', '==', window.CU.uid));
-  unsubPersonal = onSnapshot(q1, (snap1) => {
-    window.events = snap1.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
-    updateCalendarUI();
-  }, (e) => {
-    if (syncEl) { syncEl.textContent = 'Sync Failed'; syncEl.className='ab-sync sync-err'; }
-  });
-
-  // Company Events
-  if (window.CU.companyId) {
-    const q2 = query(collection(db, 'calendar'), where('companyId', '==', window.CU.companyId));
-    unsubCompany = onSnapshot(q2, (snap2) => {
-      window.companyEvents = snap2.docs
-        .map(d => ({id: d.id, companyEvent: true, ...d.data()}))
-        .filter(ev => {
-           if (ev.visibility === 'all') return true;
-           if (ev.visibility === 'custom') { return ev.visibleToUIDs && ev.visibleToUIDs.includes(window.CU.uid); }
-           // Fallback for legacy events
-           if (window.CU.role === 'owner' && (ev.visibility === 'owner' || ev.visibility === 'manager')) return true;
-           if (window.CU.role === 'manager' && ev.visibility === 'manager') return true;
-           if (window.CU.role === 'staff' && ev.visibility === 'staff') return true;
-           return false;
-        })
-        .sort((a,b) => new Date(a.date||0) - new Date(b.date||0));
-      updateCalendarUI();
-    });
-  }
-
-  // Tasks To Me
-  const q3 = query(collection(db, 'tasks'), where('assignedTo', '==', window.CU.uid));
-  unsubTasksToMe = onSnapshot(q3, (snap) => {
-    window.myTasks = snap.docs.map(d => {
-      const t = d.data();
-      return { id: d.id, title: t.title, date: t.dueDate, time: t.dueTime, type: 'task', status: t.status, priority: t.priority === 'High' ? 'high' : t.priority === 'Low' ? 'low' : 'med' };
-    }).filter(t => t.date);
-    updateCalendarUI();
-  });
-
-  // Tasks By Me
-  if (window.CU.role === 'owner' || window.CU.role === 'manager') {
-    const q4 = query(collection(db, 'tasks'), where('assignedBy', '==', window.CU.uid));
-    unsubTasksByMe = onSnapshot(q4, (snap) => {
-      window.assignedByMeTasks = snap.docs.map(d => {
+    // Tasks
+    const q3 = query(collection(db, 'tasks'), where('assignedTo', '==', CU.uid));
+    unsubs.push(onSnapshot(q3, snap => {
+      taskEvents = snap.docs.map(d => {
         const t = d.data();
-        return { id: d.id, title: t.title, date: t.dueDate, time: t.dueTime, type: 'task', status: t.status, priority: t.priority === 'High' ? 'high' : t.priority === 'Low' ? 'low' : 'med' };
+        return { id: d.id, title: t.title, date: t.dueDate, type: 'task',
+                 priority: (t.priority||'').toLowerCase() === 'high' ? 'high' : 'low',
+                 visibility: 'self', _src: 'task' };
       }).filter(t => t.date);
-      updateCalendarUI();
-    });
+      mergeAndRender();
+    }));
   }
 }
 
-// --- 4. CALENDAR UI UPDATES ---
-function updateCalendarUI() {
-  if (syncEl) { syncEl.textContent = '✓ Live'; syncEl.className='ab-sync sync-live'; }
-  renderCalendar();
-  showDayEvents(selectedDay);
-}
-
-function getAllEvents() {
+/* ── MERGE & RENDER ── */
+function mergeAndRender() {
   const seen = new Set();
-  return [...window.events, ...window.companyEvents, ...window.myTasks, ...window.assignedByMeTasks].filter(e => {
-    if(!e.date) return false;
-    if(seen.has(e.id)) return false;
-    seen.add(e.id); return true;
+  allEvents = [...personalEvents, ...companyEvents, ...taskEvents].filter(e => {
+    if (!e.date || seen.has(e.id)) return false;
+    seen.add(e.id);
+    return true;
   });
+  setSyncStatus('live', '✓ Live');
+  renderCalendar();
+  showDayEvents(selDay);
 }
 
+/* ── CALENDAR RENDER ── */
 function renderCalendar() {
   const y = curDate.getFullYear(), m = curDate.getMonth();
-  ['cal-month-d','cal-month-m'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=MONTHS[m]; });
-  ['cal-year-d','cal-year-m'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=y; });
+  ['cal-month','mob-month'].forEach(id => { const el = pEl(id); if(el) el.textContent = MONTHS[m]; });
+  ['cal-year','mob-year'].forEach(id => { const el = pEl(id); if(el) el.textContent = y; });
 
-  const firstDay = new Date(y,m,1).getDay();
-  const daysInMonth = new Date(y,m+1,0).getDate();
-  const prevDays = new Date(y,m,0).getDate();
-  const allEvs = getAllEvents();
-
-  let html = '';
-  for(let i=firstDay-1; i>=0; i--) {
-    html += `<div class="cal-day empty other-month"><div class="cal-date">${prevDays-i}</div></div>`;
-  }
-  for(let day=1; day<=daysInMonth; day++) {
-    const d = new Date(y,m,day);
-    const key = dateKey(d);
-    const dayEvs = allEvs.filter(e => e.date === key).sort((a,b) => (a.time||'').localeCompare(b.time||''));
-    const todayCls = isToday(d) ? ' today' : '';
-    const selCls = isSameDay(d,selectedDay) ? ' selected' : '';
-    const hasCls = dayEvs.length ? ' has-events' : '';
-
-    const pills = dayEvs.slice(0,2).map(ev => {
-      const pillCls = `pill-${ev.type==='task' ? 'task' : ev.priority||'low'}`;
-      const label = ev.time ? format12hr(ev.time)+' '+ev.title : ev.title;
-      return `<div class="cal-event-pill ${pillCls}">${escHtml(label)}</div>`;
-    }).join('');
-    const more = dayEvs.length > 2 ? `<div class="cal-more-events">+${dayEvs.length-2}</div>` : '';
-
-    html += `<div class="cal-day${todayCls}${selCls}${hasCls}" onclick="window.selectDay(${y},${m},${day})">
-      <div class="cal-date">${day}</div>
-      ${pills}${more}
-    </div>`;
-  }
-  const total = firstDay + daysInMonth;
-  const rows = Math.ceil(total/7);
-  const cells = rows*7;
-  for(let i=1; i<=cells-total; i++) {
-    html += `<div class="cal-day empty other-month"><div class="cal-date">${i}</div></div>`;
-  }
-
-  // Build mobile grid 
-  let mobHtml = '';
-  const mobFirstDay = new Date(y,m,1).getDay();
-  const mobPrevDays = new Date(y,m,0).getDate();
-  for(let i=mobFirstDay-1;i>=0;i--) {
-    mobHtml += '<div class="mob-day empty other-month"><div class="mob-date">' + (mobPrevDays-i) + '</div></div>';
-  }
-  for(let day=1;day<=daysInMonth;day++){
-    const d=new Date(y,m,day);
-    const key=dateKey(d);
-    const dayEvs=allEvs.filter(e=>e.date===key);
-    const todayCls=isToday(d)?' today':'';
-    const selCls=isSameDay(d,selectedDay)?' selected':'';
-    
-    let dotColor = '#10B981';
-    if (dayEvs.length) {
-       if (dayEvs[0].type === 'task') dotColor = '#4F46E5';
-       else if (dayEvs[0].priority === 'high') dotColor = '#EF4444';
-       else if (dayEvs[0].priority === 'med') dotColor = '#F59E0B';
-    }
-    const dot = dayEvs.length ? `<div class="mob-event-dot" style="background:${dotColor}"></div>` : '';
-    
-    mobHtml += '<div class="mob-day' + todayCls + selCls + '" onclick="window.selectDay(' + y + ',' + m + ',' + day + ')"><div class="mob-date">' + day + '</div>' + dot + '</div>';
-  }
-  const mobTotal = mobFirstDay + daysInMonth;
-  const mobRows = Math.ceil(mobTotal/7);
-  for(let i=1;i<=mobRows*7-mobTotal;i++) mobHtml += '<div class="mob-day empty other-month"><div class="mob-date">' + i + '</div></div>';
-
-  const dgrid = document.getElementById('cal-grid-d'); if(dgrid) dgrid.innerHTML = html;
-  const mgrid = document.getElementById('cal-grid-m'); if(mgrid) mgrid.innerHTML = mobHtml;
+  renderGrid('cal-grid-d', y, m, 'desktop');
+  renderGrid('cal-grid-m', y, m, 'mobile');
 }
 
-window.selectDay = function(y,m,day) {
-  selectedDay = new Date(y,m,day);
-  const dk = dateKey(selectedDay);
-  document.querySelectorAll('.ae-date').forEach(el => el.value = dk);
-  renderCalendar(); showDayEvents(selectedDay);
+function renderGrid(containerId, y, m, mode) {
+  const container = pEl(containerId);
+  if (!container) return;
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const prevDays = new Date(y, m, 0).getDate();
+
+  let html = '';
+
+  // Prev month filler
+  for (let i = firstDay - 1; i >= 0; i--) {
+    if (mode === 'desktop') {
+      html += `<div class="cal-day other-month"><div class="dn">${prevDays-i}</div></div>`;
+    } else {
+      html += `<div class="mob-day other-month"><div class="mob-dn">${prevDays-i}</div></div>`;
+    }
+  }
+
+  // Current month days
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(y, m, day);
+    const key = dk(d);
+    const dayEvs = allEvents.filter(e => e.date === key);
+    const todayCls = isToday(d) ? ' is-today' : '';
+    const selCls = sameDay(d, selDay) ? ' is-selected' : '';
+
+    if (mode === 'desktop') {
+      const pills = dayEvs.slice(0, 2).map(ev => {
+        const visCls = ev.type === 'task' ? 'task' : (ev.visibility || 'self');
+        return `<div class="ep ${visCls}">${esc(ev.title)}</div>`;
+      }).join('');
+      const more = dayEvs.length > 2 ? `<div class="ep-more">+${dayEvs.length-2} more</div>` : '';
+      html += `<div class="cal-day${todayCls}${selCls}" onclick="selectDay(${y},${m},${day})">
+        <div class="dn">${day}</div>${pills}${more}
+      </div>`;
+    } else {
+      let dotColor = 'var(--ac)';
+      if (dayEvs.length) {
+        if (dayEvs[0].type === 'task') dotColor = 'var(--amber)';
+        else if (dayEvs[0].visibility === 'all') dotColor = 'var(--green)';
+        else if (dayEvs[0].visibility === 'custom') dotColor = 'var(--purple)';
+      }
+      const dot = dayEvs.length ? `<div class="mob-dot" style="background:${dotColor}"></div>` : '';
+      html += `<div class="mob-day${todayCls}${selCls}" onclick="selectDay(${y},${m},${day})">
+        <div class="mob-dn">${day}</div>${dot}
+      </div>`;
+    }
+  }
+
+  // Next month filler
+  const total = firstDay + daysInMonth;
+  const rows = Math.ceil(total / 7);
+  for (let i = 1; i <= rows*7 - total; i++) {
+    if (mode === 'desktop') {
+      html += `<div class="cal-day other-month"><div class="dn">${i}</div></div>`;
+    } else {
+      html += `<div class="mob-day other-month"><div class="mob-dn">${i}</div></div>`;
+    }
+  }
+
+  container.innerHTML = html;
+}
+
+/* ── SELECT DAY ── */
+window.selectDay = function(y, m, day) {
+  selDay = new Date(y, m, day);
+  renderCalendar();
+  showDayEvents(selDay);
+  updateDateInputs();
+  // Switch mobile tab to events
+  setMobTab('events');
 };
 
 window.goToday = function() {
-  curDate = new Date(); selectedDay = new Date();
-  const dk = dateKey(selectedDay);
-  document.querySelectorAll('.ae-date').forEach(el => el.value = dk);
-  renderCalendar(); showDayEvents(selectedDay);
+  curDate = new Date(); selDay = new Date();
+  renderCalendar(); showDayEvents(selDay); updateDateInputs();
 };
 
-window.nav = function(dir) {
-  curDate = new Date(curDate.getFullYear(), curDate.getMonth()+dir, 1);
+window.navMonth = function(dir) {
+  curDate = new Date(curDate.getFullYear(), curDate.getMonth() + dir, 1);
   renderCalendar();
 };
 
-function showDayEvents(d) {
-  const key = dateKey(d);
-  const allEvs = getAllEvents();
-  const dayEvs = allEvs.filter(e => e.date === key).sort((a,b) => (a.time||'').localeCompare(b.time||''));
-
-  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const titleStr = isToday(d) ? `Today, ${d.getDate()} ${months[d.getMonth()]}` : `${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
-
-  const dtitle = document.getElementById('day-events-title-d'); if(dtitle) dtitle.textContent = titleStr;
-  const countEl = document.getElementById('day-events-count-d');
-  if(countEl){ if(dayEvs.length){countEl.textContent=dayEvs.length;countEl.style.display='';}else{countEl.style.display='none';} }
-
-  const mobTab = document.getElementById('mob-tab-events');
-  if(mobTab){ const sp = mobTab.querySelector('span'); if(sp) sp.textContent = titleStr + (dayEvs.length ? ' ('+dayEvs.length+')' : ''); }
-
-  const list = document.getElementById('day-events-list-d');
-  const mobEmpty = document.getElementById('mob-events-empty');
-  const mobList = document.getElementById('day-events-list-m');
-  
-  if(!dayEvs.length) {
-    if(list) list.innerHTML='<div class="no-events">✨ No events — enjoy your day!</div>';
-    if(mobEmpty) mobEmpty.style.display='';
-    if(mobList) mobList.innerHTML='';
-    return;
-  }
-  if(mobEmpty) mobEmpty.style.display='none';
-
-  const evHtml = dayEvs.map(ev => {
-    const cls = ev.type==='task'?'task':(ev.priority||'low');
-    const vis = ev.visibility && ev.visibility!=='self' ? visLabel(ev.visibility) : '';
-    const isOwn = (ev.uid === window.CU.uid || !ev.companyEvent) && ev.type !== 'task'; 
-    return `<div class="event-item ${cls}">
-      <div class="event-content">
-        <div class="event-title">${escHtml(ev.title)}</div>
-        ${ev.time ? `<div class="event-time">⏰ ${format12hr(ev.time)}</div>` : ''}
-        ${vis ? `<div class="event-visibility">👁 ${vis}</div>` : ''}
-        ${ev.type==='task' ? `<div class="event-visibility" style="color:#6366F1">📋 ${ev.status === 'done' ? 'Completed Task' : 'Pending Task'}</div>` : ''}
-      </div>
-      ${isOwn ? `<button class="event-del" onclick="window.delEvent('${ev.id}')" title="Delete Event">✕</button>` : ''}
-    </div>`;
-  }).join('');
-  
-  if(list) list.innerHTML = evHtml;
-  if(mobList) mobList.innerHTML = evHtml;
+function updateDateInputs() {
+  document.querySelectorAll('.ae-date-inp').forEach(el => el.value = dk(selDay));
 }
 
-function visLabel(v) { const m={all:'Everyone',custom:'Custom Staff',owner:'Owner only',manager:'Managers+',staff:'Staff only',self:'Only me'}; return m[v]||''; }
+/* ── SHOW DAY EVENTS ── */
+function showDayEvents(d) {
+  const key = dk(d);
+  const dayEvs = allEvents.filter(e => e.date === key);
 
-// --- 5. EVENT CREATION / DELETION ---
+  const months = MON_SHORT;
+  const dayNames = DAYS;
+  const label = isToday(d)
+    ? `Today, ${d.getDate()} ${months[d.getMonth()]}`
+    : `${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+
+  const dtitle = pEl('day-title-d'); if (dtitle) dtitle.textContent = label;
+  const mobLabel = pEl('mob-day-label'); if (mobLabel) mobLabel.textContent = label + (dayEvs.length ? ` (${dayEvs.length})` : '');
+
+  const countEl = pEl('ev-count-d');
+  if (countEl) { countEl.textContent = dayEvs.length; countEl.classList.toggle('hidden', dayEvs.length === 0); }
+
+  const evHtml = dayEvs.length ? dayEvs.map((ev, i) => renderEventItem(ev, i)).join('') : '';
+  const empty = '<div class="no-events">✨ No events — enjoy your day!</div>';
+
+  const evListD = pEl('ev-list-d'); if (evListD) evListD.innerHTML = evHtml || empty;
+  const evListM = pEl('ev-list-m'); if (evListM) evListM.innerHTML = evHtml;
+  const mobEmpty = pEl('mob-ev-empty'); if (mobEmpty) mobEmpty.style.display = dayEvs.length ? 'none' : 'block';
+}
+
+function renderEventItem(ev, idx) {
+  const visCls = ev.type === 'task' ? 'task' : (ev.visibility || 'self');
+  const canDel = (ev.uid === CU.uid) && ev.type !== 'task';
+  const visLabel = { self:'Only me', all:'Everyone', custom:'Custom', task:'Task' }[visCls] || '';
+  const delBtn = canDel ? `<button class="ev-del" onclick="deleteEvent('${ev.id}')" title="Delete">✕</button>` : '';
+  const fromTxt = ev.uid !== CU.uid ? `<span>From: ${esc(ev._fromName || 'Team')}</span>` : '';
+  return `<div class="ev-item ${visCls}" style="animation-delay:${idx*40}ms">
+    <div class="ev-content">
+      <div class="ev-title">${esc(ev.title)}</div>
+      <div class="ev-meta">
+        <span class="vis-badge ${visCls}">${visLabel}</span>
+        ${ev.time ? `<span>⏰ ${format12(ev.time)}</span>` : ''}
+        ${fromTxt}
+        ${ev.type==='task' ? '<span>📋 Task</span>' : ''}
+      </div>
+    </div>
+    ${delBtn}
+  </div>`;
+}
+
+function format12(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+}
+
+/* ── DELETE EVENT ── */
+window.deleteEvent = async function(id) {
+  try {
+    await deleteDoc(doc(db, 'calendar', id));
+    toast('Event deleted', 'success');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+};
+
+/* ── PRIORITY SELECTION ── */
 window.setPrio = function(p) {
-  window.selectedPrio = p;
-  ['high','med','low'].forEach(x => {
-    document.querySelectorAll('#prio-' + x).forEach(btn => {
-      btn.className = 'prio-btn';
-      if(x === p) btn.classList.add('sel-' + x);
-    });
+  selPriority = p;
+  document.querySelectorAll('.prio-btn').forEach(b => {
+    b.className = 'prio-btn';
+    if (b.dataset.prio === p) b.classList.add(`sel-${p}`);
   });
 };
 
-window.addEvent = async function(btnContext) {
-  const formWrap = btnContext.closest('.add-form') || document;
-  const title = (formWrap.querySelector('.ae-title')?.value || '').trim();
-  const date = formWrap.querySelector('.ae-date')?.value || '';
-  const time = formWrap.querySelector('.ae-time')?.value || '';
-  const vis = formWrap.querySelector('.ae-visibility')?.value || 'self';
+/* ── ADD EVENT ── */
+window.addEvent = async function(btn) {
+  const form = btn.closest('.add-form') || btn.closest('.mob-add-form');
+  const titleEl = form.querySelector('.ae-title');
+  const visEl = form.querySelector('.ae-visibility');
+  const timeEl = form.querySelector('.ae-time');
 
-  if(!title){ toast('Enter an event title.','error'); return; }
-  if(!date)  { toast('Pick a date.','error'); return; }
+  const title = titleEl?.value.trim();
+  const visibility = visEl?.value || 'self';
+  const time = timeEl?.value || '';
+
+  if (!title) { toast('Enter event title', 'error'); return; }
+
+  // Validate custom staff selection
+  if (visibility === 'custom' && selectedStaffUIDs.size <= 1) {
+    toast('Select at least one staff member', 'error');
+    return;
+  }
 
   const allBtns = document.querySelectorAll('.add-btn');
-  allBtns.forEach(b => { b.disabled = true; b.textContent = 'Adding...'; });
+  allBtns.forEach(b => { b.disabled = true; b.innerHTML = '<span class="spin"></span> Adding…'; });
 
   try {
-    const newEv = { 
-      title, date, time, 
-      priority: window.selectedPrio, 
-      visibility: vis, 
-      type: 'event', 
-      companyId: window.CU.companyId || null, 
-      uid: window.CU.uid || null 
+    const newEv = {
+      title,
+      date: dk(selDay),
+      time,
+      priority: selPriority,
+      visibility,
+      type: 'event',
+      uid: CU.uid,
+      companyId: CU.companyId || null,
+      _fromName: CU.name || 'Team Member',
+      createdAt: serverTimestamp()
     };
-    
-    if (vis === 'custom') {
-        newEv.visibleToUIDs = Array.from(window.selectedStaffUIDs);
+
+    if (visibility === 'custom') {
+      newEv.visibleToUIDs = Array.from(selectedStaffUIDs);
     }
-    
-    if (window.CU.uid) {
-      await addDoc(collection(db, 'calendar'), newEv);
-    } else {
-      newEv.id = Date.now().toString();
-      window.events.push(newEv);
-      updateCalendarUI();
+
+    const ref = await addDoc(collection(db, 'calendar'), newEv);
+
+    // Send notifications
+    if (visibility === 'all' && CU.companyId) {
+      await sendCompanyNotification(ref.id, title, dk(selDay), 'all');
+    } else if (visibility === 'custom') {
+      await sendCustomNotification(ref.id, title, dk(selDay), Array.from(selectedStaffUIDs));
     }
-    
-    document.querySelectorAll('.ae-title').forEach(el => el.value = '');
-    document.querySelectorAll('.ae-time').forEach(el => el.value = '');
-    window.setPrio('high');
-    
-    const [yyyy,mm,dd] = date.split('-').map(Number);
-    selectedDay = new Date(yyyy,mm-1,dd);
-    
-    toast('Event added! 📅','success');
-  } catch(e) { 
-      toast('Failed to save. Check database rules.','error');
-      console.error(e);
+
+    // Clear inputs
+    titleEl.value = '';
+    if (timeEl) timeEl.value = '';
+    selPriority = 'high';
+    document.querySelectorAll('.prio-btn').forEach(b => {
+      b.className = 'prio-btn';
+      if (b.dataset.prio === 'high') b.classList.add('sel-high');
+    });
+    // Reset vis to self
+    document.querySelectorAll('.ae-visibility').forEach(s => s.value = 'self');
+    document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.add('hidden'));
+
+    toast(`Event added! 📅`, 'success');
+  } catch(e) {
+    console.error(e);
+    toast('Failed to add event: ' + e.message, 'error');
   } finally {
-      allBtns.forEach(b => { b.disabled = false; b.textContent = 'Add Event ✓'; }); 
+    allBtns.forEach(b => { b.disabled = false; b.innerHTML = 'Add Event ✓'; });
   }
 };
 
-window.delEvent = async function(id) {
+/* ── SEND NOTIFICATIONS ── */
+async function sendCompanyNotification(eventId, title, date, type) {
+  if (!companyStaff.length) await loadCompanyStaff();
+  const others = companyStaff.filter(s => s.uid !== CU.uid);
+
+  const notifData = {
+    type: 'calendar_event_all',
+    eventId,
+    eventTitle: title,
+    eventDate: date,
+    fromName: CU.name || 'Someone',
+    fromUid: CU.uid,
+    message: `${CU.name || 'Your teammate'} added a company-wide event: "${title}"`,
+    read: false,
+    status: 'unread',
+    createdAt: serverTimestamp()
+  };
+
+  const writes = others.map(s =>
+    addDoc(collection(db, 'users', s.uid, 'notifications'), notifData).catch(e => console.warn(e))
+  );
+  await Promise.all(writes);
+}
+
+async function sendCustomNotification(eventId, title, date, uids) {
+  const targets = uids.filter(u => u !== CU.uid);
+  const notifData = {
+    type: 'calendar_event_custom',
+    eventId,
+    eventTitle: title,
+    eventDate: date,
+    fromName: CU.name || 'Someone',
+    fromUid: CU.uid,
+    message: `${CU.name || 'Your teammate'} shared an event with you: "${title}"`,
+    read: false,
+    status: 'unread',
+    createdAt: serverTimestamp()
+  };
+
+  const writes = targets.map(uid =>
+    addDoc(collection(db, 'users', uid, 'notifications'), notifData).catch(e => console.warn(e))
+  );
+  await Promise.all(writes);
+}
+
+/* ── LISTEN FOR CALENDAR NOTIFICATIONS ── */
+function listenCalendarNotifications() {
+  if (!CU?.uid) return;
+
+  const q = query(
+    collection(db, 'users', CU.uid, 'notifications'),
+    where('status', '==', 'unread')
+  );
+
+  onSnapshot(q, snap => {
+    const calNotifs = snap.docs
+      .map(d => ({ notifId: d.id, ...d.data() }))
+      .filter(n => n.type === 'calendar_event_all' || n.type === 'calendar_event_custom');
+
+    renderNotifBanners(calNotifs);
+  });
+}
+
+/* ── RENDER NOTIFICATION BANNERS ── */
+function renderNotifBanners(notifs) {
+  const container = pEl('notif-banners');
+  if (!container) return;
+
+  if (!notifs.length) { container.innerHTML = ''; return; }
+
+  // Show latest 3 banners max
+  const shown = notifs.slice(0, 3);
+
+  container.innerHTML = shown.map(n => {
+    const isAll = n.type === 'calendar_event_all';
+    const typeClass = isAll ? 'all-type' : 'custom-type';
+    const icon = isAll ? '📢' : '👥';
+    return `<div class="notif-banner ${typeClass}" id="notif-${n.notifId}" style="display:flex;margin:0 20px 10px">
+      <div class="notif-banner-icon">${icon}</div>
+      <div class="notif-banner-txt">${esc(n.message)}</div>
+      <div class="notif-actions-row">
+        <button class="notif-btn dismiss" onclick="dismissNotif('${n.notifId}')">Dismiss</button>
+        <button class="notif-btn view ${!isAll ? 'purple-btn' : ''}" onclick="viewNotifEvent('${n.notifId}', '${esc(n.eventDate)}')">View</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── DISMISS NOTIFICATION ── */
+window.dismissNotif = async function(notifId) {
+  const bannerEl = pEl('notif-' + notifId);
+  if (bannerEl) {
+    bannerEl.style.transition = 'opacity .3s, transform .3s';
+    bannerEl.style.opacity = '0';
+    bannerEl.style.transform = 'translateX(-20px)';
+    setTimeout(() => bannerEl.remove(), 300);
+  }
   try {
-    if(window.CU.uid) { 
-      await deleteDoc(doc(db, 'calendar', id));
-    } else {
-      window.events = window.events.filter(e => e.id !== id);
-      updateCalendarUI();
-    }
-    toast('Event deleted.','success');
-  } catch(e) { toast('Error: '+e.message,'error'); }
+    const { updateDoc: upd } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await upd(doc(db, 'users', CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+  } catch(e) { console.warn(e); }
 };
 
-// --- 6. MODALS & UI HELPERS ---
-window.openModal = function(id) { document.getElementById(id).classList.add('open'); };
-window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
+/* ── VIEW NOTIFICATION EVENT ── */
+window.viewNotifEvent = async function(notifId, eventDate) {
+  // Dismiss the notification
+  await dismissNotif(notifId);
 
-window.showMobTab = function(tab) {
-  document.getElementById('mob-tab-events').classList.toggle('on', tab === 'events');
-  document.getElementById('mob-tab-add').classList.toggle('on', tab === 'add');
-  document.getElementById('mob-events-content').classList.toggle('hidden', tab !== 'events');
-  document.getElementById('mob-add-content').classList.toggle('hidden', tab !== 'add');
+  // Navigate to that date on the calendar
+  if (eventDate) {
+    const [y, m, d] = eventDate.split('-').map(Number);
+    curDate = new Date(y, m-1, 1);
+    selDay = new Date(y, m-1, d);
+    renderCalendar();
+    showDayEvents(selDay);
+    updateDateInputs();
+
+    // On mobile, switch to events tab
+    setMobTab('events');
+
+    // Scroll to top smoothly
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 };
 
-window.toggleCustomStaff = function(selectEl) {
-    const val = selectEl.value;
-    document.querySelectorAll('.ae-visibility').forEach(sel => sel.value = val);
-    document.querySelectorAll('.edit-custom-btn').forEach(btn => {
-        if(val === 'custom') btn.classList.remove('hidden');
-        else btn.classList.add('hidden');
-    });
-
-    if (val === 'custom') {
-        window.openModal('custom-staff-modal');
-        const listContainer = document.getElementById('modal-staff-list');
-        if(listContainer) window.renderCustomStaffList(listContainer);
-    }
+/* ── VISIBILITY CHANGE HANDLER ── */
+window.onVisibilityChange = function(sel) {
+  const val = sel.value;
+  // Sync all visibility selects
+  document.querySelectorAll('.ae-visibility').forEach(s => s.value = val);
+  // Toggle custom staff rows
+  document.querySelectorAll('.custom-staff-row').forEach(r => {
+    r.classList.toggle('hidden', val !== 'custom');
+  });
+  if (val === 'custom') {
+    openStaffModal();
+  }
 };
 
-window.toggleStaffSel = function(uid) {
-    if (!window.CU || uid === window.CU.uid) return; 
-    if (window.selectedStaffUIDs.has(uid)) window.selectedStaffUIDs.delete(uid);
-    else window.selectedStaffUIDs.add(uid);
-    
-    const listContainer = document.getElementById('modal-staff-list');
-    if(listContainer) window.renderCustomStaffList(listContainer);
+/* ── STAFF MODAL ── */
+window.openStaffModal = async function() {
+  if (!companyStaff.length) await loadCompanyStaff();
+  const container = pEl('staff-list-container');
+  if (!container) return;
+
+  if (!companyStaff.length) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx4)">No staff members found.</div>';
+    pEl('staff-modal').classList.add('open');
+    return;
+  }
+
+  // Ensure current user is always selected
+  selectedStaffUIDs.add(CU.uid);
+
+  const colors = ['#3B82F6','#10B981','#FF9500','#EF4444','#AF52DE'];
+  const colorFor = name => colors[Math.abs([...name].reduce((h,c)=>c.charCodeAt(0)+((h<<5)-h),0)) % colors.length];
+
+  container.innerHTML = companyStaff.map(s => {
+    const isSelf = s.uid === CU.uid;
+    const isSelected = selectedStaffUIDs.has(s.uid);
+    const initials = (s.name||'?').slice(0,2).toUpperCase();
+    const color = colorFor(s.name||'X');
+    const roleLabel = s.role === 'owner' ? 'Owner' : s.designation || s.role || 'Staff';
+
+    return `<div class="staff-card ${isSelected ? 'selected' : ''} ${isSelf ? 'is-self' : ''}"
+              onclick="${isSelf ? '' : `toggleStaff('${s.uid}')`}">
+      <div class="staff-av" style="background:${color}22;color:${color}">${initials}</div>
+      <div class="staff-info">
+        <div class="staff-name">${esc(s.name||'Unknown')} ${isSelf ? '<span style="color:var(--tx4);font-size:.7rem">(You)</span>' : ''}</div>
+        <span class="staff-role-badge">${esc(roleLabel)}</span>
+      </div>
+      <div class="check-box ${isSelected ? 'checked' : ''}" id="chk-${s.uid}">
+        ${isSelected ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  pEl('staff-modal').classList.add('open');
 };
 
-window.renderCustomStaffList = function(container) {
-    if (!window.CU || !window.CU.uid) return;
-    window.selectedStaffUIDs.add(window.CU.uid); 
-    
-    if (!window.companyStaff || window.companyStaff.length === 0) {
-         container.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--tx3);">Loading team members...</div>`;
-         return;
-    }
+window.toggleStaff = function(uid) {
+  if (uid === CU.uid) return;
+  if (selectedStaffUIDs.has(uid)) selectedStaffUIDs.delete(uid);
+  else selectedStaffUIDs.add(uid);
 
-    let html = '';
-    window.companyStaff.forEach(staff => {
-        const isMe = staff.uid === window.CU.uid;
-        const isSelected = window.selectedStaffUIDs.has(staff.uid);
-        
-        const initials = (staff.name || 'U').substring(0,2).toUpperCase();
-        const colors = ['#3B82F6', '#10B981', '#FF9500', '#FF3B30', '#AF52DE'];
-        let h = 0; for(let i=0;i<(staff.name||'').length;i++) h=staff.name.charCodeAt(i)+((h<<5)-h);
-        const bgColor = colors[Math.abs(h)%colors.length];
-        const roleLabel = staff.role === 'owner' ? 'Owner' : staff.designation || staff.role || 'Staff';
-
-        html += `
-        <div class="staff-card-mini ${isSelected ? 'selected' : ''} ${isMe ? 'disabled' : ''}" onclick="window.toggleStaffSel('${staff.uid}')">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:36px; height:36px; border-radius:50%; background:${bgColor}22; color:${bgColor}; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800;">
-                    ${initials}
-                </div>
-                <div style="display:flex; flex-direction:column;">
-                    <span style="font-size:0.9rem; font-weight:700; color:var(--tx1); line-height:1.2;">
-                        ${String(staff.name).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')} ${isMe ? '<span style="color:var(--tx3); font-size:0.75rem; margin-left:4px;">(You)</span>' : ''}
-                    </span>
-                    <span style="font-size:0.7rem; font-weight:800; color:var(--ac); background:var(--ac-light, #EEF2FF); padding:2px 8px; border-radius:4px; width:fit-content; margin-top:4px; text-transform:uppercase;">
-                        ${String(roleLabel).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-                    </span>
-                </div>
-            </div>
-            <div class="checkbox-mini ${isSelected ? 'checked' : ''}">
-                ${isSelected ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
-            </div>
-        </div>`;
-    });
-    container.innerHTML = html;
+  const card = document.querySelector(`.staff-card[onclick*="${uid}"]`);
+  const chk = pEl('chk-' + uid);
+  if (card) card.classList.toggle('selected', selectedStaffUIDs.has(uid));
+  if (chk) {
+    chk.classList.toggle('checked', selectedStaffUIDs.has(uid));
+    chk.innerHTML = selectedStaffUIDs.has(uid)
+      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`
+      : '';
+  }
 };
 
-window.renderAddForm = function() {
-  const html = `
+window.closeStaffModal = function() {
+  pEl('staff-modal').classList.remove('open');
+};
+
+/* ── MOBILE TAB ── */
+window.setMobTab = function(tab) {
+  pEl('mob-tab-ev').classList.toggle('on', tab === 'events');
+  pEl('mob-tab-add').classList.toggle('on', tab === 'add');
+  pEl('mob-ev-content').classList.toggle('hidden', tab !== 'events');
+  pEl('mob-add-content').classList.toggle('hidden', tab !== 'add');
+};
+
+/* ── RENDER FORMS ── */
+function renderForms() {
+  const formHtml = `
     <div>
       <span class="ae-lbl">Event Title</span>
       <input class="ae-inp ae-title" type="text" placeholder="Team meeting, deadline…" maxlength="60">
     </div>
-    <div class="ae-row">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div>
         <span class="ae-lbl">Date</span>
-        <input class="ae-inp ae-date" type="date">
+        <input class="ae-inp ae-date-inp" type="date" value="${dk(selDay)}">
       </div>
       <div>
         <span class="ae-lbl">Time (optional)</span>
-        <select class="ae-sel ae-time">
+        <select class="ae-inp ae-sel ae-time">
           <option value="">No time</option>
-          <option value="06:00">6:00 AM</option><option value="07:00">7:00 AM</option>
-          <option value="08:00">8:00 AM</option><option value="09:00">9:00 AM</option>
-          <option value="10:00">10:00 AM</option><option value="11:00">11:00 AM</option>
-          <option value="12:00">12:00 PM</option><option value="13:00">1:00 PM</option>
-          <option value="14:00">2:00 PM</option><option value="15:00">3:00 PM</option>
-          <option value="16:00">4:00 PM</option><option value="17:00">5:00 PM</option>
-          <option value="18:00">6:00 PM</option><option value="19:00">7:00 PM</option>
-          <option value="20:00">8:00 PM</option><option value="21:00">9:00 PM</option>
+          ${['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'].map(t => {
+            const [h,m] = t.split(':').map(Number);
+            const label = `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+            return `<option value="${t}">${label}</option>`;
+          }).join('')}
         </select>
       </div>
     </div>
     <div>
       <span class="ae-lbl">Priority</span>
-      <div class="prio-btns">
-        <button type="button" class="prio-btn sel-high" id="prio-high" onclick="window.setPrio('high')">🔴 High</button>
-        <button type="button" class="prio-btn" id="prio-med" onclick="window.setPrio('med')">🟡 Med</button>
-        <button type="button" class="prio-btn" id="prio-low" onclick="window.setPrio('low')">🟢 Low</button>
+      <div class="prio-row">
+        <button type="button" class="prio-btn sel-high" data-prio="high" onclick="setPrio('high')">🔴 High</button>
+        <button type="button" class="prio-btn" data-prio="med" onclick="setPrio('med')">🟡 Med</button>
+        <button type="button" class="prio-btn" data-prio="low" onclick="setPrio('low')">🟢 Low</button>
       </div>
     </div>
-    <div class="vis-section">
+    <div>
       <span class="ae-lbl">Visible To</span>
-      <select class="ae-sel ae-visibility" onchange="window.toggleCustomStaff(this)">
+      <select class="ae-inp ae-sel ae-visibility" onchange="onVisibilityChange(this)">
         <option value="self">Only me</option>
         <option value="all">Everyone in company</option>
         <option value="custom">Custom staff</option>
       </select>
-      <button type="button" class="edit-custom-btn hidden" onclick="window.openModal('custom-staff-modal'); window.renderCustomStaffList(document.getElementById('modal-staff-list'));" style="margin-top:8px; padding:8px; font-size:0.75rem; background:var(--sf); color:var(--tx1); border:1.5px solid var(--bd); border-radius:10px; cursor:pointer; width:100%; font-weight:700; font-family:var(--fd); transition:all 0.2s;">👥 Edit Staff Selection</button>
+      <div class="custom-staff-row hidden">
+        <button type="button" class="edit-staff-btn" onclick="openStaffModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Edit Staff Selection
+        </button>
+      </div>
     </div>
-    <button type="button" class="add-btn" onclick="window.addEvent(this)" style="margin-top:4px">Add Event ✓</button>
+    <button type="button" class="add-btn" onclick="addEvent(this)" style="margin-top:4px">Add Event ✓</button>
   `;
-  const dForm = document.getElementById('add-form-d');
-  const mForm = document.getElementById('add-form-m');
-  if (dForm) dForm.innerHTML = html;
-  if (mForm) mForm.innerHTML = html;
 
-  const d = new Date();
-  const today = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  document.querySelectorAll('.ae-date').forEach(el => el.value = today);
-};
-
-function toast(msg, type='info') {
-  let c = document.getElementById('toast-container');
-  const t = document.createElement('div');
-  t.className = 'toast toast-'+type;
-  t.innerHTML = `<span>${msg}</span>`;
-  c.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  const dForm = pEl('add-form-d'); if (dForm) dForm.innerHTML = formHtml;
+  const mForm = pEl('add-form-m'); if (mForm) mForm.innerHTML = formHtml;
 }
 
-function escHtml(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+/* ── TOAST ── */
+function toast(msg, type = 'info') {
+  const c = pEl('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
 
-// Launch!
-renderAddForm();
-init();
+/* ── BUTTON WIRING ── */
+pEl('prev-btn')?.addEventListener('click', () => navMonth(-1));
+pEl('next-btn')?.addEventListener('click', () => navMonth(1));
+pEl('today-btn')?.addEventListener('click', () => goToday());
+pEl('mob-prev')?.addEventListener('click', () => navMonth(-1));
+pEl('mob-next')?.addEventListener('click', () => navMonth(1));
+pEl('mob-today')?.addEventListener('click', () => goToday());
+
 </script>
 </body>
 </html>
