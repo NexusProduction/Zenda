@@ -109,9 +109,10 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
 .day-events-list{flex:1;padding:14px;overflow-y:auto;min-height:0;display:flex;flex-direction:column;}
 .no-events{text-align:center;color:var(--tx4);font-size:.85rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;}
 
-.ev-item{display:flex;align-items:center;gap:12px;padding:16px 16px;border-radius:14px;margin-bottom:12px;background:var(--sf);border:1.5px solid var(--bd2);box-shadow:0 4px 12px rgba(0,0,0,0.04);cursor:default;transition:all .2s;animation:evIn .3s ease both;position:relative;overflow:hidden;}
-.ev-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;}
+.ev-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;margin-bottom:10px;background:var(--sf);border:1px solid var(--bd);box-shadow:var(--sh-xs);cursor:pointer;transition:all .2s;animation:evIn .3s ease both;position:relative;overflow:hidden;}
+.ev-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;border-radius:12px 0 0 12px;}
 .ev-item:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,0.06);}
+.ev-item:active{transform:scale(0.98);}
 @keyframes evIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
 
 .ev-item.self::before{background:var(--ac);}
@@ -125,6 +126,19 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
 .ev-meta{font-size:.75rem;color:var(--tx3);display:flex;align-items:center;gap:4px;}
 
 .ev-badge{padding:3px 6px;border-radius:6px;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;}
+
+/* Dynamic Delete Button Styles */
+.ev-del{background:var(--sf2);border:none;cursor:pointer;color:var(--tx4);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0;transition:all .2s;transform:scale(0.9);}
+.ev-item:hover .ev-del{opacity:1;transform:scale(1);}
+.ev-del:not(.disabled-del):hover{background:var(--red-s);color:var(--red);}
+.ev-del.disabled-del:hover{cursor:not-allowed;}
+@media(max-width:899px) { 
+  .ev-del{opacity:0.5; transform:scale(1);} 
+  .ev-del:active{opacity:1;} 
+}
+
+/* Fix for Custom Staff Modal Fade Overlap */
+#staff-modal { background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
 .ev-item.self .ev-badge{background:var(--blue-s);color:var(--ac);}
 .ev-item.all .ev-badge{background:var(--green-s);color:var(--green);}
 .ev-item.custom .ev-badge{background:var(--purple-s);color:var(--purple);}
@@ -374,6 +388,33 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
   </div>
 </div>
 
+  <div class="modal-overlay" id="confirm-del-modal" onclick="if(event.target===this)closeConfirmDel()">
+  <div class="staff-modal" style="max-width:340px; text-align:center; padding:24px;">
+    <div style="width:48px;height:48px;background:var(--red-s);color:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+    </div>
+    <div class="modal-ttl" style="margin-bottom:8px;">Delete Event?</div>
+    <div id="del-msg" style="color:var(--tx3);font-size:.9rem;line-height:1.4;margin-bottom:24px;">Are you sure?</div>
+    <div style="display:flex;gap:12px;">
+      <button onclick="closeConfirmDel()" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);color:var(--tx2);font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="executeDelete()" style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--red);color:#fff;font-weight:700;cursor:pointer;">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="cannot-del-modal" onclick="if(event.target===this)closeCannotDel()">
+  <div class="staff-modal" style="max-width:340px; text-align:center; padding:24px; position:relative;">
+    <button class="modal-close" style="position:absolute;top:16px;right:16px;background:var(--sf2);" onclick="closeCannotDel()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div style="width:48px;height:48px;background:var(--sf2);color:var(--tx3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div class="modal-ttl" style="margin-bottom:8px;">Permission Denied</div>
+    <div id="cannot-del-msg" style="color:var(--tx3);font-size:.9rem;line-height:1.4;margin-bottom:8px;">This is assigned by someone else. You can't delete it.</div>
+  </div>
+</div>
+  
 <div id="toast-container"></div>
 
 <script type="module">
@@ -628,7 +669,7 @@ function showDayEvents(d) {
 
 function renderEventItem(ev, idx) {
   let visCls = ev.visibility || 'self';
-  if (ev.type === 'task') visCls = 'task'; // Task override
+  if (ev.type === 'task') visCls = 'task';
   
   let badgeTxt = 'Only Me';
   if (visCls === 'all') badgeTxt = 'Public';
@@ -636,11 +677,17 @@ function renderEventItem(ev, idx) {
   if (visCls === 'task') badgeTxt = 'Task';
 
   const canDel = (ev.uid === CU.uid);
+  const ownerNameStr = esc(ev._fromName || 'Team');
   const fromTxt = ev.uid !== CU.uid ? 
-    `<span style="font-weight:600; color:var(--tx2);">From: ${esc(ev._fromName || 'Team')}</span>` : 
+    `<span style="font-weight:600; color:var(--tx2);">From: ${ownerNameStr}</span>` : 
     `<span style="font-weight:600; color:var(--tx2);">From: Myself</span>`;
     
-  const delBtn = canDel ? `<button class="ev-del" onclick="deleteEvent('${ev.id}', this)" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : '';
+  let delBtn = '';
+  if (canDel) {
+      delBtn = `<button class="ev-del" onclick="confirmDelete('${ev.id}', '${visCls}', this, event)" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>`;
+  } else {
+      delBtn = `<button class="ev-del disabled-del" onclick="showCannotDelete('${ownerNameStr}', event)" title="Cannot Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>`;
+  }
   
   return `<div class="ev-item ${visCls}" style="animation-delay:${idx*40}ms">
     <div class="ev-content">
@@ -654,18 +701,55 @@ function renderEventItem(ev, idx) {
   </div>`;
 }
 
-window.deleteEvent = async function(id, btn) {
+let deleteTargetId = null;
+let deleteTargetBtn = null;
+
+window.confirmDelete = function(id, visibility, btn, event) {
+  if (event) event.stopPropagation(); // Prevents the card click animation from double firing
+  deleteTargetId = id;
+  deleteTargetBtn = btn;
+  
+  let msg = "Delete this event. Are you sure?";
+  if (visibility === 'all') msg = "This will delete the event for everyone. Are you sure?";
+  else if (visibility === 'custom') msg = "This will delete the event from selected staff. Are you sure?";
+  else if (visibility === 'self') msg = "This will delete the event only from you. Are you sure?";
+  else if (visibility === 'task') msg = "This will delete the task. Are you sure?";
+  
+  pEl('del-msg').textContent = msg;
+  pEl('confirm-del-modal').classList.add('open');
+};
+
+window.closeConfirmDel = () => {
+  pEl('confirm-del-modal').classList.remove('open');
+  deleteTargetId = null;
+  deleteTargetBtn = null;
+};
+
+window.executeDelete = async function() {
+  if (!deleteTargetId) return;
+  const id = deleteTargetId;
+  const btn = deleteTargetBtn;
+  closeConfirmDel();
+  
   if (btn) {
     const item = btn.closest('.ev-item');
     if (item) item.classList.add('deleting');
   }
+  
   setTimeout(async () => {
     try {
       await deleteDoc(doc(db, 'calendar', id));
       toast('Event deleted', 'success');
     } catch(e) { toast('Error: ' + e.message, 'error'); }
-  }, 280); // Wait for animation to finish
+  }, 280);
 };
+
+window.showCannotDelete = function(ownerName, event) {
+  if (event) event.stopPropagation();
+  pEl('cannot-del-msg').textContent = `This is assigned by ${ownerName}. You can't delete it.`;
+  pEl('cannot-del-modal').classList.add('open');
+};
+window.closeCannotDel = () => pEl('cannot-del-modal').classList.remove('open');
 
 function renderForms() {
   const formHtml = `
