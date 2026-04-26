@@ -73,8 +73,13 @@ body { animation: appSwipeIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both; }
 .cal-day:hover:not(.other-month){background:var(--acs)}
 .cal-day.other-month{opacity:.35;cursor:default;pointer-events:none}
 .cal-day .dn{font-family:var(--fd);font-size:.85rem;line-height:1;font-weight:600;color:var(--tx3);width:28px;height:28px;min-width:28px;min-height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;box-sizing:border-box;}
-.cal-day.is-today .dn{background:transparent;color:var(--ac);border:2px solid var(--ac);font-weight:800;}
+.cal-day.is-today .dn{background:transparent;color:var(--ac);border:2.5px solid var(--ac);font-weight:800;}
 .cal-day.is-selected{background:rgba(79,70,229,.06);outline:2px solid var(--ac);border-radius:9px}
+
+@keyframes slideLeft { from { opacity: 0; transform: translateX(-15px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideRight { from { opacity: 0; transform: translateX(15px); } to { opacity: 1; transform: translateX(0); } }
+.slide-left { animation: slideLeft 0.25s ease forwards; }
+.slide-right { animation: slideRight 0.25s ease forwards; }
 .cal-day.is-selected .dn{background:var(--ac)!important;color:#fff!important;border:none;}
 .ep{border-radius:4px;padding:2px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;animation:epIn .25s ease both}
 @keyframes epIn{from{opacity:0;transform:scaleY(0)}to{opacity:1;transform:scaleY(1)}}
@@ -159,7 +164,7 @@ body { animation: appSwipeIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both; }
 
 /* Scaled circles to fit all small phones perfectly */
 .mob-dn{font-family:var(--fd);font-size:.75rem;font-weight:700;color:var(--tx3);width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;box-sizing:border-box;}
-.mob-day.is-today .mob-dn{background:transparent;color:var(--ac);border:1.5px solid var(--ac);}
+.mob-day.is-today .mob-dn{background:transparent;color:var(--ac);border:2.5px solid var(--ac);}
 .mob-day.is-selected .mob-dn{background:var(--ac)!important;color:#fff!important;border:none;}
 .mob-dot{width:4px;height:4px;border-radius:50%;flex-shrink:0;}
 
@@ -254,7 +259,7 @@ body { animation: appSwipeIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both; }
           <div class="card-ttl" id="day-title-d">Today</div>
           <div style="display:flex; align-items:center; gap:8px;">
             <span class="ev-count hidden" id="ev-count-d">0</span>
-            <button class="add-event-fab-d" onclick="openAddModalD()" title="Add Event">
+            <button class="add-event-fab-d" onclick="openAddModal()" title="Add Event">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
           </div>
@@ -291,36 +296,30 @@ body { animation: appSwipeIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both; }
     </div>
 
     <div class="mob-sheet">
-      <div class="mob-tabs">
-        <button class="mob-tab on" id="mob-tab-ev" onclick="setMobTab('events')">
-          <span id="mob-day-label">Today</span>
-        </button>
-        <button class="mob-tab hidden" id="mob-tab-add" onclick="setMobTab('add')">Add Event</button>
+      <div style="padding: 14px 16px 0;">
+        <div id="mob-day-label" style="display:inline-block; padding:6px 16px; border:2px solid var(--bd2); border-radius:20px; font-family:var(--fd); font-size:.85rem; font-weight:700; color:var(--tx1);">Today</div>
       </div>
-      <div class="mob-content" id="mob-ev-content">
+      <div class="mob-content" id="mob-ev-content" style="padding-top:10px;">
         <div class="no-events" id="mob-ev-empty" style="padding:16px 0;">✨ No events today</div>
         <div id="ev-list-m"></div>
       </div>
-      <div class="mob-content hidden" id="mob-add-content">
-        <div class="mob-add-form" id="add-form-m"></div>
-      </div>
     </div>
     
-    <button class="mob-fab" id="mob-fab-btn" onclick="window.setMobTab('add')">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <button class="mob-fab" id="mob-fab-btn" onclick="window.openAddModal()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
   </div>
 </div>
 
-<div class="modal-overlay" id="add-modal-d" onclick="if(event.target===this)closeAddModalD()">
+<div class="modal-overlay" id="add-modal" onclick="if(event.target===this)closeAddModal()">
   <div class="staff-modal" style="max-width:400px;">
     <div class="modal-hdr">
       <div class="modal-ttl">Add Event</div>
-      <button class="modal-close" onclick="closeAddModalD()">
+      <button class="modal-close" onclick="closeAddModal()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="add-form" id="add-form-d" style="padding:24px;"></div>
+    <div class="add-form" id="add-form-univ" style="padding:24px;"></div>
   </div>
 </div>
 
@@ -559,6 +558,13 @@ window.goToday = function() {
 };
 
 window.navMonth = function(dir) {
+  const grids = [pEl('cal-grid-d'), pEl('cal-grid-m')];
+  grids.forEach(g => {
+    if (!g) return;
+    g.classList.remove('slide-left', 'slide-right');
+    void g.offsetWidth; // Trigger DOM reflow to restart animation
+    g.classList.add(dir > 0 ? 'slide-right' : 'slide-left');
+  });
   curDate = new Date(curDate.getFullYear(), curDate.getMonth() + dir, 1);
   renderCalendar();
 };
@@ -640,8 +646,7 @@ function renderForms() {
       </button>
     </div>
   `;
-  const dForm = pEl('add-form-d'); if (dForm) dForm.innerHTML = formHtml;
-  const mForm = pEl('add-form-m'); if (mForm) mForm.innerHTML = formHtml;
+  const univForm = pEl('add-form-univ'); if (univForm) univForm.innerHTML = formHtml;
 }
 
 window.addEvent = async function(btn) {
@@ -681,13 +686,13 @@ window.addEvent = async function(btn) {
       await sendCustomNotification(ref.id, title, dk(selDay), Array.from(selectedStaffUIDs));
     }
 
-    // Reset fields & Close Modals
+    // Reset fields
     titleEl.value = '';
     document.querySelectorAll('.ae-visibility').forEach(s => s.value = 'self');
     document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.add('hidden'));
-    
-    if (window.closeAddModalD) closeAddModalD();
-    if (window.setMobTab) setMobTab('events');
+
+    // Close the new universal modal!
+    if (window.closeAddModal) closeAddModal();
 
     toast(`Event added! 📅`, 'success');
   } catch(e) {
@@ -734,10 +739,10 @@ window.onVisibilityChange = function(sel) {
   if (val === 'custom') openStaffModal();
 };
 
-/* ── MODAL LOGIC ── */
-window.openAddModalD = () => pEl('add-modal-d').classList.add('open');
-window.closeAddModalD = () => pEl('add-modal-d').classList.remove('open');
-
+/* ── ADD MODAL LOGIC ── */
+window.openAddModal = () => pEl('add-modal').classList.add('open');
+window.closeAddModal = () => pEl('add-modal').classList.remove('open');
+  
 window.openStaffModal = async function() {
   if (!companyStaff.length) await loadCompanyStaff();
   const container = pEl('staff-list-container');
@@ -789,25 +794,6 @@ window.toggleStaff = function(uid) {
 };
 window.closeStaffModal = () => pEl('staff-modal').classList.remove('open');
 
-/* ── MOBILE UI HANDLERS ── */
-window.setMobTab = function(tab) {
-  pEl('mob-tab-ev').classList.toggle('on', tab === 'events');
-  pEl('mob-ev-content').classList.toggle('hidden', tab !== 'events');
-  pEl('mob-add-content').classList.toggle('hidden', tab !== 'add');
-  
-  const fab = pEl('mob-fab-btn');
-  if (fab) {
-      if (tab === 'add') {
-          fab.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-          fab.style.background = 'var(--tx3)';
-          fab.onclick = () => window.setMobTab('events');
-      } else {
-          fab.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
-          fab.style.background = 'var(--ac)';
-          fab.onclick = () => window.setMobTab('add');
-      }
-  }
-};
 
 /* ── EVENT LISTENERS ── */
 pEl('prev-btn')?.addEventListener('click', () => navMonth(-1));
