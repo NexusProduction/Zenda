@@ -1,318 +1,521 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Calendar — Zenda</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234F46E5'%3E%3Crect x='3' y='4' width='18' height='18' rx='4' ry='4'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
-<style>
-/* ── TOKENS ── */
-:root {
-  --bg:#F4F5F8;--sf:#FFF;--sf2:#F0F1F5;--bd:#E2E3E9;--bd2:#D0D2DB;
-  --tx1:#0D0F14;--tx2:#3D3F4A;--tx3:#6C6F80;--tx4:#9EA1B0;
-  --ac:#4F46E5;--ach:#4338CA;--acs:rgba(79,70,229,.1);
-  --green:#059669;--green-s:#ECFDF5;--green-b:#A7F3D0;
-  --red:#DC2626;--red-s:#FEF2F2;--red-b:#FECACA;
-  --amber:#D97706;--amber-s:#FFFBEB;--amber-b:#FDE68A;
-  --blue:#2563EB;--blue-s:#EFF6FF;--blue-b:#BFDBFE;
-  --purple:#7C3AED;--purple-s:#F5F3FF;--purple-b:#DDD6FE;
-  --fd:'Plus Jakarta Sans',system-ui,sans-serif;
-  --fb:'DM Sans',system-ui,sans-serif;
-  --sh-xs:0 1px 3px rgba(0,0,0,.04);
-  --sh-sm:0 2px 8px rgba(0,0,0,.06);
-  --sh-md:0 4px 20px rgba(0,0,0,.08);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;width:100%;}
-body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-smoothing:antialiased}
-.hidden{display:none!important}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Live Team Calendar</title>
+  
+  <link rel="icon" type="image/png" href="image_f37e19.png">
 
-/* ── APP ENTRANCE ANIMATION ── */
-body { animation: appSwipeIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both; }
-@keyframes appSwipeIn {
-  0% { opacity: 0; transform: translateX(40px); }
-  100% { opacity: 1; transform: translateX(0); }
-}
-
-/* ── GLOBAL FIXES & APPBAR ── */
-html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
-.appbar{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);height:60px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:200;box-shadow:var(--sh-xs)}
-.ab-left{display:flex;align-items:center;gap:14px;flex:1;}
-.ab-back{background:var(--sf);border:1.5px solid var(--bd);cursor:pointer;color:var(--tx2);display:flex;align-items:center;gap:6px;font-family:var(--fd);font-weight:700;font-size:.95rem;transition:all .15s;padding:6px 12px;border-radius:10px;}
-.ab-back:hover{background:var(--sf2);color:var(--tx1);border-color:var(--bd2);}
-.ab-divider{width:1.5px;height:22px;background:var(--bd);}
-.ab-brand{display:flex;align-items:center;gap:8px;font-family:var(--fd);font-weight:800;font-size:1.05rem;color:var(--tx1);}
-.ab-icon{width:28px;height:28px;background:var(--ac);color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;}
-.ab-right{display:flex;align-items:center;justify-content:flex-end;}
-
-@media(max-width:899px) {
-  .ab-divider, .ab-icon { display: none !important; }
-  .ab-brand { position: absolute; left: 50%; transform: translateX(-50%); font-size: 1.1rem; }
-  .mob-cal-container { padding-bottom: 24px; }
-}
-.sync-pill{font-size:.72rem;font-family:var(--fd);font-weight:700;padding:4px 10px;border-radius:20px;transition:opacity 0.5s ease, background 0.3s;}
-.sync-live{color:var(--green);background:var(--green-s);border:1px solid var(--green-b)}
-.sync-connecting{color:var(--amber);background:var(--amber-s);border:1px solid var(--amber-b)}
-.sync-err{color:var(--red);background:var(--red-s);border:1px solid var(--red-b)}
-
-/* ── DESKTOP LAYOUT (Strict No-Scroll) ── */
-.cal-wrap{display:flex;flex:1;height:calc(100vh - 60px);overflow:hidden;}
-.cal-main{flex:1;display:flex;gap:16px;padding:20px;max-width:1200px;margin:0 auto;width:100%;height:100%;align-items:stretch;overflow:hidden;}
-
-/* ── CALENDAR PANEL ── */
-.cal-panel{background:var(--sf);border-radius:20px;border:1px solid var(--bd);box-shadow:var(--sh-xs);flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;animation:fadeUp .4s ease both}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.cal-head{background:linear-gradient(135deg,#1E1B4B,#312E81,var(--ac));padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.cal-nav{width:34px;height:34px;background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
-.cal-nav:hover{background:rgba(255,255,255,.25)}
-.cal-month-txt{font-family:var(--fd);font-weight:800;font-size:1.15rem;color:#fff;letter-spacing:-.01em;text-align:center}
-.cal-year-txt{font-size:.72rem;color:rgba(255,255,255,.6);text-align:center;margin-top:2px}
-.today-btn{background:rgba(255,255,255,.15);border:none;color:rgba(255,255,255,.9);padding:5px 12px;border-radius:20px;font-family:var(--fd);font-size:.72rem;font-weight:700;cursor:pointer;transition:background .15s}
-.today-btn:hover{background:rgba(255,255,255,.28)}
-.cal-daynames{display:grid;grid-template-columns:repeat(7,1fr);padding:10px 12px 4px;border-bottom:1px solid var(--bd);flex-shrink:0;}
-.cal-dayname{text-align:center;font-family:var(--fd);font-size:.62rem;font-weight:700;color:var(--tx4);text-transform:uppercase;letter-spacing:.07em}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(6,1fr);flex:1;min-height:0;padding:6px 8px 10px;gap:2px;}
-
-/* ── DAY CELLS ── */
-.cal-day{height:100%;min-height:0;overflow-y:auto;border-radius:9px;cursor:pointer;transition:all .15s;padding:5px 5px 4px;display:flex;flex-direction:column;gap:2px}
-.cal-day::-webkit-scrollbar { width: 0px; }
-.cal-day:hover:not(.other-month){background:var(--acs)}
-.cal-day.other-month{opacity:.35;cursor:default;pointer-events:none}
-.cal-day .dn{font-family:var(--fd);font-size:.85rem;line-height:1;font-weight:600;color:var(--tx3);width:28px;height:28px;min-width:28px;min-height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;box-sizing:border-box;}
-.cal-day.is-today .dn{background:transparent;color:var(--ac);border:2.5px solid var(--ac);font-weight:800;}
-.cal-day.is-selected{background:rgba(79,70,229,.06);outline:2px solid var(--ac);border-radius:9px}
-
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-.slide-up { animation: slideUp 0.3s ease-out forwards; }
-.slide-down { animation: slideDown 0.3s ease-out forwards; }
-.cal-day.is-selected .dn{background:var(--ac)!important;color:#fff!important;border:none;}
-.ep{border-radius:4px;padding:2px 5px;font-size:.6rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;animation:epIn .25s ease both}
-@keyframes epIn{from{opacity:0;transform:scaleY(0)}to{opacity:1;transform:scaleY(1)}}
-.ep.self{background:#EEF2FF;color:var(--ac)}
-.ep.all{background:var(--green-s);color:var(--green)}
-.ep.custom{background:var(--purple-s);color:var(--purple)}
-.ep-more{font-size:.58rem;color:var(--tx4);padding:1px 4px;font-weight:600}
-
-/* ── RIGHT PANEL (Desktop) ── */
-.cal-right{width:320px;flex-shrink:0;display:flex;flex-direction:column;height:100%;gap:12px;animation:fadeUp .4s .1s ease both}
-.cal-card{background:var(--sf);border-radius:18px;border:2px solid var(--bd2);box-shadow:var(--sh-xs);display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
-.card-hdr{padding:16px 20px;border-bottom:2px solid var(--bd2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.card-ttl{font-family:var(--fd);font-weight:800;font-size:1.15rem;color:var(--tx1);border:none;padding:0;background:transparent;}
-/* The .ev-count is now safely removed! */
-.add-event-fab-d{background:var(--ac);color:#fff;border:none;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
-.add-event-fab-d:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(79,70,229,.3);}
-
-/* ── EVENTS LIST ── */
-.day-events-list{flex:1;padding:14px;overflow-y:auto;min-height:0;display:flex;flex-direction:column;}
-.no-events{text-align:center;color:var(--tx4);font-size:.85rem;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:12px;padding:20px;margin-top:35px;}
-
-/* Removed evIn animation to stop the "reloading" flicker */
-.ev-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;margin-bottom:12px;background:var(--sf);border:2px solid var(--bd2);box-shadow:var(--sh-xs);cursor:pointer;transition:all .25s cubic-bezier(0.25, 1, 0.5, 1);position:relative;overflow:hidden;flex-shrink:0;}
-.ev-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;border-radius:14px 0 0 14px;}
-.ev-item:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,0.06);}
-
-/* Expansion & Text Wrapping */
-.ev-item.expanded{transform:scale(1.02);padding:18px 20px;box-shadow:0 12px 30px rgba(0,0,0,0.12);z-index:2;border-color:var(--ac);}
-.ev-item.expanded .ev-title { white-space: normal; }
-.ev-item.expanded .ev-title span.txt { white-space: normal; overflow: visible; text-align: left; } /* Left-aligned */
-
-.ev-item.self::before{background:var(--ac);}
-.ev-item.all::before{background:var(--green);}
-.ev-item.custom::before{background:var(--purple);}
-.ev-item.task::before{background:var(--amber);}
-
-.ev-content{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;} /* Increased gap between Title and From */
-.ev-title{font-size:.95rem;font-weight:700;color:var(--tx1);line-height:1.4;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ev-title span.txt { display:inline; }
-.ev-badge{padding:3px 6px;border-radius:6px;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-right:6px;vertical-align:middle;display:inline-block;margin-bottom:2px;}
-.ev-meta{font-size:.75rem;color:var(--tx3);display:flex;align-items:center;gap:4px;}
-
-.ev-badge{padding:3px 6px;border-radius:6px;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;}
-
-/* Dynamic Delete Button Styles */
-.ev-del{background:var(--sf2);border:none;cursor:pointer;color:var(--tx4);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0;transition:all .2s;transform:scale(0.9);}
-.ev-item:hover .ev-del{opacity:1;transform:scale(1);}
-.ev-del:not(.disabled-del):hover{background:var(--red-s);color:var(--red);}
-.ev-del.disabled-del{background:rgba(0,0,0,0.03);color:rgba(0,0,0,0.3);}
-.ev-del.disabled-del:hover{cursor:not-allowed;background:rgba(0,0,0,0.06);}
-@media(max-width:899px) { 
-  .ev-del{opacity:0.6; transform:scale(1);} 
-  .ev-del.disabled-del{opacity:0.4;}
-  .ev-del:not(.disabled-del):active{opacity:1;} 
-}
-
-/* Fix for Custom Staff Modal Fade Overlap */
-#staff-modal { background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
-.ev-item.self .ev-badge{background:var(--blue-s);color:var(--ac);}
-.ev-item.all .ev-badge{background:var(--green-s);color:var(--green);}
-.ev-item.custom .ev-badge{background:var(--purple-s);color:var(--purple);}
-.ev-item.task .ev-badge{background:var(--amber-s);color:var(--amber);}
-.ev-del{background:var(--red-s);border:none;cursor:pointer;color:var(--red);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0;transition:all .2s;transform:scale(0.9);}
-.ev-item:hover .ev-del{opacity:1;transform:scale(1);}
-.ev-del:hover{background:var(--red);color:#fff;}
-@keyframes slideOutRight { to { opacity: 0; transform: translateX(100%); } }
-.ev-item.deleting { animation: slideOutRight 0.3s forwards; pointer-events: none; }
-
-/* ── ADD FORM ── */
-.add-form{display:flex;flex-direction:column;gap:16px;}
-.ae-lbl{font-family:var(--fd);font-size:.7rem;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:block}
-.ae-inp{width:100%;padding:12px 14px;border:1.5px solid var(--bd);border-radius:10px;font-family:var(--fb);font-size:.95rem;outline:none;transition:all .2s;background:var(--sf);color:var(--tx1)}
-.ae-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acs)}
-.ae-sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;cursor:pointer;}
-.add-btn{width:100%;padding:12px;background:var(--ac);color:#fff;border:none;border-radius:12px;font-family:var(--fd);font-weight:700;font-size:.9rem;cursor:pointer;transition:all .4s cubic-bezier(0.25, 1, 0.5, 1);display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:inset 0 0 0 0 rgb(0, 255, 21);}
-.add-btn:hover{background:var(--ach);transform:translateY(-1px);box-shadow:inset 0 0 0 0 rgb(0, 255, 21), 0 4px 14px rgba(79,70,229,.3);}
-.add-btn:disabled{cursor:not-allowed;transform:none;}
-/* The inset shadow fills the button left-to-right with pure RGB green */
-.add-btn.success-state { box-shadow: inset 400px 0 0 0 rgb(0, 255, 21), 0 4px 14px rgba(0, 255, 21, 0.4) !important; transform: none !important; color: #fff !important; }
-.edit-staff-btn{background:var(--bg);border:1.5px solid var(--bd);color:var(--tx2);padding:9px 12px;border-radius:10px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:var(--fd);transition:all .15s;width:100%;display:flex;align-items:center;gap:8px;}
-.edit-staff-btn:hover{border-color:var(--ac);color:var(--ac);background:#EEF2FF}
-
-/* ── MODALS (Clean & Dark Fade & Animations) ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
-.modal-overlay.open{display:flex; animation: modalFadeIn 0.2s ease;}
-.staff-modal{background:var(--sf);width:100%;max-width:420px;border-radius:24px;box-shadow:0 24px 48px rgba(0,0,0,0.2);overflow:hidden;border:none;transform:scale(.95);transition:transform .3s cubic-bezier(.16,1,.3,1)}
-.modal-overlay.open .staff-modal{transform:scale(1)}
-
-@keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes modalFadeOut { from { opacity: 1; } to { opacity: 0; } }
-@keyframes modalScaleDown { from { transform: scale(1); } to { transform: scale(0.95); } }
-
-/* Applied via Javascript when closing */
-.modal-overlay.closing { animation: modalFadeOut 0.2s ease forwards; }
-.modal-overlay.closing .staff-modal { animation: modalScaleDown 0.2s ease forwards; }
-.modal-hdr{padding:24px 24px 12px;border-bottom:none;display:flex;justify-content:space-between;align-items:center;background:transparent;}
-.modal-ttl{font-family:var(--fd);font-weight:800;font-size:1.1rem;color:var(--tx1)}
-.modal-close{background:var(--bg);border:none;color:var(--tx3);cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:all .15s}
-.modal-close:hover{background:var(--red-s);color:var(--red)}
-.staff-list-container{padding:20px 24px;max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
-.staff-card{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border:1.5px solid var(--bd);border-radius:14px;cursor:pointer;transition:all .2s;background:var(--sf)}
-.staff-card:hover{border-color:var(--ac);box-shadow:0 2px 8px rgba(79,70,229,.1)}
-.staff-card.selected{border-color:var(--ac);background:#EEF2FF}
-.staff-card.is-self{opacity:.6;cursor:default;pointer-events:none;}
-.staff-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;font-family:var(--fd);flex-shrink:0}
-.staff-info{flex:1;margin-left:12px}
-.staff-name{font-size:.9rem;font-weight:700;color:var(--tx1);line-height:1.2}
-.check-box{width:22px;height:22px;border-radius:6px;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;transition:all .2s;background:var(--sf)}
-.check-box.checked{background:var(--ac);border-color:var(--ac)}
-.modal-footer{padding:20px 24px;border-top:1px solid var(--bd);background:transparent;}
-
-/* ── MOBILE LAYOUT (Highly Optimized & Responsive) ── */
-.mob-wrap{display:none;flex-direction:column;height:calc(100dvh - 60px);overflow:hidden;width:100%;}
-.mob-cal-container{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--sf);border-bottom:1px solid var(--bd);}
-.mob-cal-head{background:linear-gradient(135deg,#1E1B4B,#312E81,var(--ac));padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.mob-nav{width:30px;height:30px;background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-.mob-month-txt{font-family:var(--fd);font-weight:800;font-size:.95rem;color:#fff;letter-spacing:-.01em;}
-.mob-today-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);color:#fff;padding:4px 10px;border-radius:14px;font-family:var(--fd);font-size:.65rem;font-weight:700;cursor:pointer;}
-.mob-daynames{display:grid;grid-template-columns:repeat(7,1fr);padding:6px 6px 4px;background:var(--sf);border-bottom:1px solid var(--bd);flex-shrink:0;}
-.mob-dayname{text-align:center;font-family:var(--fd);font-size:.6rem;font-weight:700;color:var(--tx4);text-transform:uppercase;letter-spacing:.05em;}
-
-/* Strict Grid Proportions */
-.mob-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(6,1fr);flex:1;min-height:0;padding:2px 4px 6px;gap:2px;background:var(--sf)}
-.mob-day{min-height:0;border-radius:6px;cursor:pointer;padding:3px 1px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;}
-.mob-day:hover:not(.other-month){background:var(--acs)}
-.mob-day.other-month{opacity:.3;cursor:default;pointer-events:none}
-
-/* Scaled circles to fit all small phones perfectly */
-.mob-dn{font-family:var(--fd);font-size:.75rem;font-weight:700;color:var(--tx3);width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;box-sizing:border-box;}
-.mob-day.is-today .mob-dn{background:transparent;color:var(--ac);border:2.5px solid var(--ac);}
-.mob-day.is-selected .mob-dn{background:var(--ac)!important;color:#fff!important;border:none;}
-.mob-dot{width:4px;height:4px;border-radius:50%;flex-shrink:0;}
-
-/* Premium Apple-Style Bottom Sheet */
-.mob-sheet{flex:0 0 48%;display:flex;flex-direction:column;min-height:0;background:#F2F2F7;position:relative;border-top:2px solid var(--bd2);border-top-left-radius:28px;border-top-right-radius:28px;box-shadow:0 -8px 24px rgba(0,0,0,0.08);margin-top:-16px;z-index:10;}
-.mob-day-header{padding:16px 20px;background:transparent;display:flex;flex-direction:column;align-items:flex-start;gap:12px;border-bottom:1px solid var(--bd);}
-.mob-drag-handle{width:40px;height:5px;background:var(--bd2);border-radius:10px;align-self:center;}
-.mob-day-label{font-family:var(--fd);font-size:1.15rem;font-weight:800;color:var(--tx1);}
-.mob-content{flex:1;overflow-y:auto;padding:0 20px 20px;min-height:0;display:flex;flex-direction:column;}
-.mob-content::-webkit-scrollbar { width: 0; }
-.mob-content.hidden{display:none}
-.mob-tabs{display:flex;background:var(--sf);border-bottom:1px solid var(--bd);padding:0 16px;flex-shrink:0;}
-.mob-tab{flex:1;padding:12px 8px;border:none;background:none;font-family:var(--fd);font-size:.85rem;font-weight:700;color:var(--tx4);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;text-align:left;}
-.mob-tab.on{color:var(--tx1);border-bottom-color:var(--ac)}
-.mob-content{flex:1;overflow-y:auto;padding:14px;min-height:0;}
-.mob-content.hidden{display:none}
-.mob-add-form{display:flex;flex-direction:column;gap:12px;padding:4px 0}
-
-/* FAB bound to the sheet, not the screen, to avoid URL bar cutoffs */
-.mob-fab{position:absolute;bottom:20px;right:20px;width:52px;height:52px;border-radius:16px;background:var(--ac);color:#fff;border:none;box-shadow:0 6px 16px rgba(79,70,229,0.3);display:flex;align-items:center;justify-content:center;z-index:900;cursor:pointer;}
-.mob-fab:active{transform:scale(0.95);}
-
-/* ── TOAST ── */
-#toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.toast{padding:12px 16px;border-radius:14px;font-family:var(--fd);font-size:.85rem;font-weight:600;box-shadow:var(--sh-md);min-width:200px;animation:tIn .25s ease;border:1px solid;pointer-events:all;display:flex;align-items:center;gap:8px;}
-.toast-success{background:var(--green-s);border-color:var(--green-b);color:#065F46}
-.toast-error{background:var(--red-s);border-color:var(--red-b);color:#991B1B}
-@keyframes tIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
-
-/* ── NOTIF BANNER ── */
-.notif-banner{display:none;align-items:center;gap:12px;padding:12px 20px;margin:0 20px 16px;border-radius:14px;border:1px solid;animation:bannerIn .4s ease both}
-@keyframes bannerIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-.notif-banner.all-type{background:var(--green-s);border-color:var(--green-b);color:#065F46}
-.notif-banner.custom-type{background:#F5F3FF;border-color:#DDD6FE;color:#7C3AED}
-.notif-banner-icon{font-size:1.2rem;flex-shrink:0}
-.notif-banner-txt{flex:1;font-size:.83rem;font-weight:600}
-
-/* ── SPINNER ── */
-.spin{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spinAnim .6s linear infinite}
-@keyframes spinAnim{to{transform:rotate(360deg)}}
-
-@media(min-width:900px){.cal-main{display:flex}.mob-wrap{display:none}}
-@media(max-width:899px){.cal-main{display:none}.mob-wrap{display:flex}}
-</style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DMsans:wght@700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ── CORE VARIABLES ── */
+    :root {
+      --bg: #F9FAFB;
+      --sf: #FFFFFF;
+      --sf2: #F3F4F6;
+      --tx1: #111827;
+      --tx2: #374151;
+      --tx3: #6B7280;
+      --tx4: #9CA3AF;
+      
+      --ac: #4F46E5;
+      --ach: #4338CA;
+      --acs: rgba(79,70,229,0.1);
+      
+      --bd: #E5E7EB;
+      --bd2: #D1D5DB;
+      
+      --green: #10B981;
+      --green-s: #ECFDF5;
+      --amber: #F59E0B;
+      --red: #EF4444;
+      --red-s: #FEF2F2;
+      --purple: #8B5CF6;
+      --blue-s: #EFF6FF;
+      
+      --fd: 'Inter', sans-serif;
+      --fb: 'Inter', sans-serif;
+      
+      --sh-xs: 0 1px 2px rgba(0,0,0,0.05);
+      --sh-sm: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --sh-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+      
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    
+    body {
+      font-family: var(--fb);
+      background-color: var(--bg);
+      color: var(--tx1);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    button { font-family: var(--fb); }
+    .hidden { display: none !important; }
+    
+    /* ── DESKTOP/TABLET LAYOUT (900px+) ── */
+    .cal-container {
+      display: flex;
+      flex: 1;
+      height: 100%;
+      min-height: 0;
+      padding: 20px;
+      gap: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    
+    /* ── LEFT PANEL (Calendar Grid) ── */
+    .cal-left {
+      flex: 1;
+      background: var(--sf);
+      border-radius: 24px;
+      border: 1px solid var(--bd);
+      box-shadow: var(--sh-sm);
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      min-width: 0;
+    }
+    
+    .cal-hdr-d {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+    }
+    
+    .month-ttl-d {
+      font-family: var(--fd);
+      font-weight: 800;
+      font-size: 1.35rem;
+      color: var(--tx1);
+    }
+    
+    .nav-btn {
+      background: var(--sf2);
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--tx2);
+      transition: background 0.15s;
+    }
+    
+    .nav-btn:hover { background: #E5E7EB; color: var(--tx1); }
+    
+    .nav-actions-d { display: flex; align-items: center; gap: 8px; }
+    
+    .today-btn {
+      background: var(--acs);
+      color: var(--ac);
+      border: none;
+      padding: 0 16px;
+      height: 36px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .today-btn:hover { background: rgba(79,70,229,0.15); }
+    
+    /* Grid Animations */
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    .slide-up { animation: slideUp 0.3s ease-out forwards; }
+    .slide-down { animation: slideDown 0.3s ease-out forwards; }
+    
+    /* Calendar Grid */
+    .cal-grid-d {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: auto repeat(6, 1fr);
+      gap: 4px;
+    }
+    
+    .wkday-d {
+      text-align: center;
+      font-weight: 700;
+      font-size: 0.75rem;
+      color: var(--tx3);
+      padding: 10px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .day-cell {
+      background: var(--sf);
+      border-radius: 12px;
+      padding: 6px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      border: 1px solid transparent;
+      transition: all 0.1s;
+    }
+    
+    .day-cell:hover:not(.other-month):not(.selected) { background: var(--sf2); }
+    
+    .day-cell.other-month { opacity: 0.4; cursor: default; }
+    
+    .day-num {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--tx2);
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      margin-bottom: 2px;
+    }
+    
+    .day-cell.today .day-num { background: var(--ac); color: #fff; font-weight: 800; }
+    .day-cell.selected { background: var(--blue-s); border-color: rgba(79,70,229,0.2); }
+    .day-cell.selected .day-num { color: var(--ac); font-weight: 800; }
+    
+    .cell-ev-dots {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      align-content: flex-start;
+      margin-top: 2px;
+    }
+    
+    .ev-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+    
+    /* ── RIGHT PANEL (Desktop) ── */
+    .cal-right {
+      width: 320px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      gap: 12px;
+      animation: fadeUp .4s .1s ease both
+    }
+    
+    @keyframes fadeUp {from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)}}
+    
+    .cal-card {
+      background: var(--sf);
+      border-radius: 18px;
+      border: 2px solid var(--bd2);
+      box-shadow: var(--sh-xs);
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    
+    .card-hdr {
+      padding: 16px 20px;
+      border-bottom: 2px solid var(--bd2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    
+    .card-ttl {
+      font-family: var(--fd);
+      font-weight: 800;
+      font-size: 1.15rem;
+      color: var(--tx1);
+      border: none;
+      padding: 0;
+      background: transparent;
+    }
+    
+    .add-event-fab-d {
+      background: var(--ac);
+      color: #fff;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .add-event-fab-d:hover { background: var(--ach); transform: translateY(-1px); }
+    
+    .ev-list-d { flex: 1; overflow-y: auto; padding: 16px; scrollbar-width: thin; }
+    
+    /* ── SYNC STATUS (Fixed Bottom) ── */
+    .status-bar-d {
+      height: 40px;
+      background: var(--sf);
+      border: 1px solid var(--bd);
+      border-radius: 12px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--tx3);
+    }
+    
+    .stat-live { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--green); }
+    .stat-live::before { content:''; width:7px; height:7px; background:var(--green); border-radius:50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); } 70% { box-shadow: 0 0 0 6px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
+    
+    /* ── EVENTS (Universal) ── */
+    .no-events { text-align: center; color: var(--tx4); font-size: 0.85rem; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 12px; padding: 20px; margin-top: 35px; }
+    .no-events::before { content: '📅'; font-size: 1.5rem; }
+    
+    /* Increased border strokes everywhere */
+    .ev-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      margin-bottom: 12px;
+      background: var(--sf);
+      border: 2px solid var(--bd2);
+      box-shadow: var(--sh-xs);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    
+    .ev-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-radius: 14px 0 0 14px; }
+    .ev-item:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
+    
+    /* Expansion & Text Wrapping */
+    .ev-item.expanded { transform: scale(1.02); padding: 18px 20px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); z-index: 2; border-color: var(--ac); }
+    .ev-item.expanded .ev-title { white-space: normal; }
+    .ev-item.expanded .ev-title span.txt { white-space: normal; overflow: visible; text-align: left; } /* Left-aligned */
+    
+    @keyframes evIn { from { opacity: 0; transform: translateX(-8px) } to { opacity: 1; transform: translateX(0) } }
+    
+    .ev-item.self::before { background: var(--ac); }
+    .ev-item.all::before { background: var(--green); }
+    .ev-item.custom::before { background: var(--purple); }
+    .ev-item.task::before { background: var(--amber); }
+    
+    .ev-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; } /* Increased gap between Title and From */
+    .ev-title { font-size: 0.95rem; font-weight: 700; color: var(--tx1); line-height: 1.4; display: block; overflow: hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ev-title span.txt { display: inline; }
+    
+    .ev-meta { font-size: 0.75rem; color: var(--tx3); display: flex; align-items: center; gap: 4px; }
+    
+    .ev-badge { padding: 3px 6px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 6px; vertical-align: middle; display: inline-block; margin-bottom: 2px; flex-shrink: 0; }
+    
+    .ev-item.all .ev-badge { background: var(--green-s); color: var(--green); }
+    .ev-item.self .ev-badge { background: var(--acs); color: var(--ac); }
+    .ev-item.custom .ev-badge { background: #F5F3FF; color: var(--purple); }
+    .ev-item.task .ev-badge { background: #FFFBEB; color: var(--amber); }
+    
+    .ev-del { background: var(--sf2); border: none; cursor: pointer; color: var(--tx4); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; opacity: 0; transition: all 0.2s; transform: scale(0.9); }
+    .ev-item:hover .ev-del { opacity: 1; transform: scale(1); }
+    .ev-del:not(.disabled-del):hover { background: var(--red-s); color: var(--red); }
+    .ev-del.disabled-del { background: rgba(0,0,0,0.03); color: rgba(0,0,0,0.3); }
+    .ev-del.disabled-del:hover { cursor: not-allowed; background: rgba(0,0,0,0.06); }
+    @media(max-width:899px) { 
+      .ev-del { opacity: 0.6; transform: scale(1); } 
+      .ev-del.disabled-del { opacity: 0.4; }
+      .ev-del:not(.disabled-del):active { opacity: 1; } 
+    }
+    
+    .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* ── MODALS (Clean & Dark Fade & Animations) ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); backdrop-filter: blur(4px); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 16px; }
+    .modal-overlay.open { display: flex; animation: modalFadeIn 0.2s ease; }
+    .staff-modal { background: var(--sf); width: 100%; max-width: 420px; border-radius: 24px; box-shadow: 0 24px 48px rgba(0,0,0,0.2); overflow: hidden; border: none; transform: scale(.95); transition: transform 0.3s cubic-bezier(.16,1,.3,1) }
+    .modal-overlay.open .staff-modal { transform: scale(1) }
+    
+    @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modalFadeOut { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes modalScaleDown { from { transform: scale(1); } to { transform: scale(0.95); } }
+    
+    /* Applied via Javascript when closing */
+    .modal-overlay.closing { animation: modalFadeOut 0.2s ease forwards; }
+    .modal-overlay.closing .staff-modal { animation: modalScaleDown 0.2s ease forwards; }
+    
+    #staff-modal { background: rgba(0,0,0,0.25); backdrop-filter: blur(2px); }
+    
+    .modal-hdr { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .modal-ttl { font-family: var(--fd); font-weight: 800; font-size: 1.2rem; color: var(--tx1); }
+    .modal-close { background: var(--sf2); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: var(--tx3); display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .modal-close:hover { background: #E5E7EB; color: var(--tx1); }
+    
+    .modal-body { padding: 0 24px 24px; }
+    .modal-body-form { padding: 16px 24px 24px; }
+    
+    /* ── ADD FORM ── */
+    .add-form { display: flex; flex-direction: column; gap: 16px; }
+    .ae-lbl { font-family: var(--fd); font-size: 0.7rem; font-weight: 700; color: var(--tx3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; display: block }
+    .ae-inp { width: 100%; padding: 12px 14px; border: 1.5px solid var(--bd); border-radius: 10px; font-family: var(--fb); font-size: 0.95rem; outline: none; transition: all 0.2s; background: var(--sf); color: var(--tx1) }
+    .ae-inp:focus { border-color: var(--ac); box-shadow: 0 0 0 3px var(--acs) }
+    
+    .ae-sel {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      cursor: pointer;
+    }
+    
+    .add-btn { width: 100%; padding: 12px; background: var(--ac); color: #fff; border: none; border-radius: 12px; font-family: var(--fd); font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: inset 0 0 0 0 rgb(0, 255, 21); }
+    .add-btn:hover { background: var(--ach); transform: translateY(-1px); box-shadow: inset 0 0 0 0 rgb(0, 255, 21), 0 4px 14px rgba(79,70,229,0.3); }
+    .add-btn:disabled { cursor: not-allowed; transform: none; }
+    /* The inset shadow fills the button left-to-right with pure RGB green */
+    .add-btn.success-state { box-shadow: inset 400px 0 0 0 rgb(0, 255, 21), 0 4px 14px rgba(0, 255, 21, 0.4) !important; transform: none !important; color: #fff !important; }
+    
+    .edit-staff-btn { background: var(--bg); border: 1.5px solid var(--bd); color: var(--tx2); padding: 9px 12px; border-radius: 10px; font-size: 0.8rem; font-weight: 700; cursor: pointer; font-family: var(--fd); transition: all 0.15s; width: 100%; display: flex; align-items: center; gap: 8px; }
+    .edit-staff-btn:hover { background: var(--sf2); border-color: var(--bd2); }
+    
+    /* ── STAFF LIST (Modal) ── */
+    .staff-list { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto; padding-right: 4px; }
+    
+    .staff-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; background: var(--sf2); transition: background 0.15s; border: 1px solid transparent; cursor: pointer; }
+    .staff-item:hover { background: #E5E7EB; }
+    .staff-item.selected { background: var(--ac); color: #fff; }
+    .staff-item.me { background: transparent; border: 1.5px solid var(--bd); color: var(--tx1); cursor: default; }
+    .staff-item.me:hover { background: transparent; }
+    
+    .staff-info { display: flex; align-items: center; gap: 10px; }
+    .staff-name { font-weight: 600; font-size: 0.9rem; }
+    .staff-me-tag { font-size: 0.7rem; font-weight: 700; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.05em; background: var(--acs); color: var(--ac); padding: 2px 6px; border-radius: 4px; }
+    .staff-item.me .staff-me-tag { background: rgba(0,0,0,0.05); color: var(--tx3); }
+    
+    .check-icon { width: 18px; height: 18px; color: #fff; opacity: 0; transition: opacity 0.15s; }
+    .staff-item.selected .check-icon { opacity: 1; }
+    
+    /* ── TOASTS ── */
+    #toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; display: flex; flex-direction: column; gap: 10px; align-items: center; width: auto; max-width: 90%; }
+    .toast { background: var(--tx1); color: #fff; padding: 12px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; box-shadow: var(--sh-md); animation: toastIn 0.3s ease both, toastOut 0.3s 2.7s ease both; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .toast-success { background: var(--tx1); }
+    .toast-error { background: var(--red); }
+    @keyframes toastIn { from { opacity:0; transform: translateY(10px) } to { opacity:1; transform: translateY(0) } }
+    @keyframes toastOut { from { opacity:1; transform: translateY(0) } to { opacity:0; transform: translateY(5px) } }
+    
+    /* ── MOBILE LAYOUT (max 899px) ── */
+    @media (max-width: 899px) {
+      .cal-container { display: none; }
+      body { background-color: var(--sf2); padding-top: var(--safe-top); }
+      
+      .mob-cal-view { display: flex; flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; }
+      
+      /* Fixed Mobile Top Cal Header */
+      .mob-header { flex-shrink: 0; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; z-index: 20; background: var(--sf2); }
+      .mob-top-actions { display: flex; align-items: center; justify-content: space-between; }
+      .today-btn-m { background: var(--sf); border: 1px solid var(--bd); padding: 0 16px; height: 36px; border-radius: 10px; font-weight: 700; font-size: 0.8rem; color: var(--tx2); }
+      
+      /* Days of week header fixed below month */
+      .mob-wkday-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: 700; font-size: 0.7rem; color: var(--tx3); text-transform: uppercase; }
+      
+      /* Scrollable Mobile Calendar Grid Container */
+      .mob-cal-grid-container { flex: 1; overflow: hidden; position: relative; width: 100%; display: flex; justify-content: center; }
+      
+      /* The grid itself which will animate */
+      .mob-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); width: 100%; height: 100%; gap: 1px; }
+      
+      .day-cell-m { aspect-ratio: 1; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer; }
+      .day-cell-m.other-month { background: #fafafa; }
+      .day-cell-m.other-month .day-num-m { opacity: 0.3; }
+      
+      .day-num-m { font-weight: 600; font-size: 0.95rem; color: var(--tx1); margin-bottom: 3px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+      
+      .day-cell-m.today .day-num-m { background: var(--red); color: #fff; font-weight: 800; }
+      .day-cell-m.selected { background: #fff; }
+      .day-cell-m.selected .day-num-m { background: var(--tx1); color: #fff; font-weight: 800; }
+      
+      .dot-container-m { display: flex; gap: 3px; position: absolute; bottom: 8px; }
+      .dot-m { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+      
+      /* Premium Apple-Style Bottom Sheet */
+      .mob-sheet { flex: 0 0 48%; display: flex; flex-direction: column; min-height: 0; background: #F2F2F7; position: relative; border-top: 2px solid var(--bd2); border-top-left-radius: 28px; border-top-right-radius: 28px; box-shadow: 0 -8px 24px rgba(0,0,0,0.08); margin-top: -16px; z-index: 10; }
+      .mob-content { flex: 1; overflow-y: auto; padding: 0 16px 16px; padding-bottom: calc(16px + var(--safe-bottom)); -webkit-overflow-scrolling: touch; }
+      
+      .mob-day-header { padding: 16px 20px; background: transparent; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--bd); }
+      .mob-drag-handle { width: 40px; height: 5px; background: var(--bd2); border-radius: 10px; align-self: center; }
+      .mob-day-label { font-family: var(--fd); font-size: 1.15rem; font-weight: 800; color: var(--tx1); }
+      
+      /* FADE OUT EFFECST AT BOTTOM */
+      .sheet-fade { position: absolute; bottom: calc( var(--safe-bottom)); left: 0; right: 0; height: 40px; background: linear-gradient(to top, #F2F2F7 20%, rgba(242,242,247,0)); pointer-events: none; z-index: 5; }
+      
+      #ev-list-m { padding-top: 10px; }
+      
+      /* FAB bound to the sheet, not the screen, to avoid URL bar cutoffs */
+      .mob-fab { position: absolute; bottom: 20px; right: 20px; width: 52px; height: 52px; border-radius: 16px; background: var(--ac); color: #fff; border: none; box-shadow: 0 6px 16px rgba(79,70,229,0.3); display: flex; align-items: center; justify-content: center; z-index: 900; cursor: pointer; }
+      .mob-fab:active { transform: scale(0.95); }
+      
+      /* Premium Redefines Mobile Modal for full height/swipe down */
+      .modal-overlay-m { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: none; justify-content: center; animation: mobModalFadeIn 0.3s ease; }
+      .modal-overlay-m.open { display: flex; }
+      .mob-modal { background: var(--sf); width: 100%; height: auto; position: absolute; bottom: 0; border-top-left-radius: 20px; border-top-right-radius: 20px; padding-bottom: calc(16px + var(--safe-bottom)); box-shadow: 0 -10px 25px rgba(0,0,0,0.1); animation: mobModalSlideUp 0.35s cubic-bezier(0.16,1,0.3,1); max-height: 92%; }
+      
+      .modal-overlay-m.closing { animation: mobModalFadeOut 0.3s ease forwards; }
+      .modal-overlay-m.closing .mob-modal { animation: mobModalSlideDown 0.3s ease forwards; }
+      
+      @keyframes mobModalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes mobModalFadeOut { from { opacity: 1; } to { opacity: 0; } }
+      @keyframes mobModalSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+      @keyframes mobModalSlideDown { from { transform: translateY(0); } to { transform: translateY(100%); } }
+      
+      .mob-modal-content { display: flex; flex-direction: column; }
+      .modal-handle-m { width: 36px; height: 5px; background: var(--bd); border-radius: 10px; margin: 10px auto 16px; cursor: pointer; flex-shrink: 0; }
+    }
+    @media (min-width: 900px) { .mob-cal-view { display: none; } }
+  </style>
 </head>
 <body>
 
-<div class="appbar">
-  <div class="ab-left">
-    <button class="ab-back" onclick="window.history.length>1?window.history.back():window.location.href='dashboard.html'">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-      Back
-    </button>
-    <div class="ab-divider"></div>
-    <div class="ab-brand">
-      <div class="ab-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-      </div>
-      Calendar
-    </div>
-  </div>
-  <div class="ab-right">
-    <div class="sync-pill sync-connecting" id="sync-el">Connecting…</div>
-  </div>
-</div>
-
-<div id="notif-banners" style="padding-top:12px; position:absolute; width:100%; z-index:100;"></div>
-
-<div class="cal-wrap">
-  <div class="cal-main">
-    <div class="cal-panel">
-      <div class="cal-head">
-        <button class="cal-nav" id="prev-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <div style="text-align:center">
-          <div class="cal-month-txt" id="cal-month">Month</div>
-          <div class="cal-year-txt" id="cal-year"></div>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center">
+  <div class="cal-container">
+    
+    <div class="cal-left">
+      <div class="cal-hdr-d">
+        <div class="month-ttl-d" id="month-ttl-d">April 2026</div>
+        <div class="nav-actions-d">
+          <button class="nav-btn" id="prev-btn" title="Previous Month">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
           <button class="today-btn" id="today-btn">Today</button>
-          <button class="cal-nav" id="next-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <button class="nav-btn" id="next-btn" title="Next Month">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
       </div>
-      <div class="cal-daynames">
-        <div class="cal-dayname">Sun</div><div class="cal-dayname">Mon</div>
-        <div class="cal-dayname">Tue</div><div class="cal-dayname">Wed</div>
-        <div class="cal-dayname">Thu</div><div class="cal-dayname">Fri</div>
-        <div class="cal-dayname">Sat</div>
-      </div>
-      <div class="cal-grid" id="cal-grid-d"></div>
+      
+      <div class="cal-grid-d" id="cal-grid-d">
+        <div class="wkday-d">Sun</div><div class="wkday-d">Mon</div><div class="wkday-d">Tue</div><div class="wkday-d">Wed</div><div class="wkday-d">Thu</div><div class="wkday-d">Fri</div><div class="wkday-d">Sat</div>
+        </div>
     </div>
-
+    
     <div class="cal-right">
       <div class="cal-card">
         <div class="card-hdr">
@@ -325,39 +528,33 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
             </button>
           </div>
         </div>
-        <div class="day-events-list" id="ev-list-d">
-          <div class="no-events">Select a day to view events</div>
-        </div>
+        <div class="ev-list-d" id="ev-list-d">
+          </div>
+      </div>
+      
+      <div class="status-bar-d">
+        <div id="sync-icon" class="stat-live">Live Sync</div>
+        <div id="sync-time">Just updated</div>
       </div>
     </div>
   </div>
 
-  <div class="mob-wrap">
-    <div class="mob-cal-container">
-      <div class="mob-cal-head" style="position:relative;">
-        <button class="mob-nav" id="mob-prev">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        
-        <div style="position:absolute; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; text-align:center;">
-          <div class="mob-month-txt" id="mob-month">Month</div>
-          <div style="font-size:.7rem;color:rgba(255,255,255,.7);font-weight:600;" id="mob-year"></div>
-        </div>
-        
-        <div style="display:flex;gap:5px;align-items:center">
-          <button class="mob-today-btn" id="mob-today">Today</button>
-          <button class="mob-nav" id="mob-next">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
+  <div class="mob-cal-view">
+    <div class="mob-header">
+      <div class="mob-top-actions">
+        <div class="month-ttl-d" id="month-ttl-m" style="font-size:1.5rem">April 2026</div>
+        <button class="today-btn-m" id="mob-today">Today</button>
       </div>
-      <div class="mob-daynames">
-        <div class="mob-dayname">S</div><div class="mob-dayname">M</div><div class="mob-dayname">T</div>
-        <div class="mob-dayname">W</div><div class="mob-dayname">T</div><div class="mob-dayname">F</div><div class="mob-dayname">S</div>
+      <div class="mob-wkday-grid">
+        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
       </div>
-      <div class="mob-grid" id="cal-grid-m"></div>
     </div>
-
+    
+    <div class="mob-cal-grid-container" id="mob-cal-container">
+      <div class="mob-cal-grid" id="cal-grid-m">
+        </div>
+    </div>
+    
     <div class="mob-sheet">
       <div class="mob-day-header">
         <div class="mob-drag-handle"></div>
@@ -368,343 +565,257 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
       <div class="mob-content" id="mob-ev-content">
         <div id="ev-list-m" style="flex:1; display:flex; flex-direction:column;"></div>
       </div>
-    </div>
-    
-    <button class="mob-fab" id="mob-fab-btn" onclick="window.openAddModal()">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    </button>
-  </div>
-</div>
-
-<div class="modal-overlay" id="add-modal" onclick="if(event.target===this)closeAddModal()">
-  <div class="staff-modal" style="max-width:400px;">
-    <div class="modal-hdr">
-      <div class="modal-ttl">Add Event</div>
-      <button class="modal-close" onclick="closeAddModal()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="add-form" id="add-form-univ" style="padding:24px;"></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
-  <div class="staff-modal">
-    <div class="modal-hdr">
-      <div class="modal-ttl">Select Staff</div>
-      <button class="modal-close" onclick="closeStaffModal()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="staff-list-container" id="staff-list-container">
-      <div style="text-align:center;padding:20px;color:var(--tx4)">Loading team…</div>
-    </div>
-    <div class="modal-footer">
-      <button class="add-btn" onclick="closeStaffModal()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        Confirm Selection
+      <div class="sheet-fade"></div>
+      <button class="mob-fab" id="mob-fab-btn" onclick="openAddModalM()">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     </div>
   </div>
-</div>
 
+  <div class="modal-overlay" id="add-modal" onclick="if(event.target===this)closeAddModal()">
+    <div class="staff-modal">
+      <div class="modal-hdr">
+        <div class="modal-ttl">Add Event</div>
+        <button class="modal-close" onclick="closeAddModal()" title="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body-form" id="add-form-univ">
+        </div>
+    </div>
+  </div>
+  
+  <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
+    <div class="staff-modal">
+      <div class="modal-hdr">
+        <div class="modal-ttl">Select Staff</div>
+        <button class="modal-close" onclick="closeStaffModal()" title="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="ae-lbl" style="margin-bottom:12px;">Choose colleagues to visible</div>
+        <div class="staff-list" id="staff-list">
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  
   <div class="modal-overlay" id="confirm-del-modal" onclick="if(event.target===this)closeConfirmDel()">
-  <div class="staff-modal" style="max-width:340px; text-align:center; padding:24px;">
-    <div style="width:48px;height:48px;background:var(--red-s);color:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-    </div>
-    <div class="modal-ttl" style="margin-bottom:8px;">Delete Event?</div>
-    <div id="del-msg" style="color:var(--tx3);font-size:.9rem;line-height:1.4;margin-bottom:24px;">Are you sure?</div>
-    <div style="display:flex;gap:12px;">
-      <button onclick="closeConfirmDel()" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);color:var(--tx2);font-weight:700;cursor:pointer;">Cancel</button>
-      <button onclick="executeDelete()" style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--red);color:#fff;font-weight:700;cursor:pointer;">Delete</button>
+    <div class="staff-modal" style="max-width:340px; text-align:center; padding:24px;">
+      <div style="width:48px;height:48px;background:var(--red-s);color:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      </div>
+      <div class="modal-ttl" style="margin-bottom:8px;">Delete Event?</div>
+      <div id="del-msg" style="color:var(--tx3);font-size:.9rem;line-height:1.4;margin-bottom:24px;">Are you sure?</div>
+      <div style="display:flex;gap:12px;">
+        <button onclick="closeConfirmDel()" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);color:var(--tx2);font-weight:700;cursor:pointer;">Cancel</button>
+        <button onclick="executeDelete()" style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--red);color:#fff;font-weight:700;cursor:pointer;">Delete</button>
+      </div>
     </div>
   </div>
-</div>
-
-<div class="modal-overlay" id="cannot-del-modal" onclick="if(event.target===this)closeCannotDel()">
-  <div class="staff-modal" style="max-width:340px; text-align:center; padding:24px; position:relative;">
-    <button class="modal-close" style="position:absolute;top:16px;right:16px;background:var(--sf2);" onclick="closeCannotDel()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div style="width:48px;height:48px;background:var(--sf2);color:var(--tx3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  
+  <div class="modal-overlay" id="cannot-del-modal" onclick="if(event.target===this)closeCannotDel()">
+    <div class="staff-modal" style="max-width:340px; text-align:center; padding:24px; position:relative;">
+      <button class="modal-close" style="position:absolute;top:16px;right:16px;background:var(--sf2);" onclick="closeCannotDel()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div style="width:48px;height:48px;background:var(--sf2);color:var(--tx3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <div class="modal-ttl" style="margin-bottom:8px;">Permission Denied</div>
+      <div id="cannot-del-msg" style="color:var(--tx3);font-size:.9rem;line-height:1.4;margin-bottom:8px;">This is assigned by someone else. You can't delete it.</div>
     </div>
-    <div class="modal-ttl" style="margin-bottom:8px;">Permission Denied</div>
-    <div id="cannot-del-msg" style="color:var(--tx3);font-size:.9rem;line-height:1.4;margin-bottom:8px;">This is assigned by someone else. You can't delete it.</div>
   </div>
-</div>
-  
-<div id="toast-container"></div>
 
-<script type="module">
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {
-  getFirestore, collection, query, where, onSnapshot,
-  addDoc, deleteDoc, doc, getDoc, getDocs, serverTimestamp, orderBy
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-/* ── FIREBASE INIT ── */
-let app, auth, db;
-try {
-  const { auth: a, db: d } = await import('./firebase-config.js');
-  auth = a; db = d;
-} catch(e) {
-  const cfg = {
-    apiKey:"AIzaSyArQLilynpEoydg-nye9yCQ2cQIVpeuyUI",
-    authDomain:"zenda-app-593a8.firebaseapp.com",
-    projectId:"zenda-app-593a8",
-    storageBucket:"zenda-app-593a8.firebasestorage.app",
-    messagingSenderId:"56547460703",
-    appId:"1:56547460703:web:689c2fb2707464ac733dea"
-  };
-  app = getApps().find(a=>a.name==='[DEFAULT]') || initializeApp(cfg);
-  auth = getAuth(app);
-  db = getFirestore(app);
-}
-
-/* ── STATE ── */
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-let CU = null; 
-let curDate = new Date();
-let selDay = new Date();
-let allEvents = []; 
-let personalEvents = [];
-let companyEvents = [];
-let taskEvents = [];
-let companyStaff = [];
-let selectedStaffUIDs = new Set();
-let unsubs = [];
-
-/* ── HELPERS ── */
-const dk = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const isToday = d => { const n=new Date(); return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); };
-const sameDay = (a,b) => a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
-const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const pEl = id => document.getElementById(id);
-
-/* ── SYNC STATUS (Connect Fade Logic) ── */
-function setSyncStatus(state, text) {
-  const el = pEl('sync-el');
-  if (!el) return;
-  el.style.transition = 'background 0.3s';
-  el.style.opacity = '1';
-  el.classList.remove('hidden');
-  
-  if (state === 'live') {
-    el.className = `sync-pill sync-live`;
-    el.textContent = 'Connected';
-  } else {
-    el.className = `sync-pill sync-${state}`;
-    el.textContent = state === 'err' ? 'Not Connected' : text;
-  }
-}
-
-/* ── TOAST FUNCTION ── */
-window.toast = function(msg, type = 'success') {
-  const container = document.getElementById('toast-container');
-  if (!container) return;
-  const t = document.createElement('div');
-  t.className = `toast toast-${type}`;
-  t.innerHTML = msg;
-  container.appendChild(t);
-  setTimeout(() => {
-    t.style.transition = 'opacity 0.3s ease';
-    t.style.opacity = '0';
-    setTimeout(() => t.remove(), 300);
-  }, 3000);
-};
-
-/* ── AUTH GUARD ── */
-onAuthStateChanged(auth, async user => {
-  if (!user) { window.location.replace('login.html'); return; }
-  try {
-    const uSnap = await getDoc(doc(db, 'users', user.uid));
-    if (uSnap.exists()) { CU = { uid: user.uid, ...uSnap.data() }; } 
-    else { CU = { uid: user.uid, role: 'staff', companyId: null, name: user.email }; }
+    /* ── CONFIG ── */
+    const CU = { uid: "user_karan", name: "Karan", companyId: "comp_stack9" };
+    const STAFF = [
+      { uid: "user_karan", name: "Karan (Me)" },
+      { uid: "user_rohit", name: "Rohit" },
+      { uid: "user_amit", name: "Amit" },
+      { uid: "user_sara", name: "Sara" },
+      { uid: "user_john", name: "John" }
+    ];
     
-    selectedStaffUIDs.add(CU.uid);
-    if (CU.companyId) await loadCompanyStaff();
+    // REDACTED FIREBASE CONFIG
+    const firebaseConfig = { 
+        apiKey: "YOUR_API_KEY", 
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com", 
+        projectId: "YOUR_PROJECT_ID", 
+        storageBucket: "YOUR_PROJECT_ID.appspot.com", 
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID", 
+        appId: "YOUR_APP_ID" 
+    };
 
-    startListeners();
-    renderForms();
-    renderCalendar();
-    showDayEvents(selDay);
+    /* ── STATE ── */
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    let personalEvents = [], companyEvents = [], taskEvents = [], allEvents = [];
+    let curDate = new Date();
+    let selDay = new Date();
+    const selectedStaffUIDs = new Set([CU.uid]);
 
-  } catch(err) {
-    console.error('Init error:', err);
-    setSyncStatus('err', 'Error');
-  }
-});
+    /* ── HELPERS ── */
+    const pEl = (id) => document.getElementById(id);
+    const dk = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const esc = (s) => s ? s.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : '';
+    const dkToDate = (s) => { const [y,m,d]=s.split('-'); return new Date(y,m-1,d); };
+    const dateEql = (d1, d2) => dk(d1) === dk(d2);
 
-/* ── LOAD COMPANY STAFF ── */
-async function loadCompanyStaff() {
-  if (!CU?.companyId) return;
-  try {
-    const snap = await getDocs(query(collection(db, 'users'), where('companyId', '==', CU.companyId)));
-    companyStaff = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-  } catch(e) { console.warn('Staff load failed:', e); }
-}
+    /* ── STARTUP ── */
+    document.addEventListener('DOMContentLoaded', () => {
+      initListeners();
+      renderForms(); 
+      setupSubscriptions();
+      goToday(); 
+    });
+    
+    /* ── TOAST FUNCTION ── */
+    window.toast = function(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerHTML = msg;
+      container.appendChild(t);
+      setTimeout(() => {
+        t.style.transition = 'opacity 0.3s ease';
+        t.style.opacity = '0';
+        setTimeout(() => t.remove(), 300);
+      }, 3000);
+    };
 
-/* ── REALTIME LISTENERS ── */
-function startListeners() {
-  unsubs.forEach(u => u());
-  unsubs = [];
-  setSyncStatus('connecting', 'Connecting…');
+    /* ── REALTIME SYNC ── */
+    function setupSubscriptions() {
+      setSyncStatus('syncing', 'Connecting...');
+      
+      const qPersonal = query(collection(db, 'calendar'), where('visibility', '==', 'self'), where('uid', '==', CU.uid), where('type', '==', 'event'));
+      const qCompany = query(collection(db, 'calendar'), where('visibility', '==', 'all'), where('companyId', '==', CU.companyId), where('type', '==', 'event'));
+      const qTasks = query(collection(db, 'calendar'), where('uid', '==', CU.uid), where('type', '==', 'task'));
 
-  const q1 = query(collection(db, 'calendar'), where('uid', '==', CU.uid));
-  unsubs.push(onSnapshot(q1, snap => {
-    personalEvents = snap.docs.map(d => ({ id: d.id, _src: 'personal', ...d.data() }));
-    mergeAndRender();
-  }, e => setSyncStatus('err', 'Sync Error')));
-
-  if (CU.companyId) {
-    const q2 = query(collection(db, 'calendar'), where('companyId', '==', CU.companyId));
-    unsubs.push(onSnapshot(q2, snap => {
-      const raw = snap.docs.map(d => ({ id: d.id, _src: 'company', ...d.data() }));
-      companyEvents = raw.filter(ev => {
-        if (ev.uid === CU.uid) return false; 
-        if (ev.visibility === 'all') return true;
-        if (ev.visibility === 'custom') return Array.isArray(ev.visibleToUIDs) && ev.visibleToUIDs.includes(CU.uid);
-        return false;
-      });
-      mergeAndRender();
-    }));
-  }
-}
-
-/* ── MERGE & RENDER ── */
-function mergeAndRender() {
-  const seen = new Set();
-  allEvents = [...personalEvents, ...companyEvents, ...taskEvents].filter(e => {
-    if (!e.date || seen.has(e.id)) return false;
-    seen.add(e.id);
-    return true;
-  });
-  
-  // Sort ALL events from Latest to Oldest added (descending order)
-  allEvents.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  
-  setSyncStatus('live', 'Connected');
-  renderCalendar();
-  showDayEvents(selDay);
-}
-
-/* ── CALENDAR RENDER ── */
-function renderCalendar() {
-  const y = curDate.getFullYear(), m = curDate.getMonth();
-  ['cal-month','mob-month'].forEach(id => { const el = pEl(id); if(el) el.textContent = MONTHS[m]; });
-  ['cal-year','mob-year'].forEach(id => { const el = pEl(id); if(el) el.textContent = y; });
-  renderGrid('cal-grid-d', y, m, 'desktop');
-  renderGrid('cal-grid-m', y, m, 'mobile');
-}
-
-function renderGrid(containerId, y, m, mode) {
-  const container = pEl(containerId);
-  if (!container) return;
-
-  const firstDay = new Date(y, m, 1).getDay();
-  const daysInMonth = new Date(y, m+1, 0).getDate();
-  const prevDays = new Date(y, m, 0).getDate();
-
-  let html = '';
-
-  for (let i = firstDay - 1; i >= 0; i--) {
-    if (mode === 'desktop') html += `<div class="cal-day other-month"><div class="dn">${prevDays-i}</div></div>`;
-    else html += `<div class="mob-day other-month"><div class="mob-dn">${prevDays-i}</div></div>`;
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const d = new Date(y, m, day);
-    const key = dk(d);
-    const dayEvs = allEvents.filter(e => e.date === key);
-    const todayCls = isToday(d) ? ' is-today' : '';
-    const selCls = sameDay(d, selDay) ? ' is-selected' : '';
-
-    if (mode === 'desktop') {
-      const pills = dayEvs.slice(0, 2).map(ev => {
-        const visCls = ev.visibility || 'self';
-        return `<div class="ep ${visCls}">${esc(ev.title)}</div>`;
-      }).join('');
-      const more = dayEvs.length > 2 ? `<div class="ep-more">+${dayEvs.length-2} more</div>` : '';
-      html += `<div class="cal-day${todayCls}${selCls}" onclick="selectDay(${y},${m},${day})">
-        <div class="dn">${day}</div>${pills}${more}
-      </div>`;
-    } else {
-      let dotColor = 'var(--ac)';
-      if (dayEvs.length) {
-        if (dayEvs[0].visibility === 'all') dotColor = 'var(--green)';
-        else if (dayEvs[0].visibility === 'custom') dotColor = 'var(--purple)';
-      }
-      const dot = dayEvs.length ? `<div class="mob-dot" style="background:${dotColor}"></div>` : '';
-      html += `<div class="mob-day${todayCls}${selCls}" onclick="selectDay(${y},${m},${day})">
-        <div class="mob-dn">${day}</div>${dot}
-      </div>`;
+      let unsubP = onSnapshot(qPersonal, s => { personalEvents = s.docs.map(d => ({id: d.id, ...d.data()})); mergeAndRender(); }, e => console.error(e));
+      let unsubC = onSnapshot(qCompany, s => { companyEvents = s.docs.map(d => ({id: d.id, ...d.data()})); mergeAndRender(); }, e => console.error(e));
+      let unsubT = onSnapshot(qTasks, s => { taskEvents = s.docs.map(d => ({id: d.id, ...d.data()})); mergeAndRender(); }, e => console.error(e));
     }
-  }
 
-  // 42-BLOCK UNIVERSAL HEIGHT FOR ALL MONTHS
-  const total = firstDay + daysInMonth;
-  for (let i = 1; i <= 42 - total; i++) {
-    if (mode === 'desktop') html += `<div class="cal-day other-month"><div class="dn">${i}</div></div>`;
-    else html += `<div class="mob-day other-month"><div class="mob-dn">${i}</div></div>`;
-  }
-  container.innerHTML = html;
-}
+    /* ── MERGE & RENDER ── */
+    function mergeAndRender() {
+      const seen = new Set();
+      allEvents = [...personalEvents, ...companyEvents, ...taskEvents].filter(e => {
+        if (!e.date || seen.has(e.id)) return false;
+        seen.add(e.id);
+        return true;
+      });
+      
+      // Sort ALL events from Latest to Oldest added (descending order)
+      allEvents.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      
+      setSyncStatus('live', 'Connected');
+      renderCalendar();
+      showDayEvents(selDay);
+    }
+    
+    function setSyncStatus(state, text) {
+      const sBar = pEl('sync-icon'); const sTime = pEl('sync-time'); if(!sBar || !sTime) return;
+      sBar.className = state === 'live' ? 'stat-live' : 'stat-sync';
+      sBar.textContent = text;
+      sTime.textContent = state === 'live' ? new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+    }
 
-window.selectDay = function(y, m, day) {
-  selDay = new Date(y, m, day);
-  renderCalendar();
-  showDayEvents(selDay);
-  if (window.setMobTab) setMobTab('events');
-};
+    /* ── CALENDAR LOGIC ── */
+    function renderCalendar() {
+      const mNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      pEl('month-ttl-d').textContent = `${mNames[curDate.getMonth()]} ${curDate.getFullYear()}`;
+      pEl('month-ttl-m').textContent = `${mNames[curDate.getMonth()]} ${curDate.getFullYear()}`;
+      
+      const gridD = pEl('cal-grid-d'); const gridM = pEl('cal-grid-m');
+      
+      // Clear old cells from PC
+      gridD.querySelectorAll('.day-cell, .other-month').forEach(e => e.remove());
+      gridM.innerHTML = ''; // Clear old cells from Mobile
 
-window.goToday = function() {
-  curDate = new Date(); selDay = new Date();
-  renderCalendar(); showDayEvents(selDay);
-};
+      const firstD = new Date(curDate.getFullYear(), curDate.getMonth(), 1).getDay();
+      const lastD = new Date(curDate.getFullYear(), curDate.getMonth() + 1, 0).getDate();
+      const prevLastD = new Date(curDate.getFullYear(), curDate.getMonth(), 0).getDate();
+      
+      const totalCells = (lastD + firstD > 35) ? 42 : 35;
+      
+      let dayDots = allEvents.reduce((acc, ev) => { if(!acc[ev.date]) acc[ev.date] = new Set(); acc[ev.date].add(ev.visibility || 'self'); return acc; }, {});
 
-window.navMonth = function(dir) {
-  const grids = [pEl('cal-grid-d'), pEl('cal-grid-m')];
-  grids.forEach(g => {
-    if (!g) return;
-    g.classList.remove('slide-up', 'slide-down');
-    void g.offsetWidth; // Trigger DOM reflow to restart animation
-    g.classList.add(dir > 0 ? 'slide-up' : 'slide-down'); // Next month slides up, Prev month slides down
-  });
-  curDate = new Date(curDate.getFullYear(), curDate.getMonth() + dir, 1);
-  renderCalendar();
-};
+      for (let i = 0; i < totalCells; i++) {
+        let dn, cls = [], isOM = false, dObj;
+        
+        if (i < firstD) { dn = prevLastD - firstD + i + 1; cls.push('other-month'); isOM = true; dObj = new Date(curDate.getFullYear(), curDate.getMonth()-1, dn); }
+        else if (i < firstD + lastD) { dn = i - firstD + 1; dObj = new Date(curDate.getFullYear(), curDate.getMonth(), dn); }
+        else { dn = i - (firstD + lastD) + 1; cls.push('other-month'); isOM = true; dObj = new Date(curDate.getFullYear(), curDate.getMonth()+1, dn); }
 
-/* ── SHOW DAY EVENTS ── */
-function showDayEvents(d) {
-  const key = dk(d);
-  const dayEvs = allEvents.filter(e => e.date === key);
+        if (!isOM) {
+          const dKey = dk(dObj);
+          if (dayDots[dKey]) { cls.push('has-ev'); }
+          if (dateEql(dObj, selDay)) { cls.push('selected'); }
+          if (dateEql(dObj, new Date())) { cls.push('today'); }
+        }
 
-  const months = MON_SHORT;
-  const dayNames = DAYS;
-  const label = isToday(d)
-    ? `Today, ${d.getDate()} ${months[d.getMonth()]}`
-    : `${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+        // DESKTOP CELL
+        const cD = document.createElement('div');
+        cD.className = `day-cell ${cls.join(' ')}`;
+        cD.innerHTML = `<div class="day-num">${dn}</div><div class="cell-ev-dots">${!isOM ? renderDots(dayDots[dk(dObj)]) : ''}</div>`;
+        if (!isOM) cD.onclick = () => selectDay(dObj);
+        gridD.appendChild(cD);
+        
+        // MOBILE CELL
+        const cM = document.createElement('div');
+        cM.className = `day-cell-m ${cls.join(' ')}`;
+        cM.innerHTML = `<div class="day-num-m">${dn}</div><div class="dot-container-m">${!isOM ? renderDots(dayDots[dk(dObj)]) : ''}</div>`;
+        if (!isOM) cM.onclick = () => selectDay(dObj);
+        gridM.appendChild(cM);
+      }
+    }
+    
+    function renderDots(visList) { if(!visList) return ''; return Array.from(visList).map(v => `<div class="ev-dot ${v}" style="background:${getVisColor(v)}"></div>`).join(''); }
+    function getVisColor(v) { if(v==='self') return 'var(--ac)'; if(v==='all') return 'var(--green)'; if(v==='custom') return 'var(--purple)'; return 'var(--tx4)'; }
 
-  // Adds the (number) directly to the text in the same font for BOTH PC and Mobile
-  const finalLabel = label + (dayEvs.length ? ` (${dayEvs.length})` : '');
-  
-  const dtitle = pEl('day-title-d'); if (dtitle) dtitle.textContent = finalLabel;
-  const mobLabel = pEl('mob-day-label'); if (mobLabel) mobLabel.textContent = finalLabel;
+    function selectDay(d) {
+      selDay = new Date(d);
+      showDayEvents(selDay);
+      // PC: Mark selected
+      pEl('cal-grid-d').querySelectorAll('.day-cell').forEach(c => {
+        if(c.classList.contains('other-month')) return;
+        const cD = new Date(curDate.getFullYear(), curDate.getMonth(), c.querySelector('.day-num').textContent);
+        c.classList.toggle('selected', dateEql(cD, selDay));
+      });
+      // Mobile: Mark selected
+      pEl('cal-grid-m').querySelectorAll('.day-cell-m').forEach(c => {
+        if(c.classList.contains('other-month')) return;
+        const cD = new Date(curDate.getFullYear(), curDate.getMonth(), c.querySelector('.day-num-m').textContent);
+        c.classList.toggle('selected', dateEql(cD, selDay));
+      });
+    }
 
-  const evHtml = dayEvs.length ? dayEvs.map((ev, i) => renderEventItem(ev, i)).join('') : '';
-  const empty = `<div class="no-events">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--tx4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-      <div>No events for this day</div>
-    </div>`;
+    function showDayEvents(d) {
+      const dLabel = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
+      pEl('day-title-d').textContent = dLabel;
+      
+      // Adds the (number) directly to the text in the same font for BOTH PC and Mobile
+      const dayEvs = allEvents.filter(ev => ev.date === dk(d));
+      const finalLabel = dLabel + (dayEvs.length ? ` (${dayEvs.length})` : '');
+      
+      const dtitle = pEl('day-title-d'); if (dtitle) dtitle.textContent = finalLabel;
+      const mobLabel = pEl('mob-day-label'); if (mobLabel) mobLabel.textContent = finalLabel; 
 
-  const evListD = pEl('ev-list-d'); if (evListD) evListD.innerHTML = evHtml || empty;
-  const evListM = pEl('ev-list-m'); if (evListM) evListM.innerHTML = evHtml || empty;
-}
+      const evHtml = dayEvs.map((ev, i) => renderEventItem(ev, i)).join('');
+      const empty = '<div class="no-events">✨ No events today</div>';
+      
+      pEl('ev-list-d').innerHTML = evHtml || empty;
+      pEl('ev-list-m').innerHTML = evHtml || empty;
+    }
 
 function renderEventItem(ev, idx) {
   let visCls = ev.visibility || 'self';
@@ -716,7 +827,7 @@ function renderEventItem(ev, idx) {
   if (visCls === 'task') badgeTxt = 'Task';
 
   const canDel = (ev.uid === CU.uid);
-  const ownerNameStr = esc(ev._fromName || 'Team');
+  const ownerNameStr = esc(ev._fromName || 'Team Member');
   const fromTxt = ev.uid !== CU.uid ? 
     `<span style="font-weight:600; color:var(--tx2);">From: ${ownerNameStr}</span>` : 
     `<span style="font-weight:600; color:var(--tx2);">From: Myself</span>`;
@@ -728,6 +839,7 @@ function renderEventItem(ev, idx) {
       delBtn = `<button class="ev-del disabled-del" onclick="showCannotDelete('${ownerNameStr}', event)" title="Cannot Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>`;
   }
   
+  // Note the added onclick="toggleEvCard(this, event)" here!
   // Removed the animation-delay inline style
   return `<div class="ev-item ${visCls}" onclick="toggleEvCard(this, event)">
     <div class="ev-content">
@@ -741,110 +853,87 @@ function renderEventItem(ev, idx) {
   </div>`;
 }
 
-let deleteTargetId = null;
-let deleteTargetBtn = null;
-
-/* ── CARD EXPAND LOGIC ── */
-window.toggleEvCard = function(card, event) {
-  // First, close any other expanded cards
-  document.querySelectorAll('.ev-item.expanded').forEach(el => {
-    if (el !== card) el.classList.remove('expanded');
-  });
-  
-  // Toggle this card
-  card.classList.toggle('expanded');
-  
-  // Stop the click from bubbling up to the document
-  if (event) event.stopPropagation();
-};
-
-// Listen for clicks anywhere on the document to close expanded cards
-document.addEventListener('click', function(e) {
-  document.querySelectorAll('.ev-item.expanded').forEach(el => {
-    // If we clicked outside the expanded card, close it
-    if (!el.contains(e.target)) {
-      el.classList.remove('expanded');
-    }
-  });
-});
-  
-window.confirmDelete = function(id, visibility, btn, event) {
-  if (event) event.stopPropagation(); // Prevents the card click animation from double firing
-  deleteTargetId = id;
-  deleteTargetBtn = btn;
-  
-  let msg = "Delete this event. Are you sure?";
-  if (visibility === 'all') msg = "This will delete the event for everyone. Are you sure?";
-  else if (visibility === 'custom') msg = "This will delete the event from selected staff. Are you sure?";
-  else if (visibility === 'self') msg = "This will delete the event only from you. Are you sure?";
-  else if (visibility === 'task') msg = "This will delete the task. Are you sure?";
-  
-  pEl('del-msg').textContent = msg;
-  pEl('confirm-del-modal').classList.add('open');
-};
-
-window.closeConfirmDel = () => {
-  pEl('confirm-del-modal').classList.remove('open');
-  deleteTargetId = null;
-  deleteTargetBtn = null;
-};
-
-window.executeDelete = async function() {
-  if (!deleteTargetId) return;
-  const id = deleteTargetId;
-  const btn = deleteTargetBtn;
-  closeConfirmDel();
-  
-  if (btn) {
-    const item = btn.closest('.ev-item');
-    if (item) item.classList.add('deleting');
-  }
-  
-  setTimeout(async () => {
-    try {
-      await deleteDoc(doc(db, 'calendar', id));
-      toast('Event deleted', 'success');
-    } catch(e) { toast('Error: ' + e.message, 'error'); }
-  }, 280);
-};
-
-window.showCannotDelete = function(ownerName, event) {
-  if (event) event.stopPropagation();
-  pEl('cannot-del-msg').textContent = `This is assigned by ${ownerName}. You can't delete it.`;
-  pEl('cannot-del-modal').classList.add('open');
-};
-window.closeCannotDel = () => pEl('cannot-del-modal').classList.remove('open');
-
-function renderForms() {
-  const formHtml = `
-    <div style="display:flex;flex-direction:column;gap:16px;">
-      <div>
-        <span class="ae-lbl">Event Title</span>
-        <input class="ae-inp ae-title" type="text" placeholder="Team meeting, deadline…" maxlength="60" oninput="this.style.borderColor=''; document.getElementById('title-err').style.display='none';">
-        <div id="title-err" style="color:var(--red); font-size:0.75rem; margin-top:6px; font-weight:700; display:none;">Event text is missing</div>
-      </div>
-      <div>
-        <span class="ae-lbl">Visible To</span>
-        <select class="ae-inp ae-sel ae-visibility" onchange="onVisibilityChange(this)">
-          <option value="self">Only me</option>
-          <option value="all">Everyone in company</option>
-          <option value="custom">Custom staff</option>
-        </select>
-        <div class="custom-staff-row hidden" style="margin-top:12px;">
-          <button type="button" class="edit-staff-btn" onclick="openStaffModal()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-            Edit Staff Selection
+    /* ── ADD EVENT FORM & STAFF SELECT ── */
+    function renderForms() {
+      const formHtml = `
+        <div class="add-form">
+          <div>
+            <span class="ae-lbl">Event Title</span>
+            <input class="ae-inp ae-title" type="text" placeholder="Team meeting, deadline…" maxlength="60" oninput="this.style.borderColor=''; document.getElementById('title-err').style.display='none';">
+            <div id="title-err" style="color:var(--red); font-size:0.75rem; margin-top:6px; font-weight:700; display:none;">Event text is missing</div>
+          </div>
+          <div>
+            <span class="ae-lbl">Visible To</span>
+            <select class="ae-inp ae-sel ae-visibility" onchange="onVisibilityChange(this)">
+              <option value="self">Only me</option>
+              <option value="all">Everyone in stack9</option>
+              <option value="custom">Custom staff</option>
+            </select>
+            <div class="custom-staff-row hidden" style="margin-top:12px;">
+              <button type="button" class="edit-staff-btn" onclick="openStaffModal()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                Edit Staff Selection
+              </button>
+            </div>
+          </div>
+          <button type="button" class="add-btn" onclick="addEvent(this)" style="margin-top:8px;">
+            Add Event
           </button>
         </div>
-      </div>
-      <button type="button" class="add-btn" onclick="addEvent(this)" style="margin-top:8px;">
-        Add Event
-      </button>
-    </div>
-  `;
-  const univForm = pEl('add-form-univ'); if (univForm) univForm.innerHTML = formHtml;
-}
+      `;
+      const univForm = pEl('add-form-univ'); if(univForm) univForm.innerHTML = formHtml;
+    }
 
+    window.openAddModal = () => {
+      pEl('add-modal').classList.add('open');
+      const fab = pEl('mob-fab-btn'); if (fab) fab.style.display = 'none';
+    };
+    window.closeAddModal = () => {
+      const m = pEl('add-modal');
+      if (!m) return;
+      m.classList.add('closing'); // Trigger animation
+      
+      setTimeout(() => {
+        m.classList.remove('open', 'closing'); // Actually hide it after animation finishes
+        const fab = pEl('mob-fab-btn'); if (fab) fab.style.display = 'flex';
+      }, 200); 
+    };
+    window.openAddModalM = () => openAddModal(); // Reuse same for mobile FAB
+
+    window.onVisibilityChange = function(sel) {
+      const row = sel.closest('.add-form').querySelector('.custom-staff-row');
+      row.classList.toggle('hidden', sel.value !== 'custom');
+      if(sel.value === 'custom') openStaffModal();
+    }
+
+    /* ── STAFF MODAL ── */
+    window.openStaffModal = () => {
+      renderStaffList();
+      pEl('staff-modal').classList.add('open');
+    }
+    window.closeStaffModal = () => pEl('staff-modal').classList.remove('open');
+
+    function renderStaffList() {
+      const list = pEl('staff-list'); list.innerHTML = '';
+      STAFF.forEach(s => {
+        if(s.uid === CU.uid) return;
+        const item = document.createElement('div');
+        item.className = `staff-item ${selectedStaffUIDs.has(s.uid) ? 'selected' : ''}`;
+        item.onclick = () => toggleStaff(s.uid, item);
+        item.innerHTML = `
+          <div class="staff-info"><span class="staff-name">${s.name}</span></div>
+          <svg class="check-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function toggleStaff(uid, el) {
+      if(selectedStaffUIDs.has(uid)) { selectedStaffUIDs.delete(uid); el.classList.remove('selected'); }
+      else { selectedStaffUIDs.add(uid); el.classList.add('selected'); }
+    }
+
+    /* ── FIREBASE WRITE ── */
 window.addEvent = async function(btn) {
   const form = btn.closest('.add-form');
   const titleEl = form.querySelector('.ae-title');
@@ -927,143 +1016,130 @@ window.addEvent = async function(btn) {
   }
 };
 
-/* ── SEND NOTIFICATIONS ── */
-async function sendCompanyNotification(eventId, title, date, type) {
-  if (!companyStaff.length) await loadCompanyStaff();
-  const others = companyStaff.filter(s => s.uid !== CU.uid);
-  const notifData = {
-    type: 'calendar_event_all',
-    eventId, eventTitle: title, eventDate: date,
-    fromName: CU.name || 'Someone', fromUid: CU.uid,
-    message: `${CU.name || 'Someone'} add event for everyone: "${title}"`,
-    read: false, status: 'unread', createdAt: Date.now()
-  };
-  const writes = others.map(s => addDoc(collection(db, 'users', s.uid, 'notifications'), notifData).catch(e => {}));
-  await Promise.all(writes);
-}
-
-async function sendCustomNotification(eventId, title, date, uids) {
-  const targets = uids.filter(u => u !== CU.uid);
-  const notifData = {
-    type: 'calendar_event_custom',
-    eventId, eventTitle: title, eventDate: date,
-    fromName: CU.name || 'Someone', fromUid: CU.uid,
-    message: `${CU.name || 'Someone'} add event for custom staffs: "${title}"`,
-    read: false, status: 'unread', createdAt: Date.now()
-  };
-  const writes = targets.map(uid => addDoc(collection(db, 'users', uid, 'notifications'), notifData).catch(e => {}));
-  await Promise.all(writes);
-}
-
-/* ── VISIBILITY HANDLER ── */
-window.onVisibilityChange = function(sel) {
-  const val = sel.value;
-  document.querySelectorAll('.ae-visibility').forEach(s => s.value = val);
-  document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.toggle('hidden', val !== 'custom'));
-  if (val === 'custom') openStaffModal();
-};
-
-window.openAddModal = () => {
-  pEl('add-modal').classList.add('open');
-  const fab = pEl('mob-fab-btn'); if (fab) fab.style.display = 'none';
-};
-window.closeAddModal = () => {
-  const m = pEl('add-modal');
-  if (!m) return;
-  m.classList.add('closing'); // Trigger animation
-  
-  setTimeout(() => {
-    m.classList.remove('open', 'closing'); // Actually hide it after animation finishes
-    const fab = pEl('mob-fab-btn'); if (fab) fab.style.display = 'flex';
-  }, 200); 
-};
-  
-window.openStaffModal = async function() {
-  if (!companyStaff.length) await loadCompanyStaff();
-  const container = pEl('staff-list-container');
-  if (!container) return;
-
-  if (!companyStaff.length) {
-    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx4)">No staff members found.</div>';
-    pEl('staff-modal').classList.add('open');
+    /* ── CARD EXPAND LOGIC ── */
+window.toggleEvCard = function(card, event) {
+  // Check if we clicked on the delete button or its child SVG/path
+  if (event.target.closest('.ev-del')) {
+    // Let the confirmDelete function handle this
     return;
   }
-
-  selectedStaffUIDs.add(CU.uid);
-  const colors = ['#3B82F6','#10B981','#FF9500','#EF4444','#AF52DE'];
-  const colorFor = name => colors[Math.abs([...name].reduce((h,c)=>c.charCodeAt(0)+((h<<5)-h),0)) % colors.length];
-
-  container.innerHTML = companyStaff.map(s => {
-    const isSelf = s.uid === CU.uid;
-    const isSelected = selectedStaffUIDs.has(s.uid);
-    const initials = (s.name||'?').slice(0,2).toUpperCase();
-    const color = colorFor(s.name||'X');
-    const roleLabel = s.role === 'owner' ? 'Owner' : s.designation || s.role || 'Staff';
-
-    return `<div class="staff-card ${isSelected ? 'selected' : ''} ${isSelf ? 'is-self' : ''}" onclick="${isSelf ? '' : `toggleStaff('${s.uid}')`}">
-      <div class="staff-av" style="background:${color}22;color:${color}">${initials}</div>
-      <div class="staff-info">
-        <div class="staff-name">${esc(s.name||'Unknown')}</div>
-      </div>
-      <div class="check-box ${isSelected ? 'checked' : ''}" id="chk-${s.uid}">
-        ${isSelected ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-
-  pEl('staff-modal').classList.add('open');
-};
-
-window.toggleStaff = function(uid) {
-  if (uid === CU.uid) return;
-  if (selectedStaffUIDs.has(uid)) selectedStaffUIDs.delete(uid);
-  else selectedStaffUIDs.add(uid);
-
-  const card = document.querySelector(`.staff-card[onclick*="${uid}"]`);
-  const chk = pEl('chk-' + uid);
-  if (card) card.classList.toggle('selected', selectedStaffUIDs.has(uid));
-  if (chk) {
-    chk.classList.toggle('checked', selectedStaffUIDs.has(uid));
-    chk.innerHTML = selectedStaffUIDs.has(uid) ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` : '';
-  }
-};
-window.closeStaffModal = () => {
-  pEl('staff-modal').classList.remove('open');
-  // Auto-revert to "Only me" if no other staff were checked
-  if (selectedStaffUIDs.size <= 1) {
-    document.querySelectorAll('.ae-visibility').forEach(s => s.value = 'self');
-    document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.add('hidden'));
-  }
-};
-
-
-/* ── EVENT LISTENERS ── */
-pEl('prev-btn')?.addEventListener('click', () => navMonth(-1));
-pEl('next-btn')?.addEventListener('click', () => navMonth(1));
-pEl('today-btn')?.addEventListener('click', () => goToday());
-pEl('mob-prev')?.addEventListener('click', () => navMonth(-1));
-pEl('mob-next')?.addEventListener('click', () => navMonth(1));
-pEl('mob-today')?.addEventListener('click', () => goToday());
-
-/* ── MOBILE SWIPE GESTURES (VERTICAL) ── */
-let touchStartY = 0;
-const mobCalContainer = document.querySelector('.mob-cal-container');
-if(mobCalContainer) {
-  mobCalContainer.addEventListener('touchstart', e => {
-    touchStartY = e.changedTouches[0].screenY;
-  }, {passive: true});
   
-  mobCalContainer.addEventListener('touchend', e => {
-    let touchEndY = e.changedTouches[0].screenY;
-    
-    // Swipe Up (moves finger up screen) -> Go to Next Month
-    if (touchEndY < touchStartY - 50) navMonth(1); 
-    
-    // Swipe Down (moves finger down screen) -> Go to Previous Month
-    if (touchEndY > touchStartY + 50) navMonth(-1); 
-  }, {passive: true});
-}
+  // First, close any other expanded cards
+  document.querySelectorAll('.ev-item.expanded').forEach(el => {
+    if (el !== card) el.classList.remove('expanded');
+  });
+  
+  // Toggle this card
+  card.classList.toggle('expanded');
+  
+  // Stop the click from bubbling up to the document
+  if (event) event.stopPropagation();
+};
 
-</script>
+// Listen for clicks anywhere on the document to close expanded cards
+document.addEventListener('click', function(e) {
+  document.querySelectorAll('.ev-item.expanded').forEach(el => {
+    // If we clicked outside the expanded card, close it
+    if (!el.contains(e.target)) {
+      el.classList.remove('expanded');
+    }
+  });
+});
+
+let deleteTargetId = null;
+let deleteTargetBtn = null;
+
+window.confirmDelete = function(id, visibility, btn, event) {
+  if (event) event.stopPropagation(); // Prevents the card click animation from double firing
+  deleteTargetId = id;
+  deleteTargetBtn = btn;
+  
+  let msg = "Delete this event. Are you sure?";
+  if (visibility === 'all') msg = "This will delete the event for everyone. Are you sure?";
+  else if (visibility === 'custom') msg = "This will delete the event from selected staff. Are you sure?";
+  else if (visibility === 'self') msg = "This will delete the event only from you. Are you sure?";
+  else if (visibility === 'task') msg = "This will delete the task. Are you sure?";
+  
+  pEl('del-msg').textContent = msg;
+  pEl('confirm-del-modal').classList.add('open');
+};
+
+window.closeConfirmDel = () => {
+  pEl('confirm-del-modal').classList.remove('open');
+  deleteTargetId = null;
+  deleteTargetBtn = null;
+};
+
+window.executeDelete = async function() {
+  if (!deleteTargetId) return;
+  const id = deleteTargetId;
+  const btn = deleteTargetBtn;
+  closeConfirmDel();
+  
+  if (btn) {
+    const item = btn.closest('.ev-item');
+    if (item) item.classList.add('deleting');
+  }
+  
+  setTimeout(async () => {
+    try {
+      await deleteDoc(doc(db, 'calendar', id));
+      if (window.toast) window.toast('Event deleted', 'success');
+    } catch(e) { if (window.toast) window.toast('Error: ' + e.message, 'error'); }
+  }, 280);
+};
+
+window.showCannotDelete = function(ownerName, event) {
+  if (event) event.stopPropagation();
+  pEl('cannot-del-msg').textContent = `This is assigned by ${ownerName}. You can't delete it.`;
+  pEl('cannot-del-modal').classList.add('open');
+};
+window.closeCannotDel = () => pEl('cannot-del-modal').classList.remove('open');
+
+    /* ── NAV LOGIC ── */
+    window.navMonth = function(dir) {
+      const grids = [pEl('cal-grid-d'), pEl('cal-grid-m')];
+      grids.forEach(g => {
+        if (!g) return;
+        g.classList.remove('slide-up', 'slide-down');
+        void g.offsetWidth; // Trigger DOM reflow to restart animation
+        g.classList.add(dir > 0 ? 'slide-up' : 'slide-down'); // Next month slides up, Prev month slides down
+      });
+      curDate = new Date(curDate.getFullYear(), curDate.getMonth() + dir, 1);
+      renderCalendar();
+    };
+    
+    window.goToday = function() { curDate = new Date(); selectDay(new Date()); renderCalendar(); };
+
+    /* ── EVENT LISTENERS ── */
+    pEl('prev-btn')?.addEventListener('click', () => navMonth(-1));
+    pEl('next-btn')?.addEventListener('click', () => navMonth(1));
+    pEl('today-btn')?.addEventListener('click', () => goToday());
+    pEl('mob-today')?.addEventListener('click', () => goToday());
+    
+    /* ── MOBILE SWIPE GESTURES (VERTICAL) ── */
+    let touchStartY = 0;
+    const mobCalContainer = document.querySelector('.mob-cal-container');
+    if(mobCalContainer) {
+      mobCalContainer.addEventListener('touchstart', e => {
+        touchStartY = e.changedTouches[0].screenY;
+      }, {passive: true});
+      
+      mobCalContainer.addEventListener('touchend', e => {
+        let touchEndY = e.changedTouches[0].screenY;
+        
+        // Swipe Up (moves finger up screen) -> Go to Next Month
+        if (touchEndY < touchStartY - 50) navMonth(1); 
+        
+        // Swipe Down (moves finger down screen) -> Go to Previous Month
+        if (touchEndY > touchStartY + 50) navMonth(-1); 
+      }, {passive: true});
+    }
+
+    /* ── MOCK NOTIFICATIONS (Replace with backend functions) ── */
+    async function sendCompanyNotification(id, title, date, audience) { console.log(`Mock: Notify ${audience} about event on ${date}`); }
+    async function sendCustomNotification(id, title, date, uidArray) { console.log(`Mock: Notify ${uidArray.length} specific staff about event on ${date}`); }
+    
+  </script>
 </body>
 </html>
