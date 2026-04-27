@@ -215,9 +215,7 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
 .mob-sheet{flex:0 0 48%;display:flex;flex-direction:column;min-height:0;background:#F2F2F7;position:relative;border-top:1px solid var(--bd);border-top-left-radius:28px;border-top-right-radius:28px;box-shadow:0 -8px 24px rgba(0,0,0,0.08);margin-top:-16px;z-index:10;}
 .mob-day-header{padding:16px 20px;background:transparent;display:flex;flex-direction:column;align-items:flex-start;gap:12px;border-bottom:1px solid var(--bd);}
 .mob-drag-handle{width:40px;height:5px;background:var(--bd2);border-radius:10px;align-self:center;}
-.mob-day-label-wrap {display:flex;align-items:center;gap:10px;border-bottom:3px solid var(--ac);padding-bottom:8px;} /* Thick line underneath */
 .mob-day-label{font-family:var(--fd);font-size:1.15rem;font-weight:800;color:var(--tx1);}
-.mob-ev-count{font-family:var(--fd);font-size:.7rem;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--blue-s);color:var(--ac);}
 .mob-content{flex:1;overflow-y:auto;padding:0 20px 20px;min-height:0;display:flex;flex-direction:column;}
 .mob-content::-webkit-scrollbar { width: 0; }
 .mob-content.hidden{display:none}
@@ -352,9 +350,8 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
     <div class="mob-sheet">
       <div class="mob-day-header">
         <div class="mob-drag-handle"></div>
-        <div class="mob-day-label-wrap">
+        <div style="display:inline-block; border-bottom:3px solid var(--ac); padding-bottom:6px;">
           <div id="mob-day-label" class="mob-day-label">Today</div>
-          <span class="mob-ev-count hidden" id="mob-ev-count-m">0</span>
         </div>
       </div>
       <div class="mob-content" id="mob-ev-content">
@@ -664,15 +661,14 @@ function showDayEvents(d) {
     : `${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
 
   const dtitle = pEl('day-title-d'); if (dtitle) dtitle.textContent = label;
-  const mobLabel = pEl('mob-day-label'); if (mobLabel) mobLabel.textContent = label; // Removed the (number) from text
+  
+  // Adds the (number) directly to the text in the same font
+  const mobLabel = pEl('mob-day-label'); 
+  if (mobLabel) mobLabel.textContent = label + (dayEvs.length ? ` (${dayEvs.length})` : ''); 
 
-  // Update Desktop Count Pill
+  // Update Desktop Count Pill ONLY
   const countElD = pEl('ev-count-d');
   if (countElD) { countElD.textContent = dayEvs.length; countElD.classList.toggle('hidden', dayEvs.length === 0); }
-  
-  // Update Mobile Count Pill
-  const countElM = pEl('mob-ev-count-m');
-  if (countElM) { countElM.textContent = dayEvs.length; countElM.classList.toggle('hidden', dayEvs.length === 0); }
 
   const evHtml = dayEvs.length ? dayEvs.map((ev, i) => renderEventItem(ev, i)).join('') : '';
   const empty = `<div class="no-events">
