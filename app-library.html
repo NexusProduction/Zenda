@@ -566,18 +566,20 @@ document.querySelector('.featured-wrap').addEventListener('mouseenter', () => cl
 document.querySelector('.featured-wrap').addEventListener('mouseleave', startAuto);
 
 // ─────────────────────────────────────────────────
-// ACTION HANDLERS (Awaits Firebase before updating UI)
+// SECURE ACTION HANDLERS (Awaits Firebase, Locks UI)
 // ─────────────────────────────────────────────────
 window.openApp = function(id) { 
     window.location.href = `${id}.html`; 
 };
 
 window.doInstall = async function(id, btnElement) { 
-    // Show Loading state so user waits
+    // Lock the UI so you can't click Back during sync
+    document.body.style.pointerEvents = 'none';
+    document.body.style.cursor = 'wait';
+
     if(btnElement) {
         btnElement.innerHTML = '<span>Installing...</span>';
-        btnElement.style.pointerEvents = 'none';
-        btnElement.style.opacity = '0.7';
+        btnElement.style.opacity = '0.5';
     }
     
     if(CU) {
@@ -586,29 +588,35 @@ window.doInstall = async function(id, btnElement) {
             installedIds = [...new Set([...installedIds, id])];
         } catch(e) { console.error("Firebase Install Failed", e); }
     }
+    
+    // Free the UI
+    document.body.style.pointerEvents = 'auto';
+    document.body.style.cursor = 'default';
     render(); 
 };
 
 window.doUninstall = async function(id, btnElement) { 
     if(id === 'calculator') return; 
     
-    // Show Loading state so user waits
+    // Lock the UI so you can't click Back during sync
+    document.body.style.pointerEvents = 'none';
+    document.body.style.cursor = 'wait';
+
     if(btnElement) {
         btnElement.innerHTML = '<span>Removing...</span>';
-        btnElement.style.pointerEvents = 'none';
-        btnElement.style.opacity = '0.7';
+        btnElement.style.opacity = '0.5';
     }
     
     if(CU) {
         try { 
-            // We wait for Firebase to successfully delete the app from the database FIRST
             await uninstallApp(CU.uid, id); 
-            // Only after success, we update the local array
             installedIds = installedIds.filter(x => x !== id); 
         } catch(e) { console.error("Firebase Uninstall Failed", e); }
     }
     
-    // UI refreshes to show 'Install' button
+    // Free the UI
+    document.body.style.pointerEvents = 'auto';
+    document.body.style.cursor = 'default';
     render(); 
 };
 
