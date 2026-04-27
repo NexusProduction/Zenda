@@ -495,6 +495,21 @@ function setSyncStatus(state, text) {
   }
 }
 
+/* ── TOAST FUNCTION ── */
+window.toast = function(msg, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.innerHTML = msg;
+  container.appendChild(t);
+  setTimeout(() => {
+    t.style.transition = 'opacity 0.3s ease';
+    t.style.opacity = '0';
+    setTimeout(() => t.remove(), 300);
+  }, 3000);
+};
+
 /* ── AUTH GUARD ── */
 onAuthStateChanged(auth, async user => {
   if (!user) { window.location.replace('login.html'); return; }
@@ -833,7 +848,10 @@ window.addEvent = async function(btn) {
     if (titleEl) titleEl.style.borderColor = 'var(--red)';
     return; 
   }
-  if (visibility === 'custom' && selectedStaffUIDs.size <= 1) { toast('Select at least one staff member', 'error'); return; }
+  if (visibility === 'custom' && selectedStaffUIDs.size <= 1) { 
+    if (window.toast) window.toast('Select at least one staff member', 'error'); 
+    return; 
+  }
 
   const allBtns = document.querySelectorAll('.add-btn');
   allBtns.forEach(b => { b.disabled = true; b.innerHTML = '<span class="spin"></span>'; });
@@ -864,23 +882,22 @@ window.addEvent = async function(btn) {
     // Success Animation!
     btn.classList.add('success-state');
     btn.innerHTML = 'Added!';
-    toast(`Event added! 📅`, 'success');
+    if (window.toast) window.toast(`Event added! 📅`, 'success');
 
-    // Wait exactly 2000ms (2 seconds), then FORCE the page closed
+    // Wait exactly 2000ms (2 seconds), then FORCE the page closed and reset everything
     setTimeout(() => {
+      // 1. Force close the modal
+      const modal = document.getElementById('add-modal');
+      if (modal) modal.classList.remove('open');
+      
+      // 2. Reset the input fields completely
       if (titleEl) titleEl.value = '';
       document.querySelectorAll('.ae-visibility').forEach(s => s.value = 'self');
       document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.add('hidden'));
 
-      // HARD CLOSE LOGIC (Foolproof)
-      const modal = document.getElementById('add-modal');
-      if (modal) modal.classList.remove('open');
-      const fab = document.getElementById('mob-fab-btn');
-      if (fab) fab.style.display = 'flex';
-
-      // Reset button back to normal state
-      btn.classList.remove('success-state');
+      // 3. Reset the button back to normal state (removes the green!)
       allBtns.forEach(b => { 
+        b.classList.remove('success-state'); 
         b.disabled = false; 
         b.innerHTML = 'Add Event <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'; 
       });
@@ -888,8 +905,9 @@ window.addEvent = async function(btn) {
 
   } catch(e) {
     console.error(e);
-    toast('Failed to add event.', 'error');
+    if (window.toast) window.toast('Failed to add event.', 'error');
     allBtns.forEach(b => { 
+      b.classList.remove('success-state');
       b.disabled = false; 
       b.innerHTML = 'Add Event <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'; 
     });
