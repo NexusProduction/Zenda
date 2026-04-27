@@ -650,12 +650,13 @@ function renderGrid(containerId, y, m, mode) {
     const selCls = sameDay(d, selDay) ? ' is-selected' : '';
 
     if (mode === 'desktop') {
-      let content = '';
-      if (dayEvs.length > 0) {
-        // Always show the count text, handling singular vs plural
-        const eventText = dayEvs.length === 1 ? '1 Event' : `${dayEvs.length} Events`;
-        content = `<div style="font-size:.75rem; color:var(--ac); text-align:left; font-weight:800; margin-top:4px; font-family:var(--fd); padding-left:2px;">${eventText}</div>`;
-      }
+      let content = '';
+      if (dayEvs.length > 0) {
+        // Always show the count text, handling singular vs plural
+        const eventText = dayEvs.length === 1 ? '1 Event' : `${dayEvs.length} Events`;
+        // Restored flex-shrink and .ep class to prevent text from being cut off by smaller screens
+        content = `<div class="ep" style="background:transparent; color:var(--ac); font-size:.8rem; padding:0 2px; margin-top:2px; flex-shrink:0;">${eventText}</div>`;
+      }
       
       html += `<div class="cal-day${todayCls}${selCls}" onclick="selectDay(${y},${m},${day})">
         <div class="dn">${day}</div>${content}
@@ -685,11 +686,10 @@ function renderGrid(containerId, y, m, mode) {
 window.selectDay = function(y, m, day) {
   selDay = new Date(y, m, day);
   
-  // High-performance class toggling instead of full DOM rebuild
+  // High-performance class toggling (strictly ignoring faded next/prev month days)
   const dKey = day.toString();
-  document.querySelectorAll('.cal-day, .mob-day').forEach(el => {
+  document.querySelectorAll('.cal-day:not(.other-month), .mob-day:not(.other-month)').forEach(el => {
     el.classList.remove('is-selected');
-    // Simple check to match the day text inside the element
     if(el.querySelector('.dn')?.textContent === dKey || el.querySelector('.mob-dn')?.textContent === dKey) {
        el.classList.add('is-selected');
     }
