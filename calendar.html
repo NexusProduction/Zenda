@@ -119,7 +119,7 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
 .add-event-fab-d:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(79,70,229,.3);}
 
 /* ── EVENTS LIST ── */
-.day-events-list{flex:1;padding:14px;overflow-y:auto;min-height:0;display:flex;flex-direction:column;}
+.day-events-list{flex:1;padding:14px;overflow-y:auto;min-height:0;display:flex;flex-direction:column; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;}
 .no-events{text-align:center;color:var(--tx4);font-size:.85rem;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:12px;padding:20px;margin-top:35px;}
 
 /* Removed evIn animation to stop the "reloading" flicker */
@@ -251,7 +251,7 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
 .mob-day-header{padding:16px 20px;background:transparent;display:flex;flex-direction:column;align-items:flex-start;gap:12px;border-bottom:1px solid var(--bd);}
 .mob-drag-handle{width:40px;height:5px;background:var(--bd2);border-radius:10px;align-self:center;}
 .mob-day-label{font-family:var(--fd);font-size:1.15rem;font-weight:800;color:var(--tx1);}
-.mob-content{flex:1;overflow-y:auto;padding:0 20px 20px;min-height:0;display:flex;flex-direction:column;}
+.mob-content{flex:1;overflow-y:auto;padding:0 20px 20px;min-height:0;display:flex;flex-direction:column; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;}
 .mob-content::-webkit-scrollbar { width: 0; }
 .mob-content.hidden{display:none}
 .mob-tabs{display:flex;background:var(--sf);border-bottom:1px solid var(--bd);padding:0 16px;flex-shrink:0;}
@@ -700,8 +700,43 @@ window.selectDay = function(y, m, day) {
 };
 
 window.goToday = function() {
-  curDate = new Date(); selDay = new Date();
-  renderCalendar(); showDayEvents(selDay);
+  const grids = [pEl('cal-grid-d'), pEl('cal-grid-m')];
+  const now = new Date();
+  
+  // Calculate if we need to animate up or down based on current viewed month
+  const isFuture = now.getFullYear() > curDate.getFullYear() || (now.getFullYear() === curDate.getFullYear() && now.getMonth() > curDate.getMonth());
+  const isPast = now.getFullYear() < curDate.getFullYear() || (now.getFullYear() === curDate.getFullYear() && now.getMonth() < curDate.getMonth());
+
+  grids.forEach(g => {
+    if (!g) return;
+    g.classList.remove('slide-up', 'slide-down');
+    void g.offsetWidth; // Trigger DOM reflow to restart animation
+    
+    if (isFuture) {
+      g.classList.add('slide-up');
+    } else if (isPast) {
+      g.classList.add('slide-down');
+    } else {
+      // If already in the current month, do a soft fade/pop
+      g.style.animation = 'none';
+      void g.offsetWidth;
+      g.style.animation = 'epIn 0.3s ease-out both';
+    }
+  });
+
+  curDate = new Date(); 
+  selDay = new Date();
+  
+  // A tiny 50ms delay allows the animation to begin before the numbers snap
+  setTimeout(() => {
+    renderCalendar(); 
+    showDayEvents(selDay);
+    
+    // Clean up the inline animation style after it finishes
+    setTimeout(() => {
+      grids.forEach(g => { if(g) g.style.animation = ''; });
+    }, 300);
+  }, 50);
 };
 
 window.navMonth = function(dir) {
