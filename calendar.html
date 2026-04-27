@@ -170,11 +170,19 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
 .edit-staff-btn{background:var(--bg);border:1.5px solid var(--bd);color:var(--tx2);padding:9px 12px;border-radius:10px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:var(--fd);transition:all .15s;width:100%;display:flex;align-items:center;gap:8px;}
 .edit-staff-btn:hover{border-color:var(--ac);color:var(--ac);background:#EEF2FF}
 
-/* ── MODALS (Clean & Dark Fade) ── */
+/* ── MODALS (Clean & Dark Fade & Animations) ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
-.modal-overlay.open{display:flex}
+.modal-overlay.open{display:flex; animation: modalFadeIn 0.2s ease;}
 .staff-modal{background:var(--sf);width:100%;max-width:420px;border-radius:24px;box-shadow:0 24px 48px rgba(0,0,0,0.2);overflow:hidden;border:none;transform:scale(.95);transition:transform .3s cubic-bezier(.16,1,.3,1)}
 .modal-overlay.open .staff-modal{transform:scale(1)}
+
+@keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes modalScaleDown { from { transform: scale(1); } to { transform: scale(0.95); } }
+
+/* Applied via Javascript when closing */
+.modal-overlay.closing { animation: modalFadeOut 0.2s ease forwards; }
+.modal-overlay.closing .staff-modal { animation: modalScaleDown 0.2s ease forwards; }
 .modal-hdr{padding:24px 24px 12px;border-bottom:none;display:flex;justify-content:space-between;align-items:center;background:transparent;}
 .modal-ttl{font-family:var(--fd);font-weight:800;font-size:1.1rem;color:var(--tx1)}
 .modal-close{background:var(--bg);border:none;color:var(--tx3);cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:all .15s}
@@ -827,7 +835,6 @@ function renderForms() {
       </div>
       <button type="button" class="add-btn" onclick="addEvent(this)" style="margin-top:8px;">
         Add Event
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 
       </button>
     </div>
   `;
@@ -872,7 +879,6 @@ window.addEvent = async function(btn) {
 
     const ref = await addDoc(collection(db, 'calendar'), newEv);
 
-    // Notifications
     if (visibility === 'all' && CU.companyId) {
       await sendCompanyNotification(ref.id, title, dk(selDay), 'all');
     } else if (visibility === 'custom') {
@@ -884,24 +890,27 @@ window.addEvent = async function(btn) {
     btn.innerHTML = 'Added!';
     if (window.toast) window.toast(`Event added! 📅`, 'success');
 
-    // Wait exactly 2000ms (2 seconds), then FORCE the page closed and reset everything
+    // Wait exactly 1000ms (1 second), then animate close and reset
     setTimeout(() => {
-      // 1. Force close the modal
-      const modal = document.getElementById('add-modal');
-      if (modal) modal.classList.remove('open');
-      
-      // 2. Reset the input fields completely
-      if (titleEl) titleEl.value = '';
-      document.querySelectorAll('.ae-visibility').forEach(s => s.value = 'self');
-      document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.add('hidden'));
+      // 1. Force close the modal using our new animated function
+      if (typeof window.closeAddModal === 'function') {
+        window.closeAddModal();
+      }
 
-      // 3. Reset the button back to normal state (removes the green!)
-      allBtns.forEach(b => { 
-        b.classList.remove('success-state'); 
-        b.disabled = false; 
-        b.innerHTML = 'Add Event <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'; 
-      });
-    }, 2000);
+      // 2. Reset fields slightly delayed so user doesn't see them vanish during fade out
+      setTimeout(() => {
+        if (titleEl) titleEl.value = '';
+        document.querySelectorAll('.ae-visibility').forEach(s => s.value = 'self');
+        document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.add('hidden'));
+
+        // 3. Reset button back to normal state (NO SVG TICK!)
+        allBtns.forEach(b => { 
+          b.classList.remove('success-state'); 
+          b.disabled = false; 
+          b.innerHTML = 'Add Event'; 
+        });
+      }, 250); 
+    }, 1000);
 
   } catch(e) {
     console.error(e);
@@ -909,7 +918,7 @@ window.addEvent = async function(btn) {
     allBtns.forEach(b => { 
       b.classList.remove('success-state');
       b.disabled = false; 
-      b.innerHTML = 'Add Event <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'; 
+      b.innerHTML = 'Add Event'; 
     });
   }
 };
@@ -950,14 +959,19 @@ window.onVisibilityChange = function(sel) {
   if (val === 'custom') openStaffModal();
 };
 
-/* ── MODAL LOGIC ── */
 window.openAddModal = () => {
   pEl('add-modal').classList.add('open');
   const fab = pEl('mob-fab-btn'); if (fab) fab.style.display = 'none';
 };
 window.closeAddModal = () => {
-  pEl('add-modal').classList.remove('open');
-  const fab = pEl('mob-fab-btn'); if (fab) fab.style.display = 'flex';
+  const m = pEl('add-modal');
+  if (!m) return;
+  m.classList.add('closing'); // Trigger animation
+  
+  setTimeout(() => {
+    m.classList.remove('open', 'closing'); // Actually hide it after animation finishes
+    const fab = pEl('mob-fab-btn'); if (fab) fab.style.display = 'flex';
+  }, 200); 
 };
   
 window.openStaffModal = async function() {
