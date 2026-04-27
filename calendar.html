@@ -162,11 +162,11 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
 .ae-inp{width:100%;padding:12px 14px;border:1.5px solid var(--bd);border-radius:10px;font-family:var(--fb);font-size:.95rem;outline:none;transition:all .2s;background:var(--sf);color:var(--tx1)}
 .ae-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acs)}
 .ae-sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;cursor:pointer;}
-.add-btn{width:100%;padding:12px;background:var(--ac);color:#fff;border:none;border-radius:12px;font-family:var(--fd);font-weight:700;font-size:.9rem;cursor:pointer;transition:all .4s cubic-bezier(0.25, 1, 0.5, 1);display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:inset 0 0 0 0 #00C853;}
-.add-btn:hover{background:var(--ach);transform:translateY(-1px);box-shadow:inset 0 0 0 0 #00C853, 0 4px 14px rgba(79,70,229,.3);}
+.add-btn{width:100%;padding:12px;background:var(--ac);color:#fff;border:none;border-radius:12px;font-family:var(--fd);font-weight:700;font-size:.9rem;cursor:pointer;transition:all .4s cubic-bezier(0.25, 1, 0.5, 1);display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:inset 0 0 0 0 rgb(0, 255, 21);}
+.add-btn:hover{background:var(--ach);transform:translateY(-1px);box-shadow:inset 0 0 0 0 rgb(0, 255, 21), 0 4px 14px rgba(79,70,229,.3);}
 .add-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
-/* The inset shadow fills the button left-to-right with a highly saturated pure green */
-.add-btn.success-state { box-shadow: inset 400px 0 0 0 #00C853, 0 4px 14px rgba(0, 200, 83, 0.4) !important; transform: none !important; color: #fff !important; }
+/* The inset shadow fills the button left-to-right with pure RGB green */
+.add-btn.success-state { box-shadow: inset 400px 0 0 0 rgb(0, 255, 21), 0 4px 14px rgba(0, 255, 21, 0.4) !important; transform: none !important; color: #fff !important; }
 .edit-staff-btn{background:var(--bg);border:1.5px solid var(--bd);color:var(--tx2);padding:9px 12px;border-radius:10px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:var(--fd);transition:all .15s;width:100%;display:flex;align-items:center;gap:8px;}
 .edit-staff-btn:hover{border-color:var(--ac);color:var(--ac);background:#EEF2FF}
 
@@ -866,13 +866,19 @@ window.addEvent = async function(btn) {
     btn.innerHTML = 'Added!';
     toast(`Event added! 📅`, 'success');
 
-    // Wait 1000ms (1 full second) before closing so user sees the saturated green button
+    // Wait 2000ms (2 seconds) before closing so user sees the saturated green button
     setTimeout(() => {
       titleEl.value = '';
       document.querySelectorAll('.ae-visibility').forEach(s => s.value = 'self');
       document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.add('hidden'));
 
-      if (window.closeAddModal) closeAddModal();
+      // Use window.closeAddModal() properly to avoid scope reference errors in module
+      if (typeof window.closeAddModal === 'function') {
+        window.closeAddModal();
+      } else {
+        const modal = document.getElementById('add-modal');
+        if (modal) modal.classList.remove('open');
+      }
 
       // Reset button back to normal state
       btn.classList.remove('success-state');
@@ -880,7 +886,7 @@ window.addEvent = async function(btn) {
         b.disabled = false; 
         b.innerHTML = 'Add Event <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'; 
       });
-    }, 1000);
+    }, 2000);
 
   } catch(e) {
     console.error(e);
