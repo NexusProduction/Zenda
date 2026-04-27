@@ -413,8 +413,8 @@ function render() {
           <div class="ac-btns">
             ${inst
               ? `<button class="btn-open" onclick="openApp('${app.id}')"><span>Open</span></button>
-                 ${!app.default ? `<button class="btn-remove" onclick="doUninstall('${app.id}')"><span>Remove</span><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>` : ''}`
-              : `<button class="btn-install" onclick="doInstall('${app.id}')"><span>Install</span><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>`}
+                 ${!app.default ? `<button class="btn-remove" onclick="doUninstall('${app.id}', this)"><span>Remove</span><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>` : ''}`
+              : `<button class="btn-install" onclick="doInstall('${app.id}', this)"><span>Install</span><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>`}
           </div>
         </div>
       </div>`;
@@ -436,7 +436,7 @@ function render() {
         
         <div class="ac-footer-min">
           <div class="ac-btns">
-            <button class="btn-notify ${noted ? 'notified' : ''}" onclick="toggleNotify('${app.id}')">
+            <button class="btn-notify ${noted ? 'notified' : ''}" onclick="toggleNotify('${app.id}', this)">
               <span>${noted ? 'Unsubscribe' : 'Notify me'}</span>
               ${!noted 
                 ? `<svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>` 
@@ -447,7 +447,7 @@ function render() {
       </div>`;
   }).join('');
 
-  // NEW LOGIC TO SYNC CAROUSEL BUTTONS
+  // CAROUSEL BUTTON SYNC
   const featuredData = {
     'inventory': 'Open Workspace',
     'calculator': 'Launch App',
@@ -463,7 +463,7 @@ function render() {
         btn.onclick = () => openApp(id);
       } else {
         btn.textContent = 'Install App';
-        btn.onclick = () => doInstall(id);
+        btn.onclick = function() { doInstall(id, this); };
       }
     }
   }
@@ -565,34 +565,68 @@ function startAuto() { cTimer = setInterval(slideNext, 6000); }
 document.querySelector('.featured-wrap').addEventListener('mouseenter', () => clearInterval(cTimer));
 document.querySelector('.featured-wrap').addEventListener('mouseleave', startAuto);
 
-// ACTION HANDLERS (Push to Firebase to keep dashboard synced)
+// ─────────────────────────────────────────────────
+// ACTION HANDLERS (Awaits Firebase before updating UI)
+// ─────────────────────────────────────────────────
 window.openApp = function(id) { 
     window.location.href = `${id}.html`; 
 };
 
-window.doInstall = async function(id) { 
-    installedIds = [...new Set([...installedIds, id])];
-    render(); 
-    if(CU) {
-        try { await installApp(CU.uid, id); } catch(e){}
+window.doInstall = async function(id, btnElement) { 
+    // Show Loading state so user waits
+    if(btnElement) {
+        btnElement.innerHTML = '<span>Installing...</span>';
+        btnElement.style.pointerEvents = 'none';
+        btnElement.style.opacity = '0.7';
     }
+    
+    if(CU) {
+        try { 
+            await installApp(CU.uid, id); 
+            installedIds = [...new Set([...installedIds, id])];
+        } catch(e) { console.error("Firebase Install Failed", e); }
+    }
+    render(); 
 };
 
-window.doUninstall = async function(id) { 
+window.doUninstall = async function(id, btnElement) { 
     if(id === 'calculator') return; 
-    installedIds = installedIds.filter(x => x !== id); 
-    render(); 
-    if(CU) {
-        try { await uninstallApp(CU.uid, id); } catch(e){}
+    
+    // Show Loading state so user waits
+    if(btnElement) {
+        btnElement.innerHTML = '<span>Removing...</span>';
+        btnElement.style.pointerEvents = 'none';
+        btnElement.style.opacity = '0.7';
     }
+    
+    if(CU) {
+        try { 
+            // We wait for Firebase to successfully delete the app from the database FIRST
+            await uninstallApp(CU.uid, id); 
+            // Only after success, we update the local array
+            installedIds = installedIds.filter(x => x !== id); 
+        } catch(e) { console.error("Firebase Uninstall Failed", e); }
+    }
+    
+    // UI refreshes to show 'Install' button
+    render(); 
 };
 
-window.toggleNotify = function(id) {
-  const noted = notifyList.includes(id);
-  if(noted) notifyList = notifyList.filter(x => x !== id);
-  else notifyList.push(id);
-  render();
-  if(CU) updateDoc(doc(db,'users',CU.uid), { notifyApps: notifyList }).catch(()=>{});
+window.toggleNotify = async function(id, btnElement) {
+    if(btnElement) {
+        btnElement.style.pointerEvents = 'none';
+        btnElement.style.opacity = '0.7';
+    }
+    
+    const noted = notifyList.includes(id);
+    if(noted) notifyList = notifyList.filter(x => x !== id);
+    else notifyList.push(id);
+    
+    if(CU) {
+        try { await updateDoc(doc(db,'users',CU.uid), { notifyApps: notifyList }); }
+        catch(e) { console.error(e); }
+    }
+    render();
 };
 
 init();
