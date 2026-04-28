@@ -566,14 +566,29 @@ document.querySelector('.featured-wrap').addEventListener('mouseenter', () => cl
 document.querySelector('.featured-wrap').addEventListener('mouseleave', startAuto);
 
 // ─────────────────────────────────────────────────
-// SECURE ACTION HANDLERS (Awaits Firebase, Locks UI)
+// SECURE ACTION HANDLERS (Awaits Firebase, Locks UI, Clears Cache)
 // ─────────────────────────────────────────────────
+
+window.showToast = function(msg) {
+    let t = document.getElementById('lib-toast');
+    if(!t) {
+        t = document.createElement('div');
+        t.id = 'lib-toast';
+        t.style.cssText = 'position:fixed;bottom:30px;right:30px;background:#111827;color:white;padding:12px 24px;border-radius:12px;font-weight:700;font-size:0.9rem;z-index:9999;transform:translateY(100px);opacity:0;transition:all 0.3s cubic-bezier(0.22,1,0.36,1);box-shadow:0 10px 25px rgba(0,0,0,0.2); pointer-events:none;';
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.transform = 'translateY(0)';
+    t.style.opacity = '1';
+    setTimeout(() => { t.style.transform = 'translateY(100px)'; t.style.opacity = '0'; }, 3000);
+}
+
 window.openApp = function(id) { 
     window.location.href = `${id}.html`; 
 };
 
 window.doInstall = async function(id, btnElement) { 
-    // Lock the UI so you can't click Back during sync
+    // Hard Lock the UI
     document.body.style.pointerEvents = 'none';
     document.body.style.cursor = 'wait';
 
@@ -584,21 +599,30 @@ window.doInstall = async function(id, btnElement) {
     
     if(CU) {
         try { 
-            await installApp(CU.uid, id); 
+            if(typeof installApp === 'function') await installApp(CU.uid, id); 
+            
+            // Clear caching aggressive bugs
+            Object.keys(localStorage).forEach(key => {
+                if(key.includes('app') || key.includes('zenda') || key.includes('install')) localStorage.removeItem(key);
+            });
+
             installedIds = [...new Set([...installedIds, id])];
+            window.showToast("App Successfully Installed!");
         } catch(e) { console.error("Firebase Install Failed", e); }
     }
     
-    // Free the UI
-    document.body.style.pointerEvents = 'auto';
-    document.body.style.cursor = 'default';
-    render(); 
+    // Force a delay to let Firebase packets finish before freeing UI
+    setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.cursor = 'default';
+        render(); 
+    }, 800);
 };
 
 window.doUninstall = async function(id, btnElement) { 
     if(id === 'calculator') return; 
     
-    // Lock the UI so you can't click Back during sync
+    // Hard Lock the UI
     document.body.style.pointerEvents = 'none';
     document.body.style.cursor = 'wait';
 
@@ -609,15 +633,24 @@ window.doUninstall = async function(id, btnElement) {
     
     if(CU) {
         try { 
-            await uninstallApp(CU.uid, id); 
+            if(typeof uninstallApp === 'function') await uninstallApp(CU.uid, id); 
+
+            // Clear caching aggressive bugs that trick the Dashboard
+            Object.keys(localStorage).forEach(key => {
+                if(key.includes('app') || key.includes('zenda') || key.includes('install')) localStorage.removeItem(key);
+            });
+
             installedIds = installedIds.filter(x => x !== id); 
+            window.showToast("App Successfully Removed!");
         } catch(e) { console.error("Firebase Uninstall Failed", e); }
     }
     
-    // Free the UI
-    document.body.style.pointerEvents = 'auto';
-    document.body.style.cursor = 'default';
-    render(); 
+    // Force a delay to let Firebase packets finish before freeing UI
+    setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.cursor = 'default';
+        render(); 
+    }, 800);
 };
 
 window.toggleNotify = async function(id, btnElement) {
