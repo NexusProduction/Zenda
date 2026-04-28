@@ -43,17 +43,17 @@ export const APP_REGISTRY = {
 export async function getInstalledApps(uid) {
   const snap = await getDoc(doc(db, 'installedApps', uid));
   if (snap.exists()) {
-    return snap.data().apps || [];
+    return snap.data().apps || ['calendar', 'inventory'];
   }
   // Initialize with default
-  await setDoc(doc(db, 'installedApps', uid), { apps: [] });
-  return [];
+  await setDoc(doc(db, 'installedApps', uid), { apps: ['calendar', 'inventory'] });
+  return ['calendar', 'inventory'];
 }
 
 // ---- Listen to installed apps (real-time) ----
 export function listenInstalledApps(uid, onUpdate) {
   return onSnapshot(doc(db, 'installedApps', uid), snap => {
-    const apps = snap.exists() ? (snap.data().apps || []) : [];
+    const apps = snap.exists() ? (snap.data().apps || ['calendar', 'inventory']) : ['calendar', 'inventory'];
     onUpdate(apps);
   });
 }
