@@ -200,149 +200,259 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase
 const params = new URLSearchParams(window.location.search);
 const uid = params.get('uid');
 
-// --- CALCULATION LOGIC ---
-let display = '0';
-let expr = ''; 
-let prevVal = null;
-let currentOp = null;
-let waitingForNewValue = false;
-let history = [];
+/* ─────────────────────────────────────────────
+   CALCULATOR STATE MACHINE
+   ─────────────────────────────────────────────
+   Four states drive every interaction:
+
+   TYPING     → User is entering numbers/operators.
+                 Big display shows the live equation  ("78 × 12").
+                 Small display is EMPTY.
+
+   EQUAL      → User pressed =.
+                 Small display shows the equation     ("78 × 12 =").
+                 Big display shows the result         ("936").
+
+   CONTINUE   → After EQUAL, user pressed an operator.
+                 Small display is cleared.
+                 Big display starts a new equation    ("936 + ").
+
+   FRESH      → After EQUAL, user pressed a digit.
+                 Everything clears.
+                 Big display shows just that digit    ("5").
+───────────────────────────────────────────── */
+
+let expr        = '';     // The full expression string shown in the big display
+let afterEqual  = false;  // True immediately after = is pressed
+let lastResult  = '0';    // The last computed result (string), used by CONTINUE state
+let history     = [];
 
 const displayEl = document.getElementById('calc-display');
-const exprEl = document.getElementById('calc-expr');
-const syncEl = document.getElementById('sync-status');
-const btnClear = document.getElementById('btn-clear');
+const exprEl    = document.getElementById('calc-expr');
+const syncEl    = document.getElementById('sync-status');
+const btnClear  = document.getElementById('btn-clear');
 
-function updateDisplay() {
-  // Trim length to prevent overflow
-  let shown = display;
-  if(shown.length > 11) shown = parseFloat(shown).toExponential(5);
-  
-  displayEl.textContent = shown;
-  exprEl.textContent = expr;
-  
-  // Toggle AC / C based on state
-  btnClear.textContent = (display === '0' && prevVal === null) ? 'AC' : 'C';
+/* ── Display helper ── */
+function setDisplay(big, small = '') {
+  let shown = String(big);
+
+  // Auto-switch to scientific notation if the number is very long
+  if (shown.length > 12 && !isNaN(parseFloat(shown)) && isFinite(parseFloat(shown))) {
+    shown = parseFloat(shown).toExponential(5);
+  }
+
+  displayEl.textContent = shown || '0';
+  exprEl.textContent    = small;
+
+  // Toggle AC ↔ C:  AC only when truly at a blank slate
+  btnClear.textContent  = (!expr && !small && (shown === '0')) ? 'AC' : 'C';
 }
 
+/* ── Safe evaluator ── */
+function evaluate(str) {
+  try {
+    const js = str
+      .replace(/×/g, '*')
+      .replace(/÷/g, '/')
+      .replace(/−/g, '-')
+      .replace(/\s*[+\-*/]\s*$/, '') // strip any trailing operator before evaluating
+      .trim();
+
+    // eslint-disable-next-line no-new-func
+    const result = Function('"use strict"; return (' + js + ')')();
+
+    if (!isFinite(result) || isNaN(result)) return 'Error';
+
+    // Round away floating-point noise (e.g. 0.1 + 0.2 → 0.3, not 0.30000000000000004)
+    return String(Math.round(result * 1e10) / 1e10);
+  } catch {
+    return 'Error';
+  }
+}
+
+/* ── Helpers ── */
+const trailingOpRe = /\s*[\+\-×÷−]\s*$/;
+const hasOpRe      = /[\+×÷−]|(?<=\d)-/;   // detects a binary operator in the string
+
+function endsWithOp(s) { return trailingOpRe.test(s); }
+
+/* ══════════════════════════════════════════
+   RULE 1 — TYPING STATE  (Number pressed)
+   ══════════════════════════════════════════ */
 window.calcNum = function(n) {
-  if (waitingForNewValue) {
-      display = n;
-      waitingForNewValue = false;
-      // Clear the top equation if we start typing a brand new number after hitting '='
-      if (currentOp === null) {
-          expr = '';
-      }
-  } else {
-      display = display === '0' ? n : display + n;
+
+  if (afterEqual) {
+    /* ── RULE 4: FRESH START ──
+       User pressed a digit right after seeing a result.
+       Wipe everything; begin a brand-new expression.          */
+    expr       = n;
+    afterEqual = false;
+    setDisplay(expr, '');
+    return;
   }
-  if (display.length > 11) display = display.substring(0, 11);
-  updateDisplay();
+
+  // Normal typing: append digit to the live expression
+  if (expr === '' || expr === '0') {
+    expr = n;
+  } else {
+    expr += n;
+  }
+
+  setDisplay(expr, '');  // small display stays empty (Rule 1)
 };
 
+/* ══════════════════════════════════════════
+   RULE 1 — TYPING STATE  (Dot pressed)
+   ══════════════════════════════════════════ */
 window.calcDot = function() {
-  if (waitingForNewValue) {
-      display = '0.';
-      waitingForNewValue = false;
-      if (currentOp === null) {
-          expr = '';
-      }
-  } else if (!display.includes('.')) {
-      display += '.';
+
+  if (afterEqual) {
+    expr       = '0.';
+    afterEqual = false;
+    setDisplay(expr, '');
+    return;
   }
-  updateDisplay();
-};
 
-function performCalculation(a, op, b) {
-  a = parseFloat(a);
-  b = parseFloat(b);
-  if (op === '+') return a + b;
-  if (op === '−' || op === '-') return a - b;
-  if (op === '×' || op === '*') return a * b;
-  if (op === '÷' || op === '/') return b === 0 ? 'Error' : a / b;
-  return b;
-}
+  // Find the last number segment after the last operator
+  const lastNum = expr.split(/[\+\-×÷−]/).pop() || '';
 
-window.calcOp = function(op) {
-  const curr = parseFloat(display);
-  
-  if (currentOp && !waitingForNewValue) {
-      const result = performCalculation(prevVal, currentOp, curr);
-      display = String(parseFloat(result.toFixed(10)));
-      prevVal = result;
+  // Ignore if current number already has a decimal point
+  if (lastNum.includes('.')) return;
+
+  // If expression is empty or ends with an operator, start with "0."
+  if (expr === '' || endsWithOp(expr)) {
+    expr += '0.';
   } else {
-      prevVal = curr;
+    expr += '.';
   }
-  
-  currentOp = op;
-  waitingForNewValue = true;
-  
-  // Keep the top expression hidden until '=' is pressed
-  expr = '';
-  updateDisplay();
+
+  setDisplay(expr, '');
 };
 
+/* ══════════════════════════════════════════
+   RULE 1 & 3 — Operator pressed
+   ══════════════════════════════════════════ */
+window.calcOp = function(op) {
+
+  if (afterEqual) {
+    /* ── RULE 3: CONTINUATION ──
+       User pressed an operator right after seeing a result.
+       Clear the small display; move result + operator into big display. */
+    expr       = lastResult + ' ' + op + ' ';
+    afterEqual = false;
+    setDisplay(expr, '');   // small display cleared (Rule 3)
+    return;
+  }
+
+  if (!expr) {
+    // Edge case: nothing typed yet — seed with 0
+    expr = '0 ' + op + ' ';
+  } else if (endsWithOp(expr)) {
+    // Replace a trailing operator instead of doubling up
+    expr = expr.replace(trailingOpRe, '') + ' ' + op + ' ';
+  } else {
+    expr += ' ' + op + ' ';
+  }
+
+  setDisplay(expr, '');  // small display stays empty during typing (Rule 1)
+};
+
+/* ══════════════════════════════════════════
+   RULE 2 — EQUAL pressed
+   ══════════════════════════════════════════ */
 window.calcEquals = function() {
-  if (!currentOp || prevVal === null) return;
-  
-  const curr = parseFloat(display);
-  const result = performCalculation(prevVal, currentOp, curr);
-  const resultStr = result === 'Error' ? result : String(parseFloat(result.toFixed(10)));
-  const fullExpr = `${prevVal} ${currentOp} ${curr} =`;
 
-  // ONLY push the full line to the top text when Equal is pressed
-  expr = fullExpr;
-  display = resultStr; 
-  
-  prevVal = null;
-  currentOp = null;
-  waitingForNewValue = true;
-  updateDisplay();
+  // Nothing to evaluate if there is no binary operator in the expression
+  if (!expr || !hasOpRe.test(expr)) return;
 
-  if (resultStr !== 'Error') {
-      history.push({ expr: fullExpr.replace(' =',''), result: resultStr, time: new Date().toISOString() });
-      renderHistory();
-      saveHistory();
+  const fullExpr = expr.trim();
+  const result   = evaluate(fullExpr);
+  lastResult     = result;
+
+  /* ── RULE 2: EQUAL STATE ──
+     Move the equation to the small display; show answer in big display. */
+  exprEl.textContent    = fullExpr + ' =';   // small: "78 × 12 ="
+  displayEl.textContent = result;             // big:   "936"
+  btnClear.textContent  = 'C';
+
+  expr       = result;   // Store so CONTINUATION can read it
+  afterEqual = true;
+
+  // Persist to history
+  if (result !== 'Error') {
+    history.push({ expr: fullExpr, result, time: new Date().toISOString() });
+    renderHistory();
+    saveHistory();
   }
 };
 
+/* ══════════════════════════════════════════
+   CLEAR  (AC / C)
+   ══════════════════════════════════════════ */
 window.calcClear = function() {
-  display = '0';
-  expr = '';
-  prevVal = null;
-  currentOp = null;
-  waitingForNewValue = false;
-  updateDisplay();
+  expr       = '';
+  afterEqual = false;
+  lastResult = '0';
+  setDisplay('0', '');
 };
 
+/* ══════════════════════════════════════════
+   TOGGLE SIGN  (+/−)
+   ══════════════════════════════════════════ */
 window.calcToggleSign = function() {
-  display = String(parseFloat(display) * -1);
-  updateDisplay();
+  if (afterEqual) {
+    const n    = String(parseFloat(lastResult) * -1);
+    lastResult = n;
+    expr       = n;
+    displayEl.textContent = n;
+    return;
+  }
+  if (!expr || expr === '0') return;
+
+  // Negate the last number token in the expression
+  expr = expr.replace(/([\d.]+)\s*$/, m => String(parseFloat(m) * -1));
+  setDisplay(expr, '');
 };
 
+/* ══════════════════════════════════════════
+   PERCENT  (%)
+   ══════════════════════════════════════════ */
 window.calcPercent = function() {
-  display = String(parseFloat(display) / 100);
-  updateDisplay();
+  if (afterEqual) {
+    const n    = String(parseFloat(lastResult) / 100);
+    lastResult = n;
+    expr       = n;
+    displayEl.textContent = n;
+    return;
+  }
+  if (!expr || expr === '0') return;
+
+  // Divide the last number in the expression by 100
+  expr = expr.replace(/([\d.]+)\s*$/, m => String(parseFloat(m) / 100));
+  setDisplay(expr, '');
 };
 
-// Keybindings
-document.addEventListener('keydown',(e)=>{
-  if(e.key>='0'&&e.key<='9') calcNum(e.key);
-  else if(e.key==='.') calcDot();
-  else if(e.key==='+') calcOp('+');
-  else if(e.key==='-') calcOp('−');
-  else if(e.key==='*') calcOp('×');
-  else if(e.key==='/'){ e.preventDefault(); calcOp('÷'); }
-  else if(e.key==='Enter'||e.key==='=') calcEquals();
-  else if(e.key==='Escape' || e.key==='Backspace') calcClear();
+/* ══════════════════════════════════════════
+   KEYBOARD SUPPORT
+   ══════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.key >= '0' && e.key <= '9')           calcNum(e.key);
+  else if (e.key === '.')                      calcDot();
+  else if (e.key === '+')                      calcOp('+');
+  else if (e.key === '-')                      calcOp('−');
+  else if (e.key === '*')                      calcOp('×');
+  else if (e.key === '/') { e.preventDefault(); calcOp('÷'); }
+  else if (e.key === 'Enter' || e.key === '=') calcEquals();
+  else if (e.key === 'Escape' || e.key === 'Backspace') calcClear();
 });
 
-// UI Status Helper
+/* ══════════════════════════════════════════
+   UI / SYNC HELPERS  (unchanged from original)
+   ══════════════════════════════════════════ */
 function setSyncStatus(status, isSynced) {
-    if (!syncEl) return;
-    syncEl.innerHTML = `<div class="sync-indicator"></div><span class="sync-text">${status}</span>`;
-    if (isSynced) syncEl.classList.add('synced');
-    else syncEl.classList.remove('synced');
+  if (!syncEl) return;
+  syncEl.innerHTML = `<div class="sync-indicator"></div><span class="sync-text">${status}</span>`;
+  isSynced ? syncEl.classList.add('synced') : syncEl.classList.remove('synced');
 }
 
 async function checkPremiumStatus() {
@@ -350,80 +460,87 @@ async function checkPremiumStatus() {
   try {
     const uSnap = await getDoc(doc(db, 'users', uid));
     if (uSnap.exists()) {
-      const compId = uSnap.data().companyId || uid;
+      const compId   = uSnap.data().companyId || uid;
       const compSnap = await getDoc(doc(db, 'companies', compId));
-      let isPremium = false;
+      let isPremium  = false;
       if (compSnap.exists()) {
-        const compData = compSnap.data();
-        isPremium = compData.isPremium === true;
-        if (isPremium && compData.subscriptionExpiry) {
-          if (new Date() > new Date(compData.subscriptionExpiry)) isPremium = false;
+        const d = compSnap.data();
+        isPremium = d.isPremium === true;
+        if (isPremium && d.subscriptionExpiry && new Date() > new Date(d.subscriptionExpiry)) {
+          isPremium = false;
         }
       }
       const upgBtn = document.getElementById('globalUpgradeBtn');
       if (upgBtn) {
-        if (!isPremium) {
-          upgBtn.classList.remove('hidden');
-          upgBtn.style.display = 'flex';
-        } else {
-          upgBtn.classList.add('hidden');
-          upgBtn.style.display = 'none';
-        }
+        upgBtn.classList.toggle('hidden', isPremium);
+        upgBtn.style.display = isPremium ? 'none' : 'flex';
       }
     }
-  } catch(e) { console.warn("Failed checking premium:", e); }
+  } catch(e) { console.warn('Failed checking premium:', e); }
 }
 
 async function loadHistory() {
-  if(!uid){ setSyncStatus('Not synced', false); return; }
-  try{
-    history=await loadCalcHistory(uid);
+  if (!uid) { setSyncStatus('Not synced', false); return; }
+  try {
+    history = await loadCalcHistory(uid);
     renderHistory();
     setSyncStatus('Connected', true);
-  } catch{
+  } catch {
     setSyncStatus('Offline', false);
   }
 }
 
 async function saveHistory() {
-  if(!uid) return;
-  try{
+  if (!uid) return;
+  try {
     await saveCalcHistory(uid, history);
     setSyncStatus('Connected', true);
-  } catch{
+  } catch {
     setSyncStatus('Sync failed', false);
   }
 }
 
 function renderHistory() {
-  const list=document.getElementById('history-list');
-  if(!history.length){list.innerHTML='<div class="history-empty">No calculations yet</div>';return;}
-  list.innerHTML=[...history].reverse().map((h,i)=>`<div class="history-item" onclick="restoreHistory(${history.length-1-i})"><div class="history-expr">${h.expr}</div><div class="history-result">${h.result}</div></div>`).join('');
+  const list = document.getElementById('history-list');
+  if (!history.length) {
+    list.innerHTML = '<div class="history-empty">No calculations yet</div>';
+    return;
+  }
+  list.innerHTML = [...history].reverse().map((h, i) =>
+    `<div class="history-item" onclick="restoreHistory(${history.length - 1 - i})">
+       <div class="history-expr">${h.expr}</div>
+       <div class="history-result">${h.result}</div>
+     </div>`
+  ).join('');
 }
 
-window.restoreHistory=function(i){
-    display=history[i].result.toString();
-    waitingForNewValue=true;
-    expr=''; // Clear expression on restore
-    updateDisplay();
+window.restoreHistory = function(i) {
+  const item     = history[i];
+  lastResult     = item.result.toString();
+  expr           = lastResult;
+  afterEqual     = true;
+
+  // Show the restored entry in both display rows (mirrors EQUAL state)
+  exprEl.textContent    = item.expr + ' =';
+  displayEl.textContent = lastResult;
+  btnClear.textContent  = 'C';
 };
 
-window.clearHistory=function(){history=[];renderHistory();saveHistory();};
+window.clearHistory = function() {
+  history = [];
+  renderHistory();
+  saveHistory();
+};
 
-// Toggle history on PC
 window.toggleHistory = function() {
-    const panel = document.getElementById('history-panel');
-    if (panel.style.display === 'none') {
-        panel.style.display = 'flex';
-    } else {
-        panel.style.display = 'none';
-    }
+  const panel = document.getElementById('history-panel');
+  panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
 };
 
-// Initialization
+/* ── Boot ── */
 checkPremiumStatus();
 loadHistory();
-updateDisplay();
+setDisplay('0', '');
 </script>
 </body>
 </html>
