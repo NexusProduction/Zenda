@@ -27,15 +27,6 @@ export const APP_REGISTRY = {
     bgColor: '#ECFDF5',
     default: false
   },
-  calculator: { 
-    id: 'calculator', 
-    name: 'Calculator', 
-    icon: '🧮', 
-    path: 'calculator.html', 
-    desc: 'Smart calculations with full history.', 
-    bgColor: '#eef2ff', 
-    default: false 
-  },
   // ADD THIS EXPENSES BLOCK:
   expenses: {
     id: 'expenses',
@@ -52,17 +43,17 @@ export const APP_REGISTRY = {
 export async function getInstalledApps(uid) {
   const snap = await getDoc(doc(db, 'installedApps', uid));
   if (snap.exists()) {
-    return snap.data().apps || ['calculator'];
+    return snap.data().apps || [];
   }
   // Initialize with default
-  await setDoc(doc(db, 'installedApps', uid), { apps: ['calculator'] });
-  return ['calculator'];
+  await setDoc(doc(db, 'installedApps', uid), { apps: [] });
+  return [];
 }
 
 // ---- Listen to installed apps (real-time) ----
 export function listenInstalledApps(uid, onUpdate) {
   return onSnapshot(doc(db, 'installedApps', uid), snap => {
-    const apps = snap.exists() ? (snap.data().apps || ['calculator']) : ['calculator'];
+    const apps = snap.exists() ? (snap.data().apps || []) : [];
     onUpdate(apps);
   });
 }
@@ -128,20 +119,6 @@ export function renderAppLibrary(installedAppIds, container) {
   }).join('');
 }
 
-// =============================================
-//  CALCULATOR DATA
-// =============================================
-export async function saveCalcHistory(uid, history) {
-  await setDoc(doc(db, 'appData', uid, 'apps', 'calculator'), {
-    history: history.slice(-50), // keep last 50 entries
-    updatedAt: new Date().toISOString()
-  }, { merge: true });
-}
-
-export async function loadCalcHistory(uid) {
-  const snap = await getDoc(doc(db, 'appData', uid, 'apps', 'calculator'));
-  return snap.exists() ? (snap.data().history || []) : [];
-}
 
 // =============================================
 //  CALENDAR DATA
