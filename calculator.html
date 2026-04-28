@@ -40,7 +40,7 @@ body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column;fo
 .calculator{background:#FFFFFF;border-radius:36px;box-shadow:0 12px 40px rgba(0,0,0,0.08);overflow:hidden;width:340px;flex-shrink:0;display:flex;flex-direction:column;padding:24px 20px; border:1px solid var(--bd);}
 .calc-display{background:transparent;padding:10px 10px 20px;text-align:right;min-height:120px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;}
 .calc-expression{font-family:var(--fm);font-size:1.1rem;color:#6B7280;min-height:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
-.calc-value{font-family:var(--fm);font-size:3.5rem;font-weight:600;color:#111827;letter-spacing:-0.03em;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.calc-value{font-family:var(--fm);font-size:3.5rem;font-weight:600;color:#111827;letter-spacing:-0.03em;line-height:1;overflow:hidden;white-space:nowrap;transition:font-size 0.2s ease;}
 .calc-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
 
 /* Circular White-Theme Buttons */
@@ -232,19 +232,29 @@ const exprEl    = document.getElementById('calc-expr');
 const syncEl    = document.getElementById('sync-status');
 const btnClear  = document.getElementById('btn-clear');
 
-/* ── Display helper ── */
 function setDisplay(big, small = '') {
   let shown = String(big);
+  const len = shown.length;
 
-  // Auto-switch to scientific notation if the number is very long
-  if (shown.length > 12 && !isNaN(parseFloat(shown)) && isFinite(parseFloat(shown))) {
-    shown = parseFloat(shown).toExponential(5);
+  // — Shrink font as expression grows —
+  if      (len <= 9)  displayEl.style.fontSize = '3.5rem';
+  else if (len <= 13) displayEl.style.fontSize = '2.4rem';
+  else if (len <= 18) displayEl.style.fontSize = '1.8rem';
+  else                displayEl.style.fontSize = '1.3rem';
+
+  // — When very long AND still typing (small is empty), push equation
+  //   up to the small line and show only the last number in big display —
+  if (len > 18 && !small) {
+    const lastNum = shown.split(/[\+\-×÷−]\s*/).pop().trim() || '0';
+    exprEl.textContent    = shown;
+    displayEl.textContent = lastNum;
+    displayEl.style.fontSize = '3.5rem';   // last number is short → restore size
+    btnClear.textContent  = 'C';
+    return;
   }
 
   displayEl.textContent = shown || '0';
   exprEl.textContent    = small;
-
-  // Toggle AC ↔ C:  AC only when truly at a blank slate
   btnClear.textContent  = (!expr && !small && (shown === '0')) ? 'AC' : 'C';
 }
 
