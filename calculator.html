@@ -229,6 +229,10 @@ window.calcNum = function(n) {
   if (waitingForNewValue) {
       display = n;
       waitingForNewValue = false;
+      // Clear the top equation if we start typing a brand new number after hitting '='
+      if (currentOp === null) {
+          expr = '';
+      }
   } else {
       display = display === '0' ? n : display + n;
   }
@@ -240,6 +244,9 @@ window.calcDot = function() {
   if (waitingForNewValue) {
       display = '0.';
       waitingForNewValue = false;
+      if (currentOp === null) {
+          expr = '';
+      }
   } else if (!display.includes('.')) {
       display += '.';
   }
@@ -270,8 +277,8 @@ window.calcOp = function(op) {
   currentOp = op;
   waitingForNewValue = true;
   
-  // Show partial equation in the small top expression line
-  expr = `${prevVal} ${op}`;
+  // Keep the top expression hidden until '=' is pressed
+  expr = '';
   updateDisplay();
 };
 
@@ -283,9 +290,9 @@ window.calcEquals = function() {
   const resultStr = result === 'Error' ? result : String(parseFloat(result.toFixed(10)));
   const fullExpr = `${prevVal} ${currentOp} ${curr} =`;
 
-  // Upon equals, set the full line with the "=" sign in the small text
+  // ONLY push the full line to the top text when Equal is pressed
   expr = fullExpr;
-  display = resultStr; // Put the big answer in the main display
+  display = resultStr; 
   
   prevVal = null;
   currentOp = null;
@@ -329,7 +336,6 @@ document.addEventListener('keydown',(e)=>{
   else if(e.key==='Enter'||e.key==='=') calcEquals();
   else if(e.key==='Escape' || e.key==='Backspace') calcClear();
 });
-
 
 // UI Status Helper
 function setSyncStatus(status, isSynced) {
