@@ -998,13 +998,29 @@ async function init(){
     // Pure CSS trigger for responsive top bar
     document.body.setAttribute('data-premium', CU.isPremium === true ? "true" : "false");
 
+    // ── Subscribe to expenses realtime ──
     const q=query(collection(db,'expenses'),where('companyId','==',CU.companyId));
     onSnapshot(q,snap=>{
       allData=snap.docs.map(d=>{
         const data=d.data();let pt=data.type||'expense';
         if(!data.type){const u=(data.description||'').toUpperCase();if(u.includes('SALE')||u.includes('SOLD')||u.includes('STOCK OUT'))pt='income';}
         return{id:d.id,parsedType:pt,...data};
-      }).sort((a,b)=>getTime(b)-getTime(a));
+      }).sort((a,b) => {
+        // Primary Sort: By selected Date
+        const timeA = getTime(a);
+        const timeB = getTime(b);
+        
+        if (timeA === timeB) {
+          // Secondary Sort: If dates are exactly the same, put the newest added on TOP
+          const getC = (obj) => {
+            if (!obj.createdAt) return 0;
+            if (typeof obj.createdAt.toMillis === 'function') return obj.createdAt.toMillis();
+            return new Date(obj.createdAt).getTime() || 0;
+          };
+          return getC(b) - getC(a);
+        }
+        return timeB - timeA;
+      });
       
       syncEl.textContent='Connected';
       syncEl.className='sync-badge sync-live';
