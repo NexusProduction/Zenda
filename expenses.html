@@ -148,6 +148,35 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
 .global-upgrade-btn{display:none;align-items:center;gap:6px;padding:0 13px;height:32px;border-radius:8px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;font-family:var(--f);font-size:.75rem;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,.3);transition:all .2s}
 .global-upgrade-btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(245,158,11,.4)}.global-upgrade-btn:active{transform:scale(.96)}
 
+  /* Mobile Upgrade Icon & Animations */
+.mob-upgrade-icon {
+  display: none;
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  border: 1px solid rgba(217,119,6,0.3);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(217,119,6,0.15);
+}
+.mob-upgrade-icon:active { transform: scale(0.9); }
+
+.hide-anim {
+  animation: popOut 0.3s forwards;
+  pointer-events: none;
+}
+@keyframes popOut {
+  to { opacity: 0; transform: scale(0.8); }
+}
+
+@media(max-width: 899px) {
+  .global-upgrade-btn { display: none !important; }
+}
+@media(min-width: 900px) {
+  .mob-upgrade-icon { display: none !important; }
+}
 /* CONTAINER */
 .container{max-width:1240px;margin:0 auto;padding:24px 20px;width:100%}
 
@@ -730,10 +759,16 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
       <span class="ab-brand-mobile">Finance</span>
     </div>
   </div>
+  
   <div class="ab-right">
-    <button class="global-upgrade-btn" id="global-upgrade-btn" onclick="window.location.href='subscription.html'">
+    <button class="global-upgrade-btn" id="global-upgrade-btn" onclick="topBarUpgradeAction()">
       👑 Upgrade
     </button>
+    
+    <button class="mob-upgrade-icon" id="mob-upgrade-icon" onclick="topBarUpgradeAction()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </button>
+    
     <span class="sync-badge sync-loading" id="sync-status">Connecting…</span>
   </div>
 </header>
@@ -1275,9 +1310,30 @@ async function init(){
       }
     }catch(_){ /* keep isPremium=false */ }
 
-    // ── Show global Upgrade button only for owners on free plan ──
-    const ub=document.getElementById('global-upgrade-btn');
-    ub.style.display=(!CU.isPremium&&CU.role==='owner')?'flex':'none';
+    // ── Handle Top Bar Upgrade & Sync Visibility ──
+    const ub = document.getElementById('global-upgrade-btn');
+    const mobUb = document.getElementById('mob-upgrade-icon');
+    const syncSt = document.getElementById('sync-status');
+    
+    function updateTopBarUI() {
+      if (!CU.isPremium) {
+        if (window.innerWidth >= 900) {
+          ub.style.display = 'flex';
+          mobUb.style.display = 'none';
+          syncSt.style.display = 'inline-block';
+        } else {
+          ub.style.display = 'none';
+          mobUb.style.display = 'flex';
+          syncSt.style.display = 'none'; // Hide sync on mobile if free plan
+        }
+      } else {
+        ub.style.display = 'none';
+        mobUb.style.display = 'none';
+        syncSt.style.display = 'inline-block';
+      }
+    }
+    updateTopBarUI();
+    window.addEventListener('resize', updateTopBarUI);
 
     // ── Subscribe to expenses realtime ──
     // ── Subscribe to expenses realtime ──
@@ -1360,7 +1416,45 @@ window.requestUpgradeFromList = async function() {
     if(btn){ btn.textContent = 'Request to Upgrade'; btn.style.background = 'var(--amber)'; btn.disabled = false; }
   }
 };
+window.topBarUpgradeAction = async function() {
+  if (CU.role === 'owner') {
+    window.location.href = 'subscription.html';
+  } else {
+    const ub = document.getElementById('global-upgrade-btn');
+    const mobUb = document.getElementById('mob-upgrade-icon');
+    
+    // Play disappear animation
+    if(ub) ub.classList.add('hide-anim');
+    if(mobUb) mobUb.classList.add('hide-anim');
 
+    try {
+      if (CU.ownerId) {
+        await addNotification(CU.ownerId, {
+          type: 'upgrade_request', 
+          message: `${CU.name} wants to upgrade the account.`,
+          actorId: CU.uid,
+          actorName: CU.name
+        });
+        toast("Request sent!", "success");
+        
+        // Hide permanently after animation and show sync badge
+        setTimeout(() => {
+          if(ub) ub.style.display = 'none';
+          if(mobUb) mobUb.style.display = 'none';
+          document.getElementById('sync-status').style.display = 'inline-block';
+        }, 300);
+      } else {
+        toast("Owner not found.", "error");
+        if(ub) ub.classList.remove('hide-anim');
+        if(mobUb) mobUb.classList.remove('hide-anim');
+      }
+    } catch(e) {
+      toast("Failed to send request.", "error");
+      if(ub) ub.classList.remove('hide-anim');
+      if(mobUb) mobUb.classList.remove('hide-anim');
+    }
+  }
+};
 function renderList(){
   const list=filtered(),el=document.getElementById('exp-list'),pw=document.getElementById('pag-wrap');
   const canDel=CU.role==='owner'||CU.role==='manager';
