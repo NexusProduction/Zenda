@@ -176,12 +176,12 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn {
 .summary-desktop{display:none;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
 @media(min-width:900px){.summary-desktop{display:grid}}
 /* Reduced top padding (22px) to move text up, kept bottom padding (36px) to maintain height */
-.dsum-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px 20px 36px 20px;box-shadow:var(--sh1);transition:transform .2s,box-shadow .2s}
+.dsum-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px 20px 36px 20px;box-shadow:var(--sh1);transition:transform .2s,box-shadow .2s; cursor:pointer;}
+.dsum-main .dsum-val{color:#fff;} /* Removed !important so JS can change the color */
 .dsum-card:hover{transform:translateY(-2px);box-shadow:var(--sh2)}
 
 .dsum-main{background:var(--blue);border-color:transparent;box-shadow:0 8px 24px rgba(79,70,229,.25)}
 .dsum-main .dsum-lbl{color:rgba(255,255,255,.7)}
-.dsum-main .dsum-val{color:#fff !important}
 
 /* Increased margin-bottom from 8px to 16px to create the gap */
 .dsum-lbl{font-size:.85rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--tx2);margin-bottom:16px}
@@ -473,7 +473,8 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn {
   .main-grid, .main-grid.panel-open { width: 100% !important; display: flex !important; flex-direction: column !important; box-sizing: border-box !important; }
   .panel, .breakdown-panel { width: 100% !important; box-sizing: border-box !important; margin: 0 !important; }
   .mobile-stack-wrap { width: 100% !important; box-sizing: border-box !important; }
-  .mobile-card { left: 0 !important; right: 0 !important; box-sizing: border-box !important; }
+  .mobile-card{position:absolute;top:0;left:0;right:0;height:125px;border-radius:22px;padding:20px 20px 30px 20px;will-change:transform;user-select:none;touch-action:pan-y; cursor:pointer;}
+  .mc-0 .mc-val{color:#fff;} /* Removed !important */
   .breakdown-panel { width: 100% !important; }
   .cat-item { padding: 9px 14px !important; gap: 10px !important; }
   .cat-ico { width: 30px !important; height: 30px !important; border-radius: 8px !important; }
@@ -1086,23 +1087,38 @@ function renderAll(){updateSummary();renderList();if(panelOpen)renderBreakdown()
 function updateSummary(){
   const list=filtered();let inc=0,exp=0;
   list.forEach(e=>{if(e.parsedType==='income')inc+=Number(e.amount)||0;else exp+=Number(e.amount)||0;});
-  const bal=inc-exp,fbal=(bal<0?'-₹':'₹')+fmt(Math.abs(bal));
   
-  // Desktop Update & Color Logic
+  // Added a space after the Rupee symbol
+  const bal=inc-exp,fbal=(bal<0?'-₹ ':'₹ ')+fmt(Math.abs(bal));
+  
+  // Desktop Update & Strict Color Logic
   const db2=document.getElementById('d-balance');
   db2.textContent=fbal;
-  if(bal>0) db2.style.color='var(--green)'; else if(bal<0) db2.style.color='var(--red)'; else db2.style.color='var(--tx1)';
+  if(bal>0) {
+    db2.style.setProperty('color', '#4ADE80', 'important'); // Bright Green
+  } else if(bal<0) {
+    db2.style.setProperty('color', '#F87171', 'important'); // Bright Red
+  } else {
+    db2.style.setProperty('color', '#fff', 'important'); // White if exactly 0
+  }
   
-  document.getElementById('d-income').textContent='₹'+fmt(inc);
-  document.getElementById('d-expense').textContent='₹'+fmt(exp);
+  // Added space after Rupee symbol for Income/Expense
+  document.getElementById('d-income').textContent='₹ '+fmt(inc);
+  document.getElementById('d-expense').textContent='₹ '+fmt(exp);
   
-  // Mobile Update & Color Logic
+  // Mobile Update & Strict Color Logic
   const mb=document.getElementById('m-balance');
   mb.textContent=fbal;
-  if(bal>0) mb.style.color='var(--green)'; else if(bal<0) mb.style.color='var(--red)'; else mb.style.color='var(--tx1)';
+  if(bal>0) {
+    mb.style.setProperty('color', '#4ADE80', 'important'); 
+  } else if(bal<0) {
+    mb.style.setProperty('color', '#F87171', 'important'); 
+  } else {
+    mb.style.setProperty('color', '#fff', 'important');
+  }
   
-  document.getElementById('m-income').textContent='₹'+fmt(inc);
-  document.getElementById('m-expense').textContent='₹'+fmt(exp);
+  document.getElementById('m-income').textContent='₹ '+fmt(inc);
+  document.getElementById('m-expense').textContent='₹ '+fmt(exp);
 }
 
 window.requestUpgradeFromList = async function() {
