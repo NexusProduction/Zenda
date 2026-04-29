@@ -148,9 +148,8 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
 .global-upgrade-btn{display:none;align-items:center;gap:6px;padding:0 13px;height:32px;border-radius:8px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;font-family:var(--f);font-size:.75rem;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,.3);transition:all .2s}
 .global-upgrade-btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(245,158,11,.4)}.global-upgrade-btn:active{transform:scale(.96)}
 
-  /* Mobile Upgrade Icon & Animations */
+/* ── Top Bar Upgrade Logic (Pure CSS) ── */
 .mob-upgrade-icon {
-  display: none;
   background: linear-gradient(135deg, #FEF3C7, #FDE68A);
   border: 1px solid rgba(217,119,6,0.3);
   border-radius: 8px;
@@ -163,16 +162,25 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
 }
 .mob-upgrade-icon:active { transform: scale(0.9); }
 
-.hide-anim {
-  animation: popOut 0.3s forwards;
-  pointer-events: none;
-}
-@keyframes popOut {
-  to { opacity: 0; transform: scale(0.8); }
+.hide-anim { animation: popOut 0.3s forwards; pointer-events: none; }
+@keyframes popOut { to { opacity: 0; transform: scale(0.8); } }
+
+/* If user is premium, hide all upgrade buttons */
+body[data-premium="true"] .global-upgrade-btn,
+body[data-premium="true"] .mob-upgrade-icon {
+  display: none !important;
 }
 
+/* If user is free, show Desktop Button / hide Mobile Button */
+body[data-premium="false"] .global-upgrade-btn { display: flex; }
+body[data-premium="false"] .mob-upgrade-icon { display: none; }
+
+/* Responsive Mobile View (Free Plan) */
 @media(max-width: 899px) {
-  .global-upgrade-btn { display: none !important; }
+  body[data-premium="false"] .global-upgrade-btn { display: none !important; }
+  body[data-premium="false"] .mob-upgrade-icon { display: flex !important; }
+  body[data-premium="false"] #sync-status { display: none !important; }
+}
 }
 @media(min-width: 900px) {
   .mob-upgrade-icon { display: none !important; }
@@ -862,7 +870,6 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
-<!-- ADD RECORD MODAL -->
 <div class="modal-overlay" id="add-modal">
   <div class="modal">
     <div class="modal-hdr">
@@ -918,16 +925,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
               <div class="lc-sub">Upgrade your plan to log Godown, Installation, Logistics, Materials, Office, and Other expenses.</div>
             </div>
           </div>
-          <div class="lc-tags">
-            <span class="lc-tag lc-tag-blue">🏭 Godown</span>
-            <span class="lc-tag lc-tag-blue">🔧 Installation</span>
-            <span class="lc-tag lc-tag-blue">🚚 Logistics</span>
-            <span class="lc-tag lc-tag-blue">⚙️ Materials</span>
-            <span class="lc-tag lc-tag-blue">📄 Office</span>
-            <span class="lc-tag lc-tag-blue">💡 Other</span>
-          </div>
           <button class="lc-upgrade" onclick="window.location.href='subscription.html'">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             Upgrade to Premium
           </button>
         </div>
@@ -936,34 +934,24 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
           <div class="lc-head">
             <span class="lc-emoji">🔒</span>
             <div>
-              <div class="lc-title">Category Locked — Premium Only</div>
-              <div class="lc-sub">Your company needs a Premium plan to use this category. Appeal to your owner to upgrade.</div>
+              <div class="lc-title">Category Locked</div>
+              <div class="lc-sub">Your company needs a Premium plan. Appeal to your owner.</div>
             </div>
           </div>
-          <div class="lc-tags">
-            <span class="lc-tag lc-tag-amber">🏭 Godown</span>
-            <span class="lc-tag lc-tag-amber">🔧 Installation</span>
-            <span class="lc-tag lc-tag-amber">🚚 Logistics</span>
-            <span class="lc-tag lc-tag-amber">⚙️ Materials</span>
-            <span class="lc-tag lc-tag-amber">📄 Office</span>
-            <span class="lc-tag lc-tag-amber">💡 Other</span>
-          </div>
           <div id="appeal-wrap">
-            <button class="lc-appeal" id="appeal-btn" onclick="doAppeal()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              Appeal for Upgrade
-            </button>
+            <button class="lc-appeal" id="appeal-btn" onclick="doAppeal()">Appeal for Upgrade</button>
           </div>
         </div>
 
-      </div><div class="fg">
+      </div>
+
+      <div class="fg">
         <label>Payment</label>
         <select id="exp-payment" class="fsel">
           <option value="Cash">Cash</option>
-          <option value="Bank Transfer">Bank Transfer</option>
+          <option value="Bank Transfer">Bank</option>
           <option value="UPI">UPI</option>
           <option value="Credit Card">Credit Card</option>
-          <option value="Cheque">Cheque</option>
         </select>
       </div>
     </div>
@@ -973,7 +961,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
       <input type="date" id="exp-date" class="fi">
     </div>
     
-    <div id="form-error" style="color: var(--red); background: var(--redbg); padding: 10px 12px; border-radius: 10px; font-size: 0.8rem; font-family: var(--f); font-weight: 600; text-align: center; margin-bottom: 16px; border: 1px solid rgba(220, 38, 38, 0.2); display: none;"></div>
+    <div id="form-error" style="color: #991b1b; background: #fef2f2; padding: 12px; border-radius: 10px; font-size: 0.85rem; font-family: var(--f); font-weight: 600; text-align: center; margin-bottom: 16px; border: 1px solid #fecaca; display: none;"></div>
 
     <button class="save-btn" id="save-btn">Save Record</button>
   </div>
@@ -1235,10 +1223,10 @@ document.getElementById('save-btn').addEventListener('click',async function(){
   const dateStr=document.getElementById('exp-date').value;
   const errBox=document.getElementById('form-error');
 
-  // Reset error box on each click
+  // Clear previous errors
   errBox.style.display='none';
 
-  // Strict Validation Logic
+  // Strict Validations
   if(isNaN(amount) || amount <= 0) {
     errBox.textContent = 'Invalid Amount: Please enter a valid number.';
     errBox.style.display = 'block';
@@ -1255,7 +1243,6 @@ document.getElementById('save-btn').addEventListener('click',async function(){
     return;
   }
 
-  // Hard server-side guard
   const catDef=CAT_MAP[cat];
   if(!CU.isPremium&&catDef&&!catDef.free){
     errBox.textContent = 'Premium Required: Upgrade to use this category.';
@@ -1271,7 +1258,7 @@ document.getElementById('save-btn').addEventListener('click',async function(){
       date:dateStr?new Date(dateStr).toISOString():new Date().toISOString(),
       createdAt:serverTimestamp(),
     });
-    // Reset form fields
+    
     document.getElementById('exp-amount').value='';
     document.getElementById('exp-desc').value='';
     document.getElementById('exp-date').valueAsDate=new Date();
@@ -1289,7 +1276,6 @@ document.getElementById('save-btn').addEventListener('click',async function(){
   this.disabled=false;this.innerHTML='Save Record';
 });
 
-// Also hide the error box if the user closes the modal without saving
 function closeModal(){
   document.getElementById('add-modal').classList.remove('open');
   document.getElementById('form-error').style.display='none';
@@ -1336,30 +1322,8 @@ async function init(){
       }
     }catch(_){ /* keep isPremium=false */ }
 
-    // ── Handle Top Bar Upgrade & Sync Visibility ──
-    const ub = document.getElementById('global-upgrade-btn');
-    const mobUb = document.getElementById('mob-upgrade-icon');
-    const syncSt = document.getElementById('sync-status');
-    
-    function updateTopBarUI() {
-      if (!CU.isPremium) {
-        if (window.innerWidth >= 900) {
-          ub.style.display = 'flex';
-          mobUb.style.display = 'none';
-          syncSt.style.display = 'inline-block';
-        } else {
-          ub.style.display = 'none';
-          mobUb.style.display = 'flex';
-          syncSt.style.display = 'none'; // Hide sync on mobile if free plan
-        }
-      } else {
-        ub.style.display = 'none';
-        mobUb.style.display = 'none';
-        syncSt.style.display = 'inline-block';
-      }
-    }
-    updateTopBarUI();
-    window.addEventListener('resize', updateTopBarUI);
+    // Pure CSS trigger for responsive top bar
+    document.body.setAttribute('data-premium', CU.isPremium === true ? "true" : "false");
 
     // ── Subscribe to expenses realtime ──
     // ── Subscribe to expenses realtime ──
