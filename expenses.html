@@ -885,24 +885,21 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
       <label>Amount *</label>
       <div class="amount-wrap">
         <span class="amount-prefix">&#x20B9;</span>
-        <input type="number" id="exp-amount" class="fi amount-inp" placeholder="0.00" min="0" step="0.01">
+        <input type="number" id="exp-amount" class="fi amount-inp" placeholder="0.00" min="0" max="9999999999" step="0.01" oninput="if(this.value.length > 10) this.value = this.value.slice(0,10);">
       </div>
     </div>
     <div class="fg">
       <label>Description *</label>
-      <input type="text" id="exp-desc" class="fi" placeholder="What was this for?">
+      <input type="text" id="exp-desc" class="fi" placeholder="Enter details (min 10 chars)" maxlength="80">
     </div>
 
     <div class="fg-row">
-      <!-- ── CUSTOM CATEGORY PICKER ── -->
       <div class="fg">
         <label>Category</label>
 
-        <!-- Hidden value carrier — this is what gets saved to Firestore -->
         <input type="hidden" id="exp-category" value="Inventory Stock">
 
         <div class="cat-picker-wrap" id="cat-picker-wrap">
-          <!-- Trigger (looks like a styled select) -->
           <div class="cat-picker-trigger" id="cat-picker-trigger" onclick="catPickerToggle()">
             <div class="cpt-left">
               <div class="cpt-icon" id="cpt-icon" style="background:#EEF2FF">📦</div>
@@ -910,11 +907,9 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
             </div>
             <svg class="cpt-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <!-- Dropdown list (populated by JS) -->
           <div class="cat-picker-dropdown" id="cat-picker-dd" style="display:none"></div>
         </div>
 
-        <!-- Lock card — OWNER: shown when free-plan owner taps a locked category -->
         <div class="lock-card lc-owner" id="lc-owner">
           <div class="lc-head">
             <span class="lc-emoji">👑</span>
@@ -937,7 +932,6 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
           </button>
         </div>
 
-        <!-- Lock card — STAFF / MANAGER: appeal button -->
         <div class="lock-card lc-staff" id="lc-staff">
           <div class="lc-head">
             <span class="lc-emoji">🔒</span>
@@ -962,9 +956,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
           </div>
         </div>
 
-      </div><!-- /fg category -->
-
-      <div class="fg">
+      </div><div class="fg">
         <label>Payment</label>
         <select id="exp-payment" class="fsel">
           <option value="Cash">Cash</option>
@@ -980,6 +972,9 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx1);-webkit-font-smo
       <label>Date</label>
       <input type="date" id="exp-date" class="fi">
     </div>
+    
+    <div id="form-error" style="color: var(--red); background: var(--redbg); padding: 10px 12px; border-radius: 10px; font-size: 0.8rem; font-family: var(--f); font-weight: 600; text-align: center; margin-bottom: 16px; border: 1px solid rgba(220, 38, 38, 0.2); display: none;"></div>
+
     <button class="save-btn" id="save-btn">Save Record</button>
   </div>
 </div>
@@ -1235,16 +1230,38 @@ document.getElementById('btn-inc').addEventListener('click',()=>setType('income'
 document.getElementById('save-btn').addEventListener('click',async function(){
   const amount=parseFloat(document.getElementById('exp-amount').value);
   const desc=document.getElementById('exp-desc').value.trim();
-  const cat=document.getElementById('exp-category').value;  // always 'Inventory Stock' if locked
+  const cat=document.getElementById('exp-category').value;  
   const payment=document.getElementById('exp-payment').value;
   const dateStr=document.getElementById('exp-date').value;
+  const errBox=document.getElementById('form-error');
 
-  if(!amount||amount<=0){toast('Enter a valid amount','error');return;}
-  if(!desc){toast('Enter a description','error');return;}
+  // Reset error box on each click
+  errBox.style.display='none';
 
-  // Hard server-side guard — even if JS is bypassed
+  // Strict Validation Logic
+  if(isNaN(amount) || amount <= 0) {
+    errBox.textContent = 'Invalid Amount: Please enter a valid number.';
+    errBox.style.display = 'block';
+    return;
+  }
+  if(amount > 9999999999) {
+    errBox.textContent = 'Limit Exceeded: Maximum allowed amount is ₹999 Crore.';
+    errBox.style.display = 'block';
+    return;
+  }
+  if(!desc || desc.length < 10) {
+    errBox.textContent = 'Insufficient Details: Description must be at least 10 characters.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  // Hard server-side guard
   const catDef=CAT_MAP[cat];
-  if(!CU.isPremium&&catDef&&!catDef.free){toast('Upgrade to Premium to use this category','error');return;}
+  if(!CU.isPremium&&catDef&&!catDef.free){
+    errBox.textContent = 'Premium Required: Upgrade to use this category.';
+    errBox.style.display = 'block';
+    return;
+  }
 
   this.disabled=true;this.innerHTML='<span class="spinner"></span>';
   try{
@@ -1258,7 +1275,6 @@ document.getElementById('save-btn').addEventListener('click',async function(){
     document.getElementById('exp-amount').value='';
     document.getElementById('exp-desc').value='';
     document.getElementById('exp-date').valueAsDate=new Date();
-    // Reset picker to default free category
     document.getElementById('exp-category').value='Inventory Stock';
     document.getElementById('cpt-icon').textContent='📦';
     document.getElementById('cpt-icon').style.background='#EEF2FF';
@@ -1266,9 +1282,19 @@ document.getElementById('save-btn').addEventListener('click',async function(){
     setType('expense');
     closeModal();
     toast('Record saved!','success');
-  }catch(e){toast('Failed: '+e.message,'error');}
+  }catch(e){
+    errBox.textContent = 'Failed to save: ' + e.message;
+    errBox.style.display = 'block';
+  }
   this.disabled=false;this.innerHTML='Save Record';
 });
+
+// Also hide the error box if the user closes the modal without saving
+function closeModal(){
+  document.getElementById('add-modal').classList.remove('open');
+  document.getElementById('form-error').style.display='none';
+  closeCatDD();
+}
 
 /* ═══════════════════════════════════
    DELETE
