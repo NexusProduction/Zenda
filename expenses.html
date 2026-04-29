@@ -283,8 +283,7 @@ body[data-premium="false"] .mob-upgrade-icon { display: none; }
   background:var(--surface);
   width:100%;
   max-width:480px;
-  /* Added base bottom padding (40px) */
-  padding:24px 24px 40px 24px; 
+  padding:24px; /* Reduced to standard 24px all around */
   border-radius:22px 22px 0 0;
   transform:translateY(100%);
   transition:transform .4s cubic-bezier(.22,1,.36,1);
@@ -311,8 +310,19 @@ body[data-premium="false"] .mob-upgrade-icon { display: none; }
 .amount-wrap{position:relative}
 .amount-prefix{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-family:var(--fm);font-weight:600;color:var(--tx3);font-size:1.1rem;pointer-events:none}
 .amount-inp{padding-left:32px!important;font-family:var(--fm)!important;font-size:1.375rem!important;font-weight:700!important;letter-spacing:-.04em!important;height:52px}
-.save-btn{width:100%;height:52px;margin-top:8px;background:var(--tx1);color:#fff;border:none;border-radius:12px;font-family:var(--f);font-size:1rem;font-weight:700;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:8px}
-.save-btn:hover{background:#18181B}.save-btn:active{transform:scale(.97)}.save-btn:disabled{opacity:.5;cursor:not-allowed}
+.save-btn{width:100%;height:52px;margin-top:24px;background:var(--tx1);color:#fff;border:none;border-radius:12px;font-family:var(--f);font-size:1rem;font-weight:700;cursor:pointer;transition:all .4s cubic-bezier(0.25, 1, 0.5, 1);display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:inset 0 0 0 0 var(--green);}
+.save-btn:hover{background:#18181B}
+.save-btn:active{transform:scale(.97)}
+.save-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* The success animation class */
+.save-btn.success-state { 
+  box-shadow: inset 480px 0 0 0 var(--green) !important; 
+  transform: none !important; 
+  color: #fff !important; 
+  pointer-events: none;
+  opacity: 1 !important;
+}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block;vertical-align:middle}
 
@@ -398,11 +408,9 @@ body[data-premium="false"] .mob-upgrade-icon { display: none; }
 .toast-success{background:var(--tx1);color:#fff}.toast-error{background:var(--red);color:#fff}.toast-info{background:var(--blue);color:#fff}
 @media(max-width:640px){
   .fg-row{grid-template-columns:1fr}
-  /* Added margin-bottom to create a gap above the save button on phones */
   .mobile-split{grid-template-columns:1fr 1fr !important; gap: 8px; margin-bottom: 16px !important;}
   .container{padding:16px 12px}
-  /* Extra bottom padding for the modal on mobile */
-  .modal{padding: 24px 20px 48px 20px !important;} 
+  .modal{padding: 24px 20px 24px 20px !important;} /* Removed the 48px bottom padding */
 }
 
 /* FLUID MIDDLE RANGE: 641px → 899px */
@@ -928,19 +936,38 @@ document.getElementById('save-btn').addEventListener('click',async function(){
       createdAt:serverTimestamp(),
     });
     
+    // Reset form fields secretly in the background
     document.getElementById('exp-amount').value='';
     document.getElementById('exp-desc').value='';
     document.getElementById('exp-date').valueAsDate=new Date();
     document.getElementById('exp-category').value='Inventory Stock';
-    document.getElementById('cpt-icon').textContent='📦';
+    document.getElementById('cpt-icon').innerHTML=CAT_SVG['Inventory Stock'];
     document.getElementById('cpt-icon').style.background='#EEF2FF';
+    document.getElementById('cpt-icon').style.color='#4F46E5';
     document.getElementById('cpt-label').textContent='Inventory Stock';
     setType('expense');
-    closeModal();
+    
+    // Trigger the swipe-to-green animation
+    this.classList.add('success-state');
+    this.innerHTML = 'Saved! ✓';
     toast('Record saved!','success');
+    
+    // Wait 700ms so the user can enjoy the green swipe animation, then close the modal
+    setTimeout(() => {
+      closeModal();
+      
+      // Reset button back to normal *after* the modal is hidden
+      setTimeout(() => {
+        this.classList.remove('success-state');
+        this.disabled = false;
+        this.innerHTML = 'Save Record';
+      }, 300);
+    }, 700);
+
   }catch(e){
     errBox.textContent = 'Failed to save: ' + e.message;
     errBox.style.display = 'block';
+    this.disabled=false;this.innerHTML='Save Record';
   }
   this.disabled=false;this.innerHTML='Save Record';
 });
