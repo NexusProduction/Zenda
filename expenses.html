@@ -584,7 +584,7 @@ body[data-premium="false"] .mob-upgrade-icon { display: none; }
       <label>Amount *</label>
       <div class="amount-wrap">
         <span class="amount-prefix">&#x20B9;</span>
-        <input type="number" id="exp-amount" class="fi amount-inp" placeholder="0.00" min="0" max="9999999999" step="0.01" oninput="if(this.value.length > 10) this.value = this.value.slice(0,10);">
+        <input type="number" id="exp-amount" class="fi amount-inp" placeholder="0.00" min="0" step="0.01" oninput="window.checkAmountLimit(this)">
       </div>
     </div>
     <div class="fg">
@@ -935,6 +935,37 @@ document.getElementById('save-btn').addEventListener('click',async function(){
   this.disabled=false;this.innerHTML='Save Record';
 });
 
+
+  /* ═══════════════════════════════════
+   LIVE AMOUNT VALIDATION
+═══════════════════════════════════ */
+window.checkAmountLimit = function(input) {
+  const btn = document.getElementById('save-btn');
+  const errBox = document.getElementById('form-error');
+
+  // Strip decimal point for length calculation to allow decimal typing
+  const valLength = input.value.split('.')[0].length; 
+
+  if (valLength > 10) {
+    // Area becomes red, button fades and disables
+    input.style.borderColor = 'var(--red)';
+    input.style.color = 'var(--red)';
+    input.style.backgroundColor = 'var(--redbg)';
+    
+    errBox.textContent = 'Limit Exceeded: Maximum allowed amount is ₹999 Crore.';
+    errBox.style.display = 'block';
+    
+    btn.disabled = true; // The existing CSS already makes disabled buttons fade to 0.5 opacity
+  } else {
+    // Revert back to normal if under limit
+    input.style.borderColor = '';
+    input.style.color = '';
+    input.style.backgroundColor = '';
+    
+    errBox.style.display = 'none';
+    btn.disabled = false;
+  }
+};
 window.delExp=async function(id){
   if(!confirm('Delete this record?'))return;
   try{await deleteDoc(doc(db,'expenses',id));toast('Deleted','success');}
