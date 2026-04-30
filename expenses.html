@@ -1036,11 +1036,31 @@ window.checkAmountLimit = function(input) {
     btn.disabled = false;
   }
 };
-window.delExp=async function(id){
-  if(!confirm('Delete this record?'))return;
-  try{await deleteDoc(doc(db,'expenses',id));toast('Deleted','success');}
-  catch{toast('Failed to delete','error');}
+let deleteTargetId = null;
+window.delExp = function(id){
+  deleteTargetId = id;
+  document.getElementById('delete-modal').classList.add('open');
 };
+window.closeDeleteModal = function(){
+  deleteTargetId = null;
+  document.getElementById('delete-modal').classList.remove('open');
+};
+document.getElementById('confirm-delete-btn').addEventListener('click', async function(){
+  if(!deleteTargetId) return;
+  this.innerHTML='<span class="spinner"></span>';
+  try{
+    await deleteDoc(doc(db,'expenses',deleteTargetId));
+    toast('Deleted','success');
+  }catch{
+    toast('Failed to delete','error');
+  }
+  this.innerHTML='Delete';
+  closeDeleteModal();
+});
+// Closes the delete modal if you click outside the box
+document.getElementById('delete-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeDeleteModal();
+});
 
 document.getElementById('pag-prev').addEventListener('click',()=>{currentPage--;renderList();});
 document.getElementById('pag-next').addEventListener('click',()=>{currentPage++;renderList();});
@@ -1135,6 +1155,11 @@ function updateSummary(){
   
   document.getElementById('m-income').textContent='₹ '+fmt(inc);
   document.getElementById('m-expense').textContent='₹ '+fmt(exp);
+
+  // Update Ledger History Count (Ignores Category filter, respects Year filter)
+  const totalCount = allData.filter(e => !monthFilter || String(getDate(e).getFullYear()) === monthFilter).length;
+  const countEl = document.getElementById('ledger-count');
+  if (countEl) countEl.textContent = `(${totalCount})`;
 }
 
 window.requestUpgradeFromList = async function() {
@@ -1231,7 +1256,7 @@ function renderList(){
     const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const isInc=e.parsedType==='income';
     const delBtn=(canDel||e.createdBy===CU.uid)?`<button class="del-btn" onclick="window.delExp('${e.id}')" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'';
-    return `<div class="exp-row" style="animation-delay:${i*32}ms">
+    return `<div class="exp-row" tabindex="0" style="animation-delay:${i*32}ms; outline:none; cursor:pointer;">
       <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
       <div class="exp-info"><div class="exp-desc">${esc(e.description)}</div><div class="exp-meta"><span class="exp-cat-pill" style="background:${bg};color:${color}">${esc(cat)}</span><span>· ${ds}</span>${e.paymentMethod?`<span>· ${esc(e.paymentMethod)}</span>`:''}</div></div>
       <div class="exp-amt ${isInc?'pos':'neg'}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>
