@@ -240,7 +240,7 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn {
 .exp-desc{font-size:.875rem;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;color:var(--tx1)}
 .exp-meta{font-size:.75rem;color:var(--tx2);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .exp-cat-pill{padding:2px 7px;border-radius:5px;font-size:.68rem;font-weight:700}
-.exp-amt{font-family:var(--fm);font-size:.9375rem;font-weight:600;text-align:right;flex-shrink:0;letter-spacing:-.02em}
+.exp-amt{font-family:var(--f);font-size:.95rem;font-weight:500;text-align:right;flex-shrink:0;letter-spacing:0}
 .exp-amt.pos{color:var(--green)}.exp-amt.neg{color:var(--tx1)}
 .del-btn{background:none;border:none;cursor:pointer;padding:6px;border-radius:8px;color:var(--tx3);flex-shrink:0;opacity:0;transition:all .18s}
 .exp-row:hover .del-btn{opacity:1}.del-btn:hover{background:var(--redbg);color:var(--red)}.del-btn:active{transform:scale(.88)}
@@ -273,7 +273,7 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn {
 .cat-details{flex:1;min-width:0}
 .cat-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
 .cat-name{font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cat-val{font-family:var(--fm);font-size:.82rem;font-weight:600;white-space:nowrap;margin-left:8px}
+.cat-val{font-family:var(--f);font-size:.85rem;font-weight:500;white-space:nowrap;margin-left:8px}
 .cat-bar-bg{height:4px;background:var(--surface2);border-radius:99px;overflow:hidden}
 .cat-bar-fill{height:100%;border-radius:99px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
 .cat-pct{font-size:.68rem;color:var(--tx3);margin-top:3px}
@@ -858,7 +858,11 @@ window.doAppeal = async function() {
 (function(){
   const sel=document.getElementById('month-filter');
   let o='<option value="">All time</option>';
-  for(let i=0;i<12;i++){const d=new Date();d.setMonth(d.getMonth()-i);const v=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');o+=`<option value="${v}">${d.toLocaleDateString('en-IN',{month:'short',year:'numeric'})}</option>`;}
+  const currentYear = new Date().getFullYear();
+  // Automatically loops from the current year down to 2021
+  for(let y = currentYear; y >= 2021; y--){
+    o+=`<option value="${y}">${y}</option>`;
+  }
   sel.innerHTML=o;
 })();
 document.getElementById('exp-date').valueAsDate=new Date();
@@ -1088,7 +1092,7 @@ async function init(){
 
 function getTime(e){if(e.date)return new Date(e.date).getTime();if(e.createdAt){if(typeof e.createdAt.toMillis==='function')return e.createdAt.toMillis();if(typeof e.createdAt.toDate==='function')return e.createdAt.toDate().getTime();return new Date(e.createdAt).getTime();}return 0;}
 function getDate(e){if(e.date)return new Date(e.date);if(e.createdAt){if(typeof e.createdAt.toDate==='function')return e.createdAt.toDate();return new Date(e.createdAt);}return new Date();}
-function filtered(){return allData.filter(e=>{if(catFilter&&e.category!==catFilter)return false;if(monthFilter){const d=getDate(e);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(k!==monthFilter)return false;}if(searchVal&&!((e.description||'')+' '+(e.category||'')).toLowerCase().includes(searchVal))return false;return true;});}
+function filtered(){return allData.filter(e=>{if(catFilter&&e.category!==catFilter)return false;if(monthFilter){const d=getDate(e);const k=String(d.getFullYear());if(k!==monthFilter)return false;}if(searchVal&&!((e.description||'')+' '+(e.category||'')).toLowerCase().includes(searchVal))return false;return true;});}
 function renderAll(){updateSummary();renderList();if(panelOpen)renderBreakdown();}
 
 function updateSummary(){
