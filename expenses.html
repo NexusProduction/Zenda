@@ -268,9 +268,9 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn {
   .main-grid.panel-open .breakdown-panel{animation:panelDown .35s cubic-bezier(.22,1,.36,1)}
 }
 .bp-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.bp-ttl{font-size:.875rem;font-weight:700;letter-spacing:-.015em}.bp-period{font-size:.72rem;color:var(--tx3);font-weight:500}
-@keyframes catIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}
-.cat-item{display:flex;align-items:center;gap:12px;padding:10px 18px;transition:background .15s;animation:catIn .4s cubic-bezier(.22,1,.36,1) both}
+.bp-ttl{font-size:.875rem;font-weight:700;letter-spacing:-.015em}.bp-period{font-size:.95rem;color:var(--tx1);font-weight:800}
+.cat-item{display:flex;align-items:center;gap:12px;padding:10px 18px;transition:background .15s;}
+@media(max-width: 899px) { .zero-amt { display: none !important; } }
 .cat-item:hover{background:var(--bg)}
 .cat-ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .cat-ico svg{width:15px;height:15px}
@@ -1311,28 +1311,53 @@ function renderList(){
 }
 
 function renderBreakdown(){
-  // Bypasses the category tabs and search bar, only filtering by Expense type and the selected Year
   const expOnly = allData.filter(e => {
     if (e.parsedType === 'income') return false;
     if (monthFilter && String(getDate(e).getFullYear()) !== monthFilter) return false;
     return true;
   });
+
+  // 1. Pre-fill all categories so zero amounts show on PC
+  const groups = {};
+  CATS.forEach(c => groups[c.v] = 0);
+
+  expOnly.forEach(e => {
+    groups[e.category] = (groups[e.category] || 0) + (Number(e.amount) || 0);
+  });
+
+  const total = Object.values(groups).reduce((s,v) => s + v, 0) || 1;
+  const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
   
-  const groups={};expOnly.forEach(e=>{groups[e.category]=(groups[e.category]||0)+(Number(e.amount)||0);});
-  const total=Object.values(groups).reduce((s,v)=>s+v,0)||1;
-  const sorted=Object.entries(groups).sort((a,b)=>b[1]-a[1]);
-  const smr=document.getElementById('show-more-row'),body=document.getElementById('bp-body');
-  if(!sorted.length){body.innerHTML='<div style="text-align:center;padding:32px;color:var(--tx3);font-size:.85rem">No expense data</div>';smr.style.display='none';return;}
-  const visible=catExpanded?sorted:sorted.slice(0,3);
-  smr.style.display=sorted.length>3?'flex':'none';
-  body.innerHTML=visible.map(([cat,amt],i)=>{
-    const pct=Math.round(amt/total*100),color=CAT_COLOR[cat]||'#71717A',bg=CAT_BG[cat]||'#F4F4F5',svg=CAT_SVG[cat]||CAT_SVG['Miscellaneous'];
-    return `<div class="cat-item" style="animation-delay:${i*55}ms">
+  const smr = document.getElementById('show-more-row');
+  const body = document.getElementById('bp-body');
+  
+  // Hide the "Show more" button since we show all categories now
+  if (smr) smr.style.display = 'none';
+
+  body.innerHTML = sorted.map(([cat,amt]) => {
+    const pct = Math.round(amt / total * 100);
+    const color = CAT_COLOR[cat] || '#71717A';
+    const bg = CAT_BG[cat] || '#F4F4F5';
+    const svg = CAT_SVG[cat] || CAT_SVG['Miscellaneous'];
+    
+    // 2. Mark zero amounts so mobile can hide them natively
+    const isZero = amt === 0 ? ' zero-amt' : '';
+
+    // 3. Set width directly to pct% so the bar doesn't animate from 0 every single click
+    return `<div class="cat-item${isZero}">
       <div class="cat-ico" style="background:${bg};color:${color}">${svg}</div>
-      <div class="cat-details"><div class="cat-top"><span class="cat-name">${esc(cat)}</span><span class="cat-val">₹${fmt(amt)}</span></div><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:0%;background:${color}" data-w="${pct}%"></div></div><div class="cat-pct">${pct}% of expenses</div></div>
+      <div class="cat-details">
+        <div class="cat-top">
+          <span class="cat-name">${esc(cat)}</span>
+          <span class="cat-val">₹${fmt(amt)}</span>
+        </div>
+        <div class="cat-bar-bg">
+          <div class="cat-bar-fill" style="width:${pct}%; background:${color}; height:100%; border-radius:99px;"></div>
+        </div>
+        <div class="cat-pct">${pct}% of expenses</div>
+      </div>
     </div>`;
   }).join('');
-  requestAnimationFrame(()=>setTimeout(()=>{document.querySelectorAll('.cat-bar-fill').forEach(b=>{b.style.width=b.dataset.w;});},50));
 }
 
 (function(){
