@@ -260,15 +260,15 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn {
 .exp-amt.pos { color: #10B981; } 
 .exp-amt.neg { color: #DC2626; }
 
-/* Perfectly Anchored Delete Button */
-.del-btn { position: absolute; right: -60px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; background: #FEE2E2; border: none; cursor: pointer; padding: 0; border-radius: 12px; color: #DC2626; flex-shrink: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); z-index: 2; }
+/* Perfectly Anchored Delete Button (Forced on top with z-index: 20) */
+.del-btn { position: absolute; right: -60px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; background: #FEE2E2; border: none; cursor: pointer; padding: 0; border-radius: 12px; color: #DC2626; flex-shrink: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); z-index: 20; }
 .del-btn svg { width: 18px; height: 18px; display: block; pointer-events: none; }
 .del-btn:hover { background: #FCA5A5; color: #991B1B; transform: translateY(-50%) scale(1.08); }
 .del-btn:active { transform: translateY(-50%) scale(.92); }
 
-/* PC Slide Logic - Button moved further right (14px instead of 24px) */
-.exp-row:hover .exp-amt { transform: translateX(-86px); }
-.exp-row:hover .del-btn { right: 14px; opacity: 1; }
+/* PC Slide Logic - Squish text width on hover so it gracefully truncates with '...' */
+.exp-row:hover .exp-amt { transform: translateX(-64px); max-width: 35%; }
+.exp-row:hover .del-btn { right: 16px; opacity: 1; }
 
 /* Hide Accordion Details completely on PC */
 .exp-details { display: none !important; }
@@ -278,18 +278,18 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn {
 @media (max-width: 600px) {
   .exp-row { cursor: pointer; padding: 12px 14px; border-radius: 16px; }
   
-  /* Re-enable interactive scaling and click states ONLY for phones */
+  /* Re-enable interactive scaling only for phones */
   .exp-row:active { transform: scale(0.97); }
   .exp-row.expanded { background: #FFF; transform: scale(1.02); box-shadow: 0 12px 32px rgba(0,0,0,0.08); z-index: 10; margin: 8px 0; border-color: var(--border); }
 
   /* Hide the meta details from the main row completely */
   .desk-only, .exp-meta { display: none !important; } 
   
-  /* Rigid limits to prevent Mobile Overlap - Button pushed right to 8px */
+  /* Rigid limits to prevent Mobile Overlap */
   .exp-amt { font-size: 1.05rem; max-width: 45vw; } 
-  .exp-row:hover .exp-amt, .exp-row.expanded .exp-amt { transform: translateX(-52px); max-width: 30vw; }
-  .exp-row.expanded .del-btn { right: 8px; opacity: 1; }
-  .del-btn { width: 40px; height: 40px; right: -50px; border-radius: 10px; }
+  .exp-row:hover .exp-amt, .exp-row.expanded .exp-amt { transform: translateX(-48px); max-width: 25vw; }
+  .exp-row.expanded .del-btn { right: 12px; opacity: 1; }
+  .del-btn { width: 40px; height: 40px; right: -50px; border-radius: 10px; z-index: 20; }
   
   /* Show Accordion ONLY on mobile */
   .exp-details { display: grid !important; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-height: 0; opacity: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding-top: 0; margin-top: 0; border-top: 1px dashed transparent; cursor: default; }
@@ -1374,13 +1374,13 @@ function renderList(){
     const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const isInc=e.parsedType==='income';
     
-    const delBtn=(canDel||e.createdBy===CU.uid)?`<button class="del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'';
+    const delBtn=(canDel||e.createdBy===CU.uid)?`<button class="del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'';
     
     return `<div class="exp-row" style="animation-delay:${i*32}ms;" onclick="window.toggleRow(this, event)">
       <div class="exp-row-main">
         <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
         <div class="exp-info">
-          <div class="exp-desc" title="${esc(e.description)}">${esc(e.description)}</div>
+          <div class="exp-desc">${esc(e.description)}</div>
           <div class="exp-meta">
             <span class="exp-cat-pill" style="background:${bg};color:${color}">${esc(cat)}</span>
             <span class="desk-only" style="color:var(--tx3)">·</span>
@@ -1389,7 +1389,7 @@ function renderList(){
             <span class="desk-only">${esc(e.paymentMethod||'Cash')}</span>
           </div>
         </div>
-        <div class="exp-amt ${isInc?'pos':'neg'}" title="₹${fmt(e.amount)}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>
+        <div class="exp-amt ${isInc?'pos':'neg'}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>
         ${delBtn}
       </div>
 
