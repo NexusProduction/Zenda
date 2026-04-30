@@ -1311,7 +1311,13 @@ function renderList(){
 }
 
 function renderBreakdown(){
-  const expOnly=filtered().filter(e=>e.parsedType!=='income');
+  // Bypasses the category tabs and search bar, only filtering by Expense type and the selected Year
+  const expOnly = allData.filter(e => {
+    if (e.parsedType === 'income') return false;
+    if (monthFilter && String(getDate(e).getFullYear()) !== monthFilter) return false;
+    return true;
+  });
+  
   const groups={};expOnly.forEach(e=>{groups[e.category]=(groups[e.category]||0)+(Number(e.amount)||0);});
   const total=Object.values(groups).reduce((s,v)=>s+v,0)||1;
   const sorted=Object.entries(groups).sort((a,b)=>b[1]-a[1]);
