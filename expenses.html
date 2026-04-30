@@ -153,7 +153,6 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
 
 /* Hide Accordion Details completely on PC */
 .exp-details { display: none !important; }
-.desk-only { display: inline; }
 
 /* 📱 MOBILE OPTIMIZATIONS */
 @media (max-width: 600px) {
@@ -203,16 +202,28 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
   .main-grid.panel-open .breakdown-panel{animation:panelDown .35s cubic-bezier(.22,1,.36,1)}
 }
 .bp-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.bp-ttl{font-size:.875rem;font-weight:700;letter-spacing:-.015em}.bp-period{font-size:.95rem;color:var(--tx1);font-weight:800}
+.bp-ttl{font-size:.875rem;font-weight:700;letter-spacing:-.015em}
+.bp-period{font-size:.9rem;color:var(--tx2);font-weight:600} /* Lighter, less bold year */
+
 .cat-item{display:flex;align-items:center;gap:12px;padding:10px 18px;transition:background .15s;}
 @media(max-width: 899px) { .zero-amt { display: none !important; } }
 .cat-item:hover{background:var(--bg)}
 .cat-ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .cat-ico svg{width:15px;height:15px}
 .cat-details{flex:1;min-width:0}
-.cat-name { font-size: 13px !important; }
+
+/* Pushes amount strictly to the right edge */
+.cat-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:8px}
+.cat-name{font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .cat-val{font-family:var(--f);font-size:.9rem;font-weight:800;white-space:nowrap;text-align:right;color:var(--tx1)}
-.mob-only { display: inline !important; } /* Un-hides the short names on phones */
+
+.cat-bar-bg{height:4px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.cat-bar-fill{height:100%;border-radius:99px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+.cat-pct{font-size:.68rem;color:var(--tx3);margin-top:3px}
+
+/* Crucial rules to prevent double-names */
+.desk-only { display: inline; }
+.mob-only { display: inline !important; }
 .cat-bar-bg{height:4px;background:var(--surface2);border-radius:99px;overflow:hidden}
 .cat-bar-fill{height:100%;border-radius:99px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
 .cat-pct{font-size:.68rem;color:var(--tx3);margin-top:3px}
@@ -1228,19 +1239,18 @@ function renderBreakdown(){
     const svg = CAT_SVG[cat] || CAT_SVG['Miscellaneous'];
     
     const isZero = amt === 0 ? ' zero-amt' : '';
-    
-    // Short names map for the phone view
+
+    // Mobile short names
     const SHORT_MAP = {
       'Inventory Stock': 'Inventory',
       'Godown Expense': 'Godown',
       'Office & Admin': 'Office',
       'Raw Materials': 'Materials',
-      'Miscellaneous': 'Other',
+      'Miscellaneous': 'Miscellaneous', // Changed back so it stays Miscellaneous on phones!
       'Installation': 'Install'
     };
     const shortCat = SHORT_MAP[cat] || cat;
 
-    // We inject the title="..." attribute so users can hover over massive truncated numbers to see the full value
     return `<div class="cat-item${isZero}">
       <div class="cat-ico" style="background:${bg};color:${color}">${svg}</div>
       <div class="cat-details">
@@ -1249,7 +1259,7 @@ function renderBreakdown(){
             <span class="desk-only">${esc(cat)}</span>
             <span class="mob-only">${esc(shortCat)}</span>
           </span>
-          <span class="cat-val" title="₹${fmt(amt)}">₹${fmt(amt)}</span>
+          <span class="cat-val">₹${fmt(amt)}</span>
         </div>
         <div class="cat-bar-bg">
           <div class="cat-bar-fill" style="width:${pct}%; background:${color}; height:100%; border-radius:99px;"></div>
