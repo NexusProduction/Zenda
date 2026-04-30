@@ -196,6 +196,22 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
 @keyframes panelDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 .breakdown-panel{background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--sh1);display:none;flex-direction:column}
 .main-grid.panel-open .breakdown-panel{display:flex;animation:panelIn .38s cubic-bezier(.22,1,.36,1)}
+/* Smooth Exit Animations */
+@keyframes panelOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(20px); } }
+@keyframes panelUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
+
+/* Keep it flex so it stays visible while animating out */
+.main-grid.panel-closing .breakdown-panel {
+  display: flex;
+  animation: panelOut .35s cubic-bezier(.22,1,.36,1) forwards;
+}
+
+/* Mobile override for sliding UP instead of RIGHT */
+@media(max-width:899px) {
+  .main-grid.panel-closing .breakdown-panel {
+    animation: panelUp .35s cubic-bezier(.22,1,.36,1) forwards;
+  }
+}
 @media(max-width:899px){
   .main-grid { display: flex; flex-direction: column; gap: 16px; }
   .breakdown-panel { order: -1; margin-bottom: 0; width: 100% !important; box-sizing: border-box; }
@@ -806,9 +822,31 @@ window.doAppeal = async function() {
 document.getElementById('exp-date').valueAsDate=new Date();
 
 const mainGrid=document.getElementById('main-grid');
-document.getElementById('breakdown-btn').addEventListener('click',function(){
-  panelOpen=!panelOpen;mainGrid.classList.toggle('panel-open',panelOpen);this.classList.toggle('active',panelOpen);
-  if(panelOpen)renderBreakdown();else{catExpanded=false;smReset();}
+// Upgraded Breakdown Toggle with Exit Animation
+let panelCloseTimeout;
+document.getElementById('breakdown-btn').addEventListener('click', function() {
+  clearTimeout(panelCloseTimeout); // Prevent glitches if clicked very fast
+  
+  if (panelOpen) {
+    // CLOSING PHASE
+    panelOpen = false;
+    this.classList.remove('active');
+    mainGrid.classList.add('panel-closing');
+    
+    // Wait for the .35s animation to finish before hiding completely
+    panelCloseTimeout = setTimeout(() => {
+      mainGrid.classList.remove('panel-open', 'panel-closing');
+      catExpanded = false;
+      smReset();
+    }, 340); 
+  } else {
+    // OPENING PHASE
+    panelOpen = true;
+    mainGrid.classList.remove('panel-closing');
+    mainGrid.classList.add('panel-open');
+    this.classList.add('active');
+    renderBreakdown();
+  }
 });
 document.getElementById('show-more-btn').addEventListener('click',function(){
   catExpanded=!catExpanded;this.classList.toggle('expanded',catExpanded);
