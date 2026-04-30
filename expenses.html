@@ -880,19 +880,38 @@ window.doAppeal = async function() {
 };
 
 (function(){
-  const sel=document.getElementById('month-filter');
+  const menu = document.getElementById('year-filter-menu');
+  const label = document.getElementById('year-filter-label');
+  const wrap = document.getElementById('year-filter-wrap');
   let o='';
   const currentYear = new Date().getFullYear();
-  // Automatically loops from the current year down to 2022
-  for(let y = currentYear; y >= 2022; y--){
-    o+=`<option value="${y}">${y}</option>`;
-  }
-  sel.innerHTML=o;
-  sel.value = currentYear.toString(); // Visually selects the current year
   
-  // Updates the Breakdown panel text to the current year
+  for(let y = currentYear; y >= 2022; y--){
+    o+=`<div style="padding:10px 14px; font-family:var(--f); font-size:.85rem; font-weight:600; color:var(--tx1); cursor:pointer; transition:background .15s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'" onclick="selectYear('${y}')">${y}</div>`;
+  }
+  if(menu) menu.innerHTML=o;
+  if(label) label.textContent = currentYear.toString();
+  
   const bpPeriod = document.getElementById('bp-period');
   if(bpPeriod) bpPeriod.textContent = currentYear.toString();
+
+  document.getElementById('year-filter-trigger').addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  });
+
+  window.selectYear = function(y) {
+    monthFilter = y;
+    label.textContent = y;
+    menu.style.display = 'none';
+    if(document.getElementById('bp-period')) document.getElementById('bp-period').textContent = y;
+    currentPage=1;
+    renderAll();
+  };
+
+  document.addEventListener('click', e => {
+    if (wrap && !wrap.contains(e.target) && menu) menu.style.display = 'none';
+  });
 })();
 document.getElementById('exp-date').valueAsDate=new Date();
 
@@ -910,8 +929,6 @@ function smReset(){const b=document.getElementById('show-more-btn');b.innerHTML=
 
 document.querySelectorAll('.ftab').forEach(btn=>{btn.addEventListener('click',function(){catFilter=this.dataset.cat||'';document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('on'));this.classList.add('on');currentPage=1;renderAll();});});
 document.getElementById('exp-search').addEventListener('input',function(){searchVal=this.value.toLowerCase().trim();currentPage=1;renderList();});
-document.getElementById('month-filter').addEventListener('change',function(){monthFilter=this.value;currentPage=1;renderAll();document.getElementById('bp-period').textContent=this.options[this.selectedIndex].text||'All time';});
-
 function openModal(){
   document.getElementById('add-modal').classList.add('open');
   hideLockCards();
