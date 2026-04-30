@@ -1346,12 +1346,37 @@ function renderList(){
     const cat=e.category||'Miscellaneous',color=CAT_COLOR[cat]||'#71717A',bg=CAT_BG[cat]||'#F4F4F5',svg=CAT_SVG[cat]||CAT_SVG['Miscellaneous'];
     const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const isInc=e.parsedType==='income';
-    const delBtn=(canDel||e.createdBy===CU.uid)?`<button class="del-btn" onclick="window.delExp('${e.id}')" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'';
-    return `<div class="exp-row" tabindex="0" style="animation-delay:${i*32}ms; outline:none; cursor:pointer;">
-      <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
-      <div class="exp-info"><div class="exp-desc">${esc(e.description)}</div><div class="exp-meta"><span class="exp-cat-pill" style="background:${bg};color:${color}">${esc(cat)}</span><span>· ${ds}</span>${e.paymentMethod?`<span>· ${esc(e.paymentMethod)}</span>`:''}</div></div>
-      <div class="exp-amt ${isInc?'pos':'neg'}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>
-      ${delBtn}
+    
+    // We add event.stopPropagation() here so clicking the delete button doesn't accidentally expand the card
+    const delBtn=(canDel||e.createdBy===CU.uid)?`<button class="del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'';
+    
+    return `<div class="exp-row" tabindex="0" style="animation-delay:${i*32}ms;" onclick="this.classList.toggle('expanded')">
+      
+      <div class="exp-row-main">
+        <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
+        <div class="exp-info">
+          <div class="exp-desc">${esc(e.description)}</div>
+          <div class="exp-meta"><span>${ds}</span></div>
+        </div>
+        <div class="exp-amt ${isInc?'pos':'neg'}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>
+        ${delBtn}
+      </div>
+
+      <div class="exp-details" onclick="event.stopPropagation();">
+        <div class="ed-item">
+          <span class="ed-lbl">Category</span>
+          <span class="ed-val" style="color:${color};">${esc(cat)}</span>
+        </div>
+        <div class="ed-item">
+          <span class="ed-lbl">Payment</span>
+          <span class="ed-val">${esc(e.paymentMethod||'Cash')}</span>
+        </div>
+        <div class="ed-item">
+          <span class="ed-lbl">Date</span>
+          <span class="ed-val">${ds}</span>
+        </div>
+      </div>
+
     </div>`;
   }).join('');
 
