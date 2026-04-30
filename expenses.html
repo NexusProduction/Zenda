@@ -1227,39 +1227,42 @@ function renderBreakdown(){
 
   const groups = {};
   CATS.forEach(c => groups[c.v] = 0);
-
-  expOnly.forEach(e => {
-    groups[e.category] = (groups[e.category] || 0) + (Number(e.amount) || 0);
-  });
+  expOnly.forEach(e => { groups[e.category] = (groups[e.category] || 0) + (Number(e.amount) || 0); });
 
   const total = Object.values(groups).reduce((s,v) => s + v, 0) || 1;
   const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
   
   const smr = document.getElementById('show-more-row');
   const body = document.getElementById('bp-body');
-  
   if (smr) smr.style.display = 'none';
 
+  // 1. FIRST: Measure current positions before making any changes
+  const oldPos = {};
+  [...body.children].forEach(el => {
+    if(el.dataset.cat) oldPos[el.dataset.cat] = el.getBoundingClientRect().top;
+  });
+
+  // 2. UPDATE: Render the new sorted list
   body.innerHTML = sorted.map(([cat,amt]) => {
     const pct = Math.round(amt / total * 100);
     const color = CAT_COLOR[cat] || '#71717A';
     const bg = CAT_BG[cat] || '#F4F4F5';
     const svg = CAT_SVG[cat] || CAT_SVG['Miscellaneous'];
-    
     const isZero = amt === 0 ? ' zero-amt' : '';
-
+    
     // Mobile short names
     const SHORT_MAP = {
       'Inventory Stock': 'Inventory',
       'Godown Expense': 'Godown',
       'Office & Admin': 'Office',
       'Raw Materials': 'Materials',
-      'Miscellaneous': 'Miscellaneous', // Changed back so it stays Miscellaneous on phones!
+      'Miscellaneous': 'Miscellaneous',
       'Installation': 'Install'
     };
     const shortCat = SHORT_MAP[cat] || cat;
 
-    return `<div class="cat-item${isZero}">
+    // Added data-cat here so we can track the elements
+    return `<div class="cat-item${isZero}" data-cat="${cat}">
       <div class="cat-ico" style="background:${bg};color:${color}">${svg}</div>
       <div class="cat-details">
         <div class="cat-top">
@@ -1276,6 +1279,27 @@ function renderBreakdown(){
       </div>
     </div>`;
   }).join('');
+
+  // 3. PLAY: The FLIP Swap Animation
+  [...body.children].forEach(el => {
+    const cat = el.dataset.cat;
+    if(oldPos[cat] !== undefined) {
+      const newTop = el.getBoundingClientRect().top;
+      const delta = oldPos[cat] - newTop;
+      
+      if(delta !== 0) {
+        // Instantly force it to its old visual position
+        el.style.transform = `translateY(${delta}px)`;
+        el.style.transition = 'none';
+        
+        // Wait a microsecond, then smoothly animate to its new rightful place
+        requestAnimationFrame(() => {
+          el.style.transform = '';
+          el.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        });
+      }
+    }
+  });
 }
 
 function fmt(n){return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0});}
