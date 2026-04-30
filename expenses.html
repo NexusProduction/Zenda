@@ -488,12 +488,12 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
       <label>Amount</label>
       <div class="amount-wrap">
         <span class="amount-prefix">&#x20B9;</span>
-        <input type="number" id="exp-amount" class="fi amount-inp" placeholder="0" min="0" step="1" oninput="window.checkAmountLimit(this)">
+        <input type="number" id="exp-amount" class="fi amount-inp" placeholder="0" min="0" step="1" onkeypress="return event.charCode >= 48 && event.charCode <= 57" oninput="window.checkAmountLimit(this)">
       </div>
     </div>
     <div class="fg">
       <label>Description</label>
-      <input type="text" id="exp-desc" class="fi" placeholder="Enter details (5-20 chars)" minlength="5" maxlength="20">
+      <input type="text" id="exp-desc" class="fi" placeholder="Enter details (5-20 chars)" minlength="5" maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')">
     </div>
 
     <div class="fg">
@@ -1024,21 +1024,24 @@ function updateSummary(){
   const list=filtered();let inc=0,exp=0;
   list.forEach(e=>{if(e.parsedType==='income')inc+=Number(e.amount)||0;else exp+=Number(e.amount)||0;});
   
-  const bal=inc-exp,fbal=(bal<0?'-₹ ':'₹ ')+fmt(Math.abs(bal));
+  // Appends .00 to the balance
+  const bal=inc-exp,fbal=(bal<0?'-₹ ':'₹ ')+fmt(Math.abs(bal))+'.00';
   
   const db2=document.getElementById('d-balance');
   db2.textContent=fbal;
   db2.style.setProperty('color', '#ffffff', 'important');
   
-  document.getElementById('d-income').textContent='₹ '+fmt(inc);
-  document.getElementById('d-expense').textContent='₹ '+fmt(exp);
+  // Appends .00 to desktop income/expense
+  document.getElementById('d-income').textContent='₹ '+fmt(inc)+'.00';
+  document.getElementById('d-expense').textContent='₹ '+fmt(exp)+'.00';
   
   const mb=document.getElementById('m-balance');
   mb.textContent=fbal;
   mb.style.setProperty('color', '#ffffff', 'important');
   
-  document.getElementById('m-income').textContent='₹ '+fmt(inc);
-  document.getElementById('m-expense').textContent='₹ '+fmt(exp);
+  // Appends .00 to mobile income/expense
+  document.getElementById('m-income').textContent='₹ '+fmt(inc)+'.00';
+  document.getElementById('m-expense').textContent='₹ '+fmt(exp)+'.00';
 
   const totalCount = allData.filter(e => !monthFilter || String(getDate(e).getFullYear()) === monthFilter).length;
   const countEl = document.getElementById('ledger-count');
