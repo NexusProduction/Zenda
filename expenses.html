@@ -911,32 +911,59 @@ window.doAppeal = async function() {
   const menu = document.getElementById('year-filter-menu');
   const label = document.getElementById('year-filter-label');
   const wrap = document.getElementById('year-filter-wrap');
-  let o='';
   const currentYear = new Date().getFullYear();
   
-  for(let y = currentYear; y >= 2022; y--){
-    o+=`<div style="padding:10px 14px; font-family:var(--f); font-size:.85rem; font-weight:600; color:var(--tx1); cursor:pointer; transition:background .15s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'" onclick="selectYear('${y}')">${y}</div>`;
+  // Create a function to build the menu so we can re-draw it when the selection changes
+  function renderYearMenu() {
+    let o = '';
+    for(let y = currentYear; y >= 2022; y--) {
+      const isSelected = String(y) === String(monthFilter);
+      
+      // Premium iOS-style styling logic
+      const bg = isSelected ? 'var(--bluebg)' : 'transparent';
+      const textColor = isSelected ? 'var(--blue)' : 'var(--tx1)';
+      const hoverBg = isSelected ? 'var(--bluebg)' : 'var(--bg)';
+      const checkmark = isSelected 
+        ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>` 
+        : '';
+
+      o += `<div style="padding:10px 14px; font-family:var(--f); font-size:.85rem; font-weight:700; color:${textColor}; background:${bg}; cursor:pointer; transition:background .15s; display:flex; justify-content:space-between; align-items:center;" 
+              onmouseover="this.style.background='${hoverBg}'" 
+              onmouseout="this.style.background='${bg}'" 
+              onclick="selectYear('${y}')">
+              ${y}
+              ${checkmark}
+            </div>`;
+    }
+    if(menu) menu.innerHTML = o;
   }
-  if(menu) menu.innerHTML=o;
+
+  // Initial setup
+  renderYearMenu();
   if(label) label.textContent = currentYear.toString();
-  
   const bpPeriod = document.getElementById('bp-period');
   if(bpPeriod) bpPeriod.textContent = currentYear.toString();
 
+  // Toggle Menu
   document.getElementById('year-filter-trigger').addEventListener('click', (e) => {
     e.stopPropagation();
     menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
   });
 
+  // Handle Selection
   window.selectYear = function(y) {
     monthFilter = y;
     label.textContent = y;
     menu.style.display = 'none';
     if(document.getElementById('bp-period')) document.getElementById('bp-period').textContent = y;
-    currentPage=1;
+    
+    renderYearMenu(); // Re-draw the menu to instantly move the highlight/checkmark!
+    
+    currentPage = 1;
     renderAll();
   };
 
+  // Close on outside click
   document.addEventListener('click', e => {
     if (wrap && !wrap.contains(e.target) && menu) menu.style.display = 'none';
   });
