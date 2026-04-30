@@ -514,7 +514,12 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
 
     <div class="breakdown-panel" id="breakdown-panel">
       <div class="bp-hdr">
-        <div class="bp-ttl">Expense Breakdown</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="bp-ttl" id="bp-ttl">Income Breakdown</div>
+          <button id="bp-flip-btn" style="background:var(--surface2); border:1.5px solid var(--border); width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--tx2); transition:all .4s cubic-bezier(.34,1.56,.64,1);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="17 11 21 7 17 3"/><line x1="21" y1="7" x2="9" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="15" y1="17" x2="3" y2="17"/></svg>
+          </button>
+        </div>
         <span class="bp-period" id="bp-period">All time</span>
       </div>
       <div id="bp-body"><div style="text-align:center;padding:32px;color:var(--tx3);font-size:.85rem">No data yet</div></div>
@@ -537,11 +542,13 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
       </button>
     </div>
     <div class="type-toggle">
-      <button type="button" id="btn-inc" class="type-btn">
+      <!-- Income gets the active-inc class by default -->
+      <button type="button" id="btn-inc" class="type-btn active-inc">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
         Income (+)
       </button>
-      <button type="button" id="btn-exp" class="type-btn active-exp">
+      <!-- Expense loses its active class -->
+      <button type="button" id="btn-exp" class="type-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
         Expense (-)
       </button>
@@ -679,9 +686,22 @@ const syncEl = document.getElementById('sync-status');
 let CU        = { uid:null, role:'staff', companyId:null, name:'Staff', isPremium:false, ownerId:null };
 let allData=[]; let catFilter=''; let searchVal=''; let monthFilter = new Date().getFullYear().toString();
 let currentPage=1; const PER_PAGE=10;
-let catExpanded=false; let panelOpen=false; let expType='expense';
+let catExpanded=false; let panelOpen=false; let expType='income'; let bpType='income';
 let ddOpen=false; let appealSent=false;
 
+document.getElementById('bp-flip-btn').addEventListener('click', function() {
+  bpType = bpType === 'income' ? 'expense' : 'income';
+  
+  // Rotate the icon for a clean physical flip effect
+  this.style.transform = bpType === 'income' ? 'rotate(0deg)' : 'rotate(180deg)';
+  this.style.color = bpType === 'income' ? 'var(--green)' : 'var(--red)';
+  
+  // Update the title
+  document.getElementById('bp-ttl').textContent = bpType === 'income' ? 'Income Breakdown' : 'Expense Breakdown';
+  
+  renderBreakdown();
+});
+  
 function buildDropdown() {
   const dd  = document.getElementById('cat-picker-dd');
   const cur = document.getElementById('exp-category').value;
@@ -1296,15 +1316,16 @@ function renderList(){
 }
 
 function renderBreakdown(){
-  const expOnly = allData.filter(e => {
-    if (e.parsedType === 'income') return false;
+  // Filter based on whether the user is looking at Income or Expense
+  const targetData = allData.filter(e => {
+    if (e.parsedType !== bpType) return false;
     if (monthFilter && String(getDate(e).getFullYear()) !== monthFilter) return false;
     return true;
   });
 
   const groups = {};
   CATS.forEach(c => groups[c.v] = 0);
-  expOnly.forEach(e => { groups[e.category] = (groups[e.category] || 0) + (Number(e.amount) || 0); });
+  targetData.forEach(e => { groups[e.category] = (groups[e.category] || 0) + (Number(e.amount) || 0); });
 
   const total = Object.values(groups).reduce((s,v) => s + v, 0) || 1;
   const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
@@ -1352,7 +1373,7 @@ function renderBreakdown(){
         <div class="cat-bar-bg">
           <div class="cat-bar-fill" style="width:${pct}%; background:${color}; height:100%; border-radius:99px;"></div>
         </div>
-        <div class="cat-pct">${pct}% of expenses</div>
+        <div class="cat-pct">${pct}% of ${bpType}</div>
       </div>
     </div>`;
   }).join('');
