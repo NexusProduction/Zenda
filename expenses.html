@@ -266,7 +266,8 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
 .save-btn:active{transform:scale(.97)}
 .save-btn:disabled{opacity:.5;cursor:not-allowed}
 
-.save-btn.success-state { box-shadow: inset 480px 0 0 0 var(--green) !important; transform: none !important; color: #fff !important; pointer-events: none; opacity: 1 !important; }
+/* Clean, glitch-free success animation */
+.save-btn.success-state { background: var(--green) !important; color: #fff !important; transform: none !important; pointer-events: none; opacity: 1 !important; box-shadow: 0 8px 24px rgba(22, 163, 74, 0.25) !important; transition: all 0.3s ease; }
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block;vertical-align:middle}
 
@@ -512,7 +513,7 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
     </div>
     <div class="fg">
       <label>Description</label>
-      <input type="text" id="exp-desc" class="fi" placeholder="Enter details (5-20 chars)" minlength="5" maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')">
+      <input type="text" id="exp-amount" class="fi amount-inp" placeholder="0" inputmode="numeric" oninput="window.checkAmountLimit(this)">
     </div>
 
     <div class="fg">
@@ -845,7 +846,7 @@ document.getElementById('btn-exp').addEventListener('click',()=>setType('expense
 document.getElementById('btn-inc').addEventListener('click',()=>setType('income'));
 
 document.getElementById('save-btn').addEventListener('click',async function(){
-  const amount=parseInt(document.getElementById('exp-amount').value, 10);
+  const amount=parseInt(document.getElementById('exp-amount').value.replace(/,/g, ''), 10);
   const desc=document.getElementById('exp-desc').value.trim();
   const cat=document.getElementById('exp-category').value;  
   const payment=document.getElementById('exp-payment').value;
@@ -927,9 +928,19 @@ document.getElementById('save-btn').addEventListener('click',async function(){
 window.checkAmountLimit = function(input) {
   const btn = document.getElementById('save-btn');
   const errBox = document.getElementById('form-error');
-  const valLength = input.value.split('.')[0].length; 
+  
+  // 1. Strip everything that isn't a number
+  let rawValue = input.value.replace(/[^0-9]/g, ''); 
 
-  if (valLength > 10) {
+  // 2. Format with Indian Rupee commas (e.g., 1,00,000)
+  if (rawValue) {
+    input.value = Number(rawValue).toLocaleString('en-IN');
+  } else {
+    input.value = '';
+  }
+
+  // 3. Check the length limit (using raw value)
+  if (rawValue.length > 10) {
     input.style.borderColor = 'var(--red)';
     input.style.color = 'var(--red)';
     input.style.backgroundColor = 'var(--redbg)';
