@@ -158,7 +158,14 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
 
 /* Desktop Flex Limits */
 .exp-info { flex: 1 1 0; min-width: 0; padding-right: 16px; display: flex; flex-direction: column; gap: 5px; }
-.exp-desc { font-family: var(--f); font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--tx1); }
+.exp-desc { font-family: var(--f-hd); font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--tx1); }
+/* New Creator & Deleted Styles */
+.exp-creator { font-size: 0.75rem; font-weight: 600; color: var(--tx3); margin-left: 6px; font-style: italic; }
+.exp-row.is-deleted { opacity: 0.55; filter: grayscale(100%); pointer-events: none; }
+.exp-row.is-deleted .exp-amt { text-decoration: line-through; color: var(--tx2) !important; }
+.deleted-meta { font-size: 0.75rem; color: #B91C1C; font-weight: 700; margin-top: 6px; display: block; white-space: normal; line-height: 1.4; }
+.del-inp { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f); font-size: 0.95rem; margin-bottom: 4px; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+.del-inp:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--redbg); }
 .exp-meta { display: flex; align-items: center; gap: 6px; font-family: var(--f); font-size: 0.8rem; font-weight: 600; color: var(--tx2); }
 .exp-cat-pill { padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; }
 
@@ -644,15 +651,20 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
   </div>
 </div>
 <div class="modal-overlay" id="delete-modal">
-  <div class="modal" style="max-width: 340px; text-align: center; padding: 32px 24px; border-radius: 24px; margin: auto;">
+  <div class="modal" style="max-width: 360px; text-align: center; padding: 32px 24px; border-radius: 24px; margin: auto;">
     <div style="width: 56px; height: 56px; background: #FEF2F2; color: #DC2626; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>
     </div>
-    <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--tx1); margin-bottom: 8px; font-family: var(--f);">Delete Event?</h3>
-    <p style="font-size: .95rem; color: var(--tx2); margin-bottom: 24px; font-family: var(--f); line-height: 1.5;">This will delete the event for everyone. Are you sure?</p>
-    <div style="display: flex; gap: 12px;">
-      <button onclick="closeDeleteModal()" style="flex: 1; padding: 12px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f); font-size: 1rem; font-weight: 700; color: var(--tx1); cursor: pointer; transition: background .2s;">Cancel</button>
-      <button id="confirm-delete-btn" style="flex: 1; padding: 12px; background: #DC2626; border: none; border-radius: 12px; font-family: var(--f); font-size: 1rem; font-weight: 700; color: #fff; cursor: pointer; transition: all .2s; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);">Delete</button>
+    <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--tx1); margin-bottom: 8px; font-family: var(--f-hd);">Delete Record?</h3>
+    <p style="font-size: .9rem; color: var(--tx2); margin-bottom: 16px; font-family: var(--f); line-height: 1.5;">This will void the transaction. Please provide a reason below.</p>
+    
+    <!-- Security Input: Alphanumeric only -->
+    <input type="text" id="delete-reason-inp" class="del-inp" placeholder="Reason (min 10 letters/numbers)" oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')">
+    <div id="del-error" style="color: #DC2626; font-size: 0.8rem; font-weight: 700; margin-bottom: 16px; display: none;">Must be at least 10 characters.</div>
+    
+    <div style="display: flex; gap: 12px; margin-top: 16px;">
+      <button onclick="closeDeleteModal()" style="flex: 1; padding: 12px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f-hd); font-size: 1rem; font-weight: 700; color: var(--tx1); cursor: pointer; transition: background .2s;">Cancel</button>
+      <button id="confirm-delete-btn" style="flex: 1; padding: 12px; background: #DC2626; border: none; border-radius: 12px; font-family: var(--f-hd); font-size: 1rem; font-weight: 700; color: #fff; cursor: pointer; transition: all .2s; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);">Void It</button>
     </div>
   </div>
 </div>
@@ -664,7 +676,7 @@ import { getCurrentUser } from './auth.js';
 import { addNotification } from './notifications.js';
 import {
   collection, query, where, onSnapshot,
-  addDoc, deleteDoc, doc, getDoc, serverTimestamp
+  addDoc, deleteDoc, doc, getDoc, serverTimestamp, updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const CATS = [
@@ -1057,22 +1069,43 @@ let deleteTargetId = null;
 window.delExp = function(id){
   deleteTargetId = id;
   document.getElementById('delete-modal').classList.add('open');
+  document.getElementById('delete-reason-inp').focus();
 };
 window.closeDeleteModal = function(){
   deleteTargetId = null;
   document.getElementById('delete-modal').classList.remove('open');
+  document.getElementById('delete-reason-inp').value = '';
+  document.getElementById('delete-reason-inp').style.borderColor = '';
+  document.getElementById('del-error').style.display = 'none';
 };
 
 document.getElementById('confirm-delete-btn').addEventListener('click', async function(){
   if(!deleteTargetId) return;
+  const reasonInp = document.getElementById('delete-reason-inp');
+  const reason = reasonInp.value.trim();
+  const errBox = document.getElementById('del-error');
+
+  // Exact validation: Min 10 characters required
+  if(reason.length < 10) {
+    reasonInp.style.borderColor = 'var(--red)';
+    errBox.style.display = 'block';
+    return;
+  }
+
   this.innerHTML='<span class="spinner"></span>';
   try{
-    await deleteDoc(doc(db,'expenses',deleteTargetId));
-    toast('Event deleted', 'success');
+    // Soft Delete: Instead of erasing it, we flag it as deleted with the reason!
+    await updateDoc(doc(db,'expenses',deleteTargetId), {
+      isDeleted: true,
+      deletedBy: CU.name,
+      deleteReason: reason,
+      deletedAt: serverTimestamp()
+    });
+    toast('Record successfully voided', 'success');
   }catch{
-    toast('Failed to delete','error');
+    toast('Failed to update record','error');
   }
-  this.innerHTML='Delete';
+  this.innerHTML='Void It';
   closeDeleteModal();
 });
 document.getElementById('delete-modal').addEventListener('click', e => {
@@ -1145,7 +1178,7 @@ function filtered(){return allData.filter(e=>{if(catFilter&&e.category!==catFilt
 function renderAll(){updateSummary();renderList();if(panelOpen)renderBreakdown();}
 
 function updateSummary(){
-  const list=filtered();let inc=0,exp=0;
+  const list=filtered().filter(e => !e.isDeleted);let inc=0,exp=0;
   list.forEach(e=>{if(e.parsedType==='income')inc+=Number(e.amount)||0;else exp+=Number(e.amount)||0;});
   
   // Appends .00 to the balance
@@ -1167,7 +1200,7 @@ function updateSummary(){
   document.getElementById('m-income').textContent='₹ '+fmt(inc)+'.00';
   document.getElementById('m-expense').textContent='₹ '+fmt(exp)+'.00';
 
-  const totalCount = allData.filter(e => !monthFilter || String(getDate(e).getFullYear()) === monthFilter).length;
+  const totalCount = allData.filter(e => (!monthFilter || String(getDate(e).getFullYear()) === monthFilter) && !e.isDeleted).length;
   const countEl = document.getElementById('ledger-count');
   if (countEl) countEl.textContent = `(${totalCount})`;
 }
@@ -1264,24 +1297,31 @@ function renderList(){
     const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const isInc=e.parsedType==='income';
     
-    const delBtn=(canDel||e.createdBy===CU.uid)?`<button class="del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'';
+    // Only show delete button if it's NOT already deleted, and user has permission
+    const delBtn=(!e.isDeleted && (canDel||e.createdBy===CU.uid))?`<button class="del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'';
     
-    // DYNAMIC CHECK: If 'All' is selected, show the pill. Otherwise, hide it!
-    const showCatPill = (catFilter === '') 
-      ? `<span class="exp-cat-pill" style="background:${bg};color:${color}">${esc(cat)}</span><span style="color:var(--tx3); margin: 0 4px;">·</span>` 
-      : '';
+    const showCatPill = (catFilter === '') ? `<span class="exp-cat-pill" style="background:${bg};color:${color}">${esc(cat)}</span><span style="color:var(--tx3); margin: 0 4px;">·</span>` : '';
+      
+    // Extracts just the first word of the user's name
+    const creatorName = e.createdByName ? e.createdByName.split(' ')[0] : 'User';
     
-    return `<div class="exp-row" style="animation-delay:${i*32}ms;" onclick="window.toggleRow(this, event)">
+    // Renders the permanent metadata if it was deleted
+    const deletedHTML = e.isDeleted ? `<span class="deleted-meta">Voided by ${esc(e.deletedBy)}<br>Reason: ${esc(e.deleteReason)}</span>` : '';
+    const rowClass = e.isDeleted ? 'exp-row is-deleted' : 'exp-row';
+
+    return `<div class="${rowClass}" style="animation-delay:${i*32}ms;" onclick="window.toggleRow(this, event)">
       <div class="exp-row-main">
         <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
         <div class="exp-info">
-          <div class="exp-desc">${esc(e.description)}</div>
+          <!-- Description + "by Name" Tag -->
+          <div class="exp-desc">${esc(e.description)} <span class="exp-creator">by ${esc(creatorName)}</span></div>
           <div class="exp-meta">
             ${showCatPill}
             <span>${ds}</span>
             <span style="color:var(--tx3); margin: 0 4px;">·</span>
             <span>${esc(e.paymentMethod||'Cash')}</span>
           </div>
+          ${deletedHTML}
         </div>
         <div class="exp-amt ${isInc?'pos':'neg'}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>
         ${delBtn}
@@ -1327,6 +1367,7 @@ function renderBreakdown(){
   // Filter based on whether the user is looking at Income or Expense
   const targetData = allData.filter(e => {
     if (e.parsedType !== bpType) return false;
+    if (e.isDeleted) return false; // Skips voided amounts!
     if (monthFilter && String(getDate(e).getFullYear()) !== monthFilter) return false;
     return true;
   });
