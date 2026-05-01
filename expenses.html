@@ -1470,22 +1470,30 @@ function renderBreakdown(){
   CATS.forEach(c => groups[c.v] = 0);
   targetData.forEach(e => { groups[e.category] = (groups[e.category] || 0) + (Number(e.amount) || 0); });
 
-  const total = Object.values(groups).reduce((s,v) => s + v, 0) || 1;
-  const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
+  const totalAmount = Object.values(groups).reduce((s,v) => s + v, 0);
   
   const smr = document.getElementById('show-more-row');
   const body = document.getElementById('bp-body');
   if (smr) smr.style.display = 'none';
 
-  // 1. FIRST: Measure current positions before making any changes
+  // 1. FIRST: Measure current positions (safely ignoring hidden 0-amount items to prevent the fly-in glitch!)
   const oldPos = {};
   [...body.children].forEach(el => {
-    if(el.dataset.cat) oldPos[el.dataset.cat] = el.getBoundingClientRect().top;
+    if(el.dataset.cat && el.offsetHeight > 0) {
+      oldPos[el.dataset.cat] = el.getBoundingClientRect().top;
+    }
   });
 
-  // 2. UPDATE: Render the new sorted list
+  // 2. EMPTY STATE: If there is absolutely no money, show the clean text and stop the animation
+  if (totalAmount === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--tx3);font-family:var(--f-hd);font-size:.95rem;font-weight:700;">No data available</div>';
+    return; 
+  }
+
+  // 3. UPDATE: Render the new sorted list
+  const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
   body.innerHTML = sorted.map(([cat,amt]) => {
-    const pct = Math.round(amt / total * 100);
+    const pct = Math.round(amt / totalAmount * 100);
     const color = CAT_COLOR[cat] || '#71717A';
     const bg = CAT_BG[cat] || '#F4F4F5';
     const svg = CAT_SVG[cat] || CAT_SVG['Miscellaneous'];
@@ -1502,7 +1510,6 @@ function renderBreakdown(){
     };
     const shortCat = SHORT_MAP[cat] || cat;
 
-    // Added data-cat here so we can track the elements
     return `<div class="cat-item${isZero}" data-cat="${cat}">
       <div class="cat-ico" style="background:${bg};color:${color}">${svg}</div>
       <div class="cat-details">
@@ -1521,22 +1528,19 @@ function renderBreakdown(){
     </div>`;
   }).join('');
 
-  // 3. PLAY: The FLIP Swap Animation (Slowed down to sync with Modal close)
+  // 4. PLAY: The FLIP Swap Animation (Only animates elements that are actually visible!)
   [...body.children].forEach(el => {
     const cat = el.dataset.cat;
-    if(oldPos[cat] !== undefined) {
+    if(oldPos[cat] !== undefined && el.offsetHeight > 0) {
       const newTop = el.getBoundingClientRect().top;
       const delta = oldPos[cat] - newTop;
       
       if(delta !== 0) {
-        // Instantly force it to its old visual position
         el.style.transform = `translateY(${delta}px)`;
         el.style.transition = 'none';
         
-        // Wait a microsecond, then smoothly animate to its new rightful place
         requestAnimationFrame(() => {
           el.style.transform = '';
-          // Changed from 0.5s to 1.2s so it finishes right as the modal disappears!
           el.style.transition = 'transform 1.2s cubic-bezier(0.22, 1, 0.36, 1)';
         });
       }
