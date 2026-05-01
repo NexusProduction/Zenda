@@ -1616,37 +1616,38 @@ document.addEventListener('click', e => {
     isAnimating = true;
 
     const topCard = document.getElementById('mc' + currentActiveIndex);
+    const newIndex = (currentActiveIndex + dir + 3) % 3;
     
-    // 1. Make the throw-away animation smoother and slightly slower
+    // 1. Force the thrown card to stay on top, then throw it off-screen
+    topCard.style.zIndex = '50';
     topCard.style.transition = 'transform 0.4s ease-out, opacity 0.3s ease';
     topCard.style.transform = `translateX(${dir > 0 ? '-120%' : '120%'}) scale(0.9) rotate(${dir > 0 ? '-10deg' : '10deg'})`;
     topCard.style.opacity = '0';
     
-    // 2. Wait 400ms for it to fly away
+    // 2. INSTANTLY update the classes of the deck so they glide up gracefully!
+    for(let i = 0; i < 3; i++) {
+      let pos = (i - newIndex + 3) % 3;
+      document.getElementById('mc' + i).className = `mobile-card mc-${pos}`;
+    }
+    
+    // Update dots instantly
+    document.querySelectorAll('.swipe-dot').forEach((dot, idx) => {
+      dot.classList.toggle('active', idx === newIndex);
+    });
+    
+    currentActiveIndex = newIndex;
+    
+    // 3. Wait for the flight to finish, then clean up the thrown card so it drops to the back
     setTimeout(() => {
-      currentActiveIndex = (currentActiveIndex + dir + 3) % 3;
-      
-      // KILL the transition instantly so it doesn't "rubber-band" back across the screen
       topCard.style.transition = 'none';
       topCard.style.transform = '';
       topCard.style.opacity = '';
-
-      // Reassign position classes (mc-0, mc-1, mc-2)
-      for(let i = 0; i < 3; i++) {
-        let pos = (i - currentActiveIndex + 3) % 3;
-        document.getElementById('mc' + i).className = `mobile-card mc-${pos}`;
-      }
+      topCard.style.zIndex = '';
       
-      // Light up the correct dot indicator
-      document.querySelectorAll('.swipe-dot').forEach((dot, idx) => {
-        dot.classList.toggle('active', idx === currentActiveIndex);
-      });
-      
-      // Force the browser to register the instant move, then restore normal CSS transitions!
-      void topCard.offsetWidth;
+      void topCard.offsetWidth; // Force browser to register the silent teleport
       topCard.style.transition = '';
       isAnimating = false;
-    }, 400); // Matched to the new 0.4s speed
+    }, 400); 
   };
 })();
 init();
