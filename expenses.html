@@ -1619,19 +1619,21 @@ document.addEventListener('click', e => {
 
     const topCard = document.getElementById('mc' + currentActiveIndex);
     
-    // 1. Physically throw the top card off-screen with a slight tilt
+    // 1. Make the throw-away animation smoother and slightly slower
+    topCard.style.transition = 'transform 0.4s ease-out, opacity 0.3s ease';
     topCard.style.transform = `translateX(${dir > 0 ? '-120%' : '120%'}) scale(0.9) rotate(${dir > 0 ? '-10deg' : '10deg'})`;
     topCard.style.opacity = '0';
     
-    // 2. Wait for it to fly away, then reshuffle the deck from underneath
+    // 2. Wait 400ms for it to fly away
     setTimeout(() => {
       currentActiveIndex = (currentActiveIndex + dir + 3) % 3;
       
-      // Clear inline styles so the CSS classes can safely take over again
+      // KILL the transition instantly so it doesn't "rubber-band" back across the screen
+      topCard.style.transition = 'none';
       topCard.style.transform = '';
       topCard.style.opacity = '';
 
-      // Reassign position classes (mc-0, mc-1, mc-2) based on the new active index
+      // Reassign position classes (mc-0, mc-1, mc-2)
       for(let i = 0; i < 3; i++) {
         let pos = (i - currentActiveIndex + 3) % 3;
         document.getElementById('mc' + i).className = `mobile-card mc-${pos}`;
@@ -1642,8 +1644,11 @@ document.addEventListener('click', e => {
         dot.classList.toggle('active', idx === currentActiveIndex);
       });
       
+      // Force the browser to register the instant move, then restore normal CSS transitions!
+      void topCard.offsetWidth;
+      topCard.style.transition = '';
       isAnimating = false;
-    }, 250); // Matches the CSS transition time
+    }, 400); // Matched to the new 0.4s speed
   };
 })();
 init();
