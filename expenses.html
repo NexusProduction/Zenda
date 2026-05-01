@@ -426,7 +426,9 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
   .mob-only { display: inline !important; }
   .desk-only { display: none !important; }
 }
-
+/* Faded Permission Button Styling */
+.del-btn.disabled-btn { background: #F4F4F5; color: #A1A1AA; box-shadow: none; }
+.exp-row:hover .del-btn.disabled-btn:hover { background: #E4E4E7; color: #71717A; transform: translateY(-50%) scale(1); cursor: pointer; }
 </style>
 </head>
 <body data-state="loading">
@@ -669,6 +671,24 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
       <button id="confirm-delete-btn" style="flex: 1; padding: 12px; background: #DC2626; border: none; border-radius: 12px; font-family: var(--f-hd); font-size: 1rem; font-weight: 700; color: #fff; cursor: pointer; transition: all .2s; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);">Delete</button>
     </div>
   </div>
+  <!-- PERMISSION DENIED MODAL -->
+<div class="modal-overlay" id="permission-modal">
+  <div class="modal" style="width: 90%; max-width: 360px; text-align: center; padding: 32px 24px; border-radius: 24px; position: relative;">
+    
+    <!-- Top Right Close Button -->
+    <button onclick="closePermissionModal()" style="position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; background: var(--surface2); border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--tx2); transition: all .18s;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+
+    <!-- Gray Lock Icon -->
+    <div style="width: 56px; height: 56px; background: #F4F4F5; color: #52525B; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    
+    <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--tx1); margin-bottom: 8px; font-family: var(--f-hd);">Permission Denied</h3>
+    <p id="permission-msg" style="font-size: .9rem; color: var(--tx2); margin-bottom: 0; font-family: var(--f); line-height: 1.5;">This is assigned by User. You can't delete it.</p>
+  </div>
+</div>
 </div>
 <div id="toast-container"></div>
 
@@ -1080,6 +1100,12 @@ window.closeDeleteModal = function(){
   document.getElementById('delete-reason-inp').style.borderColor = '';
   document.getElementById('del-error').style.display = 'none';
 };
+  window.showPermissionModal = function(name) {
+  document.getElementById('permission-msg').textContent = `This is assigned by ${name}. You can't delete it.`;
+  document.getElementById('permission-modal').classList.add('open');
+};
+window.closePermissionModal = () => document.getElementById('permission-modal').classList.remove('open');
+document.getElementById('permission-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closePermissionModal(); });
 
 document.getElementById('confirm-delete-btn').addEventListener('click', async function(){
   if(!deleteTargetId) return;
@@ -1299,15 +1325,23 @@ function renderList(){
     const cat=e.category||'Miscellaneous',color=CAT_COLOR[cat]||'#71717A',bg=CAT_BG[cat]||'#F4F4F5',svg=CAT_SVG[cat]||CAT_SVG['Miscellaneous'];
     const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const isInc=e.parsedType==='income';
+    const creatorName = e.createdByName ? e.createdByName.split(' ')[0] : 'User';
     
-    // SECURITY: ONLY the user who assigned/created the expense can delete it
-    const delBtn=(!e.isDeleted && e.createdBy===CU.uid)?`<button class="del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'';
+    // DEL BTN LOGIC: Red if you own it, Faded Gray if someone else owns it
+    let delBtn = '';
+    if (!e.isDeleted) {
+      if (e.createdBy === CU.uid) {
+        // User owns it: Red Active Button
+        delBtn = `<button class="del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`;
+      } else {
+        // Someone else owns it: Faded Gray Button linking to Permission Modal
+        delBtn = `<button class="del-btn disabled-btn" onclick="event.stopPropagation(); window.showPermissionModal('${esc(creatorName)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`;
+      }
+    }
     
     const showCatPill = (catFilter === '') ? `<span class="exp-cat-pill" style="background:${bg};color:${color}">${esc(cat)}</span><span style="color:var(--tx3); margin: 0 4px;">·</span>` : '';
       
-    const creatorName = e.createdByName ? e.createdByName.split(' ')[0] : 'User';
-    
-   // Get the exact date it was deleted (Time removed for a cleaner look)
+    // Get the exact date it was deleted
     let delDateStr = ds;
     if (e.deletedAt) {
       const dObj = typeof e.deletedAt.toDate === 'function' ? e.deletedAt.toDate() : new Date(e.deletedAt);
@@ -1316,7 +1350,6 @@ function renderList(){
 
     let infoHTML = '';
     if (e.isDeleted) {
-      // IF DELETED: Text uses --tx2 for better visibility, opacity is handled by CSS
       infoHTML = `
         <div style="display: flex; flex-direction: column; gap: 2px;">
           <div class="exp-desc">
@@ -1332,9 +1365,12 @@ function renderList(){
         </div>
       `;
     } else {
-      // IF NORMAL: Clean gray tag without overriding inline styles
+      // NORMAL ROW: Wrapped Description in flex-truncation so long text NEVER overlaps the amount!
       infoHTML = `
-        <div class="exp-desc">${esc(e.description)} <span class="exp-creator">by <span style="font-family: var(--f-hd); font-weight: 800;">${esc(creatorName)}</span></span></div>
+        <div class="exp-desc" style="display: flex; align-items: center; max-width: 100%;">
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto;">${esc(e.description)}</span> 
+          <span class="exp-creator" style="font-style: normal; font-weight: 600; flex-shrink: 0; margin-left: 6px;">by <span style="font-family: var(--f-hd); font-weight: 800;">${esc(creatorName)}</span></span>
+        </div>
         <div class="exp-meta">
           ${showCatPill}
           <span>${ds}</span>
@@ -1352,7 +1388,6 @@ function renderList(){
         <div class="exp-info">
           ${infoHTML}
         </div>
-        <!-- Amount stays safely on the right side -->
         <div class="exp-amt ${isInc?'pos':'neg'}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>
         ${delBtn}
       </div>
