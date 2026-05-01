@@ -1323,12 +1323,17 @@ function renderList(){
     const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const isInc=e.parsedType==='income';
     
-    // DYNAMIC NAME FIX: If the current user did this action, ALWAYS use their freshest CU.name!
+    // 1. LATEST CREATOR NAME
     const creatorNameRaw = (e.createdBy === CU.uid) ? CU.name : (e.createdByName || 'User');
     const creatorName = creatorNameRaw.split(' ')[0];
     
-    // Same for deleted items—if the IDs match, use the fresh name, otherwise use the snapshot.
-    const actualDeletedBy = (e.deletedById === CU.uid) ? CU.name : (e.deletedBy || 'User');
+    // 2. LATEST DELETER NAME (With Retroactive Fix for Old Records!)
+    let actualDeletedBy = e.deletedBy || 'User';
+    if (e.deletedById === CU.uid) {
+      actualDeletedBy = CU.name; // For records deleted recently
+    } else if (!e.deletedById && e.createdBy === CU.uid && e.deletedBy === e.createdByName) {
+      actualDeletedBy = CU.name; // Fixes old records deleted before we tracked the ID!
+    }
     
     // DEL BTN LOGIC: Red if you own it, Faded Gray if someone else owns it
     let delBtn = '';
@@ -1353,7 +1358,6 @@ function renderList(){
 
     let infoHTML = '';
     if (e.isDeleted) {
-      // IF DELETED: Inject actualDeletedBy here!
       infoHTML = `
         <div style="display: flex; flex-direction: column; gap: 2px;">
           <div class="exp-desc">
@@ -1369,7 +1373,7 @@ function renderList(){
         </div>
       `;
     } else {
-      // NORMAL ROW: Inject creatorName here!
+      // NORMAL ROW: Wrapped Description in flex-truncation so long text NEVER overlaps the amount!
       infoHTML = `
         <div class="exp-desc" style="display: flex; align-items: center; max-width: 100%;">
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto;">${esc(e.description)}</span> 
