@@ -1476,7 +1476,7 @@ function renderBreakdown(){
   const body = document.getElementById('bp-body');
   if (smr) smr.style.display = 'none';
 
-  // 1. FIRST: Measure current positions (safely ignoring hidden 0-amount items to prevent the fly-in glitch!)
+  // 1. FIRST: Measure current positions (safely ignoring hidden 0-amount items)
   const oldPos = {};
   [...body.children].forEach(el => {
     if(el.dataset.cat && el.offsetHeight > 0) {
@@ -1484,15 +1484,15 @@ function renderBreakdown(){
     }
   });
 
-  // 2. EMPTY STATE: If there is absolutely no money, show the clean text and stop the animation
+  // 2. EMPTY STATE: Animated entry for the "No data available" text
   if (totalAmount === 0) {
-    body.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--tx3);font-family:var(--f-hd);font-size:.95rem;font-weight:700;">No data available</div>';
+    body.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--tx3);font-family:var(--f-hd);font-size:.95rem;font-weight:700; animation: rowIn 0.4s cubic-bezier(0.22,1,0.36,1) both;">No data available</div>';
     return; 
   }
 
-  // 3. UPDATE: Render the new sorted list
+  // 3. UPDATE: Render the new sorted list with Cascading Delay Animations!
   const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
-  body.innerHTML = sorted.map(([cat,amt]) => {
+  body.innerHTML = sorted.map(([cat,amt], index) => { // <-- Index added here to calculate delays
     const pct = Math.round(amt / totalAmount * 100);
     const color = CAT_COLOR[cat] || '#71717A';
     const bg = CAT_BG[cat] || '#F4F4F5';
@@ -1510,7 +1510,8 @@ function renderBreakdown(){
     };
     const shortCat = SHORT_MAP[cat] || cat;
 
-    return `<div class="cat-item${isZero}" data-cat="${cat}">
+    // Added style with `rowIn` animation and delayed based on its position in the list
+    return `<div class="cat-item${isZero}" data-cat="${cat}" style="animation: rowIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: ${index * 35}ms;">
       <div class="cat-ico" style="background:${bg};color:${color}">${svg}</div>
       <div class="cat-details">
         <div class="cat-top">
@@ -1528,10 +1529,16 @@ function renderBreakdown(){
     </div>`;
   }).join('');
 
-  // 4. PLAY: The FLIP Swap Animation (Only animates elements that are actually visible!)
+  // 4. PLAY: The FLIP Swap Animation
   [...body.children].forEach(el => {
     const cat = el.dataset.cat;
+    
+    // If the item ALREADY existed on the screen...
     if(oldPos[cat] !== undefined && el.offsetHeight > 0) {
+      
+      // KILL the pop-in animation so it doesn't fight the glide!
+      el.style.animation = 'none'; 
+      
       const newTop = el.getBoundingClientRect().top;
       const delta = oldPos[cat] - newTop;
       
