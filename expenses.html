@@ -651,20 +651,20 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
   </div>
 </div>
 <div class="modal-overlay" id="delete-modal">
-  <div class="modal" style="max-width: 360px; text-align: center; padding: 32px 24px; border-radius: 24px; margin: auto;">
-    <div style="width: 56px; height: 56px; background: #FEF2F2; color: #DC2626; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>
+  <div class="modal" style="width: 90%; max-width: 320px; text-align: center; padding: 28px 24px; border-radius: 20px;">
+    <div style="width: 52px; height: 52px; background: #FEF2F2; color: #DC2626; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>
     </div>
-    <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--tx1); margin-bottom: 8px; font-family: var(--f-hd);">Delete Record?</h3>
-    <p style="font-size: .9rem; color: var(--tx2); margin-bottom: 16px; font-family: var(--f); line-height: 1.5;">This will void the transaction. Please provide a reason below.</p>
+    <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--tx1); margin-bottom: 8px; font-family: var(--f-hd);">Delete Record?</h3>
+    <p style="font-size: .85rem; color: var(--tx2); margin-bottom: 16px; font-family: var(--f); line-height: 1.5;">This will void the transaction. Please provide a reason below.</p>
     
-    <!-- Security Input: Alphanumeric only -->
-    <input type="text" id="delete-reason-inp" class="del-inp" placeholder="Reason (min 10 letters/numbers)" oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')">
-    <div id="del-error" style="color: #DC2626; font-size: 0.8rem; font-weight: 700; margin-bottom: 16px; display: none;">Must be at least 10 characters.</div>
+    <!-- Security Input: Characters & Numbers only -->
+    <input type="text" id="delete-reason-inp" class="del-inp" placeholder="Reason (min 10 chars)" oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')" style="width: 100%; box-sizing: border-box; text-align: center;">
+    <div id="del-error" style="color: #DC2626; font-size: 0.75rem; font-weight: 700; margin-bottom: 16px; display: none;">Must be at least 10 characters.</div>
     
-    <div style="display: flex; gap: 12px; margin-top: 16px;">
-      <button onclick="closeDeleteModal()" style="flex: 1; padding: 12px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f-hd); font-size: 1rem; font-weight: 700; color: var(--tx1); cursor: pointer; transition: background .2s;">Cancel</button>
-      <button id="confirm-delete-btn" style="flex: 1; padding: 12px; background: #DC2626; border: none; border-radius: 12px; font-family: var(--f-hd); font-size: 1rem; font-weight: 700; color: #fff; cursor: pointer; transition: all .2s; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);">Void It</button>
+    <div style="display: flex; gap: 10px; margin-top: 16px;">
+      <button onclick="closeDeleteModal()" style="flex: 1; padding: 10px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; font-family: var(--f-hd); font-size: .9rem; font-weight: 700; color: var(--tx1); cursor: pointer; transition: background .2s;">Cancel</button>
+      <button id="confirm-delete-btn" style="flex: 1; padding: 10px; background: #DC2626; border: none; border-radius: 10px; font-family: var(--f-hd); font-size: .9rem; font-weight: 700; color: #fff; cursor: pointer; transition: all .2s; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);">Void It</button>
     </div>
   </div>
 </div>
@@ -1297,32 +1297,53 @@ function renderList(){
     const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const isInc=e.parsedType==='income';
     
-    // Only show delete button if it's NOT already deleted, and user has permission
-    const delBtn=(!e.isDeleted && (canDel||e.createdBy===CU.uid))?`<button class="del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'';
+    // SECURITY: ONLY the user who assigned/created the expense can delete it
+    const delBtn=(!e.isDeleted && e.createdBy===CU.uid)?`<button class="del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`:'';
     
     const showCatPill = (catFilter === '') ? `<span class="exp-cat-pill" style="background:${bg};color:${color}">${esc(cat)}</span><span style="color:var(--tx3); margin: 0 4px;">·</span>` : '';
       
-    // Extracts just the first word of the user's name
     const creatorName = e.createdByName ? e.createdByName.split(' ')[0] : 'User';
     
-    // Renders the permanent metadata if it was deleted
-    const deletedHTML = e.isDeleted ? `<span class="deleted-meta">Voided by ${esc(e.deletedBy)}<br>Reason: ${esc(e.deleteReason)}</span>` : '';
+    // Get the exact date & time it was deleted
+    let delDateStr = ds;
+    if (e.deletedAt) {
+      const dObj = typeof e.deletedAt.toDate === 'function' ? e.deletedAt.toDate() : new Date(e.deletedAt);
+      delDateStr = dObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+    }
+
+    let infoHTML = '';
+    if (e.isDeleted) {
+      // IF DELETED: Show ONLY the Description, Deleted by, Date, and Reason
+      infoHTML = `
+        <div class="exp-desc" style="text-decoration: line-through; color: var(--tx2);">${esc(e.description)}</div>
+        <div class="deleted-meta" style="margin-top: 6px; font-weight: 600; color: #991B1B;">
+          Deleted by ${esc(e.deletedBy)}<br>
+          <span style="color: var(--tx3); font-size: 0.7rem; font-weight: 500;">${delDateStr}</span><br>
+          Reason: ${esc(e.deleteReason)}
+        </div>
+      `;
+    } else {
+      // IF NORMAL: Show the standard meta info
+      infoHTML = `
+        <div class="exp-desc">${esc(e.description)} <span class="exp-creator">by ${esc(creatorName)}</span></div>
+        <div class="exp-meta">
+          ${showCatPill}
+          <span>${ds}</span>
+          <span style="color:var(--tx3); margin: 0 4px;">·</span>
+          <span>${esc(e.paymentMethod||'Cash')}</span>
+        </div>
+      `;
+    }
+
     const rowClass = e.isDeleted ? 'exp-row is-deleted' : 'exp-row';
 
     return `<div class="${rowClass}" style="animation-delay:${i*32}ms;" onclick="window.toggleRow(this, event)">
       <div class="exp-row-main">
         <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
         <div class="exp-info">
-          <!-- Description + "by Name" Tag -->
-          <div class="exp-desc">${esc(e.description)} <span class="exp-creator">by ${esc(creatorName)}</span></div>
-          <div class="exp-meta">
-            ${showCatPill}
-            <span>${ds}</span>
-            <span style="color:var(--tx3); margin: 0 4px;">·</span>
-            <span>${esc(e.paymentMethod||'Cash')}</span>
-          </div>
-          ${deletedHTML}
+          ${infoHTML}
         </div>
+        <!-- Amount stays safely on the right side -->
         <div class="exp-amt ${isInc?'pos':'neg'}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>
         ${delBtn}
       </div>
