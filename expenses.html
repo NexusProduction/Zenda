@@ -83,7 +83,19 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
 
 .mobile-stack-wrap{display:block;position:relative;height:140px;margin-bottom:12px}
 @media(min-width:900px){.mobile-stack-wrap{display:none}}
-.mobile-card{position:absolute;top:0;left:0;right:0;height:125px;border-radius:22px;padding:20px 20px 30px 20px;will-change:transform;user-select:none;touch-action:pan-y; cursor:pointer; background:var(--surface);}
+/* Smoothly animates the card scaling and physical flying effect */
+.mobile-card { 
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, background 0.3s ease, box-shadow 0.3s ease !important; 
+}
+
+/* Base colors when cards are hiding in the back */
+.mobile-card[data-theme="inc"] .mc-val { color: var(--green); }
+.mobile-card[data-theme="exp"] .mc-val { color: var(--red); }
+.mobile-card[data-theme="bal"] .mc-val { color: var(--tx1); }
+
+/* Forces text to white ONLY when the card rotates to the very top (mc-0) */
+.mc-0 .mc-lbl { color: rgba(255,255,255,0.8) !important; }
+.mc-0 .mc-val { color: #ffffff !important; }
 .mc-0{background:var(--blue);border:none;box-shadow:0 10px 32px rgba(79,70,229,.28);z-index:3;transform:translateY(0) scale(1)}
 .mc-0 .mc-lbl{color:rgba(255,255,255,.7)}
 .mc-0 .mc-val{color:#fff;} 
@@ -470,9 +482,9 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
   </div>
 
   <div class="mobile-stack-wrap" id="mobile-stack">
-    <div class="mobile-card mc-0" id="mc0"><div class="mc-lbl">Net Balance</div><div class="mc-val" id="m-balance">&#x20B9;0.00</div></div>
-    <div class="mobile-card mc-1" id="mc1"><div class="mc-lbl">Total Income</div><div class="mc-val" id="m-income" style="color:var(--green)">&#x20B9;0.00</div></div>
-    <div class="mobile-card mc-2" id="mc2"><div class="mc-lbl">Total Expenses</div><div class="mc-val" id="m-expense" style="color:var(--red)">&#x20B9;0.00</div></div>
+    <div class="mobile-card mc-0" id="mc0" data-theme="bal"><div class="mc-lbl">Net Balance</div><div class="mc-val" id="m-balance">&#x20B9;0.00</div></div>
+    <div class="mobile-card mc-1" id="mc1" data-theme="inc"><div class="mc-lbl">Total Income</div><div class="mc-val" id="m-income">&#x20B9;0.00</div></div>
+    <div class="mobile-card mc-2" id="mc2" data-theme="exp"><div class="mc-lbl">Total Expenses</div><div class="mc-val" id="m-expense">&#x20B9;0.00</div></div>
   </div>
   <div class="swipe-dots">
     <div class="swipe-dot active" data-i="0"></div>
@@ -1218,7 +1230,6 @@ function updateSummary(){
   
   const mb=document.getElementById('m-balance');
   mb.textContent=fbal;
-  mb.style.setProperty('color', '#ffffff', 'important');
   
   // Appends .00 to mobile income/expense
   document.getElementById('m-income').textContent='₹ '+fmt(inc)+'.00';
@@ -1571,7 +1582,60 @@ document.addEventListener('click', e => {
     });
   }
 });
+// --- MOBILE SWIPE GESTURE ENGINE ---
+(function() {
+  const stackWrap = document.getElementById('mobile-stack');
+  if(!stackWrap) return;
+  
+  let startX = 0;
+  let currentActiveIndex = 0;
+  let isAnimating = false;
 
+  // Track where the finger lands
+  stackWrap.addEventListener('touchstart', e => {
+    startX = e.changedTouches[0].screenX;
+  }, {passive: true});
+
+  // Track where the finger lifts off to determine swipe direction
+  stackWrap.addEventListener('touchend', e => {
+    let endX = e.changedTouches[0].screenX;
+    if (startX - endX > 40) rotateCards(1);      // Swipe Left (Next)
+    else if (endX - startX > 40) rotateCards(-1); // Swipe Right (Prev)
+  });
+
+  window.rotateCards = function(dir) {
+    if(isAnimating) return;
+    isAnimating = true;
+
+    const topCard = document.getElementById('mc' + currentActiveIndex);
+    
+    // 1. Physically throw the top card off-screen with a slight tilt
+    topCard.style.transform = `translateX(${dir > 0 ? '-120%' : '120%'}) scale(0.9) rotate(${dir > 0 ? '-10deg' : '10deg'})`;
+    topCard.style.opacity = '0';
+    
+    // 2. Wait for it to fly away, then reshuffle the deck from underneath
+    setTimeout(() => {
+      currentActiveIndex = (currentActiveIndex + dir + 3) % 3;
+      
+      // Clear inline styles so the CSS classes can safely take over again
+      topCard.style.transform = '';
+      topCard.style.opacity = '';
+
+      // Reassign position classes (mc-0, mc-1, mc-2) based on the new active index
+      for(let i = 0; i < 3; i++) {
+        let pos = (i - currentActiveIndex + 3) % 3;
+        document.getElementById('mc' + i).className = `mobile-card mc-${pos}`;
+      }
+      
+      // Light up the correct dot indicator
+      document.querySelectorAll('.swipe-dot').forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === currentActiveIndex);
+      });
+      
+      isAnimating = false;
+    }, 250); // Matches the CSS transition time
+  };
+})();
 init();
 </script>
 </body>
