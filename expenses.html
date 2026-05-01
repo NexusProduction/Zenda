@@ -1118,10 +1118,11 @@ document.getElementById('confirm-delete-btn').addEventListener('click', async fu
 
   this.innerHTML='<span class="spinner"></span>';
   try{
-    // Soft Delete: Instead of erasing it, we flag it as deleted with the reason!
+    // Soft Delete: We now save the user's permanent ID alongside their name!
     await updateDoc(doc(db,'expenses',deleteTargetId), {
       isDeleted: true,
       deletedBy: CU.name,
+      deletedById: CU.uid, // <--- Add this new line
       deleteReason: reason,
       deletedAt: serverTimestamp()
     });
@@ -1321,7 +1322,13 @@ function renderList(){
     const cat=e.category||'Miscellaneous',color=CAT_COLOR[cat]||'#71717A',bg=CAT_BG[cat]||'#F4F4F5',svg=CAT_SVG[cat]||CAT_SVG['Miscellaneous'];
     const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const isInc=e.parsedType==='income';
-    const creatorName = e.createdByName ? e.createdByName.split(' ')[0] : 'User';
+    
+    // DYNAMIC NAME FIX: If the current user did this action, ALWAYS use their freshest CU.name!
+    const creatorNameRaw = (e.createdBy === CU.uid) ? CU.name : (e.createdByName || 'User');
+    const creatorName = creatorNameRaw.split(' ')[0];
+    
+    // Same for deleted items—if the IDs match, use the fresh name, otherwise use the snapshot.
+    const actualDeletedBy = (e.deletedById === CU.uid) ? CU.name : (e.deletedBy || 'User');
     
     // DEL BTN LOGIC: Red if you own it, Faded Gray if someone else owns it
     let delBtn = '';
@@ -1346,11 +1353,12 @@ function renderList(){
 
     let infoHTML = '';
     if (e.isDeleted) {
+      // IF DELETED: Inject actualDeletedBy here!
       infoHTML = `
         <div style="display: flex; flex-direction: column; gap: 2px;">
           <div class="exp-desc">
             <span style="text-decoration: line-through;">${esc(e.description)}</span> 
-            <span style="color: var(--tx2); font-size: 0.75rem; font-weight: 600; margin-left: 6px; letter-spacing: 0;">(Deleted by <span style="font-family: var(--f-hd); font-weight: 800;">${esc(e.deletedBy)}</span>)</span>
+            <span style="color: var(--tx2); font-size: 0.75rem; font-weight: 600; margin-left: 6px; letter-spacing: 0;">(Deleted by <span style="font-family: var(--f-hd); font-weight: 800;">${esc(actualDeletedBy)}</span>)</span>
           </div>
           <div style="font-size: 0.75rem; font-weight: 600; margin-top: 2px;">
             <span style="color: var(--tx2);">${delDateStr}</span>
@@ -1361,7 +1369,7 @@ function renderList(){
         </div>
       `;
     } else {
-      // NORMAL ROW: Wrapped Description in flex-truncation so long text NEVER overlaps the amount!
+      // NORMAL ROW: Inject creatorName here!
       infoHTML = `
         <div class="exp-desc" style="display: flex; align-items: center; max-width: 100%;">
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto;">${esc(e.description)}</span> 
