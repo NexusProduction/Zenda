@@ -1399,14 +1399,18 @@ function renderList(){
     }
 
     let infoHTML = '';
+    let accordionHTML = '';
+
     if (e.isDeleted) {
       infoHTML = `
-        <div style="display: flex; flex-direction: column; gap: 2px; width: 100%; min-width: 0;">
-          <div class="exp-desc" style="display: flex; align-items: center; max-width: 100%;">
-            <span style="text-decoration: line-through; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto;">${esc(e.description)}</span> 
-            <span style="color: var(--tx2); font-size: 0.75rem; font-weight: 600; margin-left: 6px; letter-spacing: 0; flex-shrink: 0;">(Deleted by <span style="font-family: var(--f-hd); font-weight: 800;">${esc(shortDeletedBy)}</span>)</span>
+        <div style="display: flex; flex-direction: column; min-width: 0; width: 100%;">
+          <div class="exp-desc" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-decoration: line-through;">
+            ${esc(e.description)}
           </div>
-          <div style="font-size: 0.75rem; font-weight: 600; margin-top: 2px; display: flex; align-items: center; width: 100%; min-width: 0;">
+          <div class="exp-creator" style="font-size: 0.75rem; font-weight: 600; margin-top: 3px; margin-left: 0;">
+            Deleted by <span style="font-family: var(--f-hd); font-weight: 800; color: #B91C1C;">${esc(shortDeletedBy)}</span>
+          </div>
+          <div class="hide-on-mobile" style="font-size: 0.75rem; font-weight: 600; margin-top: 6px; display: flex; align-items: center; width: 100%; min-width: 0;">
             <span style="color: var(--tx2); flex-shrink: 0;">${delDateStr}</span>
             <span style="color: var(--tx3); margin: 0 5px; flex-shrink: 0;">·</span>
             <span style="color: var(--tx1); font-weight: 700; flex-shrink: 0; margin-right: 4px;">Reason:</span> 
@@ -1414,18 +1418,49 @@ function renderList(){
           </div>
         </div>
       `;
-    } else {
-      // NORMAL ROW: Wrapped Description in flex-truncation so long text NEVER overlaps the amount!
-      infoHTML = `
-        <div class="exp-desc" style="display: flex; align-items: center; max-width: 100%;">
-          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto;">${esc(e.description)}</span> 
-          <span class="exp-creator" style="font-style: normal; font-weight: 600; flex-shrink: 0; margin-left: 6px;">by <span style="font-family: var(--f-hd); font-weight: 800;">${esc(creatorName)}</span></span>
+      accordionHTML = `
+        <div class="ed-item">
+          <span class="ed-lbl">Category</span>
+          <span class="ed-val" style="color:${color};">${esc(cat)}</span>
         </div>
-        <div class="exp-meta">
-          ${showCatPill}
-          <span>${ds}</span>
-          <span style="color:var(--tx3); margin: 0 4px;">·</span>
-          <span>${esc(e.paymentMethod||'Cash')}</span>
+        <div class="ed-item">
+          <span class="ed-lbl">Deleted On</span>
+          <span class="ed-val">${delDateStr}</span>
+        </div>
+        <div class="ed-item" style="grid-column: span 2;">
+          <span class="ed-lbl">Reason</span>
+          <span class="ed-val" style="color: #B91C1C; white-space: normal; overflow: visible;">${esc(e.deleteReason)}</span>
+        </div>
+      `;
+    } else {
+      infoHTML = `
+        <div style="display: flex; flex-direction: column; min-width: 0; width: 100%;">
+          <div class="exp-desc" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">
+            ${esc(e.description)}
+          </div>
+          <div class="exp-creator" style="font-size: 0.75rem; color: var(--tx2); font-weight: 600; margin-top: 3px; margin-left: 0;">
+            by <span style="font-family: var(--f-hd); font-weight: 800;">${esc(creatorName)}</span>
+          </div>
+          <div class="exp-meta hide-on-mobile" style="margin-top: 6px;">
+            ${showCatPill}
+            <span>${ds}</span>
+            <span style="color:var(--tx3); margin: 0 4px;">·</span>
+            <span>${esc(e.paymentMethod||'Cash')}</span>
+          </div>
+        </div>
+      `;
+      accordionHTML = `
+        <div class="ed-item">
+          <span class="ed-lbl">Category</span>
+          <span class="ed-val" style="color:${color};">${esc(cat)}</span>
+        </div>
+        <div class="ed-item">
+          <span class="ed-lbl">Payment</span>
+          <span class="ed-val">${esc(e.paymentMethod||'Cash')}</span>
+        </div>
+        <div class="ed-item" style="grid-column: span 2;">
+          <span class="ed-lbl">Date</span>
+          <span class="ed-val">${ds}</span>
         </div>
       `;
     }
@@ -1443,18 +1478,7 @@ function renderList(){
       </div>
 
       <div class="exp-details" onclick="event.stopPropagation();">
-        <div class="ed-item">
-          <span class="ed-lbl">Category</span>
-          <span class="ed-val" style="color:${color};">${esc(cat)}</span>
-        </div>
-        <div class="ed-item">
-          <span class="ed-lbl">Payment</span>
-          <span class="ed-val">${esc(e.paymentMethod||'Cash')}</span>
-        </div>
-        <div class="ed-item" style="grid-column: span 2;">
-          <span class="ed-lbl">Date</span>
-          <span class="ed-val">${ds}</span>
-        </div>
+        ${accordionHTML}
       </div>
     </div>`;
   }).join('');
