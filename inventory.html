@@ -950,6 +950,7 @@ async function init(){
     if (compSnap.exists()) {
       const compData = compSnap.data();
       CU.isPremium = compData.isPremium === true;
+      CU.ownerId = compData.ownerId; // <--- ADD THIS
       
       // Relock extra warehouses if subscription time has ended!
       if (CU.isPremium && compData.subscriptionExpiry) {
@@ -980,12 +981,19 @@ async function init(){
 
   setSyncBadge('ok','Connected');
   
-  // ONLY OWNER can add warehouses
-  const canAdd = CU.role === 'owner';
+ // ALLOW EVERYONE TO ADD OR REQUEST
   const addRow = document.getElementById('addWhRow');
-  if(addRow && !canAdd) addRow.style.display = 'none';
+  if (addRow) addRow.style.display = 'flex';
   const btnTop = document.getElementById('btnAddWhTop');
-  if(btnTop && !canAdd) btnTop.style.display = 'none';
+  if (btnTop) btnTop.style.display = 'inline-flex';
+
+  // Update the Modal text for Staff
+  if (CU.role !== 'owner') {
+    const modalBtn = document.querySelector('#m-wh .mok');
+    const modalSub = document.querySelector('#m-wh .msub');
+    if (modalBtn) modalBtn.textContent = 'Request Warehouse';
+    if (modalSub) modalSub.textContent = 'Send creation request to owner';
+  }
   
   showView('dash');
   loadWHs();
@@ -1040,7 +1048,7 @@ function renderWHs() {
   const mobileList = document.getElementById('whMobileList');
   const emptyEl = document.getElementById('whEmpty');
   const addRow = document.getElementById('addWhRow');
-  const canAdd = CU.role === 'owner'; // Only Owner
+  const canAdd = true; // Allow everyone
 
   pcList.innerHTML = '';
   mobileList.innerHTML = '';
@@ -1371,7 +1379,6 @@ window.addProduct=async function(){
 };
 function getConvRowsFixedDataFromAdd(){const rows=document.querySelectorAll('#addProdConvRows .conv-row-fixed');const convs=[];const seen=new Set();for(const row of rows){const mult=parseFloat(row.querySelector('.mult-inp').value);const altUnit=row.querySelector('.alt-unit-sel').value;if(seen.has(altUnit)||!mult||mult<=0||!altUnit)return null;seen.add(altUnit);convs.push({name:altUnit,ratio:mult});}return convs;}
 
-// ── WAREHOUSE MANAGEMENT ──
 window.createWH=async function(){
   // Premium Limit Check (1 Warehouse for Free users)
   if (!CU.isPremium && WHs.length >= 1) {
@@ -1383,15 +1390,46 @@ window.createWH=async function(){
     return;
   }
 
-  const name=document.getElementById('wn').value.trim();const loc=document.getElementById('wl').value.trim();const raw=document.getElementById('wc').value;const cat=raw==='other'?(document.getElementById('wcc').value.trim()||'Other'):raw;
-  if(!name||!loc){setMM('whMsg','⚠ Enter name and location.','err');return;}setMM('whMsg','Creating…','');
-  try{const cid=CU.companyId;await addDoc(collection(db,'godowns'),{name,location:loc,category:cat,companyId:cid,createdBy:CU.uid,createdAt:new Date().toISOString()});['wn','wl'].forEach(id=>document.getElementById(id).value='');document.getElementById('wc').value='general';window.closeM('m-wh');window.showToast('Warehouse created ✓','s');}catch(e){setMM('whMsg','❌ Failed: '+e.message,'err');}
-};
-window.prepDelWH=function(whId){if(CU.role!=='owner'){window.showToast('Only Owner can delete warehouses.','e');return;}const wh=WHs.find(w=>w.id===whId);window._delWhId=whId;document.getElementById('delWhSub').textContent=`Delete "${wh?.name||'this warehouse'}"?`;document.getElementById('delWhPw').value='';document.getElementById('delWhErr').textContent='';window.openM('m-del-wh');};
-window.openDelWH=function(){window.prepDelWH(curWH);};
-window.confirmDelWH=async function(){
-  const whId=window._delWhId||curWH;const pw=document.getElementById('delWhPw').value.trim();const errEl=document.getElementById('delWhErr');const btn=document.getElementById('delWhBtn');if(!pw){errEl.textContent='Enter password.';return;}btn.disabled=true;btn.textContent='Deleting…';
-  try{if(auth.currentUser)await reauthenticateWithCredential(auth.currentUser,EmailAuthProvider.credential(auth.currentUser.email,pw));const batch=writeBatch(db);const[ps,es]=await Promise.all([getDocs(query(collection(db,'products'),where('godownId','==',whId))),getDocs(query(collection(db,'entries'),where('godownId','==',whId)))]);ps.forEach(d=>batch.delete(d.ref));es.forEach(d=>batch.delete(d.ref));batch.delete(doc(db,'godowns',whId));await batch.commit();window.closeM('m-del-wh');showView('dash');curWH=null;window.showToast('Warehouse deleted.','');}catch(e){errEl.textContent=(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')?'Incorrect password.':'Failed.';}btn.disabled=false;btn.textContent='Delete Forever';
+  const name=document.getElementById('wn').value.trim();
+  const loc=document.getElementById('wl').value.trim();
+  const raw=document.getElementById('wc').value;
+  const cat=raw==='other'?(document.getElementById('wcc').value.trim()||'Other'):raw;
+  
+  if(!name||!loc){setMM('whMsg','⚠ Enter name and location.','err');return;}
+  
+  setMM('whMsg', CU.role === 'owner' ? 'Creating…' : 'Sending Request…', '');
+  
+  try {
+    const cid = CU.companyId;
+    
+    if (CU.role === 'owner') {
+      // 1. Direct Creation for Owners
+      await addDoc(collection(db,'godowns'),{name,location:loc,category:cat,companyId:cid,createdBy:CU.uid,createdAt:new Date().toISOString()});
+      window.showToast('Warehouse created ✓','s');
+    } else {
+      // 2. Notification Request for Staff
+      if (!CU.ownerId) throw new Error("Owner ID not found.");
+      
+      const notifRef = collection(db, 'users', CU.ownerId, 'notifications');
+      await addDoc(notifRef, {
+        type: 'warehouse_request',
+        message: `${CU.name} wants to add a new warehouse: "${name}"`,
+        warehouseData: { name: name, location: loc, category: cat, companyId: cid, createdBy: CU.uid },
+        actorId: CU.uid,
+        actorName: CU.name,
+        read: false,
+        status: 'pending',
+        createdAt: Date.now()
+      });
+      window.showToast('Request sent to Owner ✓','s');
+    }
+
+    ['wn','wl'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('wc').value='general';
+    window.closeM('m-wh');
+  } catch(e) {
+    setMM('whMsg','❌ Failed: '+e.message,'err');
+  }
 };
 
 // ── LOW STOCK MODAL ──
