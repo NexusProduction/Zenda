@@ -38,7 +38,38 @@ body { animation: appSwipeIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both; }
 
 /* ── GLOBAL FIXES & APPBAR ── */
 html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
-.appbar{background:rgba(255,255,255,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);height:60px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:200;box-shadow:var(--sh-xs)}
+/* 1. Update the .appbar class to be fixed and have a transition */
+.appbar {
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--bd);
+  height: 60px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: fixed; /* Stick to top */
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9999; /* Ensure it stays above everything */
+  box-shadow: var(--sh-xs);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* 2. Add this new class to handle the slide-up animation */
+.appbar-hidden {
+  transform: translateY(-100%);
+}
+
+/* 3. Update .cal-wrap to push content down so it isn't hidden under the fixed appbar */
+.cal-wrap {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+  margin-top: 60px; /* Offset the 60px fixed header */
+}
 .ab-left{display:flex;align-items:center;gap:14px;flex:1;}
 .ab-back{background:var(--sf);border:1.5px solid var(--bd);cursor:pointer;color:var(--tx2);display:flex;align-items:center;gap:6px;font-family:var(--fd);font-weight:700;font-size:.95rem;transition:all .15s;padding:6px 12px;border-radius:10px;}
 .ab-back:hover{background:var(--sf2);color:var(--tx1);border-color:var(--bd2);}
@@ -295,7 +326,7 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
 </head>
 <body>
 
-<div class="appbar">
+<div class="appbar" id="appbar">
   <div class="ab-left">
     <button class="ab-back" onclick="window.history.length>1?window.history.back():window.location.href='dashboard.html'">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -303,9 +334,6 @@ html,body{height:100%;overflow:hidden;width:100%;max-width:100vw;}
     </button>
     <div class="ab-divider"></div>
     <div class="ab-brand">
-      <div class="ab-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-      </div>
       Calendar
     </div>
   </div>
@@ -1137,7 +1165,35 @@ if(mobCalContainer) {
     if (distance > 120) navMonth(-1); 
   }, {passive: true});
 }
+/* ── APPBAR HIDE/SHOW ON SCROLL ── */
+const appbar = document.getElementById('appbar');
+let lastScrollY = 0;
 
+// Function to handle the show/hide logic
+function handleNavbarScroll(currentScrollY) {
+  if (!appbar) return;
+  if (currentScrollY > lastScrollY && currentScrollY > 60) {
+    // Scrolling down & past the header height
+    appbar.classList.add('appbar-hidden');
+  } else {
+    // Scrolling up
+    appbar.classList.remove('appbar-hidden');
+  }
+  lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
+}
+
+// 1. If you ever make the whole window scrollable:
+window.addEventListener('scroll', () => {
+  handleNavbarScroll(window.scrollY || document.documentElement.scrollTop);
+}, { passive: true });
+
+// 2. For your current layout (which scrolls inside specific containers like .mob-content):
+const mobContent = document.getElementById('mob-ev-content');
+if (mobContent) {
+  mobContent.addEventListener('scroll', (e) => {
+    handleNavbarScroll(e.target.scrollTop);
+  }, { passive: true });
+}
 </script>
 </body>
 </html>
