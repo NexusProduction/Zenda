@@ -1639,7 +1639,7 @@ function renderBreakdown(){
     };
     const shortCat = SHORT_MAP[cat] || cat;
 
-    // Added style with `rowIn` animation and delayed based on its position in the list
+    // Notice we inject width: 0% so the bar has room to grow, and store the real width in data-w!
     return `<div class="cat-item${isZero}" data-cat="${cat}" style="animation: rowIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: ${index * 35}ms;">
       <div class="cat-ico" style="background:${bg};color:${color}">${svg}</div>
       <div class="cat-details">
@@ -1651,14 +1651,21 @@ function renderBreakdown(){
           <span class="cat-val">₹${fmt(amt)}</span>
         </div>
         <div class="cat-bar-bg">
-          <div class="cat-bar-fill" style="width:${pct}%; background:${color}; height:100%; border-radius:99px;"></div>
+          <div class="cat-bar-fill" style="width: 0%; transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); background:${color}; height:100%; border-radius:99px;" data-w="${pct}%"></div>
         </div>
         <div class="cat-pct">${pct}% of ${bpType}</div>
       </div>
     </div>`;
   }).join('');
 
-  // 4. PLAY: The FLIP Swap Animation
+  // 4. TRIGGER BARS: Force the bars to animate from 0% to their target width smoothly
+  setTimeout(() => {
+    body.querySelectorAll('.cat-bar-fill').forEach(bar => {
+      bar.style.width = bar.dataset.w;
+    });
+  }, 10);
+
+  // 5. PLAY: The SNAPPY FLIP Swap Animation
   [...body.children].forEach(el => {
     const cat = el.dataset.cat;
     
@@ -1677,7 +1684,8 @@ function renderBreakdown(){
         
         requestAnimationFrame(() => {
           el.style.transform = '';
-          el.style.transition = 'transform 1.2s cubic-bezier(0.22, 1, 0.36, 1)';
+          // Accelerated from 1.2s to 0.4s for an instantly responsive swap!
+          el.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
         });
       }
     }
