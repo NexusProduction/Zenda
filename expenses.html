@@ -1412,9 +1412,12 @@ function renderList(){
         creatorNameRaw = CU.name; // You looking at your own record
     } else if (e.createdBy === CU.ownerId && CU.ownerName) {
         creatorNameRaw = CU.ownerName; // Staff looking at the Owner's record
-    } else if (creatorNameRaw.toLowerCase() === 'lala' || creatorNameRaw.toLowerCase() === 'vipul') {
-        // Legacy fallback for old records
-        creatorNameRaw = CU.role === 'owner' ? CU.name : (CU.ownerName || 'Owner'); 
+    } else {
+        // Aggressively catch old records even with spaces or weird formatting
+        const cLower = creatorNameRaw.trim().toLowerCase();
+        if (cLower.includes('lala') || cLower.includes('vipul')) {
+            creatorNameRaw = CU.role === 'owner' ? CU.name : (CU.ownerName || 'Owner'); 
+        }
     }
     const creatorName = creatorNameRaw.split(' ')[0];
     
@@ -1427,9 +1430,12 @@ function renderList(){
         actualDeletedByRaw = CU.ownerName;
     } else if (!e.deletedById && e.createdBy === CU.uid && (e.deletedBy === e.createdByName || e.deletedByName === e.createdByName)) {
         actualDeletedByRaw = CU.name;
-    } else if (actualDeletedByRaw.toLowerCase() === 'lala' || actualDeletedByRaw.toLowerCase() === 'vipul') {
-        // Ultimate fallback for old records deleted by the Owner before we tracked IDs!
-        actualDeletedByRaw = CU.role === 'owner' ? CU.name : (CU.ownerName || 'Owner');
+    } else {
+        // Aggressively catch old deleted records even with spaces or weird formatting
+        const dLower = actualDeletedByRaw.trim().toLowerCase();
+        if (dLower.includes('lala') || dLower.includes('vipul')) {
+            actualDeletedByRaw = CU.role === 'owner' ? CU.name : (CU.ownerName || 'Owner');
+        }
     }
     const shortDeletedBy = actualDeletedByRaw.split(' ')[0];
     
