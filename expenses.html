@@ -1412,18 +1412,24 @@ function renderList(){
         creatorNameRaw = CU.name; // You looking at your own record
     } else if (e.createdBy === CU.ownerId && CU.ownerName) {
         creatorNameRaw = CU.ownerName; // Staff looking at the Owner's record
+    } else if (creatorNameRaw.toLowerCase() === 'lala' || creatorNameRaw.toLowerCase() === 'vipul') {
+        // Legacy fallback for old records
+        creatorNameRaw = CU.role === 'owner' ? CU.name : (CU.ownerName || 'Owner'); 
     }
     const creatorName = creatorNameRaw.split(' ')[0];
     
     // 2. LATEST DELETER NAME (Dynamic & Live)
-    let actualDeletedByRaw = e.deletedBy || 'User';
+    let actualDeletedByRaw = e.deletedBy || e.deletedByName || 'User';
     
     if (e.deletedById === CU.uid) {
         actualDeletedByRaw = CU.name;
     } else if (e.deletedById === CU.ownerId && CU.ownerName) {
         actualDeletedByRaw = CU.ownerName;
-    } else if (!e.deletedById && e.createdBy === CU.uid && e.deletedBy === e.createdByName) {
+    } else if (!e.deletedById && e.createdBy === CU.uid && (e.deletedBy === e.createdByName || e.deletedByName === e.createdByName)) {
         actualDeletedByRaw = CU.name;
+    } else if (actualDeletedByRaw.toLowerCase() === 'lala' || actualDeletedByRaw.toLowerCase() === 'vipul') {
+        // Ultimate fallback for old records deleted by the Owner before we tracked IDs!
+        actualDeletedByRaw = CU.role === 'owner' ? CU.name : (CU.ownerName || 'Owner');
     }
     const shortDeletedBy = actualDeletedByRaw.split(' ')[0];
     
