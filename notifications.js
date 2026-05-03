@@ -103,10 +103,8 @@ export function renderNotifications(items, container) {
       `;
     } else if (item.type === 'warehouse_request') {
       actionButtons = `
-        <div style="display: flex; gap: 8px; margin-top: 12px;">
-            <button onclick="window.viewWarehouseReq('${item.id}')" style="background:#F4F5F8; color:#3D3F4A; border:1px solid #E2E3E9; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s;">View</button>
-            <button onclick="window.approveWarehouseReq('${item.id}', '${item.actorId}')" style="background:#059669; color:#fff; border:none; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s;">Approve</button>
-            <button onclick="window.declineWarehouseReq('${item.id}', '${item.actorId}')" style="background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s;">Decline</button>
+        <div style="margin-top: 12px;">
+            <button onclick="window.viewWarehouseReq('${item.id}')" style="width:100%; padding:8px 16px; background:#10B981; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.25); transition:all 0.2s;">Review Request →</button>
         </div>
       `;
     } else {
