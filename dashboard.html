@@ -2591,33 +2591,89 @@ import { db } from './firebase-config.js';
 import { collection, addDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// 1. VIEW LOGIC
+// 1. VIEW LOGIC (Big, Colorful, Premium Card)
 window.viewWarehouseReq = function(notifId) {
     const notif = window.pendingWarehouses[notifId];
     if(!notif || !notif.warehouseData) return;
     const data = notif.warehouseData;
+    
+    // Safely escape the requester's name
+    const requesterName = notif.actorName ? notif.actorName.replace(/</g, "&lt;").replace(/>/g, "&gt;") : 'Staff Member';
 
     const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:99999;';
+    overlay.id = `wh-modal-${notifId}`;
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:99999; animation: fadeIn 0.2s ease-out; padding: 16px;';
+    
     overlay.innerHTML = `
-        <div style="background:#fff; padding:24px; border-radius:16px; width:90%; max-width:340px; box-shadow:0 12px 40px rgba(0,0,0,0.2);">
-            <h3 style="margin-top:0; margin-bottom:16px; font-size:18px; font-family:'Plus Jakarta Sans', sans-serif;">Warehouse Details</h3>
-            <div style="font-size:14px; color:#3D3F4A; line-height:1.6;">
-                <p style="margin:8px 0;"><strong>Name:</strong> ${data.name}</p>
-                <p style="margin:8px 0;"><strong>Location:</strong> ${data.location}</p>
-                <p style="margin:8px 0;"><strong>Category:</strong> ${data.category}</p>
+        <div style="background:var(--bg-surface); border-radius:24px; width:100%; max-width:420px; box-shadow:0 24px 48px rgba(0,0,0,0.2); overflow:hidden; transform: scale(0.95); animation: toastIn 0.3s forwards;">
+            
+            <!-- Colorful Header -->
+            <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 32px 24px 40px; text-align: center; position: relative;">
+                <button onclick="this.closest('#wh-modal-${notifId}').remove()" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.2); border:none; width:32px; height:32px; border-radius:50%; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition: background 0.2s;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <div style="width: 72px; height: 72px; background: #fff; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
+                    🏭
+                </div>
+                <h3 style="margin:0; font-size:1.4rem; color:#fff; font-weight:800; font-family:'Plus Jakarta Sans', sans-serif; letter-spacing:-0.02em;">Warehouse Request</h3>
+                <p style="margin:6px 0 0; color:rgba(255,255,255,0.85); font-size:0.9rem; font-weight:600;">Requested by ${requesterName}</p>
             </div>
-            <button onclick="this.parentElement.parentElement.remove()" style="width:100%; margin-top:20px; padding:10px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer;">Close</button>
+            
+            <!-- Details Body -->
+            <div style="padding: 0 24px 24px; margin-top: -20px;">
+                <div style="background: var(--bg-surface); border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid var(--bd-color);">
+                    
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Warehouse Name</div>
+                        <div style="font-size:1.15rem; color:var(--tx-main); font-weight:800;">${data.name}</div>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Location</div>
+                        <div style="font-size:0.95rem; color:var(--tx-main); font-weight:600; display:flex; align-items:center; gap:8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            ${data.location}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Category</div>
+                        <div style="display:inline-block; background:var(--ac-light); color:var(--ac); padding:6px 12px; border-radius:8px; font-size:0.85rem; font-weight:700;">
+                            ${data.category}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="padding: 0 24px 24px; display:flex; gap:12px;">
+                <button onclick="window.declineWarehouseReq('${notifId}'); this.closest('#wh-modal-${notifId}').remove();" style="flex:1; padding:14px; background:var(--danger-light); color:var(--danger); border:1px solid rgba(255,59,48,0.2); border-radius:14px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;">Decline</button>
+                <button onclick="window.approveWarehouseReq('${notifId}'); this.closest('#wh-modal-${notifId}').remove();" style="flex:1; padding:14px; background:var(--success); color:#fff; border:none; box-shadow:0 4px 12px rgba(52,199,89,0.3); border-radius:14px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;">Approve</button>
+            </div>
         </div>
     `;
+    
+    // Close modal if clicking on the dark background
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+    
     document.body.appendChild(overlay);
 };
 
-// 2. APPROVE LOGIC
+// 2. APPROVE LOGIC (Using Zenda Toasts + Visual Removal)
 window.approveWarehouseReq = async function(notifId) {
     const notif = window.pendingWarehouses[notifId];
     if(!notif) return;
     const auth = getAuth();
+
+    // Find the notification card in the dropdown and animate it away instantly
+    const notifCard = document.querySelector(`.notif-card[data-id="${notifId}"]`);
+    if (notifCard) {
+        notifCard.classList.add('slide-left-out');
+        setTimeout(() => notifCard.remove(), 350);
+    }
 
     try {
         // A. Add to the godowns collection
@@ -2635,18 +2691,29 @@ window.approveWarehouseReq = async function(notifId) {
                 createdAt: Date.now()
             });
         }
-        alert("Warehouse approved and created!");
+        
+        // Trigger your custom green Zenda toast notification!
+        if (window.showToast) {
+            window.showToast("Warehouse approved and created!", "success");
+        }
     } catch(e) {
         console.error(e);
-        alert("Failed to approve warehouse.");
+        if (window.showToast) window.showToast("Failed to approve warehouse.", "error");
     }
 };
 
-// 3. DECLINE LOGIC
+// 3. DECLINE LOGIC (Using Zenda Toasts + Visual Removal)
 window.declineWarehouseReq = async function(notifId) {
     const notif = window.pendingWarehouses[notifId];
     if(!notif) return;
     const auth = getAuth();
+
+    // Find the notification card in the dropdown and animate it away instantly
+    const notifCard = document.querySelector(`.notif-card[data-id="${notifId}"]`);
+    if (notifCard) {
+        notifCard.classList.add('slide-left-out');
+        setTimeout(() => notifCard.remove(), 350);
+    }
 
     try {
         // A. Delete notification
@@ -2660,6 +2727,11 @@ window.declineWarehouseReq = async function(notifId) {
                 read: false,
                 createdAt: Date.now()
             });
+        }
+        
+        // Trigger a custom info toast
+        if (window.showToast) {
+            window.showToast("Warehouse request declined.", "info");
         }
     } catch(e) {
         console.error(e);
