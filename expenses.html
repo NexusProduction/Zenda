@@ -1231,6 +1231,16 @@ async function init(){
         let premium=d.isPremium===true;
         if(premium&&d.subscriptionExpiry&&new Date()>new Date(d.subscriptionExpiry))premium=false;
         CU.isPremium=premium;
+        
+        // NEW FIX: Fetch the owner's latest name so staff always sees the updated name!
+        if (CU.role !== 'owner' && CU.ownerId) {
+            try {
+                const ownerSnap = await getDoc(doc(db, 'users', CU.ownerId));
+                if (ownerSnap.exists()) {
+                    CU.ownerName = ownerSnap.data().name;
+                }
+            } catch(err) { console.warn(err); }
+        }
       }
     }catch(_){ }
 
@@ -1395,21 +1405,23 @@ function renderList(){
     const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const isInc=e.parsedType==='income';
     
-    // 1. LATEST CREATOR NAME (First word only)
+    // 1. LATEST CREATOR NAME (Dynamic & Live)
     let creatorNameRaw = e.createdByName || 'User';
     
-    // Always use the user's latest name dynamically if they created this record
     if (e.createdBy === CU.uid) {
-        creatorNameRaw = CU.name;
+        creatorNameRaw = CU.name; // You looking at your own record
+    } else if (e.createdBy === CU.ownerId && CU.ownerName) {
+        creatorNameRaw = CU.ownerName; // Staff looking at the Owner's record
     }
     const creatorName = creatorNameRaw.split(' ')[0];
     
-    // 2. LATEST DELETER NAME (First word only)
+    // 2. LATEST DELETER NAME (Dynamic & Live)
     let actualDeletedByRaw = e.deletedBy || 'User';
     
-    // Always use the user's latest name dynamically if they deleted this record
     if (e.deletedById === CU.uid) {
         actualDeletedByRaw = CU.name;
+    } else if (e.deletedById === CU.ownerId && CU.ownerName) {
+        actualDeletedByRaw = CU.ownerName;
     } else if (!e.deletedById && e.createdBy === CU.uid && e.deletedBy === e.createdByName) {
         actualDeletedByRaw = CU.name;
     }
