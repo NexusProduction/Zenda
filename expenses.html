@@ -1397,19 +1397,24 @@ function renderList(){
     
     // 1. LATEST CREATOR NAME (First word only)
     let creatorNameRaw = (e.createdBy === CU.uid) ? CU.name : (e.createdByName || 'User');
-    // --- QUICK FIX: Force override old name ---
-    if (creatorNameRaw.toLowerCase() === 'lala') creatorNameRaw = 'Vipul'; 
+    // 1. LATEST CREATOR NAME (First word only)
+    let creatorNameRaw = e.createdByName || 'User';
+    
+    // Force old 'Lala' records to dynamically use your current live name
+    if (e.createdBy === CU.uid || creatorNameRaw.toLowerCase().includes('lala')) {
+        creatorNameRaw = CU.name;
+    }
     const creatorName = creatorNameRaw.split(' ')[0];
     
     // 2. LATEST DELETER NAME (Retroactive Fix + First word only!)
     let actualDeletedByRaw = e.deletedBy || 'User';
-    if (e.deletedById === CU.uid) {
-      actualDeletedByRaw = CU.name; 
+    
+    // Force old 'Lala' deletions to dynamically use your current live name
+    if (e.deletedById === CU.uid || actualDeletedByRaw.toLowerCase().includes('lala')) {
+        actualDeletedByRaw = CU.name;
     } else if (!e.deletedById && e.createdBy === CU.uid && e.deletedBy === e.createdByName) {
-      actualDeletedByRaw = CU.name; 
+        actualDeletedByRaw = CU.name;
     }
-    // --- QUICK FIX: Force override old name ---
-    if (actualDeletedByRaw.toLowerCase() === 'lala') actualDeletedByRaw = 'Vipul';
     const shortDeletedBy = actualDeletedByRaw.split(' ')[0];
     
     // DEL BTN LOGIC: Red if you own it, Faded Gray if someone else owns it
