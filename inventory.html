@@ -1209,7 +1209,91 @@ else{setupModalListeners();}
     }
   };
 })();
+// --- CUSTOM CATEGORY PICKER & VALIDATION LOGIC ---
+const WH_CATS = [
+  { v: 'General Storage', bg: '#EEF2FF', color: '#4F46E5', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>' },
+  { v: 'Cold Storage', bg: '#E0F2FE', color: '#0284C7', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v20M17 5l-10 14M5 5l10 14"/></svg>' },
+  { v: 'Retail Store', bg: '#FEF3C7', color: '#D97706', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>' },
+  { v: 'Distribution Centre', bg: '#FCE7F3', color: '#DB2777', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>' },
+  { v: 'Raw Materials', bg: '#DCFCE7', color: '#16A34A', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 17 22 12"/></svg>' },
+  { v: 'Other...', bg: '#F3F4F6', color: '#4B5563', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' }
+];
 
+function renderWhCatDropdown() {
+  const dd = document.getElementById('wh-cat-dd');
+  const current = document.getElementById('wh-category').value;
+  if(dd) {
+    dd.innerHTML = WH_CATS.map(c => `
+      <div class="cat-opt ${c.v === current ? 'is-selected' : ''}" onclick="selectWhCat('${c.v}')">
+        <div class="copt-icon" style="background:${c.bg}; color:${c.color}">${c.icon}</div>
+        <span class="copt-name">${c.v}</span>
+        <span class="copt-check"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+      </div>
+    `).join('');
+  }
+}
+
+window.toggleWhCat = function() {
+  const trigger = document.querySelector('#wh-cat-wrap .cat-picker-trigger');
+  const dd = document.getElementById('wh-cat-dd');
+  if(dd.style.display === 'block') {
+    dd.style.display = 'none';
+    trigger.classList.remove('open');
+  } else {
+    renderWhCatDropdown();
+    dd.style.display = 'block';
+    trigger.classList.add('open');
+  }
+};
+
+window.selectWhCat = function(val) {
+  document.getElementById('wh-category').value = val;
+  const cat = WH_CATS.find(c => c.v === val);
+  if(cat) {
+    document.getElementById('wh-cpt-icon').innerHTML = cat.icon;
+    document.getElementById('wh-cpt-icon').style.background = cat.bg;
+    document.getElementById('wh-cpt-icon').style.color = cat.color;
+    document.getElementById('wh-cpt-label').textContent = cat.v;
+  }
+  document.getElementById('wh-cat-dd').style.display = 'none';
+  document.querySelector('#wh-cat-wrap .cat-picker-trigger').classList.remove('open');
+};
+
+// Close dropdown if clicking outside
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('wh-cat-wrap');
+  if(wrap && !wrap.contains(e.target)) {
+    document.getElementById('wh-cat-dd').style.display = 'none';
+    wrap.querySelector('.cat-picker-trigger')?.classList.remove('open');
+  }
+});
+
+// Strict Validation Wrapper
+window.validateAndSaveWH = function() {
+  const nameInp = document.getElementById('wh-name');
+  const locInp = document.getElementById('wh-loc');
+  const nameVal = nameInp.value.trim();
+  const locVal = locInp.value.trim();
+  let isValid = true;
+
+  // Name check (4-20 chars)
+  if(nameVal.length < 4 || nameVal.length > 20) {
+    nameInp.classList.add('err-border');
+    document.getElementById('err-wh-name').style.display = 'block';
+    isValid = false;
+  }
+  // Loc check (5-20 chars)
+  if(locVal.length < 5 || locVal.length > 20) {
+    locInp.classList.add('err-border');
+    document.getElementById('err-wh-loc').style.display = 'block';
+    isValid = false;
+  }
+
+  if(isValid) {
+    // Triggers your original save function
+    window.addWH(); 
+  }
+};
 // ── EMOJI ENGINE ──
 const EM_LIB={rice:'🍚',wheat:'🌾',flour:'🌾',maize:'🌽',corn:'🌽',sugar:'🧂',salt:'🧂',oil:'🫙',ghee:'🫙',butter:'🧈',milk:'🥛',cheese:'🧀',egg:'🥚',meat:'🥩',chicken:'🍗',fish:'🐟',vegetable:'🥦',tomato:'🍅',onion:'🧅',potato:'🥔',fruit:'🍎',tea:'🍵',coffee:'☕',spice:'🌶️',pepper:'🌶️',turmeric:'🌿',bread:'🍞',biscuit:'🍪',juice:'🧃',soda:'🥤',water:'💧',dal:'🫘',chocolate:'🍫',honey:'🍯',sauce:'🫙',cement:'🪨',sand:'🪨',brick:'🧱',steel:'🔩',iron:'🔧',wire:'🪡',pipe:'🔩',rod:'🔩',nail:'📌',screw:'🪛',nut:'🔩',tile:'🟫',wood:'🪵',paint:'🎨',glass:'🪟',door:'🚪',lock:'🔒',concrete:'🪨',plaster:'🪨',cloth:'🧵',fabric:'🧵',thread:'🧵',cotton:'🧶',silk:'🧶',shirt:'👕',pant:'👖',dress:'👗',shoe:'👟',bag:'👜',wool:'🧶',jacket:'🧥',hat:'🧢',bulb:'💡',fan:'🌀',motor:'⚙️',battery:'🔋',charger:'🔌',phone:'📱',laptop:'💻',tv:'📺',cable:'🔌',fuel:'⛽',petrol:'⛽',diesel:'⛽',tyre:'🛞',tire:'🛞',wheel:'🛞',engine:'⚙️',soap:'🧼',detergent:'🧴',cream:'🧴',shampoo:'🧴',toothpaste:'🧴',brush:'🪥',perfume:'🧴',paper:'📄',pen:'✏️',pencil:'✏️',notebook:'📒',gift:'🎁',toys:'🧸',carton:'📦',packet:'📦',box:'📦',tape:'📎',rope:'🪢',chemical:'🧪',fertilizer:'🌱',seed:'🌱',pesticide:'🧪',cylinder:'🫙',barrel:'🛢️',tool:'🔨',hammer:'🔨',wrench:'🔧',drill:'⚙️',saw:'🪚',knife:'🔪',shovel:'🪣',bucket:'🪣',gold:'💍',silver:'🥈',diamond:'💎',chair:'🪑',table:'🪑',bed:'🛏️'};
 window._aiEmoji='📦';window._curEMKeywords=[];
