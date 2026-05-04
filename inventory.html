@@ -1055,7 +1055,7 @@ function setupModalListeners(){
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>{setupModalListeners();});}
 else{setupModalListeners();}
 
-// --- ENHANCED MOBILE SWIPE GESTURE ENGINE (Glitch-Free) ---
+// --- PERFECTED MOBILE SWIPE GESTURE ENGINE ---
 (function() {
   const stackWrap = document.getElementById('mobile-stack');
   if(!stackWrap) return;
@@ -1074,10 +1074,11 @@ else{setupModalListeners();}
     let endX = e.changedTouches[0].screenX;
     let endY = e.changedTouches[0].screenY;
     
+    // Vertical scroll protection (prevents swipe when scrolling down the page)
     if (Math.abs(endY - startY) > Math.abs(endX - startX)) return;
 
-    if (startX - endX > 30) rotateCards(1);       
-    else if (endX - startX > 30) rotateCards(-1); 
+    if (startX - endX > 30) rotateCards(1);       // Swipe Left -> Next Card
+    else if (endX - startX > 30) rotateCards(-1); // Swipe Right -> Prev Card
   });
 
   window.rotateCards = function(dir) {
@@ -1086,16 +1087,14 @@ else{setupModalListeners();}
 
     const topCard = document.getElementById('mc' + currentActiveIndex);
     
-    // FIX: Always cycle to the *next* card in the stack, preventing reverse z-index tearing
-    const newIndex = (currentActiveIndex + 1) % 4; 
+    // RESTORED: Dynamic direction indexing (-1 goes back, 1 goes forward)
+    const newIndex = (currentActiveIndex + dir + 4) % 4; 
     
     topCard.style.zIndex = '50';
-    // FIX: Removed opacity fade so it covers the incoming card perfectly while flying away
-    topCard.style.transition = 'transform 0.35s ease-out, opacity 0.35s ease-out'; 
+    // FIX FOR TEXT OVERLAP: Fast opacity fade-out so the flying card vanishes cleanly
+    topCard.style.transition = 'transform 0.35s ease-out, opacity 0.15s ease-out'; 
     topCard.style.transform = `translateX(${dir > 0 ? '-120%' : '120%'}) scale(0.85) rotate(${dir > 0 ? '-8deg' : '8deg'})`;
-    
-    // Delay opacity fade-out slightly to prevent "seeing through" the card
-    setTimeout(() => { topCard.style.opacity = '0'; }, 80);
+    topCard.style.opacity = '0';
     
     for(let i = 0; i < 4; i++) {
       let pos = (i - newIndex + 4) % 4;
@@ -1113,7 +1112,7 @@ else{setupModalListeners();}
       topCard.style.transform = '';
       topCard.style.opacity = '';
       topCard.style.zIndex = '';
-      void topCard.offsetWidth; 
+      void topCard.offsetWidth; // Force DOM refresh
       topCard.style.transition = '';
       isAnimating = false;
     }, 360); 
