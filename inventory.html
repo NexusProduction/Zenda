@@ -1509,12 +1509,9 @@ function renderWHs() {
     const isLocked = !CU.isPremium && globalIndex > 0;
     const icon = ICONS[globalIndex % ICONS.length];
     const catLabel = CATS[wh.category] || wh.category || 'Warehouse';
-    
-    // Extract strictly the first name (Fallback to 'Owner' for older warehouses)
-    const creatorFirstName = (wh.createdByName || 'Owner').split(' ')[0];
 
-    // The universal row layout (Now includes "by First Name")
-    const normalPcHtml = `<div class="whr-ico">${icon}</div><div class="whr-info"><div class="whr-name">${esc(wh.name)} <span style="font-family: var(--f-body); font-size: 13px; font-weight: 600; color: var(--text-4); text-transform: none; margin-left: 3px;">by ${esc(creatorFirstName)}</span></div><div class="whr-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="whr-meta"><span class="wh-tag">${esc(catLabel)}</span><span class="wh-cnt" id="wc-${wh.id}">0 items</span></div><div class="whr-arrow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
+    // The universal row layout - Removed dots, defaults to 0 items
+    const normalPcHtml = `<div class="whr-ico">${icon}</div><div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="whr-meta"><span class="wh-tag">${esc(catLabel)}</span><span class="wh-cnt" id="wc-${wh.id}">0 items</span></div><div class="whr-arrow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
     
     if (isLocked) {
       hasLocked = true;
@@ -1827,21 +1824,20 @@ window.createWH = async function(){
   
   try {
     const cid = CU.companyId;
-    const creatorName = CU.name || 'Owner'; // Fetch current user's name
     
     if (CU.role === 'owner') {
-      // 1. Direct Creation for Owners (Now saves createdByName)
-      await addDoc(collection(db,'godowns'),{name,location:loc,category:cat,companyId:cid,createdBy:CU.uid,createdByName:creatorName,createdAt:new Date().toISOString()});
+      // 1. Direct Creation for Owners
+      await addDoc(collection(db,'godowns'),{name,location:loc,category:cat,companyId:cid,createdBy:CU.uid,createdAt:new Date().toISOString()});
       window.showToast('Warehouse created ✓','s');
     } else {
-      // 2. Notification Request for Staff (Now includes createdByName in the request payload)
+      // 2. Notification Request for Staff
       if (!CU.ownerId) throw new Error("Owner ID not found.");
       
       const notifRef = collection(db, 'users', CU.ownerId, 'notifications');
       await addDoc(notifRef, {
         type: 'warehouse_request',
         message: `${CU.name} wants to add a new warehouse: "${name}"`,
-        warehouseData: { name: name, location: loc, category: cat, companyId: cid, createdBy: CU.uid, createdByName: creatorName },
+        warehouseData: { name: name, location: loc, category: cat, companyId: cid, createdBy: CU.uid },
         actorId: CU.uid,
         actorName: CU.name,
         read: false,
