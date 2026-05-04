@@ -1170,16 +1170,15 @@ else{setupModalListeners();}
 
     if (action === 'next') {
       // SWIPE LEFT: Top card flies cleanly off to the left
-      const newIndex = (currentActiveIndex + 1) % 3;
+      const newIndex = (currentActiveIndex + 1) % 4; // Changed to 4 cards
 
       topCard.style.zIndex = '50';
-      // Fast opacity out prevents text overlapping
       topCard.style.transition = 'transform 0.35s ease-out, opacity 0.2s ease-out 0.1s';
       topCard.style.transform = `translateX(-120%) scale(0.85) rotate(-8deg)`;
       topCard.style.opacity = '0';
 
-      for(let i = 0; i < 3; i++) {
-        let pos = (i - newIndex + 3) % 3;
+      for(let i = 0; i < 4; i++) { // Changed to 4 cards
+        let pos = (i - newIndex + 4) % 4; // Changed to 4 cards
         document.getElementById('mc' + i).className = `mobile-card mc-${pos}`;
       }
 
@@ -1194,30 +1193,28 @@ else{setupModalListeners();}
         topCard.style.transform = '';
         topCard.style.opacity = '';
         topCard.style.zIndex = '';
-        void topCard.offsetWidth; // Force browser reflow
+        void topCard.offsetWidth; 
         topCard.style.transition = '';
         isAnimating = false;
       }, 360);
 
     } else {
-      // SWIPE RIGHT: Previous card flies IN solid from the left (No ghosting!)
-      const newIndex = (currentActiveIndex - 1 + 3) % 3;
+      // SWIPE RIGHT: Previous card flies IN solid from the left
+      const newIndex = (currentActiveIndex - 1 + 4) % 4; // Changed to 4 cards
       const incomingCard = document.getElementById('mc' + newIndex);
 
-      // Instantly position incoming card off-screen left, fully opaque
       incomingCard.style.transition = 'none';
       incomingCard.style.opacity = '1';
       incomingCard.style.zIndex = '50';
       incomingCard.style.transform = `translateX(-120%) scale(0.9) rotate(-8deg)`;
 
-      void incomingCard.offsetWidth; // Force DOM register
+      void incomingCard.offsetWidth; 
 
-      for(let i = 0; i < 3; i++) {
-        let pos = (i - newIndex + 3) % 3;
+      for(let i = 0; i < 4; i++) { // Changed to 4 cards
+        let pos = (i - newIndex + 4) % 4; // Changed to 4 cards
         document.getElementById('mc' + i).className = `mobile-card mc-${pos}`;
       }
 
-      // Fly the solid card to the center
       incomingCard.style.transition = 'transform 0.35s ease-out';
       incomingCard.style.transform = `translateX(0) scale(1) rotate(0)`;
 
@@ -1459,12 +1456,13 @@ function loadWHs(){
   if(!CU.companyId)return;
   const q=query(collection(db,'godowns'),where('companyId','==',CU.companyId));
   onSnapshot(q,snap=>{
-    WHs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    // Mapped AND Sorted by 'createdAt' so the newest warehouse is always on top!
+    WHs=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=> new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     renderWHs();
     // Sync stat numbers
     document.getElementById('sWH').textContent=WHs.length;
     document.getElementById('sWHm').textContent=WHs.length;
-    document.getElementById('whCnt').textContent=WHs.length;
+    if(document.getElementById('whCnt')) document.getElementById('whCnt').textContent=WHs.length;
   },()=>setSyncBadge('err','Sync Error'));
 }
 
