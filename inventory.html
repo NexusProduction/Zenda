@@ -1055,7 +1055,7 @@ function setupModalListeners(){
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>{setupModalListeners();});}
 else{setupModalListeners();}
 
-// --- PERFECTED MOBILE SWIPE GESTURE ENGINE (No Mesh Glitch) ---
+// --- PERFECTED MOBILE SWIPE GESTURE ENGINE (3-Card Expense Stack) ---
 (function() {
   const stackWrap = document.getElementById('mobile-stack');
   if(!stackWrap) return;
@@ -1074,7 +1074,7 @@ else{setupModalListeners();}
     let endX = e.changedTouches[0].screenX;
     let endY = e.changedTouches[0].screenY;
     
-    // Prevent swipe if user is just scrolling down the page
+    // Prevent swipe if user is just scrolling down the page vertically
     if (Math.abs(endY - startY) > Math.abs(endX - startX)) return;
 
     // Fixed Mapping: Left Swipe = Next Card, Right Swipe = Previous Card
@@ -1090,16 +1090,16 @@ else{setupModalListeners();}
 
     if (action === 'next') {
       // SWIPE LEFT: Top card flies cleanly off to the left
-      const newIndex = (currentActiveIndex + 1) % 4;
+      const newIndex = (currentActiveIndex + 1) % 3;
 
       topCard.style.zIndex = '50';
       // Fast opacity out prevents text overlapping
-      topCard.style.transition = 'transform 0.35s ease-out, opacity 0.2s ease-out';
+      topCard.style.transition = 'transform 0.35s ease-out, opacity 0.2s ease-out 0.1s';
       topCard.style.transform = `translateX(-120%) scale(0.85) rotate(-8deg)`;
       topCard.style.opacity = '0';
 
-      for(let i = 0; i < 4; i++) {
-        let pos = (i - newIndex + 4) % 4;
+      for(let i = 0; i < 3; i++) {
+        let pos = (i - newIndex + 3) % 3;
         document.getElementById('mc' + i).className = `mobile-card mc-${pos}`;
       }
 
@@ -1114,17 +1114,17 @@ else{setupModalListeners();}
         topCard.style.transform = '';
         topCard.style.opacity = '';
         topCard.style.zIndex = '';
-        void topCard.offsetWidth;
+        void topCard.offsetWidth; // Force browser reflow
         topCard.style.transition = '';
         isAnimating = false;
       }, 360);
 
     } else {
-      // SWIPE RIGHT: Previous card flies IN solid from the left
-      const newIndex = (currentActiveIndex - 1 + 4) % 4;
+      // SWIPE RIGHT: Previous card flies IN solid from the left (No ghosting!)
+      const newIndex = (currentActiveIndex - 1 + 3) % 3;
       const incomingCard = document.getElementById('mc' + newIndex);
 
-      // Instantly position incoming card off-screen left, fully opaque (NO MESH)
+      // Instantly position incoming card off-screen left, fully opaque
       incomingCard.style.transition = 'none';
       incomingCard.style.opacity = '1';
       incomingCard.style.zIndex = '50';
@@ -1132,8 +1132,8 @@ else{setupModalListeners();}
 
       void incomingCard.offsetWidth; // Force DOM register
 
-      for(let i = 0; i < 4; i++) {
-        let pos = (i - newIndex + 4) % 4;
+      for(let i = 0; i < 3; i++) {
+        let pos = (i - newIndex + 3) % 3;
         document.getElementById('mc' + i).className = `mobile-card mc-${pos}`;
       }
 
