@@ -1055,7 +1055,7 @@ function setupModalListeners(){
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>{setupModalListeners();});}
 else{setupModalListeners();}
 
-// --- PERFECTED MOBILE SWIPE GESTURE ENGINE (No Overlap Glitch) ---
+// --- PERFECTED MOBILE SWIPE GESTURE ENGINE (No Mesh Glitch) ---
 (function() {
   const stackWrap = document.getElementById('mobile-stack');
   if(!stackWrap) return;
@@ -1074,28 +1074,30 @@ else{setupModalListeners();}
     let endX = e.changedTouches[0].screenX;
     let endY = e.changedTouches[0].screenY;
     
+    // Prevent swipe if user is just scrolling down the page
     if (Math.abs(endY - startY) > Math.abs(endX - startX)) return;
 
-    // Fixed logic based on your request:
-    if (startX - endX > 30) rotateCards(-1);       // Swipe Left -> Go Back (Previous)
-    else if (endX - startX > 30) rotateCards(1);   // Swipe Right -> Go Forward (Next)
+    // Fixed Mapping: Left Swipe = Next Card, Right Swipe = Previous Card
+    if (startX - endX > 30) rotateCards('next');       
+    else if (endX - startX > 30) rotateCards('prev'); 
   });
 
-  window.rotateCards = function(dir) {
+  window.rotateCards = function(action) {
     if(isAnimating) return;
     isAnimating = true;
 
-    if (dir > 0) {
-      // GO NEXT: Top card flies off cleanly to the right
-      const topCard = document.getElementById('mc' + currentActiveIndex);
+    const topCard = document.getElementById('mc' + currentActiveIndex);
+
+    if (action === 'next') {
+      // SWIPE LEFT: Top card flies cleanly off to the left
       const newIndex = (currentActiveIndex + 1) % 4;
 
       topCard.style.zIndex = '50';
-      topCard.style.transition = 'transform 0.35s ease-out, opacity 0.2s ease-out 0.1s';
-      topCard.style.transform = `translateX(120%) scale(0.85) rotate(8deg)`;
+      // Fast opacity out prevents text overlapping
+      topCard.style.transition = 'transform 0.35s ease-out, opacity 0.2s ease-out';
+      topCard.style.transform = `translateX(-120%) scale(0.85) rotate(-8deg)`;
       topCard.style.opacity = '0';
 
-      // Shift other cards up
       for(let i = 0; i < 4; i++) {
         let pos = (i - newIndex + 4) % 4;
         document.getElementById('mc' + i).className = `mobile-card mc-${pos}`;
@@ -1118,25 +1120,24 @@ else{setupModalListeners();}
       }, 360);
 
     } else {
-      // GO BACK: Previous card flies IN fully opaque from the left (No ghosting!)
+      // SWIPE RIGHT: Previous card flies IN solid from the left
       const newIndex = (currentActiveIndex - 1 + 4) % 4;
       const incomingCard = document.getElementById('mc' + newIndex);
 
-      // Instantly position the incoming card off-screen left, fully opaque
+      // Instantly position incoming card off-screen left, fully opaque (NO MESH)
       incomingCard.style.transition = 'none';
       incomingCard.style.opacity = '1';
       incomingCard.style.zIndex = '50';
       incomingCard.style.transform = `translateX(-120%) scale(0.9) rotate(-8deg)`;
 
-      void incomingCard.offsetWidth; // Force browser to register the off-screen position
+      void incomingCard.offsetWidth; // Force DOM register
 
-      // Shift current stack down
       for(let i = 0; i < 4; i++) {
         let pos = (i - newIndex + 4) % 4;
         document.getElementById('mc' + i).className = `mobile-card mc-${pos}`;
       }
 
-      // Animate the incoming card flying to the center
+      // Fly the solid card to the center
       incomingCard.style.transition = 'transform 0.35s ease-out';
       incomingCard.style.transform = `translateX(0) scale(1) rotate(0)`;
 
