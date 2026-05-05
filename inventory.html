@@ -591,8 +591,28 @@ input:checked + .tgl-sl:before { transform: translateX(17px); }
 .ai-emoji-prev { display: none; align-items: center; gap: 12px; background: var(--green-soft); border: 1px solid var(--green-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px; color: #065F46; }
 #expenseSyncBlock { margin-bottom: 18px; padding: 14px; background: var(--white-cool); border: 1.5px solid var(--border); border-radius: 12px; }
 #convPreview { display: none; background: var(--accent-soft); border: 1px solid rgba(79,70,229,0.2); border-radius: 10px; padding: 11px 14px; margin-bottom: 18px; font-size: 13px; color: var(--accent); font-weight: 600; }
-#lowStockList { display: flex; flex-direction: column; gap: 10px; }
-.mf select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239EA1B0' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+/* --- LOW STOCK & HIGHLIGHT FOG ANIMATION --- */
+#lowStockList { 
+  display: flex; flex-direction: column; gap: 10px; 
+  max-height: 420px; /* Shows ~5 items before scrolling */
+  overflow-y: auto; padding-right: 6px; 
+}
+#lowStockList::-webkit-scrollbar { width: 5px; }
+#lowStockList::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+/* Mobile Centering Override */
+@media (max-width: 768px) {
+  #m-low-stock { align-items: center !important; padding: 16px !important; }
+  #m-low-stock .mbox { border-radius: 20px !important; margin: auto; }
+}
+
+/* Highlight Fog Animation */
+@keyframes focusFog {
+  0% { box-shadow: 0 0 0 9999px rgba(13,15,20,0.7), 0 0 50px var(--accent); transform: scale(1.02); z-index: 999; }
+  80% { box-shadow: 0 0 0 0 rgba(13,15,20,0), 0 0 0 transparent; transform: scale(1); z-index: 999; }
+  100% { z-index: 1; }
+}
+.focus-fog { animation: focusFog 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; position: relative; }.mf select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239EA1B0' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; }
 
@@ -2161,7 +2181,7 @@ function renderProds(list){
   }
 }
 
-window.openProd=async function(pId){
+window.openProd=async function(pId, highlight = false){
   curProd=prods.find(x=>x.id===pId);if(!curProd)return;
   const p=curProd;const isLow=p.minStock!=null?p.stock<=p.minStock:p.stock<=0;
   document.getElementById('pdEmoji').textContent=p.emoji||'📦';
@@ -2174,6 +2194,17 @@ window.openProd=async function(pId){
   const canM=CU.role==='owner'||CU.role==='manager';
   const pab=document.getElementById('prodActionBtns');if(pab)pab.style.display=canM?'flex':'none';
   const ceb=document.getElementById('convEditBtn');if(ceb)ceb.style.display=canM?'inline-flex':'none';
+  
+  // Apply the Fog highlight animation if triggered from the Low Stock Modal
+  if(highlight) {
+    const heroCard = document.querySelector('.pd-hero');
+    if(heroCard) {
+      heroCard.classList.remove('focus-fog');
+      void heroCard.offsetWidth; // Force a DOM reflow to restart animation
+      heroCard.classList.add('focus-fog');
+    }
+  }
+
   showView('prod');renderConversionsDetail(p);await loadEntries(pId);
 };
 
@@ -2493,25 +2524,28 @@ window.createWH = async function(){
     msgEl.textContent = '❌ Failed: ' + e.message;
   }
 };
-// ── LOW STOCK MODAL (PREMIUM REDESIGN) ──
 window.openLowStockModal=function(){
   const list=document.getElementById('lowStockList');
   if(lowStockGlobal.length===0){
     list.innerHTML='<div style="text-align:center;color:var(--text-3);padding:24px;font-size:14px;font-weight:600">No products currently low.</div>';
   } else {
-    list.innerHTML=lowStockGlobal.map(p=>`
+    list.innerHTML=lowStockGlobal.map(p=>{
+      // Only show Min text if it actually exists!
+      const minTxt = (p.minStock !== undefined && p.minStock !== null) ? `<span style="opacity:0.5;margin:0 4px">•</span> Min: ${p.minStock}` : '';
+      
+      return `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;border:1.5px solid var(--red-border);border-radius:14px;background:var(--red-soft);margin-bottom:12px;transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
         <div style="display:flex;align-items:center;gap:14px">
           <div style="font-size:24px;background:white;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;box-shadow:0 4px 10px rgba(220,38,38,0.15)">${p.emoji||'📦'}</div>
           <div>
             <div style="font-family:var(--f-display);font-weight:800;color:var(--text-1);font-size:15px;margin-bottom:3px">${esc(p.name)}</div>
-            <div style="font-size:13px;color:var(--red);font-weight:600;">Stock: <strong style="font-family:var(--f-mono);font-size:14px;">${p.stock}</strong> ${esc(p.unit)} <span style="opacity:0.5;margin:0 4px">•</span> Min: ${p.minStock}</div>
+            <div style="font-size:13px;color:var(--red);font-weight:600;">Stock: <strong style="font-family:var(--f-mono);font-size:14px;">${p.stock}</strong> ${esc(p.unit)} ${minTxt}</div>
           </div>
         </div>
-        <!-- This button instantly redirects to the specific product inside its specific warehouse -->
-        <button class="btn-black" style="padding:10px 16px; border-radius:10px; width:auto; font-size:13px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" onclick="window.closeM('m-low-stock'); window.openWH({id:'${p.godownId}'}).then(()=>window.openProd('${p.id}'))">View Item</button>
+        <!-- Shortened text and passed 'true' to trigger fog highlight animation -->
+        <button class="btn-black" style="padding:10px 16px; border-radius:10px; width:auto; font-size:13px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" onclick="window.closeM('m-low-stock'); window.openWH({id:'${p.godownId}'}).then(()=>window.openProd('${p.id}', true))">View</button>
       </div>
-    `).join('');
+    `}).join('');
   }
   window.openM('m-low-stock');
 };
