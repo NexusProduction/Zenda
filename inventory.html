@@ -1659,10 +1659,23 @@ function loadWHs(){
     // Mapped AND Sorted by 'createdAt' so the newest warehouse is always on top!
     WHs=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=> new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     renderWHs();
+    
     // Sync stat numbers
     document.getElementById('sWH').textContent=WHs.length;
     document.getElementById('sWHm').textContent=WHs.length;
     if(document.getElementById('whCnt')) document.getElementById('whCnt').textContent=WHs.length;
+
+    // --- REAL-TIME DELETE KICKOUT ---
+    // If the user is currently inside a warehouse that just got deleted from the database
+    if (curWH && !WHs.find(w => w.id === curWH)) {
+        // Force close any open modals
+        document.querySelectorAll('.mo.open').forEach(m => window.closeM(m.id));
+        
+        curWH = null; // Clear active warehouse
+        showView('dash'); // Force redirect to main dashboard
+        
+        if (window.showToast) window.showToast("Warehouse was deleted. Returning to Home.", "error");
+    }
   },()=>setSyncBadge('err','Sync Error'));
 }
 
