@@ -982,6 +982,17 @@ input[type=number] { -moz-appearance: textfield; }
     to   { opacity: 0; transform: translateY(30px); } 
   }
 }
+  /* Stretch Product List area on Mobile */
+@media (max-width: 768px) {
+  .prod-card {
+    min-height: 65vh; 
+    display: flex; 
+    flex-direction: column;
+  }
+  #prodList {
+    flex: 1; /* Automatically pushes pagination down to the bottom */
+  }
+}
 </style>
 </head>
 <body>
@@ -1162,13 +1173,13 @@ input[type=number] { -moz-appearance: textfield; }
     </div>
 
     <!-- BOTTOM PRODUCT SECTION -->
-    <div class="prod-card">
+    <div class="prod-card" id="prodCardMain">
       <div class="pc-hdr">
         
-        <!-- New bold, uppercase title with 3D box icon -->
+        <!-- Clean thick 2D Box Icon matching screenshot -->
         <div style="display: flex; align-items: center; gap: 8px; color: var(--text-1);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-          <div class="pc-title" id="pcTitle" style="text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; font-size: 14px; font-family: var(--f-display); margin-top: 2px;">Products</div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0F14" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          <div class="pc-title" id="pcTitle" style="text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; font-size: 14px; font-family: var(--f-display); margin-top: 2px;">PRODUCTS</div>
         </div>
         
         <button class="btn-primary btn-sm btn-add-pc hidden" id="btnAddProdPC" onclick="window.openAddProd()" style="font-size:13px; font-weight: 700; font-family: var(--f-body); background: #09090B; border-radius: 8px; height: 36px; padding: 0 14px; border: none; color: #fff;">
@@ -1180,10 +1191,11 @@ input[type=number] { -moz-appearance: textfield; }
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       </div>
-      <div class="srch-bar">
-        <input class="srch-inp" type="text" id="pSrch" placeholder="Search products…" oninput="window.filterP(this.value)">
-      </div>
-      <div id="prodList" style="padding:28px;text-align:center;color:var(--text-4);font-size:14px">Loading…</div>
+      
+      <div id="prodList" style="padding:0; text-align:center; color:var(--text-4); font-size:14px">Loading…</div>
+      
+      <!-- Pagination Container -->
+      <div id="prodPagination"></div>
     </div>
     
   </div>
@@ -2084,27 +2096,54 @@ async function loadProds(whId){
   }
 }
 
+let prodCurrentPage = 1;
+const PROD_PER_PAGE = 10;
+
+window.changeProdPage = function(dir) {
+  prodCurrentPage += dir;
+  renderProds(prods);
+};
+
 function renderProds(list){
-  const el=document.getElementById('prodList');
+  const el = document.getElementById('prodList');
   const pcTitle = document.getElementById('pcTitle');
+  const pagWrap = document.getElementById('prodPagination');
   
-  // Update the title: "Products (7)" or just "Products" if 0
   if (pcTitle) {
-    pcTitle.textContent = list.length > 0 ? `Products (${list.length})` : 'Products';
+    pcTitle.textContent = list.length > 0 ? `PRODUCTS (${list.length})` : 'PRODUCTS';
   }
 
   if(!list.length){
     el.innerHTML='<div style="text-align:center;padding:48px 20px"><div style="font-size:40px;opacity:0.4;margin-bottom:14px">📦</div><div style="font-size:15px;font-family:var(--f-display);font-weight:700;color:var(--text-1);margin-bottom:6px">No products yet</div><div style="font-size:13px;color:var(--text-3)">Tap Add Product to create your first item</div></div>';
+    if (pagWrap) pagWrap.innerHTML = '';
     return;
   }
   
-  el.innerHTML=list.map(p=>{
-    const isLow=p.minStock!=null?p.stock<=p.minStock:p.stock<=0;
+  // Setup pagination math
+  const totalPages = Math.ceil(list.length / PROD_PER_PAGE);
+  if (prodCurrentPage > totalPages) prodCurrentPage = totalPages;
+  if (prodCurrentPage < 1) prodCurrentPage = 1;
+  
+  const startIndex = (prodCurrentPage - 1) * PROD_PER_PAGE;
+  const slice = list.slice(startIndex, startIndex + PROD_PER_PAGE);
+  
+  el.innerHTML = slice.map(p=>{
+    const isLow = p.minStock != null ? p.stock <= p.minStock : p.stock <= 0;
     return `<div class="prow" onclick="window.openProd('${p.id}')"><div class="prow-ico">${p.emoji||'📦'}</div><div class="prow-info"><div class="prow-name">${esc(p.name)}${isLow?'<span class="low-badge">⚠ Low</span>':''}</div><div class="prow-meta">${p.desc?esc(p.desc.slice(0,50)):'&nbsp;'}</div></div><div class="prow-stk"><span class="prow-num${isLow?' low':''}">${p.stock||0}</span><span class="prow-unit">${esc(p.unit||'units')}</span></div><div class="prow-arr"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>`;
   }).join('');
-}
 
-window.filterP=function(q){renderProds(prods.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())));};
+  // Inject pagination UI if needed
+  if (totalPages > 1) {
+    if (pagWrap) pagWrap.innerHTML = `
+      <div class="pag-wrap" style="border-top: 1px solid var(--border); padding: 16px 20px;">
+        <button class="pag-btn" onclick="window.changeProdPage(-1)" ${prodCurrentPage === 1 ? 'disabled' : ''}>Prev</button>
+        <span class="pag-info">${prodCurrentPage} / ${totalPages}</span>
+        <button class="pag-btn" onclick="window.changeProdPage(1)" ${prodCurrentPage === totalPages ? 'disabled' : ''}>Next</button>
+      </div>`;
+  } else {
+    if (pagWrap) pagWrap.innerHTML = '';
+  }
+}
 
 window.openProd=async function(pId){
   curProd=prods.find(x=>x.id===pId);if(!curProd)return;
