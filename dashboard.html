@@ -2914,28 +2914,50 @@ window.approveWarehouseDeleteReq = async function(notifId) {
     }
 
     try {
-        const { getDocs, query, collection, where, writeBatch, doc, addDoc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        // Import setDoc along with the rest
+        const { getDocs, query, collection, where, writeBatch, doc, addDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
         const batch = writeBatch(db);
         
-        // 1. Delete all products inside warehouse
-        const prodSnap = await getDocs(query(collection(db,'products'), where('godownId','==',whId)));
+        // 1. Delete all products inside warehouse (FIXED: Added companyId to satisfy Firebase Security)
+        const prodSnap = await getDocs(query(collection(db,'products'), where('companyId', '==', window.CU.companyId), where('godownId','==',whId)));
         prodSnap.docs.forEach(d => batch.delete(d.ref));
         
-        // 2. Delete all entries inside warehouse
-        const entSnap = await getDocs(query(collection(db,'entries'), where('godownId','==',whId)));
+        // 2. Delete all entries inside warehouse (FIXED: Added companyId to satisfy Firebase Security)
+        const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', window.CU.companyId), where('godownId','==',whId)));
         entSnap.docs.forEach(d => batch.delete(d.ref));
         
         // 3. Delete the warehouse itself
         batch.delete(doc(db,'godowns',whId));
         
-        // 4. Delete the notification from owner's feed
+        // 4. Delete the primary notification from owner's feed
         if (window.CU && window.CU.uid) {
             batch.delete(doc(db, 'users', window.CU.uid, 'notifications', notifId));
+            
+            // 5. BULK SWEEPER: Find any OTHER duplicate requests for this same warehouse
+            const dupeSnap = await getDocs(query(collection(db, 'users', window.CU.uid, 'notifications'), where('type', '==', 'warehouse_delete_request')));
+            dupeSnap.docs.forEach(d => {
+                const nData = d.data();
+                // If it is for the exact same warehouse but is NOT the notification we just clicked
+                if (d.id !== notifId && nData.warehouseData && nData.warehouseData.id === whId) {
+                    batch.delete(d.ref); // Erase from Owner's inbox
+                    
+                    // Reply to the duplicate requester that it's already done
+                    if (nData.actorId) {
+                        const staffNotifRef = doc(collection(db, 'users', nData.actorId, 'notifications'));
+                        batch.set(staffNotifRef, {
+                            type: 'system',
+                            message: `Your request to delete warehouse "${nData.warehouseData.name}" was dismissed because the warehouse has already been deleted.`,
+                            read: false,
+                            createdAt: Date.now()
+                        });
+                    }
+                }
+            });
         }
         
         await batch.commit();
         
-        // 5. Send success message back to staff member
+        // 6. Send success message back to the primary staff member who requested it
         if (notif.actorId) {
             await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
                 type: 'system',
@@ -2948,7 +2970,7 @@ window.approveWarehouseDeleteReq = async function(notifId) {
         if (window.showToast) window.showToast("Warehouse deleted successfully!", "success");
     } catch(e) {
         console.error(e);
-        if (window.showToast) window.showToast("Failed to delete warehouse: " + e.message, "error");
+        if (window.showToast) window.showToast("Failed to delete warehouse.", "error");
     }
 };
 
