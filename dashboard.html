@@ -2817,78 +2817,89 @@ window.declineWarehouseReq = async function(notifId) {
     }
 };
     // 4. DELETE REQUEST MODAL LOGIC (Red Theme + Trash Icon)
+// 4. DELETE REQUEST MODAL LOGIC (Red Theme + Trash Icon)
 window.viewWarehouseDeleteReq = function(notifId) {
-    const notif = window.pendingWarehouses[notifId];
-    if(!notif || !notif.warehouseData) return;
-    const data = notif.warehouseData;
-    
-    const requesterName = notif.actorName ? notif.actorName.replace(/</g, "&lt;").replace(/>/g, "&gt;") : 'Staff Member';
-
-    const overlay = document.createElement('div');
-    overlay.id = `wh-del-modal-${notifId}`;
-    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:99999; animation: fadeIn 0.2s ease-out; padding: 16px; transition: opacity 0.25s ease;';
-    
-    overlay.innerHTML = `
-        <div class="wh-modal-content" style="background:var(--bg-surface); border-radius:24px; width:100%; max-width:400px; box-shadow:0 32px 80px rgba(0,0,0,0.3); overflow:hidden; transform: scale(0.95); animation: toastIn 0.3s forwards; transition: transform 0.25s ease, opacity 0.25s ease;">
-            
-            <!-- Red Theme Header -->
-            <div style="background: linear-gradient(135deg, #EF4444, #B91C1C); height: 65px; position: relative;"></div>
-            
-            <div style="padding: 0 32px 32px; text-align: center; position: relative;">
-                
-                <!-- Floating Trash Icon -->
-                <div style="width: 68px; height: 68px; background: #fff; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: -34px auto 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.08); border: 4px solid var(--bg-surface); position: relative; z-index: 2;">
-                    🗑️
-                </div>
-                
-                <h3 style="margin:0 0 4px; font-size:1.35rem; color:var(--tx-main); font-weight:800; letter-spacing:-0.02em;">Delete Warehouse</h3>
-                <p style="margin:0 0 28px; color:var(--tx-muted); font-size:0.9rem; font-weight:600;">Requested by <span style="color:var(--tx-main);">${requesterName}</span></p>
-                
-                <div style="background: var(--bg-page); border-radius: 16px; padding: 12px 24px; border: 1px solid var(--bd-color); text-align: left; display: flex; flex-direction: column;">
-                    
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--bd-color);">
-                        <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Name</div>
-                        <div style="font-size:0.95rem; color:var(--tx-main); font-weight:800; text-align:right; max-width:65%; word-break:break-word;">${esc(data.name)}</div>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--bd-color);">
-                        <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Contains</div>
-                        <div style="font-size:0.9rem; color:var(--danger); font-weight:800; max-width:65%; text-align:right;">
-                            ${data.productCount || 0} Products
-                        </div>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0;">
-                        <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Reason</div>
-                        <div style="color:var(--tx-main); font-size:0.85rem; font-weight:600; text-align:right; max-width:65%; word-break:break-word;">
-                            "${esc(data.reason || 'No reason provided')}"
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div style="padding: 0 32px 32px; display:flex; gap:12px;">
-                <button onclick="window.declineWarehouseDeleteReq('${notifId}'); this.closest('#wh-del-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--bg-surface); color:var(--tx-main); border:1.5px solid var(--bd-color); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--bg-page)';" onmouseout="this.style.background='var(--bg-surface)';">Decline</button>
-                <button onclick="window.approveWarehouseDeleteReq('${notifId}'); this.closest('#wh-del-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--danger); color:#fff; border:none; box-shadow:0 4px 12px rgba(239,68,68,0.3); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">Approve</button>
-            </div>
-        </div>
-    `;
-    
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            overlay.style.opacity = '0';
-            const content = overlay.querySelector('.wh-modal-content');
-            if(content) {
-                content.style.transform = 'scale(0.9)';
-                content.style.opacity = '0';
-            }
-            setTimeout(() => overlay.remove(), 250);
+    try {
+        const notif = window.pendingWarehouses[notifId];
+        if(!notif || !notif.warehouseData) {
+            alert("Error: Warehouse data is missing from this request.");
+            return;
         }
-    });
-    
-    document.body.appendChild(overlay);
+        const data = notif.warehouseData;
+        
+        // Safely format text to prevent silent crashes
+        const safeName = data.name ? String(data.name).replace(/</g, "&lt;").replace(/>/g, "&gt;") : "Unknown";
+        const safeReason = data.reason ? String(data.reason).replace(/</g, "&lt;").replace(/>/g, "&gt;") : "No reason provided";
+        const requesterName = notif.actorName ? String(notif.actorName).replace(/</g, "&lt;").replace(/>/g, "&gt;") : 'Staff Member';
+
+        const overlay = document.createElement('div');
+        overlay.id = `wh-del-modal-${notifId}`;
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:99999; animation: fadeIn 0.2s ease-out; padding: 16px; transition: opacity 0.25s ease;';
+        
+        overlay.innerHTML = `
+            <div class="wh-modal-content" style="background:var(--bg-surface); border-radius:24px; width:100%; max-width:400px; box-shadow:0 32px 80px rgba(0,0,0,0.3); overflow:hidden; transform: scale(0.95); animation: toastIn 0.3s forwards; transition: transform 0.25s ease, opacity 0.25s ease;">
+                
+                <!-- Red Theme Header -->
+                <div style="background: linear-gradient(135deg, #EF4444, #B91C1C); height: 65px; position: relative;"></div>
+                
+                <div style="padding: 0 32px 32px; text-align: center; position: relative;">
+                    
+                    <!-- Floating Trash Icon -->
+                    <div style="width: 68px; height: 68px; background: #fff; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: -34px auto 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.08); border: 4px solid var(--bg-surface); position: relative; z-index: 2;">
+                        🗑️
+                    </div>
+                    
+                    <h3 style="margin:0 0 4px; font-size:1.35rem; color:var(--tx-main); font-weight:800; letter-spacing:-0.02em;">Delete Warehouse</h3>
+                    <p style="margin:0 0 28px; color:var(--tx-muted); font-size:0.9rem; font-weight:600;">Requested by <span style="color:var(--tx-main);">${requesterName}</span></p>
+                    
+                    <div style="background: var(--bg-page); border-radius: 16px; padding: 12px 24px; border: 1px solid var(--bd-color); text-align: left; display: flex; flex-direction: column;">
+                        
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--bd-color);">
+                            <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Name</div>
+                            <div style="font-size:0.95rem; color:var(--tx-main); font-weight:800; text-align:right; max-width:65%; word-break:break-word;">${safeName}</div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--bd-color);">
+                            <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Contains</div>
+                            <div style="font-size:0.9rem; color:var(--danger); font-weight:800; max-width:65%; text-align:right;">
+                                ${data.productCount || 0} Products
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0;">
+                            <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Reason</div>
+                            <div style="color:var(--tx-main); font-size:0.85rem; font-weight:600; text-align:right; max-width:65%; word-break:break-word;">
+                                "${safeReason}"
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="padding: 0 32px 32px; display:flex; gap:12px;">
+                    <button onclick="window.declineWarehouseDeleteReq('${notifId}'); this.closest('#wh-del-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--bg-surface); color:var(--tx-main); border:1.5px solid var(--bd-color); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--bg-page)';" onmouseout="this.style.background='var(--bg-surface)';">Decline</button>
+                    <button onclick="window.approveWarehouseDeleteReq('${notifId}'); this.closest('#wh-del-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--danger); color:#fff; border:none; box-shadow:0 4px 12px rgba(239,68,68,0.3); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">Approve</button>
+                </div>
+            </div>
+        `;
+        
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.style.opacity = '0';
+                const content = overlay.querySelector('.wh-modal-content');
+                if(content) {
+                    content.style.transform = 'scale(0.9)';
+                    content.style.opacity = '0';
+                }
+                setTimeout(() => overlay.remove(), 250);
+            }
+        });
+        
+        document.body.appendChild(overlay);
+    } catch(err) {
+        alert("System error opening request: " + err.message);
+    }
 };
 
 window.approveWarehouseDeleteReq = async function(notifId) {
@@ -2903,6 +2914,7 @@ window.approveWarehouseDeleteReq = async function(notifId) {
     }
 
     try {
+        const { getDocs, query, collection, where, writeBatch, doc, addDoc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
         const batch = writeBatch(db);
         
         // 1. Delete all products inside warehouse
@@ -2917,7 +2929,9 @@ window.approveWarehouseDeleteReq = async function(notifId) {
         batch.delete(doc(db,'godowns',whId));
         
         // 4. Delete the notification from owner's feed
-        batch.delete(doc(db, 'users', auth.currentUser.uid, 'notifications', notifId));
+        if (window.CU && window.CU.uid) {
+            batch.delete(doc(db, 'users', window.CU.uid, 'notifications', notifId));
+        }
         
         await batch.commit();
         
@@ -2934,7 +2948,7 @@ window.approveWarehouseDeleteReq = async function(notifId) {
         if (window.showToast) window.showToast("Warehouse deleted successfully!", "success");
     } catch(e) {
         console.error(e);
-        if (window.showToast) window.showToast("Failed to delete warehouse.", "error");
+        if (window.showToast) window.showToast("Failed to delete warehouse: " + e.message, "error");
     }
 };
 
@@ -2949,7 +2963,11 @@ window.declineWarehouseDeleteReq = async function(notifId) {
     }
 
     try {
-        await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'notifications', notifId));
+        const { deleteDoc, doc, addDoc, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        
+        if (window.CU && window.CU.uid) {
+            await deleteDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId));
+        }
         
         if (notif.actorId && notif.warehouseData) {
             await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
@@ -2965,6 +2983,8 @@ window.declineWarehouseDeleteReq = async function(notifId) {
         console.error(e);
     }
 };
+
+init();
 </script>
 </body>
 </html>
