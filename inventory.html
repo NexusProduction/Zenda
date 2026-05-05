@@ -1266,6 +1266,39 @@ input[type=number] { -moz-appearance: textfield; }
     </div>
   </div>
 </div>
+  <!-- OWNER REVIEW DELETION REQUEST MODAL -->
+<div class="mo" id="m-review-del-wh">
+  <div class="mbox" style="max-width:440px; padding: 0;">
+    <div style="padding: 20px 24px; border-bottom: 2px solid rgba(0,0,0,0.15); display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        <div style="font-family: var(--f-display); font-size: 1.1rem; font-weight: 800; color: var(--red);">Review Deletion</div>
+        <div style="font-size: 0.85rem; color: var(--text-3); font-weight: 500;">Staff deletion request</div>
+      </div>
+      <button class="mx" onclick="window.closeM('m-review-del-wh')">✕</button>
+    </div>
+    <div style="padding: 20px 24px 24px;">
+      
+      <!-- Deep Analytics Card -->
+      <div style="background: var(--white-cool); border: 1.5px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 20px;">
+        <div style="font-size: 11px; color: var(--text-4); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Warehouse</div>
+        <div id="revWhName" style="font-family: var(--f-display); font-size: 18px; font-weight: 800; color: var(--text-1); margin-bottom: 16px;">—</div>
+        
+        <div style="font-size: 11px; color: var(--text-4); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Contains</div>
+        <div style="font-size: 15px; font-weight: 700; color: var(--text-2); margin-bottom: 16px;"><span id="revWhProds" style="color: var(--red);">0</span> products</div>
+
+        <div style="font-size: 11px; color: var(--text-4); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Reason</div>
+        <div id="revWhReason" style="font-size: 14px; font-weight: 600; color: var(--text-2); line-height: 1.5; background: var(--white-pure); padding: 12px; border-radius: 10px; border: 1.5px solid var(--border-faint);">—</div>
+      </div>
+
+      <div id="revWhErr" style="font-size:13px;color:var(--red);text-align:center;min-height:1em;margin-bottom:14px"></div>
+      
+      <div class="macts">
+        <button class="mno" onclick="window.rejectWHDelete()">Dismiss</button>
+        <button class="btn-black" style="background: var(--red);" id="revWhBtn" onclick="window.approveWHDelete()">Approve & Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="tc"></div>
 
@@ -1603,7 +1636,18 @@ async function init(){
     if (modalBtn) modalBtn.textContent = 'Request';
     if (modalSub) modalSub.textContent = 'Send creation request to owner';
   }
-  
+  // Auto-open review modal if coming from a notification click
+  const reviewTarget = new URLSearchParams(location.search).get('review_delete');
+  if (reviewTarget && CU.role === 'owner') {
+    getDoc(doc(db, 'users', CU.uid, 'notifications', reviewTarget)).then(snap => {
+      if (snap.exists()) {
+        const nd = snap.data();
+        if (nd.status === 'pending' && nd.warehouseData) {
+          window.openReviewModal(nd.warehouseData.id, nd.warehouseData.name, nd.warehouseData.productCount, nd.warehouseData.reason, snap.id);
+        }
+      }
+    });
+  }
   showView('dash');
   loadWHs();
   listenProductsLive();
@@ -2266,10 +2310,13 @@ window.sendWHDeleteRequest = async function() {
     if (!CU.ownerId) throw new Error("Owner ID not found.");
     
     // Push the notification request to the owner's dashboard
-    const notifRef = collection(db, 'users', CU.ownerId, 'notifications');
-    await addDoc(notifRef, {
+    // Push the notification request to the owner's dashboard
+    const notifDoc = doc(collection(db, 'users', CU.ownerId, 'notifications'));
+    await setDoc(notifDoc, {
       type: 'warehouse_delete_request',
-      message: `${CU.name} wants to delete warehouse: "${whObj.name}"`,
+      message: `${CU.name} requested to delete warehouse: "${whObj.name}"`,
+      actionText: 'Review Request', // <--- Button Text for Dashboard
+      actionUrl: `inventory.html?review_delete=${notifDoc.id}`, // <--- URL to trigger the pop-up
       warehouseData: { 
         id: curWH, 
         name: whObj.name, 
@@ -2292,6 +2339,62 @@ window.sendWHDeleteRequest = async function() {
   }
   btn.disabled = false;
   btn.textContent = 'Send Request';
+};
+  // ── OWNER: REVIEW & APPROVE LOGIC ──
+let reviewWhId = null;
+let reviewNotifId = null;
+
+window.openReviewModal = function(whId, whName, prodCount, reason, notifId) {
+  reviewWhId = whId;
+  reviewNotifId = notifId;
+  document.getElementById('revWhName').textContent = whName;
+  document.getElementById('revWhProds').textContent = prodCount;
+  document.getElementById('revWhReason').textContent = reason || 'No reason provided.';
+  document.getElementById('revWhErr').textContent = '';
+  window.openM('m-review-del-wh');
+};
+
+window.approveWHDelete = async function() {
+  if (!reviewWhId) return;
+  const btn = document.getElementById('revWhBtn');
+  btn.disabled = true;
+  btn.textContent = 'Deleting...';
+  
+  try {
+    const batch = writeBatch(db);
+    // 1. Delete Products
+    const prodSnap = await getDocs(query(collection(db,'products'), where('godownId','==',reviewWhId)));
+    prodSnap.docs.forEach(d => batch.delete(d.ref));
+    // 2. Delete Entries
+    const entSnap = await getDocs(query(collection(db,'entries'), where('godownId','==',reviewWhId)));
+    entSnap.docs.forEach(d => batch.delete(d.ref));
+    // 3. Delete Warehouse
+    batch.delete(doc(db,'godowns',reviewWhId));
+    // 4. Mark Notification Resolved
+    if (reviewNotifId && CU.uid) {
+      batch.update(doc(db, 'users', CU.uid, 'notifications', reviewNotifId), { status: 'approved', read: true });
+    }
+    
+    await batch.commit();
+    window.closeM('m-review-del-wh');
+    window.showToast('Warehouse deleted permanently.', 's');
+    
+    if (curWH === reviewWhId) window.goBack(); else loadWHs();
+  } catch(e) {
+    document.getElementById('revWhErr').textContent = 'Failed: ' + e.message;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Approve & Delete';
+};
+
+window.rejectWHDelete = async function() {
+  if (reviewNotifId && CU.uid) {
+    try {
+      await updateDoc(doc(db, 'users', CU.uid, 'notifications', reviewNotifId), { status: 'rejected', read: true });
+      window.showToast('Request dismissed.', '');
+    } catch(e) { console.error(e); }
+  }
+  window.closeM('m-review-del-wh');
 };
 init();
 </script>
