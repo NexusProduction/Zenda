@@ -2230,16 +2230,34 @@ window.confirmDelWH = async function() {
   try {
     const batch = writeBatch(db);
     
-    // Delete all products in this warehouse
-    const prodSnap = await getDocs(query(collection(db,'products'), where('godownId','==',curWH)));
+    // 1. Delete all products in this warehouse (FIXED: Added companyId to satisfy Firebase Security)
+    const prodSnap = await getDocs(query(collection(db,'products'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     prodSnap.docs.forEach(d => batch.delete(d.ref));
     
-    // Delete all entries in this warehouse
-    const entSnap = await getDocs(query(collection(db,'entries'), where('godownId','==',curWH)));
+    // 2. Delete all entries in this warehouse (FIXED: Added companyId to satisfy Firebase Security)
+    const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     entSnap.docs.forEach(d => batch.delete(d.ref));
     
-    // Delete the warehouse itself
+    // 3. Delete the warehouse itself
     batch.delete(doc(db,'godowns',curWH));
+    
+    // 4. BULK SWEEPER: Find any pending staff requests for this warehouse and erase them from owner inbox
+    const dupeSnap = await getDocs(query(collection(db, 'users', CU.uid, 'notifications'), where('type', '==', 'warehouse_delete_request')));
+    dupeSnap.docs.forEach(d => {
+        const nData = d.data();
+        if (nData.warehouseData && nData.warehouseData.id === curWH) {
+            batch.delete(d.ref); // Erase from inbox
+            if (nData.actorId) {
+                const staffNotifRef = doc(collection(db, 'users', nData.actorId, 'notifications'));
+                batch.set(staffNotifRef, {
+                    type: 'system',
+                    message: `Your request to delete warehouse "${nData.warehouseData.name}" was dismissed because the owner directly deleted it.`,
+                    read: false,
+                    createdAt: Date.now()
+                });
+            }
+        }
+    });
     
     await batch.commit();
     window.closeM('m-del-wh');
@@ -2250,6 +2268,66 @@ window.confirmDelWH = async function() {
   }
   btn.disabled = false;
   btn.textContent = 'Delete Forever';
+};
+
+// Staff: Send Request to Owner
+window.sendWHDeleteRequest = async function() {
+  const reason = document.getElementById('reqDelReason').value.trim();
+  const errEl = document.getElementById('reqDelErr');
+  errEl.textContent = '';
+
+  // Enhanced Error Feedback if reason is empty
+  if(reason.length < 5) {
+    errEl.textContent = '⚠ Please provide a reason (at least 5 characters).';
+    const txtBox = document.getElementById('reqDelReason');
+    txtBox.style.borderColor = 'var(--red)';
+    txtBox.style.backgroundColor = '#FEF2F2';
+    setTimeout(() => {
+        txtBox.style.borderColor = 'var(--border)';
+        txtBox.style.backgroundColor = 'var(--bg-canvas)';
+    }, 2000);
+    return; // Completely stops the request from sending
+  }
+
+  const btn = document.getElementById('reqDelBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    const whObj = WHs.find(w => w.id === curWH);
+    const prodCount = document.getElementById('wssP').textContent;
+    
+    if (!CU.ownerId) throw new Error("Owner ID not found.");
+    
+    // Push the notification request to the owner's dashboard
+    const notifDoc = doc(collection(db, 'users', CU.ownerId, 'notifications'));
+    await setDoc(notifDoc, {
+      type: 'warehouse_delete_request',
+      message: `${CU.name} requested to delete warehouse: "${whObj.name}"`,
+      actionText: 'Review Request',
+      actionUrl: `inventory.html?review_delete=${notifDoc.id}`,
+      warehouseData: { 
+        id: curWH, 
+        name: whObj.name, 
+        productCount: prodCount,
+        reason: reason,
+        companyId: CU.companyId, 
+        requestedBy: CU.uid 
+      },
+      actorId: CU.uid,
+      actorName: CU.name,
+      read: false,
+      status: 'pending',
+      createdAt: Date.now()
+    });
+
+    window.closeM('m-req-del-wh');
+    window.showToast('Deletion request sent to Owner ✓', 's');
+  } catch(e) {
+    errEl.textContent = '❌ Failed: ' + e.message;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Send Request';
 };
 
 // Staff: Send Request to Owner
