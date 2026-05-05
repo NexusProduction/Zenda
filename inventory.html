@@ -1644,13 +1644,14 @@ function renderWHs() {
       pcList.appendChild(row);
     }
 
-    // Load Product Counts (Removed dot alert calculations entirely)
-    getDocs(query(collection(db,'products'),where('godownId','==',wh.id))).then(ps=>{
+    // Load Product Counts (Fixed Firebase Security Rule block by adding companyId)
+    getDocs(query(collection(db,'products'), where('companyId','==',CU.companyId), where('godownId','==',wh.id))).then(ps=>{
       const cnt = ps.size;
       const pc = document.getElementById(`wc-${wh.id}`);
       if(pc) pc.textContent = cnt + ' items';
-    }).catch(()=>{});
-  });
+    }).catch((e)=>{ 
+      console.error("Item Count Error for " + wh.name + ":", e); 
+    });
 
   // ── RENDER UNIVERSAL BLUR BLOCK FOR LOCKED ITEMS ──
   if (hasLocked) {
