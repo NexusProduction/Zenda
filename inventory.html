@@ -2617,12 +2617,14 @@ window.sendWHDeleteRequest = async function() {
   if(reason.length < 5) {
     errEl.innerHTML = '<div style="margin-bottom:12px;">⚠ Please provide a reason (at least 5 characters).</div>';
     const txtBox = document.getElementById('reqDelReason');
-    txtBox.style.borderColor = 'var(--red)';
-    txtBox.style.backgroundColor = '#FEF2F2';
-    setTimeout(() => {
-        txtBox.style.borderColor = 'var(--border)';
-        txtBox.style.backgroundColor = 'var(--bg-canvas)';
-    }, 2000);
+    if (txtBox) {
+        txtBox.style.borderColor = 'var(--red)';
+        txtBox.style.backgroundColor = '#FEF2F2';
+        setTimeout(() => {
+            txtBox.style.borderColor = 'var(--border)';
+            txtBox.style.backgroundColor = 'var(--bg-canvas)';
+        }, 2000);
+    }
     return; // Completely stops the request from sending
   }
 
@@ -2659,60 +2661,8 @@ window.sendWHDeleteRequest = async function() {
     });
 
     window.closeM('m-req-del-wh');
-    window.showToast('Deletion request sent to Owner ✓', 's');
-  } catch(e) {
-    errEl.textContent = '❌ Failed: ' + e.message;
-  }
-  btn.disabled = false;
-  btn.textContent = 'Send Request';
-};
-
-// Staff: Send Request to Owner
-window.sendWHDeleteRequest = async function() {
-  const reason = document.getElementById('reqDelReason').value.trim();
-  const errEl = document.getElementById('reqDelErr');
-  errEl.textContent = '';
-
-  if(reason.length < 5) {
-    errEl.textContent = '⚠ Please provide a valid reason.';
-    return;
-  }
-
-  const btn = document.getElementById('reqDelBtn');
-  btn.disabled = true;
-  btn.textContent = 'Sending...';
-
-  try {
-    const whObj = WHs.find(w => w.id === curWH);
-    const prodCount = prods.length;
-    
-    if (!CU.ownerId) throw new Error("Owner ID not found.");
-    
-    // Push the notification request to the owner's dashboard
-    // Push the notification request to the owner's dashboard
-    const notifDoc = doc(collection(db, 'users', CU.ownerId, 'notifications'));
-    await setDoc(notifDoc, {
-      type: 'warehouse_delete_request',
-      message: `${CU.name} requested to delete warehouse: "${whObj.name}"`,
-      actionText: 'Review Request', // <--- Button Text for Dashboard
-      actionUrl: `inventory.html?review_delete=${notifDoc.id}`, // <--- URL to trigger the pop-up
-      warehouseData: { 
-        id: curWH, 
-        name: whObj.name, 
-        productCount: prodCount,
-        reason: reason,
-        companyId: CU.companyId, 
-        requestedBy: CU.uid 
-      },
-      actorId: CU.uid,
-      actorName: CU.name,
-      read: false,
-      status: 'pending',
-      createdAt: Date.now()
-    });
-
-    window.closeM('m-req-del-wh');
-    window.showToast('Deletion request sent to Owner ✓', 's');
+    // Tick removed from text, keeping only the 'success' parameter
+    window.showToast('Deletion request sent to Owner', 'success');
   } catch(e) {
     errEl.textContent = '❌ Failed: ' + e.message;
   }
