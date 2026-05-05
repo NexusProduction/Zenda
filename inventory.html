@@ -396,11 +396,6 @@ body { padding-top: 60px; }
 .hero-big-ico { width: 50px; height: 50px; border-radius: 14px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; color: var(--accent); flex-shrink: 0; }
 .hero-name { font-family: var(--f-display); font-size: 20px; font-weight: 800; color: var(--text-1); margin-bottom: 4px; letter-spacing: -0.01em; }
 .hero-loc { font-size: 13px; color: var(--text-3); display: flex; align-items: center; gap: 4px; }
-.strip { display: grid; grid-template-columns: repeat(3,1fr); border: 1px solid var(--border-faint); border-radius: var(--r-md); overflow: hidden; background: var(--white-cool); }
-.strip-cell { padding: 14px 12px; text-align: center; border-right: 1px solid var(--border-faint); }
-.strip-cell:last-child { border-right: none; }
-.strip-val { font-family: var(--f-mono); font-weight: 700; font-size: 22px; color: var(--text-1); display: block; margin-bottom: 3px; }
-.strip-lbl { font-size: 11px; color: var(--text-4); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; }
 
 .prod-card { background: var(--white-pure); border: 1px solid var(--border-faint); border-radius: var(--r-xl); overflow: hidden; box-shadow: var(--shadow-xs); }
 .pc-hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--white-muted); }
@@ -742,13 +737,11 @@ input[type=number] { -moz-appearance: textfield; }
 .pc-hdr, .conv-hdr, .entry-hdr, .pd-acts {
   border-bottom: 2px solid rgba(0, 0, 0, 0.15) !important;
 }
-
-/* Make the 3-column stats strip bolder to match */
-.strip, .pd-mini {
+.pd-mini {
   border: 1.5px solid rgba(0, 0, 0, 0.15) !important;
   border-radius: 16px !important;
 }
-.strip-cell, .pms {
+.pms {
   border-right: 1.5px solid rgba(0, 0, 0, 0.15) !important;
 }
 
@@ -987,16 +980,11 @@ input[type=number] { -moz-appearance: textfield; }
           </button>
         </div>
       </div>
-      <div class="strip">
-        <div class="strip-cell"><span class="strip-val" id="wssP">0</span><span class="strip-lbl">Products</span></div>
-        <div class="strip-cell"><span class="strip-val" id="wssI" style="color:var(--green)">0</span><span class="strip-lbl">Today IN</span></div>
-        <div class="strip-cell"><span class="strip-val" id="wssO" style="color:var(--red)">0</span><span class="strip-lbl">Today OUT</span></div>
-      </div>
     </div>
 
     <div class="prod-card">
       <div class="pc-hdr">
-        <div class="pc-title">Products</div>
+        <div class="pc-title" id="pcTitle">Products</div>
         
         <button class="btn-primary btn-sm btn-add-pc hidden" id="btnAddProdPC" onclick="window.openAddProd()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1824,14 +1812,17 @@ window.openWH=async function(wh){
     btnDel.innerHTML = `${trashIcon} <span>Delete</span>`;
     btnDel.onclick = () => {
       document.getElementById('delWhSub').textContent = `Delete "${whObj.name}"?`;
-      document.getElementById('delWhErr').innerHTML = ''; // Reset error space
+      document.getElementById('delWhErr').innerHTML = ''; 
       window.openM('m-del-wh');
     };
   } else {
     btnDel.innerHTML = `${trashIcon} <span>Request Delete</span>`;
     btnDel.onclick = () => {
+      document.getElementById('reqDelWhName').textContent = whObj.name;
+      // Get count directly from the loaded array instead of the deleted HTML
+      document.getElementById('reqDelWhProds').textContent = prods.length; 
       document.getElementById('reqDelReason').value = '';
-      document.getElementById('reqDelErr').innerHTML = ''; // Reset error space
+      document.getElementById('reqDelErr').innerHTML = ''; 
       window.openM('m-req-del-wh');
     };
   }
@@ -1842,7 +1833,6 @@ window.openWH=async function(wh){
   document.getElementById('pSrch').value='';
   showView('wh');
   await loadProds(curWH);
-  loadWHStats(curWH);
 };
 
 async function loadWHStats(whId){
@@ -1878,8 +1868,18 @@ async function loadProds(whId){
 
 function renderProds(list){
   const el=document.getElementById('prodList');
-  const wssP=document.getElementById('wssP');if(wssP)wssP.textContent=list.length;
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:48px 20px"><div style="font-size:40px;opacity:0.4;margin-bottom:14px">📦</div><div style="font-size:15px;font-family:var(--f-display);font-weight:700;color:var(--text-1);margin-bottom:6px">No products yet</div><div style="font-size:13px;color:var(--text-3)">Tap Add Product to create your first item</div></div>';return;}
+  const pcTitle = document.getElementById('pcTitle');
+  
+  // Update the title: "Products (7)" or just "Products" if 0
+  if (pcTitle) {
+    pcTitle.textContent = list.length > 0 ? `Products (${list.length})` : 'Products';
+  }
+
+  if(!list.length){
+    el.innerHTML='<div style="text-align:center;padding:48px 20px"><div style="font-size:40px;opacity:0.4;margin-bottom:14px">📦</div><div style="font-size:15px;font-family:var(--f-display);font-weight:700;color:var(--text-1);margin-bottom:6px">No products yet</div><div style="font-size:13px;color:var(--text-3)">Tap Add Product to create your first item</div></div>';
+    return;
+  }
+  
   el.innerHTML=list.map(p=>{
     const isLow=p.minStock!=null?p.stock<=p.minStock:p.stock<=0;
     return `<div class="prow" onclick="window.openProd('${p.id}')"><div class="prow-ico">${p.emoji||'📦'}</div><div class="prow-info"><div class="prow-name">${esc(p.name)}${isLow?'<span class="low-badge">⚠ Low</span>':''}</div><div class="prow-meta">${p.desc?esc(p.desc.slice(0,50)):'&nbsp;'}</div></div><div class="prow-stk"><span class="prow-num${isLow?' low':''}">${p.stock||0}</span><span class="prow-unit">${esc(p.unit||'units')}</span></div><div class="prow-arr"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>`;
