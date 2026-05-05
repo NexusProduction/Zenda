@@ -1894,11 +1894,77 @@ window.toggleAddProdConv=function(el){document.getElementById('addProdConvBuilde
 window.addProdConvFormulaRow=function(){appendFixedBaseConvRow(document.getElementById('addProdConvRows'),document.getElementById('pu_fixed').value);};
 function appendFixedBaseConvRow(container,fixedBase){const row=document.createElement('div');row.className='conv-row-fixed';row.innerHTML=`<span style="font-size:13px;color:var(--text-2)">1 <span class="fixed-b-label fixed-b-dynamic">${esc(fixedBase)}</span></span><span style="margin:0 4px;color:var(--text-4)">=</span><input type="number" step="any" min="0.0001" placeholder="Qty" class="mult-inp" required><select class="unit-sel-sm alt-unit-sel" required style="width:110px"></select><button class="conv-rm" onclick="this.parentElement.remove()" style="margin-left:auto">✕</button>`;container.appendChild(row);const sel=row.querySelector('.alt-unit-sel');window.populateAltUnitsGeneric(sel,fixedBase);}
 window.addProduct=async function(){
-  const name=document.getElementById('pn').value.trim();const emoji=window._aiEmoji||'📦';const desc=document.getElementById('pdesc').value.trim();const stock=parseFloat(document.getElementById('ps').value)||0;const unit=document.getElementById('pu_fixed').value.trim();const minRaw=document.getElementById('pmin').value;const minStock=minRaw!==''?parseFloat(minRaw):undefined;
+  const name=document.getElementById('pn').value.trim();
+  const emoji=window._aiEmoji||'📦';
+  const desc=document.getElementById('pdesc').value.trim();
+  const stock=parseFloat(document.getElementById('ps').value)||0;
+  const unit=document.getElementById('pu_fixed').value.trim();
+  
+  // Safely check for minStock (prevents the silent crash!)
+  const pminEl = document.getElementById('pmin');
+  const minRaw = pminEl ? pminEl.value : '';
+  const minStock = minRaw !== '' ? parseFloat(minRaw) : undefined;
+
+  // Grab the Expense Fields
+  const logExpense = document.getElementById('addProdExpTgl')?.checked;
+  const cost = parseFloat(document.getElementById('addProdCost')?.value) || 0;
+  const expCat = document.getElementById('addProdExpCat')?.value || 'Inventory Stock';
+
   if(!name){setMM('prodMsg','⚠ Enter product name.','err');return;}
-  let convs=[];if(document.getElementById('addProdConvTgl')?.checked){convs=getConvRowsFixedDataFromAdd();if(convs===null){setMM('prodMsg','⚠ Check conversion values.','err');return;}}
+  
+  if(logExpense && cost <= 0) {
+    setMM('prodMsg','⚠ Enter a valid total cost for the expense.','err');
+    return;
+  }
+
+  let convs=[];
+  if(document.getElementById('addProdConvTgl')?.checked){
+    convs=getConvRowsFixedDataFromAdd();
+    if(convs===null){setMM('prodMsg','⚠ Check conversion values.','err');return;}
+  }
+
   setMM('prodMsg','Adding…','');
-  try{const cid=CU.companyId;const pRef=await addDoc(collection(db,'products'),{name,emoji,desc,stock,unit,...(minStock!==undefined?{minStock}:{}),...(convs.length?{conversions:convs}:{}),godownId:curWH,companyId:cid,createdBy:CU.uid,createdAt:new Date().toISOString()});if(stock>0)await addDoc(collection(db,'entries'),{type:'IN',qty:stock,qtyBase:stock,unit,entryUnit:unit,note:'Opening stock',productId:pRef.id,godownId:curWH,companyId:cid,who:CU.name||'Owner',createdBy:CU.uid,deleted:false,createdAt:serverTimestamp()});window.closeM('m-prod');await loadProds(curWH);window.showToast(`${name} added ✓`,'s');}catch(e){setMM('prodMsg','❌ Failed: '+e.message,'err');}
+  try {
+    const cid=CU.companyId;
+    
+    // 1. Create Product
+    const pRef=await addDoc(collection(db,'products'),{
+      name,emoji,desc,stock,unit,
+      ...(minStock!==undefined?{minStock}:{}),
+      ...(convs.length?{conversions:convs}:{}),
+      godownId:curWH,companyId:cid,createdBy:CU.uid,createdAt:new Date().toISOString()
+    });
+
+    if(stock > 0){
+      // 2. Create Stock Entry
+      const entryRef = await addDoc(collection(db,'entries'),{
+        type:'IN',qty:stock,qtyBase:stock,unit,entryUnit:unit,note:'Opening stock',
+        productId:pRef.id,godownId:curWH,companyId:cid,who:CU.name||'Owner',createdBy:CU.uid,deleted:false,createdAt:serverTimestamp()
+      });
+
+      // 3. Create linked Expense (if toggled ON)
+      if (logExpense && cost > 0) {
+        await addDoc(collection(db,'expenses'), {
+          type: 'expense',
+          amount: Number(cost),
+          category: expCat,
+          description: name + ' (Opening Stock)',
+          relatedEntryId: entryRef.id,
+          productId: pRef.id,
+          companyId: cid,
+          createdBy: CU.uid,
+          createdByName: CU.name || 'Owner',
+          date: new Date().toISOString(),
+          createdAt: serverTimestamp()
+        });
+      }
+    }
+    window.closeM('m-prod');
+    await loadProds(curWH);
+    window.showToast(`${name} added ✓`,'s');
+  } catch(e) {
+    setMM('prodMsg','❌ Failed: '+e.message,'err');
+  }
 };
 function getConvRowsFixedDataFromAdd(){const rows=document.querySelectorAll('#addProdConvRows .conv-row-fixed');const convs=[];const seen=new Set();for(const row of rows){const mult=parseFloat(row.querySelector('.mult-inp').value);const altUnit=row.querySelector('.alt-unit-sel').value;if(seen.has(altUnit)||!mult||mult<=0||!altUnit)return null;seen.add(altUnit);convs.push({name:altUnit,ratio:mult});}return convs;}
 
