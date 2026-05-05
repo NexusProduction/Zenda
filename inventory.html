@@ -2343,7 +2343,7 @@ window.createWH = async function(){
   // Premium Limit Check (1 Warehouse for Free users)
   if (!CU.isPremium && WHs.length >= 1) {
     window.closeM('m-wh');
-    window.showToast('Free plan limited to 1 warehouse. Please upgrade.', 'e');
+    window.showToast('Free plan limited to 1 warehouse. Please upgrade.', 'error');
     setTimeout(() => {
       window.location.href = 'subscription.html';
     }, 1500);
@@ -2352,10 +2352,11 @@ window.createWH = async function(){
 
   const nameInp = document.getElementById('wn');
   const locInp = document.getElementById('wl');
+  const customInp = document.getElementById('wcc-custom');
   const name = nameInp.value.trim();
   const loc = locInp.value.trim();
   const raw = document.getElementById('wc').value;
-  const cat = raw === 'other' ? (document.getElementById('wcc').value.trim() || 'Other') : raw;
+  const cat = raw === 'Other...' ? (customInp.value.trim() || 'Other') : raw;
   const msgEl = document.getElementById('whMsg');
   
   // Reset styles
@@ -2393,7 +2394,7 @@ window.createWH = async function(){
     if (CU.role === 'owner') {
       // 1. Direct Creation for Owners
       await addDoc(collection(db,'godowns'),{name,location:loc,category:cat,companyId:cid,createdBy:CU.uid,createdAt:new Date().toISOString()});
-      window.showToast('Warehouse created ✓','s');
+      window.showToast('Warehouse created', 'success'); // Removed duplicate tick
     } else {
       // 2. Notification Request for Staff
       if (!CU.ownerId) throw new Error("Owner ID not found.");
@@ -2409,12 +2410,26 @@ window.createWH = async function(){
         status: 'pending',
         createdAt: Date.now()
       });
-      window.showToast('Request sent to Owner ✓','s');
+      window.showToast('Request sent to Owner', 'success'); // Removed duplicate tick
     }
 
-    // Cleanup & Close
-    ['wn','wl'].forEach(id => { document.getElementById(id).value = ''; document.getElementById(id).style.borderColor = 'var(--border)'; });
-    document.getElementById('wc').value = 'General';
+    // FULL Cleanup & Close (Including Custom Category Field)
+    ['wn','wl','wcc-custom'].forEach(id => { 
+      const el = document.getElementById(id);
+      if(el) { el.value = ''; el.style.borderColor = 'var(--border)'; }
+    });
+    
+    // Reset Custom Input Visibility & Data
+    if (customInp) customInp.style.display = 'none';
+    document.getElementById('wh-category').value = 'General Storage';
+    document.getElementById('wc').value = 'General Storage';
+    
+    // Reset UI Dropdown visually back to default
+    document.getElementById('wh-cpt-icon').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3" ry="3"/></svg>';
+    document.getElementById('wh-cpt-icon').style.background = '#EEF2FF';
+    document.getElementById('wh-cpt-icon').style.color = '#4F46E5';
+    document.getElementById('wh-cpt-label').textContent = 'General Storage';
+
     msgEl.textContent = '';
     window.closeM('m-wh');
     
