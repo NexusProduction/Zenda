@@ -1696,12 +1696,15 @@ async function loadWHStats(whId){
   if(!whId)return;
   const today=new Date();today.setHours(0,0,0,0);
   try{
-    const snap=await getDocs(query(collection(db,'entries'),where('godownId','==',whId)));
+    // Added companyId check to satisfy Firebase Security Rules!
+    const snap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('godownId','==',whId)));
     const all=snap.docs.map(d=>d.data()).filter(e=>!e.deleted);
     const todays=all.filter(e=>{const ts=e.createdAt?.toDate?e.createdAt.toDate():new Date(e.createdAt||0);return ts>=today;});
     document.getElementById('wssI').textContent=todays.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
     document.getElementById('wssO').textContent=todays.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
-  }catch(e){}
+  }catch(e){
+    console.error("Stats Load Error:", e);
+  }
 }
 
 // ── PRODUCTS ──
@@ -1709,10 +1712,15 @@ async function loadProds(whId){
   if(!whId)return;
   document.getElementById('prodList').innerHTML='<div style="text-align:center;padding:28px;color:var(--text-4);font-size:14px">Loading…</div>';
   try{
-    const snap=await getDocs(query(collection(db,'products'),where('godownId','==',whId)));
+    // Added companyId check to satisfy Firebase Security Rules!
+    const snap=await getDocs(query(collection(db,'products'), where('companyId','==',CU.companyId), where('godownId','==',whId)));
     prods=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name));
     renderProds(prods);
-  }catch(e){document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:var(--red);font-size:14px">Error loading products.</div>`;}
+  }catch(e){
+    console.error("Products Load Error:", e);
+    // Exposes the exact Firebase error on the screen if it fails again
+    document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:var(--red);font-size:14px"><b>Database Error:</b> ${e.message}</div>`;
+  }
 }
 
 function renderProds(list){
