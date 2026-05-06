@@ -2735,7 +2735,6 @@ window.confirmDelEntry=async function(){
   try{const snap=await getDoc(doc(db,'entries',entToDelete));const e=snap.data();const isOwn=e.createdBy===CU.uid;const amt=`${e.qty} ${e.entryUnit||e.unit||''}`.trim();const msg=isOwn?`${CU.name} deleted their own entry of ${amt} ${e.type}`:`${CU.role} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;await updateDoc(doc(db,'entries',entToDelete),{deleted:true,deleteReason:reason,deleteMessage:msg,deletedBy:CU.uid,deletedByName:CU.name||'Owner',deletedAt:new Date().toISOString()});window.closeM('m-del-entry');await loadEntries(curProd.id);const allSnap=await getDocs(query(collection(db,'entries'),where('productId','==',curProd.id)));const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted);const newStock=Math.max(0,activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0));await updateDoc(doc(db,'products',curProd.id),{stock:newStock});curProd.stock=newStock;document.getElementById('pdStock').textContent=newStock;window.showToast('Entry deleted.','');}catch(e){setMM('delEntMsg','❌ Failed: '+e.message,'err');}
   btn.disabled=false;btn.textContent='Delete Entry';
 };
-
 // ── ADD PRODUCT ──
 window.openAddProd = function() {
   const wh = WHs.find(w => w.id === curWH);
@@ -2752,10 +2751,11 @@ window.openAddProd = function() {
     if (e) { e.value = ''; e.type = 'number'; e.min = '0'; e.step = 'any'; }
   });
 
-  // Safely reset the NEW premium custom dropdown
-  if (typeof window.selectUnitOption === 'function') {
-    window.selectUnitOption(STD_UNITS[0]);
-  }
+  // Safely reset the NEW premium custom dropdowns
+  if (typeof window.selectUnitOption === 'function') window.selectUnitOption(STD_UNITS[0]);
+  
+  // FIX: This line generates and populates the Expense categories!
+  if (typeof window.setupExpCatDropdown === 'function') window.setupExpCatDropdown();
 
   // Safely clear conversions
   const convRows = document.getElementById('addProdConvRows');
@@ -2767,7 +2767,7 @@ window.openAddProd = function() {
   const convBldr = document.getElementById('addProdConvBuilder');
   if (convBldr) convBldr.style.display = 'none';
 
-// Safely reset the NEW inline SVG icon
+  // Safely reset the NEW inline SVG icon
   window._aiEmoji = 'package';
   const nameEmojiIcon = document.getElementById('nameEmojiIcon');
   if (nameEmojiIcon) nameEmojiIcon.innerHTML = window.getExtIcon('package');
