@@ -1428,53 +1428,111 @@ input[type=number] { -moz-appearance: textfield; }
 </div>
 
 <div class="mo" id="m-prod" onclick="if(event.target===this) window.closeM('m-prod')">
-  <div class="mbox" style="max-width: 440px; padding: 0; border-radius: 20px;">
+  <div class="mbox" style="max-width: 500px; padding: 0; border-radius: 20px; overflow: hidden;">
+    
+    <!-- Header: Centered, No X Icon, Bold Border -->
     <div class="mhd" style="border-bottom: 2px solid var(--border-strong); padding: 24px 24px 14px; justify-content: center;">
       <div class="mttl" style="color:var(--text-1); font-size: 1.25rem; font-weight: 800; text-align: center; width: 100%; font-family: var(--f-display); letter-spacing: -0.01em; margin-bottom: 0;">Add Product</div>
-      <!-- Hidden subtitle so JS doesn't crash -->
+      <!-- Hidden subtitle (removes "Adding to BS Enterprises" without breaking JavaScript) -->
       <div id="prodModalSub" style="display:none;"></div>
     </div>
-    <div class="mbd" style="padding: 24px;">
-      <div class="mf"><label>Name</label><div class="mfr"><span class="mico">📦</span><input type="text" id="pn" placeholder="e.g. Rice 25kg, Cement Bag…" oninput="window.scheduleEmoji(this.value)" autocomplete="off"/></div></div>
-      <div class="ai-emoji-prev" id="aiPrev"><span style="font-size:24px" id="aiPrevIco">📦</span><div style="flex:1"><strong>Auto emoji:</strong> <span id="aiPrevTxt">—</span></div><button onclick="window.rerollEmoji()" style="background:none;border:none;cursor:pointer;font-size:18px" title="Try another">🔄</button></div>
-      <div class="mf"><label>Description <span style="font-weight:600;color:var(--text-4);text-transform:none">(optional)</span></label><div class="mfr"><span class="mico">📝</span><input type="text" id="pdesc" placeholder="Brand, supplier, description…"/></div></div>
-      <div class="m2">
-        <div class="mf"><label>Opening Stock</label><div class="mfr"><span class="mico">#</span><input type="number" id="ps" placeholder="0" min="0" oninput="window.toggleAddProdExpense(this.value)"/></div></div>
-        <div class="mf"><label>Unit</label><div class="mfr"><span class="mico">📏</span><select id="puSel" style="padding-left:42px"></select><input type="hidden" id="pu_fixed"/></div></div>
+    
+    <!-- Body: 0 bottom padding so the button sits completely flush -->
+    <div class="mbd" style="padding: 24px 24px 0 24px;">
+      
+      <!-- Name Field: Mandatory, Max 20 chars, Emoji inside input -->
+      <div class="mf">
+        <label>Name</label>
+        <div class="mfr">
+          <!-- The auto-emoji dynamically renders perfectly inside the box here -->
+          <span class="mico" id="nameEmojiIcon" style="font-style: normal; display:flex; align-items:center; top:12px;">📦</span>
+          <input type="text" id="pn" placeholder="e.g. Rice 25kg, Cement Bag…" maxlength="20" oninput="window.scheduleEmoji(this.value)" autocomplete="off"/>
+        </div>
       </div>
+      
+      <!-- Description Field: Optional, Max 20 chars, Flat 2D Icon -->
+      <div class="mf">
+        <label>Description <span style="font-weight:600;color:var(--text-4);text-transform:none">(optional)</span></label>
+        <div class="mfr">
+          <span class="mico" style="display:flex; align-items:center; top:12px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+          </span>
+          <input type="text" id="pdesc" placeholder="Brand, supplier, description…" maxlength="20"/>
+        </div>
+      </div>
+      
+      <div class="m2">
+        <div class="mf">
+          <label>Opening Stock</label>
+          <div class="mfr">
+            <!-- Flat 2D Hash/Number Icon -->
+            <span class="mico" style="display:flex; align-items:center; top:12px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
+            </span>
+            <input type="number" id="ps" placeholder="0" min="0" oninput="window.toggleAddProdExpense(this.value)"/>
+          </div>
+        </div>
+        
+        <div class="mf">
+          <label>Unit</label>
+          <!-- Custom Premium Unit Dropdown (Replaces old select) -->
+          <div class="cat-picker-wrap" id="unit-wrap">
+            <div class="cat-picker-trigger" onclick="window.toggleUnitDD()" style="padding: 14px 16px; border: 2px solid var(--border-strong); border-radius: 12px; height: 50px;">
+              <div class="cpt-left">
+                <!-- Clean 2D Box Icon for Units -->
+                <span id="unit-icon" style="display:flex; align-items:center; color: var(--text-3);">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                </span>
+                <span class="cpt-label" id="unit-lbl" style="margin-left: 8px; font-weight: 700; color: var(--text-1);">Piece</span>
+              </div>
+              <svg class="cpt-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <!-- The dropdown list injects here -->
+            <div class="cat-picker-dropdown" id="unit-dd" style="max-height: 180px; top: calc(100% + 4px);"></div>
+          </div>
+          <input type="hidden" id="pu_fixed" value="Piece"/>
+        </div>
+      </div>
+      
+      <!-- Expense Block (Thick borders) -->
       <div id="addProdExpenseBlock" style="display:none; margin-bottom:18px; padding:16px; background:var(--white-pure); border:2px solid var(--border-strong); border-radius:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center; margin-bottom: 14px;">
           <div style="font-size:14px;font-weight:800;color:var(--text-1)">Log opening stock as Expense?</div>
           <label class="tgl"><input type="checkbox" id="addProdExpTgl" onchange="document.getElementById('addProdExpFields').style.display=this.checked?'block':'none'"><span class="tgl-sl"></span></label>
         </div>
         <div id="addProdExpFields" style="display:none;">
-          <div class="mf" style="margin-bottom:14px"><label>Total Cost</label><div class="mfr"><span class="mico">₹</span><input type="number" id="addProdCost" placeholder="0.00" min="0" step="any"></div></div>
-          <div class="mf" style="margin-bottom:0"><label>Expense Group</label><div class="mfr"><span class="mico">🏷️</span><select id="addProdExpCat" style="padding-left:42px"><option value="Inventory Stock">Inventory Stock</option><option value="Raw Materials">Raw Materials</option></select></div></div>
+          <div class="mf" style="margin-bottom:14px"><label>Total Cost</label><div class="mfr"><span class="mico" style="display:flex; align-items:center; top:12px;">₹</span><input type="number" id="addProdCost" placeholder="0.00" min="0" step="any"></div></div>
+          <div class="mf" style="margin-bottom:0"><label>Expense Group</label><div class="mfr"><span class="mico" style="display:flex; align-items:center; top:12px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg></span><select id="addProdExpCat" style="padding-left:42px"><option value="Inventory Stock">Inventory Stock</option><option value="Raw Materials">Raw Materials</option></select></div></div>
         </div>
       </div>
-      <div style="margin-bottom:18px">
+      
+      <!-- Unit Conversions Block (Thick borders) -->
+      <div style="margin-bottom:0px">
         <div style="display:flex;align-items:center;justify-content:space-between;background:var(--white-pure);border:2px solid var(--border-strong);border-radius:12px;padding:14px 16px;">
           <div><div style="font-size:14px;font-weight:800;color:var(--text-1)">Unit Conversions</div><div style="font-size:12px;color:var(--text-4);margin-top:2px;font-weight:600">e.g. 1 Box = 12 Pieces</div></div>
           <label class="tgl"><input type="checkbox" id="addProdConvTgl" onchange="window.toggleAddProdConv(this)"><span class="tgl-sl"></span></label>
         </div>
         <div id="addProdConvBuilder" style="display:none;margin-top:12px"><div id="addProdConvRows"></div><button class="add-conv-btn" style="border: 2px dashed var(--border-strong); font-weight: 800; height: 44px; color: var(--text-2);" onclick="window.addProdConvFormulaRow()">+ Add conversion</button></div>
       </div>
-      <div class="mmsg" id="prodMsg" style="margin-bottom: 16px;"></div>
-      <button class="btn-black" onclick="window.addProduct()" style="width: 100%; border-radius: 12px; padding: 14px; font-size: 1rem; margin: 0;">Add Product</button>
+      
+      <div class="mmsg" id="prodMsg" style="margin-bottom: 20px; min-height: 18px; margin-top: 12px;"></div>
     </div>
+    
+    <!-- Flush, full-width Action Button (No Cancel Button) -->
+    <button class="btn-black" onclick="window.addProduct()" style="width: 100%; border-radius: 0; padding: 20px; font-size: 1.05rem; margin: 0; background: #09090B;">Add Product</button>
   </div>
 </div>
 
 <div class="mo" id="m-edit-prod" onclick="if(event.target===this) window.closeM('m-edit-prod')">
-  <div class="mbox" style="max-width: 440px; padding: 0; border-radius: 20px;">
+  <div class="mbox" style="max-width: 500px; padding: 0; border-radius: 20px; overflow: hidden;">
     <div class="mhd" style="border-bottom: 2px solid var(--border-strong); padding: 24px 24px 14px; justify-content: center;">
       <div class="mttl" style="color:var(--text-1); font-size: 1.25rem; font-weight: 800; text-align: center; width: 100%; font-family: var(--f-display); letter-spacing: -0.01em; margin-bottom: 0;">Edit Product</div>
       <!-- Hidden subtitle so JS doesn't crash -->
       <div id="editProdSub" style="display:none;"></div>
     </div>
-    <div class="mbd" style="padding: 24px;">
+    <div class="mbd" style="padding: 24px 24px 0 24px;">
       <div style="display:flex;flex-direction:column;gap:20px;margin-bottom:20px;">
-        <div class="mf" style="margin-bottom:0"><label>Product Name</label><div class="mfr"><span class="mico">📦</span><input type="text" id="editProdNameInp" placeholder="New product name"/></div></div>
+        <div class="mf" style="margin-bottom:0"><label>Product Name</label><div class="mfr"><span class="mico">📦</span><input type="text" id="editProdNameInp" placeholder="New product name" maxlength="20"/></div></div>
         <div class="mf" style="margin-bottom:0"><label>Low Stock Alert</label><div class="mfr"><span class="mico">⚠️</span><input type="number" id="editProdMinInp" placeholder="Minimum stock alert" min="0"/></div></div>
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;background:var(--white-pure);border:2px solid var(--border-strong);border-radius:12px;padding:14px 16px;">
@@ -1484,9 +1542,10 @@ input[type=number] { -moz-appearance: textfield; }
           <div id="editConvBuilderContainer" style="display:none;margin-top:12px"><div id="editConvRows"></div><button class="add-conv-btn" style="border: 2px dashed var(--border-strong); font-weight: 800; height: 44px; color: var(--text-2);" onclick="window.addEditConvFormulaRow()">+ Add conversion</button></div>
         </div>
       </div>
-      <div class="mmsg" id="editProdMsg" style="margin-bottom: 16px;"></div>
-      <button class="btn-black" onclick="window.saveMergedProd()" style="width: 100%; border-radius: 12px; padding: 14px; font-size: 1rem; margin: 0;">Save Updates</button>
+      <div class="mmsg" id="editProdMsg" style="margin-bottom: 20px; min-height: 18px; margin-top: 12px;"></div>
     </div>
+    <!-- Flush, full-width Action Button (No Cancel Button) -->
+    <button class="btn-black" onclick="window.saveMergedProd()" style="width: 100%; border-radius: 0; padding: 20px; font-size: 1.05rem; margin: 0; background: #09090B;">Save Updates</button>
   </div>
 </div>
 
