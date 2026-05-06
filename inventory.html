@@ -1467,7 +1467,7 @@ input[type=number] { -moz-appearance: textfield; }
 
 <div class="mo" id="m-prod" onclick="if(event.target===this) window.closeM('m-prod')">
   <div class="mbox" style="max-width: 500px; padding: 0; border-radius: 20px; overflow-y: auto; overflow-x: hidden;">
-    <div class="mhd" style="border-bottom: 3px solid var(--border-strong); padding: 24px 24px 10px; justify-content: center;">
+    <div class="mhd" style="border-bottom: 3px solid var(--border-strong); padding: 24px 24px 10px; justify-content: center; position: sticky !important; top: 0 !important; background: var(--white-pure) !important; z-index: 50 !important;">
       <div class="mttl" style="color:var(--text-1); font-size: 1.25rem; font-weight: 800; text-align: center; width: 100%; font-family: var(--f-display); letter-spacing: -0.01em; margin-bottom: 0;">Add Product</div>
       <div id="prodModalSub" style="display:none;"></div>
     </div>
@@ -1484,7 +1484,6 @@ input[type=number] { -moz-appearance: textfield; }
         </div>
       </div>
 
-      <!-- Description now Mandatory (No optional text) -->
       <div class="mf">
         <label>Description</label>
         <div class="mfr">
@@ -1495,10 +1494,40 @@ input[type=number] { -moz-appearance: textfield; }
         </div>
       </div>
       
-      <!-- KEEP YOUR OPENING STOCK / UNIT M2 GRID HERE -->
+      <!-- 1. OPENING STOCK & UNIT (MOVED TO THE TOP) -->
+      <div class="m2">
+        <div class="mf">
+          <label>Opening Stock</label>
+          <div class="mfr">
+            <span class="mico" style="display:flex; align-items:center; top:12px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
+            </span>
+            <input type="number" id="ps" placeholder="0" min="0" oninput="window.toggleAddProdExpense(this.value)" style="padding-right: 60px !important;"/>
+            <span id="ps-unit-suffix" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; font-weight: 800; color: var(--text-4); pointer-events: none;">Piece</span>
+          </div>
+        </div>
+        <!-- Z-Index 100 guarantees Unit dropdown sits above Expense Block -->
+        <div class="mf" style="position: relative; z-index: 100;">
+          <label>Unit</label>
+          <div class="cat-picker-wrap" id="unit-wrap">
+            <div class="cat-picker-trigger" onclick="window.toggleUnitDD()" style="padding: 14px 16px; border: 2px solid var(--border-strong); border-radius: 12px; height: 50px;">
+              <div class="cpt-left">
+                <span id="unit-icon" style="display:flex; align-items:center; color: var(--text-1); font-size: 18px; width: 18px; height: 18px;">
+                  <img src="https://api.iconify.design/lucide/puzzle.svg?color=%230D0F14&stroke-width=2" style="width:1em; height:1em; object-fit:contain; opacity:0.85; display:inline-block; vertical-align:middle;" />
+                </span>
+                <span class="cpt-label" id="unit-lbl" style="margin-left: 8px; font-weight: 700; color: var(--text-1);">Piece</span>
+              </div>
+              <svg class="cpt-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="cat-picker-dropdown" id="unit-dd" style="max-height: 180px; top: calc(100% + 4px);"></div>
+          </div>
+          <input type="hidden" id="pu_fixed" value="Piece"/>
+        </div>
+      </div>
 
-      <!-- New Slim Expense Block with Real-Time Math & Custom Dropdown -->
-      <div id="addProdExpenseBlock" style="display:none; margin-bottom:18px; background:var(--white-pure); border:2px solid var(--border-strong); border-radius:12px; padding:14px 16px;">
+      <!-- 2. EXPENSE BLOCK (MOVED TO THE BOTTOM) -->
+      <!-- Z-Index 90 guarantees Expense dropdown sits above Unit Conversions -->
+      <div id="addProdExpenseBlock" style="display:none; margin-bottom:18px; background:var(--white-pure); border:2px solid var(--border-strong); border-radius:12px; padding:14px 16px; position: relative; z-index: 90;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div style="font-size:14px;font-weight:800;color:var(--text-1)">Log opening stock as Expense?</div>
           <label class="tgl"><input type="checkbox" id="addProdExpTgl" onchange="window.toggleExpFields(this)"><span class="tgl-sl"></span></label>
@@ -1512,7 +1541,6 @@ input[type=number] { -moz-appearance: textfield; }
             </div>
             <div class="mfr">
               <span class="mico" style="display:flex; align-items:center; top:12px;">₹</span>
-              <!-- Auto-calculates total when typed in -->
               <input type="number" id="addProdCost" placeholder="0.00" min="0" step="any" oninput="window.calcExpTotal()">
             </div>
           </div>
@@ -1536,37 +1564,8 @@ input[type=number] { -moz-appearance: textfield; }
         </div>
       </div>
       
-      <div class="m2">
-        <div class="mf">
-          <label>Opening Stock</label>
-          <div class="mfr">
-            <span class="mico" style="display:flex; align-items:center; top:12px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
-            </span>
-            <!-- Added extra right padding and the dynamic suffix text -->
-            <input type="number" id="ps" placeholder="0" min="0" oninput="window.toggleAddProdExpense(this.value)" style="padding-right: 60px !important;"/>
-            <span id="ps-unit-suffix" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; font-weight: 800; color: var(--text-4); pointer-events: none;">Piece</span>
-          </div>
-        </div>
-        <div class="mf">
-          <label>Unit</label>
-          <div class="cat-picker-wrap" id="unit-wrap">
-            <div class="cat-picker-trigger" onclick="window.toggleUnitDD()" style="padding: 14px 16px; border: 2px solid var(--border-strong); border-radius: 12px; height: 50px;">
-              <div class="cpt-left">
-                <span id="unit-icon" style="display:flex; align-items:center; color: var(--text-1); font-size: 18px; width: 18px; height: 18px;">
-                  <img src="https://api.iconify.design/lucide/puzzle.svg?color=%230D0F14&stroke-width=2" style="width:1em; height:1em; object-fit:contain; opacity:0.85; display:inline-block; vertical-align:middle;" />
-                </span>
-                <span class="cpt-label" id="unit-lbl" style="margin-left: 8px; font-weight: 700; color: var(--text-1);">Piece</span>
-              </div>
-              <svg class="cpt-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </div>
-            <div class="cat-picker-dropdown" id="unit-dd" style="max-height: 180px; top: calc(100% + 4px);"></div>
-          </div>
-          <input type="hidden" id="pu_fixed" value="Piece"/>
-        </div>
-      </div>
-      
-      <div style="margin-bottom:0px">
+      <!-- Z-Index 10 to stay strictly underneath -->
+      <div style="margin-bottom:0px; position: relative; z-index: 10;">
         <div style="display:flex;align-items:center;justify-content:space-between;background:var(--white-pure);border:2px solid var(--border-strong);border-radius:12px;padding:14px 16px;">
           <div><div style="font-size:14px;font-weight:800;color:var(--text-1)">Unit Conversions</div><div style="font-size:12px;color:var(--text-4);margin-top:2px;font-weight:600">e.g. 1 Box = 12 Pieces</div></div>
           <label class="tgl"><input type="checkbox" id="addProdConvTgl" onchange="window.toggleAddProdConv(this)"><span class="tgl-sl"></span></label>
