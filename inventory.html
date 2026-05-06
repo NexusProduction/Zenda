@@ -1904,108 +1904,77 @@ window.validateAndSaveWH = function() {
 const EM_LIB={rice:'🍚',wheat:'🌾',flour:'🌾',maize:'🌽',corn:'🌽',sugar:'🧂',salt:'🧂',oil:'🫙',ghee:'🫙',butter:'🧈',milk:'🥛',cheese:'🧀',egg:'🥚',meat:'🥩',chicken:'🍗',fish:'🐟',vegetable:'🥦',tomato:'🍅',onion:'🧅',potato:'🥔',fruit:'🍎',tea:'🍵',coffee:'☕',spice:'🌶️',pepper:'🌶️',turmeric:'🌿',bread:'🍞',biscuit:'🍪',juice:'🧃',soda:'🥤',water:'💧',dal:'🫘',chocolate:'🍫',honey:'🍯',sauce:'🫙',cement:'🪨',sand:'🪨',brick:'🧱',steel:'🔩',iron:'🔧',wire:'🪡',pipe:'🔩',rod:'🔩',nail:'📌',screw:'🪛',nut:'🔩',tile:'🟫',wood:'🪵',paint:'🎨',glass:'🪟',door:'🚪',lock:'🔒',concrete:'🪨',plaster:'🪨',cloth:'🧵',fabric:'🧵',thread:'🧵',cotton:'🧶',silk:'🧶',shirt:'👕',pant:'👖',dress:'👗',shoe:'👟',bag:'👜',wool:'🧶',jacket:'🧥',hat:'🧢',bulb:'💡',fan:'🌀',motor:'⚙️',battery:'🔋',charger:'🔌',phone:'📱',laptop:'💻',tv:'📺',cable:'🔌',fuel:'⛽',petrol:'⛽',diesel:'⛽',tyre:'🛞',tire:'🛞',wheel:'🛞',engine:'⚙️',soap:'🧼',detergent:'🧴',cream:'🧴',shampoo:'🧴',toothpaste:'🧴',brush:'🪥',perfume:'🧴',paper:'📄',pen:'✏️',pencil:'✏️',notebook:'📒',gift:'🎁',toys:'🧸',carton:'📦',packet:'📦',box:'📦',tape:'📎',rope:'🪢',chemical:'🧪',fertilizer:'🌱',seed:'🌱',pesticide:'🧪',cylinder:'🫙',barrel:'🛢️',tool:'🔨',hammer:'🔨',wrench:'🔧',drill:'⚙️',saw:'🪚',knife:'🔪',shovel:'🪣',bucket:'🪣',gold:'💍',silver:'🥈',diamond:'💎',chair:'🪑',table:'🪑',bed:'🛏️'};
 window._aiEmoji='📦';window._curEMKeywords=[];
 
-window.scheduleEmoji=function(name){if(!name||name.length<2){document.getElementById('aiPrev').style.display='none';window._aiEmoji='📦';window._curEMKeywords=[];return;}const lower=name.toLowerCase().replace(/[^a-z0-9 ]/g,'');const words=lower.split(/\s+/);window._curEMKeywords=words.filter(w=>w.length>1);const found=findBestEmoji(words);window._aiEmoji=found||'📦';showEmojiPrev(window._aiEmoji,name);};
+window.scheduleEmoji = function(name) {
+  const iconEl = document.getElementById('nameEmojiIcon');
+  if(!name || name.length < 2) {
+    window._aiEmoji = '📦';
+    if(iconEl) iconEl.textContent = '📦';
+    return;
+  }
+  const lower = name.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+  const words = lower.split(/\s+/);
+  const found = findBestEmoji(words);
+  window._aiEmoji = found || '📦';
+  if(iconEl) iconEl.textContent = window._aiEmoji;
+};
+
 function findBestEmoji(words){let found=null;for(const w of words){if(EM_LIB[w]){found=EM_LIB[w];break;}}if(!found){for(const w of words){for(const[k,v]of Object.entries(EM_LIB)){if(w.includes(k)||k.includes(w)){found=v;break;}}if(found)break;}}return found;}
-window.rerollEmoji=function(){const pI=document.getElementById('aiPrevIco');const pT=document.getElementById('aiPrevTxt');const nI=document.getElementById('pn');if(!nI)return;const name=nI.value.trim();if(!name)return;pI.textContent='⏳';pT.textContent='Thinking…';const kw=window._curEMKeywords.length>0?window._curEMKeywords:name.toLowerCase().replace(/[^a-z0-9 ]/g,'').split(/\s+/);setTimeout(()=>{let newE='📦';const matched=kw.map(w=>EM_LIB[w]).filter(Boolean);if(matched.length>0){newE=matched[Math.floor(Math.random()*matched.length)];if(newE===window._aiEmoji){const others=[...new Set(matched)].filter(e=>e!==window._aiEmoji);if(others.length>0)newE=others[Math.floor(Math.random()*others.length)];}}else{const fb=['📦','🔧','🧂','🍎','👕','⚙️'];newE=fb[Math.floor(Math.random()*fb.length)];if(newE===window._aiEmoji)newE='📦';}window._aiEmoji=newE;showEmojiPrev(window._aiEmoji,name);},250);};
-function showEmojiPrev(emoji,name){const el=document.getElementById('aiPrev');el.style.display='flex';document.getElementById('aiPrevIco').textContent=emoji;document.getElementById('aiPrevTxt').textContent=`"${name.split(' ').slice(0,3).join(' ')}"` ;}
+window.rerollEmoji = function() {}; 
+function showEmojiPrev() {};
 
-// ── INIT ──
-async function init(){
-  const urlUid=new URLSearchParams(location.search).get('uid');
-  const rawSession=sessionStorage.getItem('zenda_user');
-  const sessionUser=rawSession?JSON.parse(rawSession):null;
-  const authUser=await new Promise(r=>{const u=onAuthStateChanged(auth,u=>{u();r(u);});setTimeout(()=>r(null),3000);});
-  const activeUid=urlUid||(sessionUser?sessionUser.uid:null)||(authUser?authUser.uid:null);
-  if(!activeUid){setSyncBadge('err','Not signed in');return;}
-  try{
-    const uSnap=await getDoc(doc(db,'users',activeUid));
-    if(uSnap.exists()){CU={uid:activeUid,...uSnap.data()};}else if(sessionUser){CU=sessionUser;}
-    else{CU={uid:activeUid,role:'owner',companyId:activeUid,name:authUser?.displayName||'Owner'};}
-  }catch(e){CU=sessionUser||{uid:activeUid,role:'owner',companyId:activeUid,name:'Owner'};}
-  if(!CU.companyId)CU.companyId=activeUid;
+// New Premium Custom Dropdown Logic
+function setupUnitDropdowns() {
+  const dd = document.getElementById('unit-dd');
+  const unitIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>`;
   
-  // Check Premium Status & Expiry Date
-  try {
-    const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
-    if (compSnap.exists()) {
-      const compData = compSnap.data();
-      CU.isPremium = compData.isPremium === true;
-      CU.ownerId = compData.ownerId; // <--- ADD THIS
-      
-      // Relock extra warehouses if subscription time has ended!
-      if (CU.isPremium && compData.subscriptionExpiry) {
-        const expiryDate = new Date(compData.subscriptionExpiry);
-        if (new Date() > expiryDate) {
-          CU.isPremium = false; // Time ended!
-        }
-      }
-    } else {
-      CU.isPremium = false;
-    }
-  } catch(e) { CU.isPremium = false; }
-
-  // Control the Global Upgrade Button & Sync Badge exclusively
-  const upgBtn = document.getElementById('globalUpgradeBtn');
-  const syncBadge = document.getElementById('syncEl');
-  if (upgBtn && syncBadge) {
-    if (!CU.isPremium) {
-      // Free users: Exclusively show the Upgrade button
-      upgBtn.style.display = 'flex';
-      syncBadge.style.display = 'none';
-    } else {
-      // Premium users: Exclusively show the Sync badge
-      upgBtn.style.display = 'none';
-      syncBadge.style.display = 'inline-flex';
-    }
+  if(dd) {
+    dd.innerHTML = STD_UNITS.map(u => `
+      <div class="cat-opt" onclick="window.selectUnitOption('${u}')">
+        <span style="color:var(--text-3); display:flex; align-items:center;">${unitIcon}</span>
+        <span class="copt-name" style="margin-left:8px;">${u}</span>
+        <svg class="unit-check hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+    `).join('');
   }
+  window.selectUnitOption(STD_UNITS[0]);
+}
 
-  setSyncBadge('ok','Connected');
+window.toggleUnitDD = function() {
+  const wrap = document.getElementById('unit-wrap');
+  const trigger = wrap.querySelector('.cat-picker-trigger');
+  const dd = document.getElementById('unit-dd');
+  if(dd.style.display === 'block') {
+    dd.style.display = 'none';
+    trigger.classList.remove('open');
+  } else {
+    dd.style.display = 'block';
+    trigger.classList.add('open');
+  }
+};
+
+window.selectUnitOption = function(val) {
+  document.getElementById('pu_fixed').value = val;
+  document.getElementById('unit-lbl').textContent = val;
+  document.getElementById('unit-dd').style.display = 'none';
+  document.querySelector('#unit-wrap .cat-picker-trigger')?.classList.remove('open');
   
- // ALLOW EVERYONE TO ADD OR REQUEST
-  const addRow = document.getElementById('addWhRow');
-  if (addRow) addRow.style.display = 'flex';
-  const btnTop = document.getElementById('btnAddWhTop');
-  if (btnTop) btnTop.style.display = 'inline-flex';
+  // Update the simple tick visual
+  const opts = document.querySelectorAll('#unit-dd .cat-opt');
+  opts.forEach(opt => {
+     const name = opt.querySelector('.copt-name').textContent;
+     const check = opt.querySelector('.unit-check');
+     if(name === val) check.classList.remove('hidden');
+     else check.classList.add('hidden');
+  });
+};
 
-  // Update the Modal text for Staff
-  if (CU.role !== 'owner') {
-    const modalBtn = document.getElementById('btn-create-wh');
-    const modalSub = document.getElementById('whModalSub');
-    if (modalBtn) modalBtn.textContent = 'Request';
-    if (modalSub) modalSub.textContent = 'Send creation request to owner';
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('unit-wrap');
+  if(wrap && !wrap.contains(e.target)) {
+    document.getElementById('unit-dd').style.display = 'none';
+    wrap.querySelector('.cat-picker-trigger')?.classList.remove('open');
   }
-  // Auto-open review modal if coming from a notification click
-  const reviewTarget = new URLSearchParams(location.search).get('review_delete');
-  if (reviewTarget && CU.role === 'owner') {
-    getDoc(doc(db, 'users', CU.uid, 'notifications', reviewTarget)).then(snap => {
-      if (snap.exists()) {
-        const nd = snap.data();
-        if (nd.status === 'pending' && nd.warehouseData) {
-          window.openReviewModal(nd.warehouseData.id, nd.warehouseData.name, nd.warehouseData.productCount, nd.warehouseData.reason, snap.id);
-        }
-      }
-    });
-  }
-  showView('dash');
-  loadWHs();
-  listenProductsLive();
-  listenTodayEntries();
-  setupUnitDropdowns();
-}
-
-function setSyncBadge(type,text){
-  syncEl.className='sync-badge '+type;
-  syncEl.innerHTML=text;
-}
-
-function setupUnitDropdowns(){
-  populateStdUnits('puSel',(val)=>{document.getElementById('pu_fixed').value=val;curAddStockUnit=val;});
-}
-function populateStdUnits(dropdownId,onChangeCb){
-  const sel=document.getElementById(dropdownId);if(!sel)return;sel.innerHTML='';
-  STD_UNITS.forEach(u=>{const o=document.createElement('option');o.value=u;o.textContent=u;sel.appendChild(o);});
-  sel.addEventListener('change',e=>onChangeCb(e.target.value));onChangeCb(STD_UNITS[0]);
-}
+});
 
 // ── VIEWS ──
 function showView(v){document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));document.getElementById('v-'+v).classList.add('active');}
@@ -2443,17 +2412,23 @@ window.addProduct=async function(){
   const stock=parseFloat(document.getElementById('ps').value)||0;
   const unit=document.getElementById('pu_fixed').value.trim();
   
-  // Safely check for minStock (prevents the silent crash!)
   const pminEl = document.getElementById('pmin');
   const minRaw = pminEl ? pminEl.value : '';
   const minStock = minRaw !== '' ? parseFloat(minRaw) : undefined;
 
-  // Grab the Expense Fields
   const logExpense = document.getElementById('addProdExpTgl')?.checked;
   const cost = parseFloat(document.getElementById('addProdCost')?.value) || 0;
   const expCat = document.getElementById('addProdExpCat')?.value || 'Inventory Stock';
 
-  if(!name){setMM('prodMsg','⚠ Enter product name.','err');return;}
+  // NEW STRICT VALIDATION
+  if(!name || name.length > 20){
+    setMM('prodMsg','⚠ Name must be 1 to 20 characters.','err');
+    return;
+  }
+  if(desc.length > 20){
+    setMM('prodMsg','⚠ Description cannot exceed 20 characters.','err');
+    return;
+  }
   
   if(logExpense && cost <= 0) {
     setMM('prodMsg','⚠ Enter a valid total cost for the expense.','err');
