@@ -1949,25 +1949,62 @@ window.validateAndSaveWH = function() {
     window.createWH(); 
   }
 };
-// ── EMOJI ENGINE ──
-const EM_LIB={rice:'🍚',wheat:'🌾',flour:'🌾',maize:'🌽',corn:'🌽',sugar:'🧂',salt:'🧂',oil:'🫙',ghee:'🫙',butter:'🧈',milk:'🥛',cheese:'🧀',egg:'🥚',meat:'🥩',chicken:'🍗',fish:'🐟',vegetable:'🥦',tomato:'🍅',onion:'🧅',potato:'🥔',fruit:'🍎',tea:'🍵',coffee:'☕',spice:'🌶️',pepper:'🌶️',turmeric:'🌿',bread:'🍞',biscuit:'🍪',juice:'🧃',soda:'🥤',water:'💧',dal:'🫘',chocolate:'🍫',honey:'🍯',sauce:'🫙',cement:'🪨',sand:'🪨',brick:'🧱',steel:'🔩',iron:'🔧',wire:'🪡',pipe:'🔩',rod:'🔩',nail:'📌',screw:'🪛',nut:'🔩',tile:'🟫',wood:'🪵',paint:'🎨',glass:'🪟',door:'🚪',lock:'🔒',concrete:'🪨',plaster:'🪨',cloth:'🧵',fabric:'🧵',thread:'🧵',cotton:'🧶',silk:'🧶',shirt:'👕',pant:'👖',dress:'👗',shoe:'👟',bag:'👜',wool:'🧶',jacket:'🧥',hat:'🧢',bulb:'💡',fan:'🌀',motor:'⚙️',battery:'🔋',charger:'🔌',phone:'📱',laptop:'💻',tv:'📺',cable:'🔌',fuel:'⛽',petrol:'⛽',diesel:'⛽',tyre:'🛞',tire:'🛞',wheel:'🛞',engine:'⚙️',soap:'🧼',detergent:'🧴',cream:'🧴',shampoo:'🧴',toothpaste:'🧴',brush:'🪥',perfume:'🧴',paper:'📄',pen:'✏️',pencil:'✏️',notebook:'📒',gift:'🎁',toys:'🧸',carton:'📦',packet:'📦',box:'📦',tape:'📎',rope:'🪢',chemical:'🧪',fertilizer:'🌱',seed:'🌱',pesticide:'🧪',cylinder:'🫙',barrel:'🛢️',tool:'🔨',hammer:'🔨',wrench:'🔧',drill:'⚙️',saw:'🪚',knife:'🔪',shovel:'🪣',bucket:'🪣',gold:'💍',silver:'🥈',diamond:'💎',chair:'🪑',table:'🪑',bed:'🛏️'};
-window._aiEmoji='📦';window._curEMKeywords=[];
+// ── ONLINE 2D ICON ENGINE (Replaces Emojis) ──
+window.getExtIcon = function(name) {
+  const icon = name || 'package';
+  // Pulls a clean 2D sketch icon from Lucide via the Iconify API
+  return `<img src="https://api.iconify.design/lucide/${icon}.svg?color=%230D0F14&width=100%&height=100%&stroke-width=2" style="width:100%; height:100%; object-fit:contain; opacity:0.85; display:block;" />`;
+};
+
+const EM_LIB = {
+  rice:'shopping-bag', wheat:'shopping-bag', flour:'shopping-bag', maize:'shopping-bag', corn:'shopping-bag', 
+  sugar:'archive', salt:'archive', oil:'droplet', ghee:'droplet', butter:'box', 
+  milk:'droplet', cheese:'box', egg:'circle', meat:'shopping-bag', chicken:'shopping-bag', fish:'fish', 
+  vegetable:'carrot', tomato:'carrot', onion:'circle', potato:'circle', fruit:'apple', apple:'apple',
+  tea:'coffee', coffee:'coffee', spice:'flame', pepper:'flame', turmeric:'leaf',
+  bread:'shopping-bag', biscuit:'circle', juice:'droplet', soda:'droplet', water:'droplet',
+  dal:'circle', chocolate:'box', honey:'archive', sauce:'droplet',
+  cement:'archive', sand:'archive', brick:'box', steel:'box', iron:'box', wire:'paperclip',
+  pipe:'box', rod:'box', nail:'pin', screw:'settings', nut:'settings', tile:'layout-grid',
+  wood:'box', paint:'droplet', glass:'box', door:'box', lock:'lock',
+  concrete:'archive', plaster:'archive', cloth:'shirt', fabric:'shirt', thread:'paperclip',
+  cotton:'cloud', silk:'cloud', shirt:'shirt', pant:'briefcase', dress:'shirt', shoe:'shopping-bag', bag:'shopping-bag',
+  wool:'cloud', jacket:'shirt', hat:'hard-hat', bulb:'lightbulb', fan:'fan', motor:'cog',
+  battery:'battery', charger:'plug', phone:'smartphone', laptop:'laptop', tv:'tv', cable:'plug',
+  fuel:'fuel', petrol:'fuel', diesel:'fuel', tyre:'circle', tire:'circle', wheel:'circle', engine:'cog',
+  soap:'droplet', detergent:'droplet', cream:'droplet', shampoo:'droplet', toothpaste:'droplet', brush:'pen-tool', perfume:'droplet',
+  paper:'file-text', pen:'pen-tool', pencil:'pen-tool', notebook:'book', gift:'gift', toys:'smile',
+  carton:'package', packet:'package', box:'package', tape:'paperclip', rope:'link',
+  chemical:'droplet', fertilizer:'leaf', seed:'leaf', pesticide:'droplet', cylinder:'archive', barrel:'archive',
+  tool:'wrench', hammer:'hammer', wrench:'wrench', drill:'hammer', saw:'scissors', knife:'scissors', shovel:'scissors', bucket:'archive',
+  gold:'star', silver:'star', diamond:'star', chair:'box', table:'box', bed:'box'
+};
+
+window._aiEmoji = 'package';
 
 window.scheduleEmoji = function(name) {
   const iconEl = document.getElementById('nameEmojiIcon');
   if(!name || name.length < 2) {
-    window._aiEmoji = '📦';
-    if(iconEl) iconEl.textContent = '📦';
+    window._aiEmoji = 'package';
+    if(iconEl) iconEl.innerHTML = window.getExtIcon('package');
     return;
   }
   const lower = name.toLowerCase().replace(/[^a-z0-9 ]/g, '');
   const words = lower.split(/\s+/);
-  const found = findBestEmoji(words);
-  window._aiEmoji = found || '📦';
-  if(iconEl) iconEl.textContent = window._aiEmoji;
+  let found = null;
+  for (const w of words) { if(EM_LIB[w]) { found = EM_LIB[w]; break; } }
+  if (!found) {
+    for (const w of words) {
+      for (const [k, v] of Object.entries(EM_LIB)) {
+        if (w.includes(k) || k.includes(w)) { found = v; break; }
+      }
+      if(found) break;
+    }
+  }
+  window._aiEmoji = found || 'package';
+  if(iconEl) iconEl.innerHTML = window.getExtIcon(window._aiEmoji);
 };
 
-function findBestEmoji(words){let found=null;for(const w of words){if(EM_LIB[w]){found=EM_LIB[w];break;}}if(!found){for(const w of words){for(const[k,v]of Object.entries(EM_LIB)){if(w.includes(k)||k.includes(w)){found=v;break;}}if(found)break;}}return found;}
 window.rerollEmoji = function() {}; 
 function showEmojiPrev() {};
 
@@ -2350,7 +2387,7 @@ function renderProds(list){
   
   el.innerHTML = slice.map(p=>{
     const isLow = p.minStock != null ? p.stock <= p.minStock : p.stock <= 0;
-    return `<div class="prow" onclick="window.openProd('${p.id}')"><div class="prow-ico">${p.emoji||'📦'}</div><div class="prow-info"><div class="prow-name">${esc(p.name)}${isLow?'<span class="low-badge">⚠ Low</span>':''}</div><div class="prow-meta">${p.desc?esc(p.desc.slice(0,50)):'&nbsp;'}</div></div><div class="prow-stk"><span class="prow-num${isLow?' low':''}">${p.stock||0}</span><span class="prow-unit">${esc(p.unit||'units')}</span></div><div class="prow-arr"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>`;
+    return `<div class="prow" onclick="window.openProd('${p.id}')"><div class="prow-ico" style="padding: 8px; box-sizing: border-box;">${window.getExtIcon(p.emoji)}</div><div class="prow-info"><div class="prow-name">${esc(p.name)}${isLow?'<span class="low-badge">⚠ Low</span>':''}</div><div class="prow-meta">${p.desc?esc(p.desc.slice(0,50)):'&nbsp;'}</div></div><div class="prow-stk"><span class="prow-num${isLow?' low':''}">${p.stock||0}</span><span class="prow-unit">${esc(p.unit||'units')}</span></div><div class="prow-arr"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>`;
   }).join('');
 
   // Inject pagination UI if needed
@@ -2369,7 +2406,7 @@ function renderProds(list){
 window.openProd=async function(pId, highlight = false){
   curProd=prods.find(x=>x.id===pId);if(!curProd)return;
   const p=curProd;const isLow=p.minStock!=null?p.stock<=p.minStock:p.stock<=0;
-  document.getElementById('pdEmoji').textContent=p.emoji||'📦';
+  document.getElementById('pdEmoji').innerHTML=window.getExtIcon(p.emoji);
   document.getElementById('pdName').textContent=p.name;
   document.getElementById('pdDesc').textContent=p.desc||'';
   document.getElementById('pdStock').textContent=p.stock||0;
@@ -2555,10 +2592,10 @@ window.openAddProd = function() {
   const convBldr = document.getElementById('addProdConvBuilder');
   if (convBldr) convBldr.style.display = 'none';
 
-  // Safely reset the NEW inline emoji icon
-  window._aiEmoji = '📦';
+// Safely reset the NEW inline SVG icon
+  window._aiEmoji = 'package';
   const nameEmojiIcon = document.getElementById('nameEmojiIcon');
-  if (nameEmojiIcon) nameEmojiIcon.textContent = '📦';
+  if (nameEmojiIcon) nameEmojiIcon.innerHTML = window.getExtIcon('package');
 
   // Clear messages and open the modal
   setMM('prodMsg', '', '');
@@ -2759,7 +2796,7 @@ window.openLowStockModal=function(){
       return `
       <div class="low-stock-item" onclick="window.routeToProduct('${p.godownId}', '${p.id}')">
         <div style="display:flex;align-items:center;gap:14px">
-          <div style="font-size:24px;background:white;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;box-shadow:0 4px 10px rgba(220,38,38,0.15)">${p.emoji||'📦'}</div>
+          <div style="background:white;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;box-shadow:0 4px 10px rgba(220,38,38,0.15);padding:10px;box-sizing:border-box;">${window.getExtIcon(p.emoji)}</div>
           <div>
             <div style="font-family:var(--f-display);font-weight:800;color:var(--text-1);font-size:15px;margin-bottom:1px;text-transform:capitalize;">${esc(p.name)}</div>
             <div style="font-size:0.85rem;font-family:var(--f-body);font-weight:700;color:var(--red);">Stock: <span style="font-size:0.9rem;font-weight:800;">${p.stock}</span> ${esc(p.unit)} ${minTxt}</div>
