@@ -2034,7 +2034,88 @@ document.addEventListener('click', e => {
     wrap.querySelector('.cat-picker-trigger')?.classList.remove('open');
   }
 });
+// ── INIT ──
+async function init(){
+  const urlUid=new URLSearchParams(location.search).get('uid');
+  const rawSession=sessionStorage.getItem('zenda_user');
+  const sessionUser=rawSession?JSON.parse(rawSession):null;
+  const authUser=await new Promise(r=>{const u=onAuthStateChanged(auth,u=>{u();r(u);});setTimeout(()=>r(null),3000);});
+  const activeUid=urlUid||(sessionUser?sessionUser.uid:null)||(authUser?authUser.uid:null);
+  if(!activeUid){setSyncBadge('err','Not signed in');return;}
+  try{
+    const uSnap=await getDoc(doc(db,'users',activeUid));
+    if(uSnap.exists()){CU={uid:activeUid,...uSnap.data()};}else if(sessionUser){CU=sessionUser;}
+    else{CU={uid:activeUid,role:'owner',companyId:activeUid,name:authUser?.displayName||'Owner'};}
+  }catch(e){CU=sessionUser||{uid:activeUid,role:'owner',companyId:activeUid,name:'Owner'};}
+  if(!CU.companyId)CU.companyId=activeUid;
+  
+  // Check Premium Status & Expiry Date
+  try {
+    const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
+    if (compSnap.exists()) {
+      const compData = compSnap.data();
+      CU.isPremium = compData.isPremium === true;
+      CU.ownerId = compData.ownerId; 
+      
+      if (CU.isPremium && compData.subscriptionExpiry) {
+        const expiryDate = new Date(compData.subscriptionExpiry);
+        if (new Date() > expiryDate) {
+          CU.isPremium = false; 
+        }
+      }
+    } else {
+      CU.isPremium = false;
+    }
+  } catch(e) { CU.isPremium = false; }
 
+  const upgBtn = document.getElementById('globalUpgradeBtn');
+  const syncBadge = document.getElementById('syncEl');
+  if (upgBtn && syncBadge) {
+    if (!CU.isPremium) {
+      upgBtn.style.display = 'flex';
+      syncBadge.style.display = 'none';
+    } else {
+      upgBtn.style.display = 'none';
+      syncBadge.style.display = 'inline-flex';
+    }
+  }
+
+  setSyncBadge('ok','Connected');
+  
+  const addRow = document.getElementById('addWhRow');
+  if (addRow) addRow.style.display = 'flex';
+  const btnTop = document.getElementById('btnAddWhTop');
+  if (btnTop) btnTop.style.display = 'inline-flex';
+
+  if (CU.role !== 'owner') {
+    const modalBtn = document.getElementById('btn-create-wh');
+    const modalSub = document.getElementById('whModalSub');
+    if (modalBtn) modalBtn.textContent = 'Request';
+    if (modalSub) modalSub.textContent = 'Send creation request to owner';
+  }
+
+  const reviewTarget = new URLSearchParams(location.search).get('review_delete');
+  if (reviewTarget && CU.role === 'owner') {
+    getDoc(doc(db, 'users', CU.uid, 'notifications', reviewTarget)).then(snap => {
+      if (snap.exists()) {
+        const nd = snap.data();
+        if (nd.status === 'pending' && nd.warehouseData) {
+          window.openReviewModal(nd.warehouseData.id, nd.warehouseData.name, nd.warehouseData.productCount, nd.warehouseData.reason, snap.id);
+        }
+      }
+    });
+  }
+  showView('dash');
+  loadWHs();
+  listenProductsLive();
+  listenTodayEntries();
+  setupUnitDropdowns();
+}
+
+function setSyncBadge(type,text){
+  syncEl.className='sync-badge '+type;
+  syncEl.innerHTML=text;
+}
 // ── VIEWS ──
 function showView(v){document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));document.getElementById('v-'+v).classList.add('active');}
 window.goBack = function() {
