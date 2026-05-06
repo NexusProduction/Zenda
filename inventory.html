@@ -2535,12 +2535,44 @@ window.confirmDelEntry=async function(){
 };
 
 // ── ADD PRODUCT ──
-window.openAddProd=function(){
-  const wh=WHs.find(w=>w.id===curWH);document.getElementById('prodModalSub').textContent=`Adding to "${wh?.name||'warehouse'}"`;
-  ['pn','pdesc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  ['ps','pmin'].forEach(id=>{const e=document.getElementById(id);if(e){e.value='';e.type='number';e.min='0';e.step='any';}});
-  document.getElementById('pu_fixed').value=STD_UNITS[0];curAddStockUnit=STD_UNITS[0];document.getElementById('puSel').value=STD_UNITS[0];
-  document.getElementById('addProdConvRows').innerHTML='';document.getElementById('addProdConvTgl').checked=false;document.getElementById('addProdConvBuilder').style.display='none';document.getElementById('aiPrev').style.display='none';window._aiEmoji='📦';setMM('prodMsg','','');window.openM('m-prod');
+window.openAddProd = function() {
+  const wh = WHs.find(w => w.id === curWH);
+  const sub = document.getElementById('prodModalSub');
+  if (sub) sub.textContent = `Adding to "${wh?.name || 'warehouse'}"`;
+
+  // Safely clear all text and number inputs
+  ['pn', 'pdesc'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.value = '';
+  });
+  ['ps', 'pmin'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e) { e.value = ''; e.type = 'number'; e.min = '0'; e.step = 'any'; }
+  });
+
+  // Safely reset the NEW premium custom dropdown
+  if (typeof window.selectUnitOption === 'function') {
+    window.selectUnitOption(STD_UNITS[0]);
+  }
+
+  // Safely clear conversions
+  const convRows = document.getElementById('addProdConvRows');
+  if (convRows) convRows.innerHTML = '';
+  
+  const convTgl = document.getElementById('addProdConvTgl');
+  if (convTgl) convTgl.checked = false;
+  
+  const convBldr = document.getElementById('addProdConvBuilder');
+  if (convBldr) convBldr.style.display = 'none';
+
+  // Safely reset the NEW inline emoji icon
+  window._aiEmoji = '📦';
+  const nameEmojiIcon = document.getElementById('nameEmojiIcon');
+  if (nameEmojiIcon) nameEmojiIcon.textContent = '📦';
+
+  // Clear messages and open the modal
+  setMM('prodMsg', '', '');
+  window.openM('m-prod');
 };
 window.toggleAddProdConv=function(el){document.getElementById('addProdConvBuilder').style.display=el.checked?'block':'none';const rows=document.getElementById('addProdConvRows');if(el.checked&&rows&&rows.children.length===0)window.addProdConvFormulaRow();};
 window.addProdConvFormulaRow=function(){appendFixedBaseConvRow(document.getElementById('addProdConvRows'),document.getElementById('pu_fixed').value);};
