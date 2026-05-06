@@ -1167,6 +1167,10 @@ input[type=number] { -moz-appearance: textfield; }
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(245,158,11,.5);
 }
+  /* Magically hides the blur/lock screen if the user has an upgraded account! */
+body.is-premium .premium-lock-overlay {
+  display: none !important;
+}
 </style>
 </head>
 <body>
@@ -2462,6 +2466,9 @@ async function init(){
     }
   } catch(e) { CU.isPremium = false; }
 
+  // ✅ FIX: Tells the entire HTML body that the user is Premium, which unlocks the CSS!
+  if (CU.isPremium) document.body.classList.add('is-premium');
+
   const upgBtn = document.getElementById('globalUpgradeBtn');
   const syncBadge = document.getElementById('syncEl');
   if (upgBtn && syncBadge) {
@@ -2910,8 +2917,9 @@ window.submitEntry=async function(){
   const qtyBase=conv?(qty/conv.ratio):qty;const entryUnit=selUnit||curProd.unit||'units';
   if(eType==='OUT'&&qtyBase>(curProd.stock||0)){setMM('entryMsg',`⚠ Not enough stock (${qtyBase} needed, ${curProd.stock||0} available).`,'err');return;}
   
-  const logExpense=document.getElementById('logExpenseTgl')?.checked;
-  const cost=parseFloat(document.getElementById('entryCost')?.value)||0;
+// ✅ FIX: Changes 'const' to 'let' and forcefully disables expense syncing for free users
+  let logExpense = document.getElementById('logExpenseTgl')?.checked;
+  if (!CU.isPremium) logExpense = false;  const cost=parseFloat(document.getElementById('entryCost')?.value)||0;
   const expCat=document.getElementById('entryExpCategory')?.value||'Inventory Stock';
   
   // ✅ FIX: Grab the payment method value
@@ -3016,8 +3024,9 @@ window.addProduct=async function(){
   const minRaw = pminEl ? pminEl.value : '';
   const minStock = minRaw !== '' ? parseFloat(minRaw) : undefined;
 
-  const logExpense = document.getElementById('addProdExpTgl')?.checked;
-  const pricePerUnit = parseFloat(document.getElementById('addProdCost')?.value) || 0;
+// ✅ FIX: Changes 'const' to 'let' and forcefully disables expense syncing for free users
+  let logExpense = document.getElementById('addProdExpTgl')?.checked;
+  if (!CU.isPremium) logExpense = false;  const pricePerUnit = parseFloat(document.getElementById('addProdCost')?.value) || 0;
   const expCat = document.getElementById('addProdExpCat')?.value || 'Inventory Stock';
   
   // ✅ FIX: Grab the payment method value
