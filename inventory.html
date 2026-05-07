@@ -4165,6 +4165,56 @@ window.declineWarehouseDeleteReq = async function(notifId) {
   
   window.openM('m-entry');
 };
+  function buildEntryUnitSel() {
+  const convs = curProd.conversions || [];
+  selUnit = curProd.unit || 'units';
+  const allUnits = [{name: curProd.unit || 'units', ratio: 1, isBase: true}, ...convs.map(c => ({name: c.name, ratio: c.ratio, isBase: false}))];
+  
+  const dd = document.getElementById('entry-unit-dd');
+  if (dd) {
+    dd.innerHTML = allUnits.map(u => `
+      <div class="cat-opt" style="padding: 10px 14px;" onclick="window.selectUnit('${esc(u.name)}', ${u.ratio})">
+        <span class="copt-name" style="font-size: 13.5px; font-weight: 800; color: var(--text-1);">${esc(u.name)}</span>
+        <svg class="unit-check ${u.name === selUnit ? '' : 'hidden'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+    `).join('');
+  }
+  const lbl = document.getElementById('entry-unit-lbl');
+  if (lbl) lbl.textContent = selUnit;
+}
+
+window.selectUnit = function(name, ratio) {
+  selUnit = name;
+  const lbl = document.getElementById('entry-unit-lbl');
+  if (lbl) lbl.textContent = name;
+  
+  const dd = document.getElementById('entry-unit-dd');
+  if (dd) dd.style.display = 'none';
+  
+  const wrap = document.getElementById('entry-unit-wrap');
+  if (wrap) wrap.querySelector('.cat-picker-trigger')?.classList.remove('open');
+  
+  document.querySelectorAll('#entry-unit-dd .cat-opt').forEach(opt => {
+     const optName = opt.querySelector('.copt-name').textContent;
+     const check = opt.querySelector('.unit-check');
+     if (optName === name) check.classList.remove('hidden');
+     else check.classList.add('hidden');
+  });
+  window.updateConvPreview();
+};
+
+window.toggleEntryUnitDD = function() {
+  const wrap = document.getElementById('entry-unit-wrap');
+  const trigger = wrap.querySelector('.cat-picker-trigger');
+  const dd = document.getElementById('entry-unit-dd');
+  if (dd.style.display === 'block') {
+    dd.style.display = 'none'; trigger.classList.remove('open');
+  } else {
+    document.querySelectorAll('.cat-picker-dropdown').forEach(d => d.style.display = 'none');
+    document.querySelectorAll('.cat-picker-trigger').forEach(t => t.classList.remove('open'));
+    dd.style.display = 'block'; trigger.classList.add('open');
+  }
+};
 init();
 </script>
 </body>
