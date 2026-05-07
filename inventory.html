@@ -2973,9 +2973,7 @@ function appendConvFormulaRow(container,name,ratioMult,baseUnit){
   window.populateAltUnitsCustom(rowId, base, name);
   row.querySelector('.mult-inp').addEventListener('input', () => checkConvDuplicateCustom(container));
 }
-
-// --- AUTO-OFF LOGIC ---
-// Removes the row, and if zero rows remain, switches the main toggle OFF automatically
+// --- AUTO-OFF & RESTORE LOGIC ---
 window.removeConvRow = function(btn) {
   const row = btn.closest('.conv-row-fixed');
   const container = row.parentElement;
@@ -2984,21 +2982,20 @@ window.removeConvRow = function(btn) {
   if (container.children.length === 0) {
     if (container.id === 'addProdConvRows') {
       const tgl = document.getElementById('addProdConvTgl');
-      if (tgl) { 
-        tgl.checked = false; 
-        window.toggleAddProdConv(tgl); // Hides the blue box area
-      }
+      if (tgl) { tgl.checked = false; window.toggleAddProdConv(tgl); }
     } else if (container.id === 'editConvRows') {
       const tgl = document.getElementById('editConvTgl');
-      if (tgl) { 
-        tgl.checked = false; 
-        window.toggleEditConvBuilder(tgl); // Hides the blue box area
-      }
+      if (tgl) { tgl.checked = false; window.toggleEditConvBuilder(tgl); }
     }
   } else {
-    // If there are still rows left, check for duplicates again just in case
-    if(typeof checkConvDuplicateCustom === 'function') checkConvDuplicateCustom(container);
+    // Wrapped in a try-catch to guarantee it never freezes the button
+    try { if(typeof checkConvDuplicateCustom === 'function') checkConvDuplicateCustom(container); } catch(e) {}
   }
+  
+  // FORCIBLY restore ALL Add buttons back to normal blue!
+  document.querySelectorAll('.add-conv-btn').forEach(b => {
+    b.classList.remove('disabled-dull', 'limit-bounce');
+  });
 };
 // --- LOGIC FOR CUSTOM CONVERSION DROPDOWNS ---
 window.populateAltUnitsCustom = function(rowId, baseUnit, currentName) {
@@ -3274,9 +3271,13 @@ window.addEditConvFormulaRow = function() {
 function triggerLimitFeedback(btn) {
   if (btn) {
     btn.classList.remove('limit-bounce');
-    void btn.offsetWidth; // Force a browser reflow to restart the animation
+    void btn.offsetWidth; // Force animation restart
     btn.classList.add('limit-bounce');
+    
+    // NEW: Auto-remove the red highlight after the bounce finishes (300ms) so it goes back to gray!
+    setTimeout(() => { btn.classList.remove('limit-bounce'); }, 300);
   }
+  
   // Check if a toast is ALREADY showing to prevent spam
   const toastExists = Array.from(document.querySelectorAll('.custom-toast')).some(t => t.textContent.includes('Maximum 6'));
   if (!toastExists) {
