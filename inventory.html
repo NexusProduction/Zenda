@@ -643,14 +643,14 @@ div.pd-entries div.entry-card {
   box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
 }
 
-/* Standalone Floating Rows */
+/* Standalone Floating Rows (Heavier Stroke) */
 .erow { 
   display: flex !important; align-items: center !important; gap: 16px !important; 
   padding: 18px 20px !important; 
   background: var(--white-pure) !important; 
   border-radius: 20px !important; 
   margin-bottom: 14px !important; 
-  border: 2px solid rgba(0, 0, 0, 0.1) !important; 
+  border: 2px solid var(--border-strong) !important; /* Thickened and darkened border */
   box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important; 
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important; 
 }
@@ -1725,12 +1725,12 @@ body.is-premium .premium-lock-overlay {
           </button>
         </div>
         <div id="eList"><div class="e-empty">Loading…</div></div>
-      </div>
-      <button class="fab-add" id="btnAddEntryMobile" onclick="window.openEntry('IN')">
+      <div id="entryPagination"></div> </div>
+    <button class="fab-add" id="btnAddEntryMobile" onclick="window.openEntry('IN')">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
-    </div>
   </div>
+</div>
 </div>
 
 <div class="mo" id="m-low-stock" onclick="if(event.target===this) window.closeM('m-low-stock')">
@@ -2088,21 +2088,27 @@ body.is-premium .premium-lock-overlay {
   </div>
 </div>
 
-<div class="mo" id="m-del-entry" onclick="if(event.target===this) window.closeM('m-del-entry')">
-  <div class="mbox" style="max-width: 440px; padding: 0; border-radius: 20px;">
-    <div class="mhd" style="border-bottom: 2px solid var(--border-strong); padding: 24px 24px 14px; justify-content: center;">
-      <div class="mttl" style="color:var(--red); font-size: 1.25rem; font-weight: 800; text-align: center; width: 100%; font-family: var(--f-display); letter-spacing: -0.01em; margin-bottom: 0;">Delete Entry</div>
+<div class="mo" id="m-del-entry" onclick="if(event.target===this) window.closeM('m-del-entry')" style="align-items: center !important; padding: 16px !important;">
+  <div class="mbox" style="width: 100%; max-width: 420px; padding: 0; border-radius: 20px !important; margin: auto;">
+    <div style="padding: 20px 24px 16px; border-bottom: 1px solid var(--border-faint);">
+      <div style="font-family: var(--f-display); font-size: 1.25rem; font-weight: 800; color: var(--red); text-align: center;">Delete Entry</div>
       <div id="delEntSub" style="display:none;"></div>
     </div>
-    <div class="mbd" style="padding: 24px;">
+    <div style="padding: 20px 24px 24px;">
       <div class="del-warn" style="border-width: 2px; font-weight: 700; margin-bottom: 20px;">⚠️ This will mark the entry as deleted. The reason will be visible to all team members.</div>
-      <div class="mf">
-        <label>Reason <span style="font-weight:600;color:var(--text-4);text-transform:none">(min 10 characters)</span></label>
-        <textarea id="delReason" placeholder="Explain why this entry is being deleted. Be specific." oninput="window.checkCharCount(this)"></textarea>
-        <div class="word-count warn" id="wordCount">0 characters (min 10)</div>
+      
+      <div class="fg" style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 0.75rem; font-weight: 800; color: var(--text-1); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Reason (max 20 chars)</label>
+        <input type="text" id="delReason" class="finp" placeholder="Enter reason..." maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s]/g, '')" style="width: 100%; padding: 12px 16px; border: 2px solid var(--border-strong); border-radius: 12px; font-family: var(--f-body); font-size: 0.95rem; font-weight: 700; background: var(--white-pure); color: var(--text-1); outline: none; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.02);" onfocus="this.style.borderColor='var(--accent)'; this.style.boxShadow='0 0 0 4px var(--accent-glow)';">
       </div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--white-cool); border: 2px solid var(--border-strong); border-radius: 12px; margin-bottom: 24px;">
+        <span style="font-family: var(--f-display); font-weight: 800; font-size: 14px; color: var(--text-1);">Delete from Expenses</span>
+        <label class="tgl"><input type="checkbox" id="delExpSyncToggle" checked><span class="tgl-sl"></span></label>
+      </div>
+
       <div class="mmsg" id="delEntMsg" style="margin-bottom: 16px;"></div>
-      <button class="btn-black" id="delEntBtn" onclick="window.confirmDelEntry()" style="background:var(--red); width: 100%; border-radius: 12px; padding: 14px; font-size: 1rem; margin: 0; box-shadow:0 4px 12px rgba(220,38,38,0.2);">Delete Entry</button>
+      <button class="btn-black" id="delEntBtn" onclick="window.confirmDelEntry()" style="background:var(--red); width: 100%; border-radius: 12px; padding: 14px; font-size: 1rem; margin: 0; box-shadow:0 4px 12px rgba(220,38,38,0.2); transition: opacity 0.2s;">Delete Entry</button>
     </div>
   </div>
 </div>
@@ -3376,211 +3382,134 @@ window.confirmDelProd=async function(){
   btn.disabled=false; btn.textContent='Delete Forever';
 };
 
-// ── ENTRIES ──
+window.currentEntries = [];
+window.entryCurrentPage = 1;
+const ENTRY_PER_PAGE = 10;
+
 async function loadEntries(pId){
   document.getElementById('eList').innerHTML='<div class="e-empty">Loading…</div>';
   try{
-    // ✅ FIX: Added companyId to bypass security block
     const snap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',pId)));
     
-    const entries=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>new Date(b.createdAt?.toDate?b.createdAt.toDate():b.createdAt||0)-new Date(a.createdAt?.toDate?a.createdAt.toDate():a.createdAt||0));
-    const active=entries.filter(e=>!e.deleted);
-    
+    window.currentEntries = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>new Date(b.createdAt?.toDate?b.createdAt.toDate():b.createdAt||0)-new Date(a.createdAt?.toDate?a.createdAt.toDate():a.createdAt||0));
+    window.entryCurrentPage = 1;
+
+    const active=window.currentEntries.filter(e=>!e.deleted);
     document.getElementById('pdIn').textContent=active.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
     document.getElementById('pdOut').textContent=active.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
-// Updates title inline and hides the number completely if it's 0
-    const eTitle = document.getElementById('eCntTitle');
-    if (eTitle) {
-      eTitle.textContent = entries.length > 0 ? `STOCK HISTORY (${entries.length})` : 'STOCK HISTORY';
-    }    
-    if(!entries.length){document.getElementById('eList').innerHTML='<div class="e-empty">No entries yet.</div>';return;}
     
-    document.getElementById('eList').innerHTML=entries.map(e=>{
-      if(e.type==='LOG'||e.isActivity)return `<div class="erow" style="background:var(--white-cool)"><div class="e-ind" style="background:var(--accent-soft);border:1px solid rgba(79,70,229,.2)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-note" style="color:var(--text-1);font-weight:600">${esc(e.note)}</div><div class="e-time">${ago(e.createdAt)}</div></div></div>`;
-      
-      const canDel=!e.deleted&&(CU.role==='owner'||CU.role==='manager'||e.createdBy===CU.uid);
-      const delBtn=canDel?`<button style="background:var(--red-soft);border:1px solid var(--red-border);color:var(--red);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-left:10px;cursor:pointer;flex-shrink:0" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`:'';
-      
-      if(e.deleted)return `<div class="erow del-row" style="opacity:.5;background:var(--white-cool);cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--border);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/></svg></div><div class="e-body"><div class="e-who">${esc(e.who||'Unknown')}</div><div class="e-note" style="text-decoration:underline dotted;cursor:pointer;color:var(--text-3)">${esc(e.deleteMessage||'Entry deleted — click for reason')}</div><div class="e-time">${ago(e.createdAt)} · Deleted ${ago(e.deletedAt)}</div></div><div class="e-right"><span class="e-qty" style="text-decoration:line-through;color:var(--text-4)">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div>`;
-      
-      return `<div class="erow"><div class="e-ind ${e.type==='IN'?'e-in':'e-out'}">${e.type==='IN'?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>':'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'}</div><div class="e-body"><div class="e-who">${esc(e.who||'Unknown')}</div>${e.note?`<div class="e-note">${esc(e.note)}</div>`:''}<div class="e-time">${ago(e.createdAt)}</div></div><div class="e-right"><div><span class="e-qty ${e.type==='IN'?'e-qi':'e-qo'}">${e.type==='IN'?'+':'-'}${e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty} ${e.entryUnit}`:e.qty}</span><span class="e-unit">${esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units')}</span></div>${delBtn}</div></div>`;
-    }).join('');
+    const eTitle = document.getElementById('eCntTitle');
+    if (eTitle) eTitle.textContent = window.currentEntries.length > 0 ? `STOCK HISTORY (${window.currentEntries.length})` : 'STOCK HISTORY';
+
+    window.renderEntries();
   }catch(e){document.getElementById('eList').innerHTML=`<div class="e-empty" style="color:var(--red)">Error: ${e.message}</div>`;}
 }
-window.viewDelReason=async function(entId){try{const snap=await getDoc(doc(db,'entries',entId));if(!snap.exists())return;const e=snap.data();document.getElementById('drDeletedBy').textContent=e.deletedByName||'Unknown';document.getElementById('drReason').textContent=e.deleteReason||'No reason provided.';document.getElementById('drTime').textContent='Deleted: '+ago(e.deletedAt);document.getElementById('delReasonSub').textContent=`${e.type} entry of ${e.qty} ${e.entryUnit||''} by ${e.who||'—'} — ${ago(e.createdAt)}`;window.openM('m-del-reason');}catch(err){window.showToast('Could not load reason.','e');}};
 
-window.openEntry=function(type){
-  if(!curProd)return;eType=type;window.setET(type);
-  document.getElementById('entryTitle').textContent='Add Entry';
-  document.getElementById('eq').value='';document.getElementById('en').value='';
-  const tgl=document.getElementById('logExpenseTgl');if(tgl)tgl.checked=false;
-  const ef=document.getElementById('expenseFields');if(ef)ef.style.display='none';
-  const cst=document.getElementById('entryCost');if(cst)cst.value='';
-  document.getElementById('entryMsg').textContent='';
-  document.getElementById('convPreview').style.display='none';
-  buildEntryUnitSel();
-  
-  // ✅ FIX: These two lines safely render the Dropdowns when the Entry modal opens!
-  if (typeof window.setupExpCatDropdown === 'function') window.setupExpCatDropdown();
-  if (typeof window.setupPayMethodDropdowns === 'function') window.setupPayMethodDropdowns();
-  
-  window.openM('m-entry');
+window.changeEntryPage = function(dir) {
+  window.entryCurrentPage += dir;
+  window.renderEntries();
 };
 
-function buildEntryUnitSel() {
-  const convs = curProd.conversions || [];
-  selUnit = curProd.unit || 'units';
-  const allUnits = [{name: curProd.unit || 'units', ratio: 1, isBase: true}, ...convs.map(c => ({name: c.name, ratio: c.ratio, isBase: false}))];
-  
-  const dd = document.getElementById('entry-unit-dd');
-  if (dd) {
-    dd.innerHTML = allUnits.map(u => `
-      <div class="cat-opt" style="padding: 10px 14px;" onclick="window.selectUnit('${u.name}', ${u.ratio})">
-        <span class="copt-name" style="font-size: 13.5px; font-weight: 800; color: var(--text-1);">${esc(u.name)}</span>
-        <svg class="unit-check ${u.name === selUnit ? '' : 'hidden'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-      </div>
-    `).join('');
+window.renderEntries = function() {
+  const entries = window.currentEntries || [];
+  const el = document.getElementById('eList');
+  const pagWrap = document.getElementById('entryPagination');
+
+  if(!entries.length){
+     el.innerHTML='<div class="e-empty">No entries yet.</div>';
+     if (pagWrap) pagWrap.innerHTML = '';
+     return;
   }
-  const lbl = document.getElementById('entry-unit-lbl');
-  if (lbl) lbl.textContent = selUnit;
-}
 
-window.selectUnit = function(name, ratio) {
-  selUnit = name;
-  const lbl = document.getElementById('entry-unit-lbl');
-  if (lbl) lbl.textContent = name;
-  
-  const dd = document.getElementById('entry-unit-dd');
-  if (dd) dd.style.display = 'none';
-  
-  const wrap = document.getElementById('entry-unit-wrap');
-  if (wrap) wrap.querySelector('.cat-picker-trigger')?.classList.remove('open');
-  
-  document.querySelectorAll('#entry-unit-dd .cat-opt').forEach(opt => {
-     const optName = opt.querySelector('.copt-name').textContent;
-     const check = opt.querySelector('.unit-check');
-     if (optName === name) check.classList.remove('hidden');
-     else check.classList.add('hidden');
-  });
-  window.updateConvPreview();
-};
+  const totalPages = Math.ceil(entries.length / ENTRY_PER_PAGE);
+  if (window.entryCurrentPage > totalPages) window.entryCurrentPage = totalPages;
+  if (window.entryCurrentPage < 1) window.entryCurrentPage = 1;
 
-window.toggleEntryUnitDD = function() {
-  const wrap = document.getElementById('entry-unit-wrap');
-  const trigger = wrap.querySelector('.cat-picker-trigger');
-  const dd = document.getElementById('entry-unit-dd');
-  if (dd.style.display === 'block') {
-    dd.style.display = 'none'; trigger.classList.remove('open');
+  const startIndex = (window.entryCurrentPage - 1) * ENTRY_PER_PAGE;
+  const slice = entries.slice(startIndex, startIndex + ENTRY_PER_PAGE);
+
+  el.innerHTML = slice.map(e => {
+      // 1. System Logs
+      if(e.type==='LOG'||e.isActivity)return `<div class="erow"><div class="e-ind" style="background:var(--accent-soft);border:1px solid rgba(79,70,229,.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">System Log</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.note)} • ${ago(e.createdAt)}</div></div></div>`;
+      
+      const canDel=!e.deleted&&(CU.role==='owner'||CU.role==='manager'||e.createdBy===CU.uid);
+      const delBtn=canDel?`<button style="background:var(--red-soft);border:1.5px solid var(--red-border);color:var(--red);width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s;" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`:'';
+      
+      // 2. Deleted Rows
+      if(e.deleted)return `<div class="erow del-row" style="opacity:.6;cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--white-dim);border:1px solid var(--border-strong);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em; text-decoration:line-through;">${esc(e.who||'Unknown')}</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.deleteMessage||'Deleted')} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
+      
+      // 3. Active IN/OUT Rows
+      const isInc = e.type === 'IN';
+      const arrow = isInc ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`;
+      const amtStr = (isInc ? '+' : '-') + (e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty}`:e.qty);
+      const untStr = esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units');
+      
+      return `<div class="erow">
+        <div class="e-ind ${isInc?'e-in':'e-out'}">${arrow}</div>
+        <div class="e-body">
+          <div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">${esc(e.who||'Unknown')}</div>
+          <div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${e.note ? esc(e.note) : (isInc?'Stock In':'Stock Out')} • ${ago(e.createdAt)}</div>
+        </div>
+        <div class="e-right" style="display:flex; align-items:center; gap:12px;">
+          <div style="text-align:right;">
+            <span class="e-qty ${isInc?'e-qi':'e-qo'}" style="font-family:var(--f-display); font-size:18px; font-weight:800;">${amtStr}</span>
+            <span class="e-unit" style="font-size:11px; font-weight:700; color:var(--text-4); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-top:2px;">${untStr}</span>
+          </div>
+          ${delBtn}
+        </div>
+      </div>`;
+  }).join('');
+
+  if (totalPages > 1) {
+    if (pagWrap) pagWrap.innerHTML = `
+      <div class="pag-wrap" style="border-radius: 0 0 var(--r-xl) var(--r-xl); margin-top: 10px; border: none; background: transparent; padding: 0;">
+        <button class="pag-btn" onclick="window.changeEntryPage(-1)" ${window.entryCurrentPage === 1 ? 'disabled' : ''}>Prev</button>
+        <span class="pag-info">${window.entryCurrentPage} / ${totalPages}</span>
+        <button class="pag-btn" onclick="window.changeEntryPage(1)" ${window.entryCurrentPage === totalPages ? 'disabled' : ''}>Next</button>
+      </div>`;
   } else {
-    document.querySelectorAll('.cat-picker-dropdown').forEach(d => d.style.display = 'none');
-    document.querySelectorAll('.cat-picker-trigger').forEach(t => t.classList.remove('open'));
-    dd.style.display = 'block'; trigger.classList.add('open');
+    if (pagWrap) pagWrap.innerHTML = '';
   }
 };
-window.updateConvPreview=function(){const qtyInp=document.getElementById('eq');const qty=parseFloat(qtyInp.value)||0;if(!qty||!selUnit||selUnit===(curProd.unit||'units')){document.getElementById('convPreview').style.display='none';return;}const conv=curProd.conversions?.find(c=>c.name===selUnit);if(!conv){document.getElementById('convPreview').style.display='none';return;}const base=qty/conv.ratio;document.getElementById('convPreview').style.display='block';document.getElementById('convPreview').textContent=`${qty} ${selUnit} = ${base} ${curProd.unit||'units'}`;};
-window.setET=function(t){eType=t;document.getElementById('ettIn').className=`ett in${t==='IN'?' on':''}`;document.getElementById('ettOut').className=`ett out${t==='OUT'?' on':''}`;const b=document.getElementById('entryBtn');if(b){b.className=t==='IN'?'mok green':'mok red';b.textContent=`Add ${t} Entry`;}const let_=document.getElementById('logExpText');const cl=document.getElementById('costLabel');if(let_&&cl){let_.textContent=t==='IN'?'Log as Expense?':'Log as Income?';cl.textContent=t==='IN'?'Total Cost':'Total Sale Value';}};
 
-window.submitEntry=async function(){
-  if(!curProd||!curProd.id){setMM('entryMsg','⚠ Critical Error: Product ID missing.','err');return;}
-  const qty=parseFloat(document.getElementById('eq').value);const note=document.getElementById('en').value.trim();const btn=document.getElementById('entryBtn');
-  
-  if(!qty||qty<=0){setMM('entryMsg','⚠ Enter positive quantity.','err');return;}
-  // NEW: Strict 10-digit limit check
-  if(qty > 9999999999){setMM('entryMsg','⚠ Maximum quantity is 10 digits.','err');return;}
-  
-  const conv=curProd.conversions?.find(c=>c.name===selUnit);
-  const qtyBase=conv?(qty/conv.ratio):qty;const entryUnit=selUnit||curProd.unit||'units';
-  if(eType==='OUT'&&qtyBase>(curProd.stock||0)){setMM('entryMsg',`⚠ Not enough stock (${qtyBase} needed, ${curProd.stock||0} available).`,'err');return;}
-  
-// ✅ FIX: Changes 'const' to 'let' and forcefully disables expense syncing for free users
-  let logExpense = document.getElementById('logExpenseTgl')?.checked;
-  if (!CU.isPremium) logExpense = false;  const cost=parseFloat(document.getElementById('entryCost')?.value)||0;
-  const expCat=document.getElementById('entryExpCategory')?.value||'Inventory Stock';
-  
-  // ✅ FIX: Grab the payment method value
-  const payMethod=document.getElementById('entryPayMethod')?.value||'Cash';
-  
-  if(logExpense&&cost<=0){setMM('entryMsg','⚠ Enter a valid amount.','err');return;}
-  btn.disabled=true;btn.textContent='Processing…';
-  try{
-    const cid=CU.companyId;const newStock=eType==='IN'?(curProd.stock||0)+qtyBase:(curProd.stock||0)-qtyBase;
-    await updateDoc(doc(db,'products',String(curProd.id)),{stock:newStock});
-    const entryRef=await addDoc(collection(db,'entries'),{type:eType,qty,qtyBase,unit:entryUnit,entryUnit,note,productId:curProd.id,godownId:curWH,companyId:cid,who:CU.name||'Owner',createdBy:CU.uid,deleted:false,createdAt:serverTimestamp()});
-    
-    if(logExpense&&cost>0) {
-        await addDoc(collection(db,'expenses'),{
-            type:eType==='OUT'?'income':'expense',
-            amount:Number(cost),
-            category:expCat,
-            paymentMethod: payMethod, // ✅ FIX: Push Payment Method to Database!
-            description:curProd.name,
-            relatedEntryId:entryRef.id,
-            productId:curProd.id,
-            companyId:cid,
-            createdBy:CU.uid,
-            createdByName:CU.name||'Owner',
-            date:new Date().toISOString(),
-            createdAt:serverTimestamp()
-        });
-    }
-    
-    curProd.stock=newStock;window.closeM('m-entry');
-    document.getElementById('pdStock').textContent=newStock;
-    document.getElementById('pdStock').className='pd-big'+(curProd.minStock!=null&&newStock<=curProd.minStock?' low':'');
-    await loadEntries(curProd.id);window.showToast(`${eType==='IN'?'Added':'Removed'} ${qty} ${entryUnit} ✓`,eType==='IN'?'s':'');
-  }catch(e){console.error(e);setMM('entryMsg','❌ Failed: '+e.message,'err');}
-  btn.disabled=false;btn.textContent=`Add ${eType} Entry`;
-};
+window.prepDelEntry=function(entId){entToDelete=entId;document.getElementById('delReason').value='';document.getElementById('delExpSyncToggle').checked=true;document.getElementById('delEntMsg').textContent='';window.openM('m-del-entry');};
 
-window.prepDelEntry=function(entId){entToDelete=entId;document.getElementById('delReason').value='';document.getElementById('wordCount').textContent='0 characters (min 10)';document.getElementById('wordCount').className='word-count warn';document.getElementById('delEntMsg').textContent='';window.openM('m-del-entry');};
-window.checkCharCount=function(el){const len=el.value.trim().length;const wc=document.getElementById('wordCount');if(len<10){wc.textContent=`${len} characters (min 10)`;wc.className='word-count warn';}else if(len>180){wc.textContent=`${len} characters (max 180)`;wc.className='word-count warn';}else{wc.textContent=`${len} characters ✓`;wc.className='word-count ok';}};
 window.confirmDelEntry=async function(){
-  const reason=document.getElementById('delReason').value.trim();const len=reason.length;if(len<10){setMM('delEntMsg','⚠ Write at least 10 characters.','err');return;}if(len>180){setMM('delEntMsg','⚠ Keep under 180 characters.','err');return;}
+  const reason=document.getElementById('delReason').value.trim();
+  const len=reason.length;
+  if(len<10){setMM('delEntMsg','⚠ Write at least 10 characters.','err');return;}
+  
   const btn=document.getElementById('delEntBtn');btn.disabled=true;btn.textContent='Deleting…';
-  try{const snap=await getDoc(doc(db,'entries',entToDelete));const e=snap.data();const isOwn=e.createdBy===CU.uid;const amt=`${e.qty} ${e.entryUnit||e.unit||''}`.trim();const msg=isOwn?`${CU.name} deleted their own entry of ${amt} ${e.type}`:`${CU.role} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;await updateDoc(doc(db,'entries',entToDelete),{deleted:true,deleteReason:reason,deleteMessage:msg,deletedBy:CU.uid,deletedByName:CU.name||'Owner',deletedAt:new Date().toISOString()});window.closeM('m-del-entry');await loadEntries(curProd.id);const allSnap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted);const newStock=Math.max(0,activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0));await updateDoc(doc(db,'products',curProd.id),{stock:newStock});curProd.stock=newStock;document.getElementById('pdStock').textContent=newStock;window.showToast('Entry deleted.','');}catch(e){setMM('delEntMsg','❌ Failed: '+e.message,'err');}
+  try{
+    const snap=await getDoc(doc(db,'entries',entToDelete));
+    const e=snap.data();
+    const isOwn=e.createdBy===CU.uid;
+    const amt=`${e.qty} ${e.entryUnit||e.unit||''}`.trim();
+    const msg=isOwn?`${CU.name} deleted their own entry of ${amt} ${e.type}`:`${CU.role} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;
+    
+    // 1. Mark Entry as Deleted
+    await updateDoc(doc(db,'entries',entToDelete),{deleted:true,deleteReason:reason,deleteMessage:msg,deletedBy:CU.uid,deletedByName:CU.name||'Owner',deletedAt:new Date().toISOString()});
+    
+    // 2. Cross-App Sync: Delete linked Expense
+    if (document.getElementById('delExpSyncToggle').checked) {
+       const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId','==',CU.companyId), where('relatedEntryId','==',entToDelete)));
+       expSnap.docs.forEach(d => {
+          updateDoc(doc(db,'expenses',d.id), { isDeleted: true, deletedBy: CU.name, deletedById: CU.uid, deleteReason: reason, deletedAt: serverTimestamp() });
+       });
+    }
+
+    window.closeM('m-del-entry');
+    await loadEntries(curProd.id); // Reloads active entries + fixes count
+    
+    const allSnap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));
+    const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted);
+    const newStock=Math.max(0,activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0));
+    await updateDoc(doc(db,'products',curProd.id),{stock:newStock});
+    curProd.stock=newStock;
+    document.getElementById('pdStock').textContent=newStock;
+    window.showToast('Entry deleted.','');
+  }catch(e){setMM('delEntMsg','❌ Failed: '+e.message,'err');}
   btn.disabled=false;btn.textContent='Delete Entry';
-};
-// ── ADD PRODUCT ──
-window.openAddProd = function() {
-  const wh = WHs.find(w => w.id === curWH);
-  const sub = document.getElementById('prodModalSub');
-  if (sub) sub.textContent = `Adding to "${wh?.name || 'warehouse'}"`;
-
-  // Safely clear all text and number inputs
-  ['pn', 'pdesc'].forEach(id => {
-    const e = document.getElementById(id);
-    if (e) e.value = '';
-  });
-  ['ps', 'pmin'].forEach(id => {
-    const e = document.getElementById(id);
-    if (e) { e.value = ''; e.type = 'number'; e.min = '0'; e.step = 'any'; }
-  });
-
-  // Safely reset the NEW premium custom dropdowns
-  if (typeof window.selectUnitOption === 'function') window.selectUnitOption(STD_UNITS[0]);
-  
-  // ✅ FIX: These two lines safely render the Dropdowns when the modal opens!
-  if (typeof window.setupExpCatDropdown === 'function') window.setupExpCatDropdown();
-  if (typeof window.setupPayMethodDropdowns === 'function') window.setupPayMethodDropdowns();
-
-  // Safely clear conversions
-  const convRows = document.getElementById('addProdConvRows');
-  if (convRows) convRows.innerHTML = '';
-  
-  const convTgl = document.getElementById('addProdConvTgl');
-  if (convTgl) convTgl.checked = false;
-  
-  const convBldr = document.getElementById('addProdConvBuilder');
-  if (convBldr) convBldr.style.display = 'none';
-
-  // Safely reset the NEW inline SVG icon
-  window._aiEmoji = 'package';
-  const nameEmojiIcon = document.getElementById('nameEmojiIcon');
-  if (nameEmojiIcon) nameEmojiIcon.innerHTML = window.getExtIcon('package');
-
-  // Clear messages and open the modal
-  setMM('prodMsg', '', '');
-  window.openM('m-prod');
 };
 
 window.toggleAddProdConv=function(el){document.getElementById('addProdConvBuilder').style.display=el.checked?'block':'none';const rows=document.getElementById('addProdConvRows');if(el.checked&&rows&&rows.children.length===0)window.addProdConvFormulaRow();};
