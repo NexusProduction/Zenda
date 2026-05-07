@@ -431,17 +431,25 @@ body { padding-top: 60px; }
 .prow:last-child { border-bottom: none !important; }
 .prow:hover { background: var(--surface-1) !important; }
 
-/* Crisp, larger Icon Box */
+/* Crisp, larger Icon Box with Smooth Transitions */
 .prow-ico { 
   width: 48px !important; height: 48px !important; 
   border-radius: 14px !important; background: var(--white-pure) !important; 
   border: 1px solid var(--border) !important; 
   box-shadow: 0 2px 6px rgba(0,0,0,0.02) !important; 
   display: flex !important; align-items: center !important; justify-content: center !important; 
-  flex-shrink: 0 !important; transition: transform 0.2s !important; 
+  flex-shrink: 0 !important; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important; 
 }
-.prow-ico img { width: 1.2em !important; height: 1.2em !important; opacity: 0.8 !important; }
-.prow:hover .prow-ico { transform: scale(1.05) !important; }
+.prow-ico img { width: 1.2em !important; height: 1.2em !important; opacity: 0.8 !important; transition: all 0.25s ease !important; }
+
+/* NEW: Invert Icon & Black Background on Hover! */
+.prow:hover .prow-ico { 
+  background: #09090B !important; 
+  border-color: #09090B !important; 
+  transform: scale(1.08) translateY(-2px) !important; 
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15) !important;
+}
+.prow:hover .prow-ico img { filter: invert(1) brightness(100) !important; opacity: 1 !important; }
 
 .prow-info { flex: 1; min-width: 0; text-align: left; }
 
@@ -450,9 +458,9 @@ body { padding-top: 60px; }
   font-family: var(--f-display) !important; font-size: 15px !important; 
   font-weight: 800 !important; color: var(--text-1) !important; 
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
-  margin-bottom: 4px !important; letter-spacing: -0.01em; 
+  margin-bottom: 2px !important; letter-spacing: -0.01em; 
 }
-.prow-meta { font-size: 13px !important; font-weight: 500 !important; color: var(--text-3) !important; }
+.prow-meta { font-size: 13px !important; font-weight: 500 !important; color: var(--text-3) !important; display: flex; align-items: center; gap: 8px; }
 
 /* Perfectly Stacked Right Side (Quantity / Unit) */
 .prow-stk { 
@@ -467,14 +475,13 @@ body { padding-top: 60px; }
 .prow-num.low { color: var(--red) !important; }
 .prow-unit { font-size: 12px !important; font-weight: 600 !important; color: var(--text-4) !important; }
 
-/* Sleek Low Stock Badge */
+/* Redesigned Low Stock Badge */
 .low-badge { 
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 11px !important; font-weight: 800 !important; 
   background: var(--red-soft) !important; color: var(--red) !important; 
   border: 1px solid var(--red-border) !important; 
-  border-radius: 6px !important; padding: 2px 8px !important; 
-  margin-left: 10px !important; vertical-align: bottom; 
+  border-radius: 6px !important; padding: 2px 6px !important; 
 }
 
 /* PRODUCT DETAILS */
@@ -2897,7 +2904,7 @@ function renderProds(list){
     return;
   }
   
-  // Setup pagination math
+  // Setup pagination math (Limit 10 per page)
   const totalPages = Math.ceil(list.length / PROD_PER_PAGE);
   if (prodCurrentPage > totalPages) prodCurrentPage = totalPages;
   if (prodCurrentPage < 1) prodCurrentPage = 1;
@@ -2907,13 +2914,31 @@ function renderProds(list){
   
   el.innerHTML = slice.map(p=>{
     const isLow = p.minStock != null ? p.stock <= p.minStock : p.stock <= 0;
-    return `<div class="prow" onclick="window.openProd('${p.id}')"><div class="prow-ico" style="padding: 8px; box-sizing: border-box;">${window.getExtIcon(p.emoji)}</div><div class="prow-info"><div class="prow-name">${esc(p.name)}${isLow?'<span class="low-badge">⚠ Low</span>':''}</div><div class="prow-meta">${p.desc?esc(p.desc.slice(0,50)):'&nbsp;'}</div></div><div class="prow-stk"><span class="prow-num${isLow?' low':''}">${p.stock||0}</span><span class="prow-unit">${esc(p.unit||'units')}</span></div><div class="prow-arr"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>`;
+    
+    // 🔥 NEW: High-end Warning Icon SVG & Repositioned into Description
+    const lowBadge = isLow ? `<span class="low-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; margin-top:-1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Low</span>` : '';
+    
+    return `
+    <div class="prow" onclick="window.openProd('${p.id}')">
+      <div class="prow-ico" style="padding: 8px; box-sizing: border-box;">${window.getExtIcon(p.emoji)}</div>
+      <div class="prow-info">
+        <div class="prow-name">${esc(p.name)}</div>
+        <div class="prow-meta">
+          <span>${p.desc ? esc(p.desc.slice(0,50)) : 'No description'}</span>
+          ${lowBadge}
+        </div>
+      </div>
+      <div class="prow-stk">
+        <span class="prow-num${isLow?' low':''}">${p.stock||0}</span>
+        <span class="prow-unit">${esc(p.unit||'units')}</span>
+      </div>
+    </div>`;
   }).join('');
 
-  // Inject pagination UI if needed
+  // 🔥 NEW: Beautiful Bottom Pagination matching the Warehouse area exactly
   if (totalPages > 1) {
     if (pagWrap) pagWrap.innerHTML = `
-      <div class="pag-wrap" style="border-top: 1px solid var(--border); padding: 16px 20px;">
+      <div class="pag-wrap" style="border-top: 1.5px solid var(--border-faint); padding: 16px 20px; border-radius: 0 0 20px 20px;">
         <button class="pag-btn" onclick="window.changeProdPage(-1)" ${prodCurrentPage === 1 ? 'disabled' : ''}>Prev</button>
         <span class="pag-info">${prodCurrentPage} / ${totalPages}</span>
         <button class="pag-btn" onclick="window.changeProdPage(1)" ${prodCurrentPage === totalPages ? 'disabled' : ''}>Next</button>
