@@ -4215,7 +4215,205 @@ window.toggleEntryUnitDD = function() {
     dd.style.display = 'block'; trigger.classList.add('open');
   }
 };
-init();
-</script>
+// ── MISSING: openAddProd — resets & opens the Add Product modal ──
+window.openAddProd = function() {
+  document.getElementById('pn').value = '';
+  document.getElementById('pdesc').value = '';
+  document.getElementById('ps').value = '';
+  document.getElementById('prodMsg').textContent = '';
+
+  window._aiEmoji = 'package';
+  const nameIcon = document.getElementById('nameEmojiIcon');
+  if (nameIcon) nameIcon.innerHTML = window.getExtIcon('package');
+
+  window.selectUnitOption(STD_UNITS[0]);
+
+  const expBlock  = document.getElementById('addProdExpenseBlock');
+  const expTgl    = document.getElementById('addProdExpTgl');
+  const expFields = document.getElementById('addProdExpFields');
+  const convTgl   = document.getElementById('addProdConvTgl');
+  const convBld   = document.getElementById('addProdConvBuilder');
+  const convRows  = document.getElementById('addProdConvRows');
+  const costInp   = document.getElementById('addProdCost');
+  const totalEl   = document.getElementById('exp-total-calc');
+
+  if (expBlock)  expBlock.style.display  = 'none';
+  if (expTgl)    expTgl.checked          = false;
+  if (expFields) expFields.style.display = 'none';
+  if (convTgl)   convTgl.checked         = false;
+  if (convBld)   convBld.style.display   = 'none';
+  if (convRows)  convRows.innerHTML      = '';
+  if (costInp)   costInp.value           = '';
+  if (totalEl)   totalEl.textContent     = 'Total: ₹ 0.00';
+
+  if (typeof window.setupExpCatDropdown    === 'function') window.setupExpCatDropdown();
+  if (typeof window.setupPayMethodDropdowns === 'function') window.setupPayMethodDropdowns();
+
+  window.openM('m-prod');
+};
+
+// ── MISSING: setET — switches IN / OUT tabs in the entry modal ──
+window.setET = function(type) {
+  eType = type;
+  const btnIn  = document.getElementById('ettIn');
+  const btnOut = document.getElementById('ettOut');
+  if (btnIn)  btnIn.classList.toggle('on',  type === 'IN');
+  if (btnOut) btnOut.classList.toggle('on', type === 'OUT');
+
+  const logExpText = document.getElementById('logExpText');
+  if (logExpText)
+    logExpText.textContent = type === 'IN' ? 'Log as Expense?' : 'Log as Revenue?';
+
+  const entryBtn = document.getElementById('entryBtn');
+  if (entryBtn)
+    entryBtn.textContent = type === 'IN' ? 'Add Entry' : 'Record OUT';
+};
+
+// ── MISSING: updateConvPreview — shows base-unit equivalent below qty field ──
+window.updateConvPreview = function() {
+  const qty     = parseFloat(document.getElementById('eq').value) || 0;
+  const preview = document.getElementById('convPreview');
+  if (!curProd || !preview) return;
+
+  const conv = (curProd.conversions || []).find(c => c.name === selUnit);
+  if (conv && qty > 0) {
+    const base = +(qty * conv.ratio).toFixed(4);
+    preview.style.display = 'block';
+    preview.textContent   = `= ${base} ${curProd.unit || 'units'}`;
+  } else {
+    preview.style.display = 'none';
+  }
+};
+
+// ── MISSING: viewDelReason — opens the "Entry Deleted" info modal ──
+window.viewDelReason = function(entId) {
+  const entry = (window.currentEntries || []).find(e => e.id === entId);
+  if (!entry) return;
+
+  const byEl   = document.getElementById('drDeletedBy');
+  const rsEl   = document.getElementById('drReason');
+  const tmEl   = document.getElementById('drTime');
+  if (byEl) byEl.textContent = entry.deletedByName || '—';
+  if (rsEl) rsEl.textContent = entry.deleteReason  || '—';
+  if (tmEl) tmEl.textContent = entry.deletedAt
+    ? new Date(entry.deletedAt).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+    : '—';
+
+  window.openM('m-del-reason');
+};
+
+// ── MISSING: submitEntry — saves IN/OUT entry to Firestore & updates stock ──
+window.submitEntry = async function() {
+  const qtyRaw = parseFloat(document.getElementById('eq').value);
+  const note   = document.getElementById('en').value.trim();
+  const btn    = document.getElementById('entryBtn');
+
+  if (!qtyRaw || qtyRaw <= 0) {
+    setMM('entryMsg', '⚠ Enter a valid quantity.', 'err'); return;
+  }
+  if (qtyRaw > 9999999999) {
+    setMM('entryMsg', '⚠ Quantity too large.', 'err'); return;
+  }
+
+  // Resolve base quantity via conversion ratio
+  const conv    = (curProd.conversions || []).find(c => c.name === selUnit);
+  const ratio   = conv ? conv.ratio : 1;
+  const qtyBase = +(qtyRaw * ratio).toFixed(4);
+
+  const currentStock = curProd.stock || 0;
+  const newStock     = eType === 'IN'
+    ? currentStock + qtyBase
+    : currentStock - qtyBase;
+
+  if (eType === 'OUT' && newStock < 0) {
+    setMM('entryMsg',
+      `⚠ Only ${currentStock} ${curProd.unit || 'units'} in stock.`, 'err');
+    return;
+  }
+
+  // Expense sync (premium-only)
+  let logExpense = document.getElementById('logExpenseTgl')?.checked && CU.isPremium;
+  const cost     = parseFloat(document.getElementById('entryCost')?.value) || 0;
+  if (logExpense && cost <= 0) {
+    setMM('entryMsg', '⚠ Enter a valid cost amount.', 'err'); return;
+  }
+
+  setMM('entryMsg', 'Saving…', '');
+  btn.disabled    = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    // 1 — Write entry
+    const entryRef = await addDoc(collection(db, 'entries'), {
+      type:      eType,
+      qty:       qtyRaw,
+      qtyBase:   qtyBase,
+      unit:      curProd.unit || 'units',
+      entryUnit: selUnit,
+      note:      note || '',
+      productId: curProd.id,
+      godownId:  curWH,
+      companyId: CU.companyId,
+      who:       CU.name || 'Owner',
+      createdBy: CU.uid,
+      deleted:   false,
+      createdAt: serverTimestamp()
+    });
+
+    // 2 — Update product stock
+    const safeStock = Math.max(0, newStock);
+    await updateDoc(doc(db, 'products', curProd.id), { stock: safeStock });
+    curProd.stock = safeStock;
+
+    // Refresh detail card numbers
+    const isLow = curProd.minStock != null
+      ? safeStock <= curProd.minStock
+      : safeStock <= 0;
+    const stockEl = document.getElementById('pdStock');
+    if (stockEl) {
+      stockEl.textContent = safeStock;
+      stockEl.className   = 'pd-big' + (isLow ? ' low' : '');
+    }
+    const unitEl = document.getElementById('pdUnit');
+    if (unitEl) unitEl.textContent = (curProd.unit || 'units') + ' in stock';
+
+    // 3 — Optional expense record
+    if (logExpense && cost > 0) {
+      const expCat    = document.getElementById('entryExpCategory')?.value || 'Inventory Stock';
+      const payMethod = document.getElementById('entryPayMethod')?.value   || 'Cash';
+      await addDoc(collection(db, 'expenses'), {
+        type:            eType === 'IN' ? 'expense' : 'income',
+        amount:          cost,
+        category:        expCat,
+        paymentMethod:   payMethod,
+        description:     `${curProd.name} — Stock ${eType}`,
+        relatedEntryId:  entryRef.id,
+        productId:       curProd.id,
+        companyId:       CU.companyId,
+        createdBy:       CU.uid,
+        createdByName:   CU.name || 'Owner',
+        date:            new Date().toISOString(),
+        createdAt:       serverTimestamp()
+      });
+    }
+
+    // 4 — Sync prods[] cache so the product list row updates instantly
+    const idx = prods.findIndex(p => p.id === curProd.id);
+    if (idx > -1) prods[idx].stock = safeStock;
+
+    window.closeM('m-entry');
+    await loadEntries(curProd.id);
+    window.showToast(
+      `${eType === 'IN' ? '+' : '-'}${qtyRaw} ${selUnit} recorded ✓`, 'success'
+    );
+  } catch(e) {
+    setMM('entryMsg', '❌ Failed: ' + e.message, 'err');
+  }
+
+  btn.disabled    = false;
+  btn.textContent = 'Add Entry';
+};
+
+init();</script>
 </body>
 </html>
