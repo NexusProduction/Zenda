@@ -1219,6 +1219,26 @@ body.is-premium .premium-lock-overlay {
   border-radius: 10px !important; font-size: 13px !important; font-weight: 700 !important; cursor: pointer; transition: all 0.2s;
 }
 .add-conv-btn:hover { background: var(--white-pure) !important; border-color: var(--accent) !important; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1) !important; }
+  /* --- CONVERSION LIMIT BUTTON STATES --- */
+.add-conv-btn.disabled-dull {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  background: var(--white-dim) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-4) !important;
+}
+
+.add-conv-btn.limit-bounce {
+  animation: limitBounce 0.3s ease;
+  border-color: var(--red) !important;
+  color: var(--red) !important;
+}
+
+@keyframes limitBounce {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
 </style>
 </head>
 <body>
@@ -2899,15 +2919,6 @@ window.openMergedEdit=function(){
   window.openM('m-edit-prod');
 };
 window.toggleEditConvBuilder=function(el){document.getElementById('editConvBuilderContainer').style.display=el.checked?'block':'none';const rows=document.getElementById('editConvRows');if(el.checked&&rows&&rows.children.length===0)window.addEditConvFormulaRow();};
-// Limits Edit Product conversions to 6
-window.addEditConvFormulaRow = function() {
-  const rows = document.getElementById('editConvRows');
-  if (rows && rows.children.length >= 6) {
-    window.showToast('Maximum 6 conversions allowed.', 'error');
-    return;
-  }
-  appendConvFormulaRow(rows, '', '', curProd.unit);
-};
 // Premium Responsive UI for the "Add Product" conversion row
 function appendFixedBaseConvRow(container,fixedBase){
   const rowId = 'cr-' + Date.now() + Math.floor(Math.random()*1000);
@@ -3235,15 +3246,53 @@ window.openAddProd = function() {
 };
 
 window.toggleAddProdConv=function(el){document.getElementById('addProdConvBuilder').style.display=el.checked?'block':'none';const rows=document.getElementById('addProdConvRows');if(el.checked&&rows&&rows.children.length===0)window.addProdConvFormulaRow();};
-// Limits Add Product conversions to 6
+// Smart Limits for Add Product
 window.addProdConvFormulaRow = function() {
   const rows = document.getElementById('addProdConvRows');
+  const btn = document.querySelector('#addProdConvBuilder .add-conv-btn');
+  
   if (rows && rows.children.length >= 6) {
-    window.showToast('Maximum 6 conversions allowed.', 'error');
-    return;
+    triggerLimitFeedback(btn); return;
   }
   appendFixedBaseConvRow(rows, document.getElementById('pu_fixed').value);
+  updateBtnDullState(rows, btn);
 };
+
+// Smart Limits for Edit Product
+window.addEditConvFormulaRow = function() {
+  const rows = document.getElementById('editConvRows');
+  const btn = document.querySelector('#editConvBuilderContainer .add-conv-btn');
+  
+  if (rows && rows.children.length >= 6) {
+    triggerLimitFeedback(btn); return;
+  }
+  appendConvFormulaRow(rows, '', '', curProd.unit);
+  updateBtnDullState(rows, btn);
+};
+
+// Provides Visual Feedback without Spamming Toasts
+function triggerLimitFeedback(btn) {
+  if (btn) {
+    btn.classList.remove('limit-bounce');
+    void btn.offsetWidth; // Force a browser reflow to restart the animation
+    btn.classList.add('limit-bounce');
+  }
+  // Check if a toast is ALREADY showing to prevent spam
+  const toastExists = Array.from(document.querySelectorAll('.custom-toast')).some(t => t.textContent.includes('Maximum 6'));
+  if (!toastExists) {
+    window.showToast('Maximum 6 conversions allowed.', 'error');
+  }
+}
+
+// Automatically dulls the button when limit is hit
+function updateBtnDullState(rows, btn) {
+  if (!rows || !btn) return;
+  if (rows.children.length >= 6) {
+    btn.classList.add('disabled-dull');
+  } else {
+    btn.classList.remove('disabled-dull', 'limit-bounce');
+  }
+}
 window.addProduct=async function(){
   const name=document.getElementById('pn').value.trim();
   const emoji=window._aiEmoji||'package';
