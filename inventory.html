@@ -1196,16 +1196,19 @@ body.is-premium .premium-lock-overlay {
 }
 .mult-inp:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-glow) !important; }
 
-/* Minimalist Ghost "X" Button */
+/* Clean, Boxed "X" Button */
 .conv-rm {
-  width: 32px !important; height: 32px !important;
+  width: 38px !important; height: 38px !important; /* Matches the input height perfectly */
   display: flex !important; align-items: center !important; justify-content: center !important;
   flex-shrink: 0 !important; padding: 0 !important; border-radius: 8px !important;
-  background: transparent !important; color: var(--text-4) !important; /* Invisible until hover */
-  border: none !important; font-size: 16px !important; 
+  background: var(--white-pure) !important; color: var(--text-4) !important; 
+  border: 1px solid rgba(0,0,0,0.08) !important; /* Soft grey border matching inputs */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important; /* Subtle floating shadow */
+  font-size: 16px !important; 
   font-weight: bold !important; cursor: pointer !important; transition: all 0.2s;
 }
-.conv-rm:hover { background: var(--red-soft) !important; color: var(--red) !important; transform: scale(1.05); }
+/* Turns red only when hovered */
+.conv-rm:hover { background: var(--red-soft) !important; color: var(--red) !important; border-color: var(--red-border) !important; transform: scale(1.05); }
 
 /* Unified Blue-Themed Add Button */
 .add-conv-btn { 
@@ -2918,7 +2921,7 @@ function appendFixedBaseConvRow(container,fixedBase){
     </div>
     <input type="hidden" class="alt-unit-sel" id="inp-${rowId}" value="">
     
-    <button class="conv-rm" onclick="this.parentElement.remove()">✕</button>
+    <button class="conv-rm" type="button" onclick="window.removeConvRow(this)">✕</button>
   `;
   container.appendChild(row);
   window.populateAltUnitsCustom(rowId, fixedBase, '');
@@ -2946,13 +2949,39 @@ function appendConvFormulaRow(container,name,ratioMult,baseUnit){
     </div>
     <input type="hidden" class="alt-unit-sel" id="inp-${rowId}" value="">
     
-    <button class="conv-rm" onclick="this.parentElement.remove()">✕</button>
+    <button class="conv-rm" type="button" onclick="window.removeConvRow(this)">✕</button>
   `;
   container.appendChild(row);
   window.populateAltUnitsCustom(rowId, base, name);
-  sel.addEventListener('change',()=>checkConvDuplicate(container));
   row.querySelector('.mult-inp').addEventListener('input', () => checkConvDuplicateCustom(container));
 }
+
+// --- AUTO-OFF LOGIC ---
+// Removes the row, and if zero rows remain, switches the main toggle OFF automatically
+window.removeConvRow = function(btn) {
+  const row = btn.closest('.conv-row-fixed');
+  const container = row.parentElement;
+  row.remove();
+  
+  if (container.children.length === 0) {
+    if (container.id === 'addProdConvRows') {
+      const tgl = document.getElementById('addProdConvTgl');
+      if (tgl) { 
+        tgl.checked = false; 
+        window.toggleAddProdConv(tgl); // Hides the blue box area
+      }
+    } else if (container.id === 'editConvRows') {
+      const tgl = document.getElementById('editConvTgl');
+      if (tgl) { 
+        tgl.checked = false; 
+        window.toggleEditConvBuilder(tgl); // Hides the blue box area
+      }
+    }
+  } else {
+    // If there are still rows left, check for duplicates again just in case
+    if(typeof checkConvDuplicateCustom === 'function') checkConvDuplicateCustom(container);
+  }
+};
 // --- LOGIC FOR CUSTOM CONVERSION DROPDOWNS ---
 window.populateAltUnitsCustom = function(rowId, baseUnit, currentName) {
   const dd = document.getElementById('dd-' + rowId);
