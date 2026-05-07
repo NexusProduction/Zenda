@@ -3180,25 +3180,58 @@ window.saveMergedProd=async function(){
 function getConvRowsFixedData(containerId){const rows=document.querySelectorAll(`#${containerId} .conv-row-fixed`);const convs=[];const seen=new Set();for(const row of rows){const mult=parseFloat(row.querySelector('.mult-inp').value);const altUnit=row.querySelector('.alt-unit-sel').value;if(seen.has(altUnit)||!mult||mult<=0||!altUnit)return null;seen.add(altUnit);convs.push({name:altUnit,ratio:mult});}return convs;}
 
 // ── DELETE PRODUCT ──
-window.prepDelProd=function(){if(CU.role!=='owner'&&CU.role!=='manager'){window.showToast('Manager/Owner only.','e');return;}document.getElementById('delProdSub').textContent=`Delete "${curProd.name}"?`;window.openM('m-del-prod');};
-window.confirmDelProd=async function(){const btn=document.getElementById('delProdBtn');btn.disabled=true;btn.textContent='Deleting...';try{const batch=writeBatch(db);const snap=await getDocs(query(collection(db,'entries'),where('productId','==',curProd.id)));snap.docs.forEach(d=>batch.delete(d.ref));const rl=CU.role.charAt(0).toUpperCase()+CU.role.slice(1);const logRef=doc(collection(db,'entries'));batch.set(logRef,{type:'LOG',qty:0,qtyBase:0,unit:'',entryUnit:'',note:`${rl} (${CU.name}) deleted product: "${curProd.name}"`,productId:'DELETED',godownId:curWH,companyId:CU.companyId,who:CU.name||'Owner',createdBy:CU.uid,deleted:false,isActivity:true,createdAt:serverTimestamp()});batch.delete(doc(db,'products',curProd.id));await batch.commit();window.closeM('m-del-prod');showView('wh');await loadProds(curWH);window.showToast(`Product deleted.`,'');}catch(e){window.showToast('Failed to delete.','e');}btn.disabled=false;btn.textContent='Delete Forever';};
+window.prepDelProd=function(){
+  if(CU.role!=='owner'&&CU.role!=='manager'){window.showToast('Manager/Owner only.','e');return;}
+  document.getElementById('delProdSub').textContent=`Delete "${curProd.name}"?`;
+  window.openM('m-del-prod');
+};
+
+window.confirmDelProd=async function(){
+  const btn=document.getElementById('delProdBtn');
+  btn.disabled=true; btn.textContent='Deleting...';
+  try{
+    const batch=writeBatch(db);
+    // ✅ FIX: Added companyId to bypass security block
+    const snap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));
+    snap.docs.forEach(d=>batch.delete(d.ref));
+    
+    const rl=CU.role.charAt(0).toUpperCase()+CU.role.slice(1);
+    const logRef=doc(collection(db,'entries'));
+    batch.set(logRef,{type:'LOG',qty:0,qtyBase:0,unit:'',entryUnit:'',note:`${rl} (${CU.name}) deleted product: "${curProd.name}"`,productId:'DELETED',godownId:curWH,companyId:CU.companyId,who:CU.name||'Owner',createdBy:CU.uid,deleted:false,isActivity:true,createdAt:serverTimestamp()});
+    batch.delete(doc(db,'products',curProd.id));
+    await batch.commit();
+    window.closeM('m-del-prod'); showView('wh'); await loadProds(curWH);
+    window.showToast(`Product deleted.`,'s');
+  }catch(e){
+    window.showToast('Failed to delete: ' + e.message,'e');
+  }
+  btn.disabled=false; btn.textContent='Delete Forever';
+};
 
 // ── ENTRIES ──
 async function loadEntries(pId){
   document.getElementById('eList').innerHTML='<div class="e-empty">Loading…</div>';
   try{
-    const snap=await getDocs(query(collection(db,'entries'),where('productId','==',pId)));
+    // ✅ FIX: Added companyId to bypass security block
+    const snap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',pId)));
+    
     const entries=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>new Date(b.createdAt?.toDate?b.createdAt.toDate():b.createdAt||0)-new Date(a.createdAt?.toDate?a.createdAt.toDate():a.createdAt||0));
     const active=entries.filter(e=>!e.deleted);
+    
     document.getElementById('pdIn').textContent=active.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
     document.getElementById('pdOut').textContent=active.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
     document.getElementById('eCnt').textContent=entries.length+' entries';
+    
     if(!entries.length){document.getElementById('eList').innerHTML='<div class="e-empty">No entries yet.</div>';return;}
+    
     document.getElementById('eList').innerHTML=entries.map(e=>{
       if(e.type==='LOG'||e.isActivity)return `<div class="erow" style="background:var(--white-cool)"><div class="e-ind" style="background:var(--accent-soft);border:1px solid rgba(79,70,229,.2)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-note" style="color:var(--text-1);font-weight:600">${esc(e.note)}</div><div class="e-time">${ago(e.createdAt)}</div></div></div>`;
+      
       const canDel=!e.deleted&&(CU.role==='owner'||CU.role==='manager'||e.createdBy===CU.uid);
       const delBtn=canDel?`<button style="background:var(--red-soft);border:1px solid var(--red-border);color:var(--red);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-left:10px;cursor:pointer;flex-shrink:0" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`:'';
+      
       if(e.deleted)return `<div class="erow del-row" style="opacity:.5;background:var(--white-cool);cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--border);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/></svg></div><div class="e-body"><div class="e-who">${esc(e.who||'Unknown')}</div><div class="e-note" style="text-decoration:underline dotted;cursor:pointer;color:var(--text-3)">${esc(e.deleteMessage||'Entry deleted — click for reason')}</div><div class="e-time">${ago(e.createdAt)} · Deleted ${ago(e.deletedAt)}</div></div><div class="e-right"><span class="e-qty" style="text-decoration:line-through;color:var(--text-4)">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div>`;
+      
       return `<div class="erow"><div class="e-ind ${e.type==='IN'?'e-in':'e-out'}">${e.type==='IN'?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>':'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'}</div><div class="e-body"><div class="e-who">${esc(e.who||'Unknown')}</div>${e.note?`<div class="e-note">${esc(e.note)}</div>`:''}<div class="e-time">${ago(e.createdAt)}</div></div><div class="e-right"><div><span class="e-qty ${e.type==='IN'?'e-qi':'e-qo'}">${e.type==='IN'?'+':'-'}${e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty} ${e.entryUnit}`:e.qty}</span><span class="e-unit">${esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units')}</span></div>${delBtn}</div></div>`;
     }).join('');
   }catch(e){document.getElementById('eList').innerHTML=`<div class="e-empty" style="color:var(--red)">Error: ${e.message}</div>`;}
@@ -3285,7 +3318,7 @@ window.checkCharCount=function(el){const len=el.value.trim().length;const wc=doc
 window.confirmDelEntry=async function(){
   const reason=document.getElementById('delReason').value.trim();const len=reason.length;if(len<10){setMM('delEntMsg','⚠ Write at least 10 characters.','err');return;}if(len>180){setMM('delEntMsg','⚠ Keep under 180 characters.','err');return;}
   const btn=document.getElementById('delEntBtn');btn.disabled=true;btn.textContent='Deleting…';
-  try{const snap=await getDoc(doc(db,'entries',entToDelete));const e=snap.data();const isOwn=e.createdBy===CU.uid;const amt=`${e.qty} ${e.entryUnit||e.unit||''}`.trim();const msg=isOwn?`${CU.name} deleted their own entry of ${amt} ${e.type}`:`${CU.role} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;await updateDoc(doc(db,'entries',entToDelete),{deleted:true,deleteReason:reason,deleteMessage:msg,deletedBy:CU.uid,deletedByName:CU.name||'Owner',deletedAt:new Date().toISOString()});window.closeM('m-del-entry');await loadEntries(curProd.id);const allSnap=await getDocs(query(collection(db,'entries'),where('productId','==',curProd.id)));const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted);const newStock=Math.max(0,activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0));await updateDoc(doc(db,'products',curProd.id),{stock:newStock});curProd.stock=newStock;document.getElementById('pdStock').textContent=newStock;window.showToast('Entry deleted.','');}catch(e){setMM('delEntMsg','❌ Failed: '+e.message,'err');}
+  try{const snap=await getDoc(doc(db,'entries',entToDelete));const e=snap.data();const isOwn=e.createdBy===CU.uid;const amt=`${e.qty} ${e.entryUnit||e.unit||''}`.trim();const msg=isOwn?`${CU.name} deleted their own entry of ${amt} ${e.type}`:`${CU.role} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;await updateDoc(doc(db,'entries',entToDelete),{deleted:true,deleteReason:reason,deleteMessage:msg,deletedBy:CU.uid,deletedByName:CU.name||'Owner',deletedAt:new Date().toISOString()});window.closeM('m-del-entry');await loadEntries(curProd.id);const allSnap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted);const newStock=Math.max(0,activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0));await updateDoc(doc(db,'products',curProd.id),{stock:newStock});curProd.stock=newStock;document.getElementById('pdStock').textContent=newStock;window.showToast('Entry deleted.','');}catch(e){setMM('delEntMsg','❌ Failed: '+e.message,'err');}
   btn.disabled=false;btn.textContent='Delete Entry';
 };
 // ── ADD PRODUCT ──
