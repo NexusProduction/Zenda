@@ -1174,54 +1174,33 @@ input[type=number] { -moz-appearance: textfield; }
 body.is-premium .premium-lock-overlay {
   display: none !important;
 }
-  /* --- RESPONSIVE UNIT CONVERSION ROWS --- */
+  /* --- RESPONSIVE & PREMIUM UNIT CONVERSION ROWS --- */
 .conv-row-fixed {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  margin-bottom: 12px !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
+  display: flex !important; align-items: center !important; gap: 8px !important;
+  margin-bottom: 14px !important; width: 100% !important; box-sizing: border-box !important;
 }
 .conv-row-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 800;
-  font-size: 13px;
-  color: var(--text-1);
-  flex-shrink: 0;
-  white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+  font-weight: 800; font-size: 13px; color: var(--accent); /* Turns the label Blue */
+  font-family: var(--f-display); flex-shrink: 0; white-space: nowrap;
 }
 .mult-inp {
-  flex: 1 !important;
-  min-width: 30px !important; /* THE MAGIC FIX: Allows the input to squish down on small screens! */
-  height: 40px !important;
-  border-radius: 8px !important;
-  border: 2px solid var(--border-strong) !important;
-  padding: 0 8px !important;
-  font-size: 14px !important;
-  text-align: center;
-  background: var(--white-pure) !important;
+  flex: 1 !important; min-width: 30px !important; height: 38px !important;
+  border-radius: 8px !important; border: 2px solid var(--border-strong) !important;
+  padding: 0 8px !important; font-size: 14px !important; text-align: center;
+  background: var(--white-pure) !important; font-weight: 700 !important; color: var(--text-1) !important;
+  outline: none; transition: border-color 0.2s;
 }
-.alt-unit-sel {
-  width: 90px !important; /* Slightly thinner to fit phone screens perfectly */
-  flex-shrink: 1 !important;
-  height: 40px !important;
-  border-radius: 8px !important;
-  border: 2px solid var(--border-strong) !important;
-  padding: 0 4px !important;
-  background: var(--white-pure) !important;
-}
+.mult-inp:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-glow) !important; }
 .conv-rm {
-  width: 40px !important;
-  height: 40px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-shrink: 0 !important;
-  padding: 0 !important;
+  width: 36px !important; height: 36px !important; /* Smaller, cleaner Cross button */
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  flex-shrink: 0 !important; padding: 0 !important; border-radius: 8px !important;
+  background: var(--red-soft) !important; color: var(--red) !important;
+  border: 1px solid var(--red-border) !important; font-size: 14px !important; 
+  font-weight: bold !important; cursor: pointer !important; transition: all 0.2s;
 }
+.conv-rm:hover { transform: scale(1.05); }
 </style>
 </head>
 <body>
@@ -2068,7 +2047,7 @@ window.selectExpPay = function(val, iconName, isInit = false) {
     });
   });
 };
-// Global click-outside closer for all 4 custom dropdowns
+// Global click-outside closer for ALL custom dropdowns (including dynamic ones)
 document.addEventListener('click', e => {
   ['exp-cat-wrap', 'entry-cat-wrap', 'exp-pay-wrap', 'entry-pay-wrap'].forEach(wrapId => {
     const wrap = document.getElementById(wrapId);
@@ -2078,6 +2057,12 @@ document.addEventListener('click', e => {
       wrap.querySelector('.cat-picker-trigger')?.classList.remove('open');
     }
   });
+  
+  // Close the dynamic Unit Conversion dropdowns
+  if (!e.target.closest('.conv-wrap')) {
+     document.querySelectorAll('.conv-wrap .cat-picker-dropdown').forEach(d => d.style.display = 'none');
+     document.querySelectorAll('.conv-wrap .cat-picker-trigger').forEach(t => t.classList.remove('open'));
+  }
 });
 
 const firebaseConfig = {
@@ -2898,45 +2883,133 @@ window.openMergedEdit=function(){
 window.toggleEditConvBuilder=function(el){document.getElementById('editConvBuilderContainer').style.display=el.checked?'block':'none';const rows=document.getElementById('editConvRows');if(el.checked&&rows&&rows.children.length===0)window.addEditConvFormulaRow();};
 window.addEditConvFormulaRow=function(){appendConvFormulaRow(document.getElementById('editConvRows'),'','',curProd.unit);};
 
-// Responsive UI for the "Add Product" conversion row
+// Premium Responsive UI for the "Add Product" conversion row
 function appendFixedBaseConvRow(container,fixedBase){
+  const rowId = 'cr-' + Date.now() + Math.floor(Math.random()*1000);
   const row=document.createElement('div');
   row.className='conv-row-fixed';
   row.innerHTML=`
     <div class="conv-row-left">
-      1 <span class="fixed-b-label fixed-b-dynamic">${esc(fixedBase)}</span> <span style="color:var(--text-4); margin:0 2px;">=</span>
+      1 <span class="fixed-b-dynamic">${esc(fixedBase)}</span> <span style="color:var(--text-4); margin:0 2px;">=</span>
     </div>
     <input type="number" step="any" min="0.0001" placeholder="Qty" class="mult-inp" required>
-    <select class="unit-sel-sm alt-unit-sel" required></select>
+    
+    <div class="cat-picker-wrap conv-wrap" id="wrap-${rowId}" style="width: 105px; flex-shrink: 1;">
+      <div class="cat-picker-trigger" onclick="window.toggleConvDD('${rowId}')" style="height: 38px; padding: 0 8px; border: 2px solid var(--border-strong); border-radius: 8px; background: var(--white-pure);">
+        <span class="cpt-label" id="lbl-${rowId}" style="font-size: 13px; font-weight: 700; color: var(--text-1);">Unit</span>
+        <svg class="cpt-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="cat-picker-dropdown" id="dd-${rowId}" style="max-height: 140px; top: calc(100% + 4px); padding: 4px 0; min-width: 110px;"></div>
+    </div>
+    <input type="hidden" class="alt-unit-sel" id="inp-${rowId}" value="">
+    
     <button class="conv-rm" onclick="this.parentElement.remove()">✕</button>
   `;
   container.appendChild(row);
-  const sel=row.querySelector('.alt-unit-sel');
-  window.populateAltUnitsGeneric(sel,fixedBase);
+  window.populateAltUnitsCustom(rowId, fixedBase, '');
+  row.querySelector('.mult-inp').addEventListener('input', () => checkConvDuplicateCustom(container));
 }
 
-// Responsive UI for the "Edit Product" conversion row
+// Premium Responsive UI for the "Edit Product" conversion row
 function appendConvFormulaRow(container,name,ratioMult,baseUnit){
   const base=baseUnit||'KG';
+  const rowId = 'cr-' + Date.now() + Math.floor(Math.random()*1000);
   const row=document.createElement('div');
   row.className='conv-row-fixed';
   row.innerHTML=`
     <div class="conv-row-left">
-      1 <span class="fixed-b-label fixed-b-dynamic">${esc(base)}</span> <span style="color:var(--text-4); margin:0 2px;">=</span>
+      1 <span class="fixed-b-dynamic">${esc(base)}</span> <span style="color:var(--text-4); margin:0 2px;">=</span>
     </div>
     <input type="number" step="any" min="0.0001" placeholder="Qty" value="${ratioMult||''}" class="mult-inp" required>
-    <select class="unit-sel-sm alt-unit-sel" required></select>
+    
+    <div class="cat-picker-wrap conv-wrap" id="wrap-${rowId}" style="width: 105px; flex-shrink: 1;">
+      <div class="cat-picker-trigger" onclick="window.toggleConvDD('${rowId}')" style="height: 38px; padding: 0 8px; border: 2px solid var(--border-strong); border-radius: 8px; background: var(--white-pure);">
+        <span class="cpt-label" id="lbl-${rowId}" style="font-size: 13px; font-weight: 700; color: var(--text-1);">Unit</span>
+        <svg class="cpt-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="cat-picker-dropdown" id="dd-${rowId}" style="max-height: 140px; top: calc(100% + 4px); padding: 4px 0; min-width: 110px;"></div>
+    </div>
+    <input type="hidden" class="alt-unit-sel" id="inp-${rowId}" value="">
+    
     <button class="conv-rm" onclick="this.parentElement.remove()">✕</button>
   `;
   container.appendChild(row);
-  const sel=row.querySelector('.alt-unit-sel');
-  window.populateAltUnitsGeneric(sel,base,name);
-  sel.addEventListener('change',()=>checkConvDuplicate(container));
-  row.querySelector('.mult-inp').addEventListener('input',()=>checkConvDuplicate(container));
+  window.populateAltUnitsCustom(rowId, base, name);
+  row.querySelector('.mult-inp').addEventListener('input', () => checkConvDuplicateCustom(container));
 }
-window.populateAltUnitsGeneric=function(sel,baseUnit,currentName){sel.innerHTML='';STD_UNITS.filter(u=>u!==baseUnit).forEach(u=>{const o=document.createElement('option');o.value=u;o.textContent=u;if(u===currentName)o.selected=true;sel.appendChild(o);});if(currentName&&!STD_UNITS.includes(currentName)){const o=document.createElement('option');o.value=currentName;o.textContent=currentName;o.selected=true;sel.appendChild(o);}};
-function checkConvDuplicate(cont){const sels=cont.querySelectorAll('.alt-unit-sel');const seen=new Set();sels.forEach(s=>s.style.borderColor='var(--border)');sels.forEach(s=>{if(seen.has(s.value))s.style.borderColor='var(--red)';else seen.add(s.value);});}
+// --- LOGIC FOR CUSTOM CONVERSION DROPDOWNS ---
+window.populateAltUnitsCustom = function(rowId, baseUnit, currentName) {
+  const dd = document.getElementById('dd-' + rowId);
+  const inp = document.getElementById('inp-' + rowId);
+  const lbl = document.getElementById('lbl-' + rowId);
+  
+  let opts = STD_UNITS.filter(u => u !== baseUnit);
+  if (currentName && !opts.includes(currentName) && currentName !== baseUnit) {
+    opts.unshift(currentName);
+  }
+  
+  let defaultVal = currentName || (opts.length > 0 ? opts[0] : '');
+  inp.value = defaultVal;
+  lbl.textContent = defaultVal;
 
+  if(dd) {
+    dd.innerHTML = opts.map(u => `
+      <div class="cat-opt" style="padding: 8px 12px;" onclick="window.selectConvUnit('${rowId}', '${u}')">
+        <span class="copt-name" style="font-size: 13px; font-weight: 700; color: var(--text-1);">${u}</span>
+        <svg class="unit-check ${u === defaultVal ? '' : 'hidden'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+    `).join('');
+  }
+};
+
+window.toggleConvDD = function(rowId) {
+  const wrap = document.getElementById('wrap-' + rowId);
+  const trigger = wrap.querySelector('.cat-picker-trigger');
+  const dd = document.getElementById('dd-' + rowId);
+  if(dd.style.display === 'block') {
+    dd.style.display = 'none'; trigger.classList.remove('open');
+  } else {
+    // Close other dropdowns in the form first
+    document.querySelectorAll('.conv-wrap .cat-picker-dropdown').forEach(d => d.style.display = 'none');
+    document.querySelectorAll('.conv-wrap .cat-picker-trigger').forEach(t => t.classList.remove('open'));
+    dd.style.display = 'block'; trigger.classList.add('open');
+  }
+};
+
+window.selectConvUnit = function(rowId, val) {
+  document.getElementById('inp-' + rowId).value = val;
+  document.getElementById('lbl-' + rowId).textContent = val;
+  const dd = document.getElementById('dd-' + rowId);
+  dd.style.display = 'none';
+  document.getElementById('wrap-' + rowId).querySelector('.cat-picker-trigger').classList.remove('open');
+  
+  dd.querySelectorAll('.cat-opt').forEach(opt => {
+     const name = opt.querySelector('.copt-name').textContent;
+     const check = opt.querySelector('.unit-check');
+     if(name === val) check.classList.remove('hidden');
+     else check.classList.add('hidden');
+  });
+  
+  // Trigger duplicate check on the container
+  const container = document.getElementById('wrap-' + rowId).closest('#addProdConvRows, #editConvRows');
+  if (container) checkConvDuplicateCustom(container);
+};
+
+function checkConvDuplicateCustom(cont){
+  const wrappers = cont.querySelectorAll('.conv-wrap');
+  const seen = new Set();
+  wrappers.forEach(w => {
+    const trigger = w.querySelector('.cat-picker-trigger');
+    trigger.style.borderColor = 'var(--border-strong)';
+  });
+  wrappers.forEach(w => {
+    const rowId = w.id.replace('wrap-', '');
+    const val = document.getElementById('inp-' + rowId).value;
+    const trigger = w.querySelector('.cat-picker-trigger');
+    if(seen.has(val)) trigger.style.borderColor = 'var(--red)';
+    else seen.add(val);
+  });
+}
 window.saveMergedProd=async function(){
   const newName=document.getElementById('editProdNameInp').value.trim();if(!newName){setMM('editProdMsg','⚠ Enter product name.','err');return;}
   const mi=document.getElementById('editProdMinInp');const minStock=mi&&mi.value!==''?parseFloat(mi.value):null;
