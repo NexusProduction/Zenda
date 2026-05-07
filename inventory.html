@@ -102,9 +102,6 @@ body { padding-top: 60px; }
 /* VIEWS */
 .view { display: none; flex: 1; flex-direction: column; }
 .view.active { display: flex; }
-/* Increased max-width from 1100px to 1180px for a wider, expansive layout */
-.pg, .wh-detail, .pd-layout { max-width: 1180px; margin: 0 auto; width: 100%; padding: 28px 24px 100px; display: flex; flex-direction: column; gap: 24px; }
-.pd-layout { max-width: 860px; }
 
 /* STATS WRAPPER */
 .stats-wrapper { margin-bottom: 4px; }
@@ -617,26 +614,27 @@ body { padding-top: 60px; }
 .conv-item:last-child { border-bottom: none; }
 .conv-eq { font-family: var(--f-mono); color: var(--accent); font-weight: 700; margin-left: 8px; }
 .conv-empty { text-align: center; padding: 24px; color: var(--text-3); font-size: 13px; }
-.entry-card { background: var(--white-pure); border: 1px solid var(--border-faint); border-radius: var(--r-xl); overflow: hidden; box-shadow: var(--shadow-xs); }
-.entry-hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--white-muted); }
-.entry-hdr-l { font-family: var(--f-display); font-size: 15px; font-weight: 700; color: var(--text-1); }
-.entry-cnt { font-size: 12px; color: var(--text-4); font-family: var(--f-mono); }
-.erow { display: flex; align-items: flex-start; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background 0.14s; }
-.erow:last-child { border-bottom: none; }
-.erow:hover:not(.del-row) { background: var(--white-cool); }
-.e-ind { width: 34px; height: 34px; min-width: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.e-in  { background: var(--green-soft); border: 1px solid var(--green-border); color: var(--green); }
-.e-out { background: var(--red-soft);   border: 1px solid var(--red-border);   color: var(--red); }
+/* Removes bottom padding specifically for the Product page */
+.pg, .wh-detail { max-width: 1180px; margin: 0 auto; width: 100%; padding: 28px 24px 100px; display: flex; flex-direction: column; gap: 24px; }
+.pd-layout { max-width: 860px; margin: 0 auto; width: 100%; padding: 28px 24px 24px; display: flex; flex-direction: column; gap: 24px; }
+
+/* ── REDESIGNED STOCK HISTORY CARDS ── */
+.entry-card { background: transparent; border: none; border-radius: 0; overflow: visible; box-shadow: none; }
+.entry-hdr { display: flex; align-items: center; justify-content: space-between; padding: 0 0 16px 0; border-bottom: none; }
+
+/* Standalone Floating Rows */
+.erow { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: var(--white-pure); border-radius: 16px; margin-bottom: 12px; border: 1.5px solid var(--border-faint); box-shadow: 0 4px 12px rgba(0,0,0,0.02); transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.erow:hover:not(.del-row) { transform: translateY(-2px); border-color: var(--border); box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
+
+/* Thicker, Bolder UI Elements inside rows */
+.e-ind { width: 42px; height: 42px; min-width: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.e-in  { background: var(--green-soft); border: 1.5px solid var(--green-border); color: var(--green); }
+.e-out { background: var(--red-soft);   border: 1.5px solid var(--red-border);   color: var(--red); }
 .e-body { flex: 1; min-width: 0; }
-.e-who { font-size: 14px; font-weight: 600; color: var(--text-1); }
-.e-note { font-size: 13px; color: var(--text-3); margin-top: 3px; }
-.e-time { font-size: 12px; color: var(--text-4); margin-top: 3px; }
-.e-right { text-align: right; flex-shrink: 0; display: flex; align-items: center; }
-.e-qty { font-family: var(--f-mono); font-size: 15px; font-weight: 700; display: block; line-height: 1; }
+.e-right { text-align: right; flex-shrink: 0; display: flex; align-items: center; gap: 14px; }
 .e-qi { color: var(--green); }
 .e-qo { color: var(--red); }
-.e-unit { font-size: 11px; color: var(--text-4); display: block; margin-top: 3px; }
-.e-empty { text-align: center; padding: 40px 20px; color: var(--text-4); font-size: 14px; }
+.e-empty { text-align: center; padding: 40px 20px; color: var(--text-4); font-size: 14px; font-weight: 600; }
 
 /* PAGINATION (Matched from Expense) */
 .pag-wrap { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-top: 1.5px solid var(--border-faint); background: var(--white-pure); border-radius: 0 0 var(--r-xl) var(--r-xl); }
@@ -1677,18 +1675,16 @@ body.is-premium .premium-lock-overlay {
 
     <div class="pd-entries">
       <div class="entry-card">
-        <div class="entry-hdr" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 2px solid rgba(0, 0, 0, 0.15);">
-          
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <div class="entry-hdr-l" style="font-family: var(--f-display); font-size: 16px; font-weight: 800; color: var(--text-1); letter-spacing: -0.01em;">Stock History</div>
-            <span class="entry-cnt" id="eCnt" style="font-family: var(--f-mono); font-size: 11px; font-weight: 800; padding: 4px 8px; background: var(--white-cool); color: var(--text-3); border: 1px solid var(--border); border-radius: 8px; letter-spacing: 0.03em;">(0)</span>
+        <div class="entry-hdr">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-family: var(--f-display); font-size: 18px; font-weight: 800; color: var(--text-1); letter-spacing: -0.01em;">Stock History</div>
+            <span id="eCnt" style="font-family: var(--f-display); font-size: 14px; font-weight: 800; padding: 4px 10px; background: var(--white-pure); color: var(--text-2); border: 1.5px solid var(--border-strong); border-radius: 10px;">(0)</span>
           </div>
 
-          <button class="btn-primary btn-sm btn-add-pc" onclick="window.openEntry('IN')" style="font-size: 13px; font-weight: 700; background: #09090B; border-radius: 8px; height: 36px; padding: 0 14px; border: none; color: #fff; font-family: var(--f-display); box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right: 4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <button class="btn-primary btn-sm btn-add-pc" onclick="window.openEntry('IN')" style="font-size: 13px; font-weight: 800; background: #09090B; border-radius: 8px; height: 38px; padding: 0 16px; border: none; color: #fff; font-family: var(--f-display); box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" style="margin-right: 4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Entry
           </button>
-
         </div>
         <div id="eList"><div class="e-empty">Loading…</div></div>
       </div>
