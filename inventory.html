@@ -3906,7 +3906,7 @@ function setMM(id,msg,type){const el=document.getElementById(id);if(!el)return;e
     lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
   }, { passive: true });
 })();
-// ── 1. OWNER: DIRECT DELETION (MERGES EXPENSES CLEANLY) ──
+// ── 1. OWNER: DIRECT DELETION (INDIVIDUAL SOFT-DELETE) ──
 window.confirmDelWH = async function() {
   const btn = document.getElementById('delWhBtn');
   btn.disabled = true; btn.textContent = 'Deleting...';
@@ -3924,35 +3924,23 @@ window.confirmDelWH = async function() {
     const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     entSnap.docs.forEach(d => batch.delete(d.ref));
 
-    // 3. Expense App Sync: Merge & Delete
+    // 3. Expense App Sync: One-by-One Soft Deletion (No Summary Rows!)
     if (document.getElementById('delWhExpSyncToggle')?.checked && productIds.length > 0) {
         const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
-        let totalExp = 0; let totalInc = 0;
         
         expSnap.docs.forEach(d => {
             const data = d.data();
             if (productIds.includes(data.productId)) {
-                if (data.type === 'income') totalInc += Number(data.amount) || 0;
-                else totalExp += Number(data.amount) || 0;
-                batch.delete(d.ref); // Completely erase individual line!
+                // Instantly switches the individual row to the gray 'Deleted' theme
+                batch.update(d.ref, {
+                    isDeleted: true,
+                    deletedBy: 'System Update',
+                    deletedById: 'SYSTEM',
+                    deleteReason: `Warehouse Deleted: ${whName}`,
+                    deletedAt: serverTimestamp()
+                });
             }
         });
-        
-        // Create clean, anonymous summary entries routed to Inventory
-            if (totalExp > 0) {
-                batch.set(doc(collection(db, 'expenses')), {
-                    type: 'expense', amount: totalExp, category: 'Inventory Stock', paymentMethod: 'System',
-                    description: `Warehouse Deleted: ${whName} (Expenses)`, companyId: CU.companyId, 
-                    createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
-                });
-            }
-            if (totalInc > 0) {
-                batch.set(doc(collection(db, 'expenses')), {
-                    type: 'income', amount: totalInc, category: 'Inventory Stock', paymentMethod: 'System',
-                    description: `Warehouse Deleted: ${whName} (Income)`, companyId: CU.companyId, 
-                    createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
-                });
-            }
     }
     
     // 4. Delete warehouse & sweep out pending requests
@@ -3962,7 +3950,7 @@ window.confirmDelWH = async function() {
     
     await batch.commit();
     window.closeM('m-del-wh');
-    window.showToast('Warehouse deleted & expenses merged.', 'success');
+    window.showToast('Warehouse & expenses successfully deleted.', 'success');
     showView('dash'); 
   } catch(e) { document.getElementById('delWhErr').textContent = 'Failed: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Confirm Delete';
@@ -4079,6 +4067,7 @@ window.viewWarehouseDeleteReq = function(notifId) {
     document.body.appendChild(overlay);
 };
 
+// ── 3. OWNER: REVIEW & APPROVE STAFF REQUEST WITH TOGGLE ──
 window.approveWarehouseDeleteReq = async function(notifId) {
     const notif = window.pendingWarehouses[notifId];
     if(!notif || !notif.warehouseData) return;
@@ -4101,33 +4090,23 @@ window.approveWarehouseDeleteReq = async function(notifId) {
         const entSnap = await getDocs(query(collection(db,'entries'), where('godownId','==',whId)));
         entSnap.docs.forEach(d => batch.delete(d.ref));
         
-        // 3. Expense App Sync: Merge & Delete
+        // 3. Expense App Sync: One-by-One Soft Deletion (No Summary Rows!)
         if (mergeExpenses && productIds.length > 0) {
             const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
-            let totalExp = 0; let totalInc = 0;
             
             expSnap.docs.forEach(d => {
                 const data = d.data();
                 if (productIds.includes(data.productId)) {
-                    if (data.type === 'income') totalInc += Number(data.amount) || 0;
-                    else totalExp += Number(data.amount) || 0;
-                    batch.delete(d.ref);
+                    // Instantly switches the individual row to the gray 'Deleted' theme
+                    batch.update(d.ref, {
+                        isDeleted: true,
+                        deletedBy: 'System Update',
+                        deletedById: 'SYSTEM',
+                        deleteReason: `Warehouse Deleted: ${whName}`,
+                        deletedAt: serverTimestamp()
+                    });
                 }
             });
-        if (totalExp > 0) {
-            batch.set(doc(collection(db, 'expenses')), {
-                type: 'expense', amount: totalExp, category: 'Inventory Stock', paymentMethod: 'System',
-                description: `Warehouse Deleted: ${whName} (Expenses)`, companyId: CU.companyId,
-                createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
-            });
-        }
-        if (totalInc > 0) {
-            batch.set(doc(collection(db, 'expenses')), {
-                type: 'income', amount: totalInc, category: 'Inventory Stock', paymentMethod: 'System',
-                description: `Warehouse Deleted: ${whName} (Income)`, companyId: CU.companyId,
-                createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
-            });
-        }
         }
         
         // 4. Delete warehouse and notification
@@ -4141,7 +4120,7 @@ window.approveWarehouseDeleteReq = async function(notifId) {
             });
         }
         
-        if (window.showToast) window.showToast("Warehouse deleted & expenses merged!", "success");
+        if (window.showToast) window.showToast("Warehouse deleted successfully!", "success");
         if (curWH === whId) window.goBack(); else loadWHs();
     } catch(e) { console.error(e); if (window.showToast) window.showToast("Failed to delete warehouse.", "error"); }
 };
