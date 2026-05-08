@@ -4272,20 +4272,11 @@ window.setET = function(type) {
     entryBtn.textContent = type === 'IN' ? 'Add Entry' : 'Record OUT';
 };
 
-// ── MISSING: updateConvPreview — shows base-unit equivalent below qty field ──
 window.updateConvPreview = function() {
-  const qty     = parseFloat(document.getElementById('eq').value) || 0;
+  // Hide the plain-text preview — conversion is shown inside the Total badge instead
   const preview = document.getElementById('convPreview');
-  if (!curProd || !preview) return;
-
-  const conv = (curProd.conversions || []).find(c => c.name === selUnit);
-  if (conv && qty > 0) {
-    const base = +(qty * conv.ratio).toFixed(4);
-    preview.style.display = 'block';
-    preview.textContent   = `= ${base} ${curProd.unit || 'units'}`;
-  } else {
-    preview.style.display = 'none';
-  }
+  if (preview) preview.style.display = 'none';
+  window.calcEntryTotal();
 };
 
 // ── MISSING: viewDelReason — opens the "Entry Deleted" info modal ──
@@ -4417,13 +4408,21 @@ window.submitEntry = async function() {
   btn.textContent = 'Add Entry';
 };
 
-// ── Per-unit cost calculator for Add Entry modal ──
 window.calcEntryTotal = function() {
-  const qty        = parseFloat(document.getElementById('eq')?.value) || 0;
-  const pricePerU  = parseFloat(document.getElementById('entryCost')?.value) || 0;
-  const total      = qty * pricePerU;
-  const el         = document.getElementById('entryTotalCalc');
-  if (el) el.textContent = `Total: ₹ ${total.toFixed(2)}`;
+  const qty       = parseFloat(document.getElementById('eq')?.value) || 0;
+  const pricePerU = parseFloat(document.getElementById('entryCost')?.value) || 0;
+  const total     = qty * pricePerU;
+  const el        = document.getElementById('entryTotalCalc');
+  if (!el) return;
+
+  // If a conversion unit is selected, show base equivalent + total in one badge
+  const conv = curProd ? (curProd.conversions || []).find(c => c.name === selUnit) : null;
+  if (conv && qty > 0) {
+    const base = +(qty * conv.ratio).toFixed(4);
+    el.textContent = `= ${base} ${curProd.unit || 'units'}  ·  ₹ ${total.toFixed(2)}`;
+  } else {
+    el.textContent = `Total: ₹ ${total.toFixed(2)}`;
+  }
 };
 
 // ── Patch selectUnit to keep cost label in sync with chosen unit ──
