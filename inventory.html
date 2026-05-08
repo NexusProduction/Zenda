@@ -3938,21 +3938,21 @@ window.confirmDelWH = async function() {
             }
         });
         
-        // Create clean summary entries
-        if (totalExp > 0) {
-            batch.set(doc(collection(db, 'expenses')), {
-                type: 'expense', amount: totalExp, category: 'Miscellaneous', paymentMethod: 'System',
-                description: `[Deleted] ${whName} - All Expenses`, companyId: CU.companyId,
-                createdBy: CU.uid, createdByName: CU.name || 'System', date: new Date().toISOString(), createdAt: serverTimestamp()
-            });
-        }
-        if (totalInc > 0) {
-            batch.set(doc(collection(db, 'expenses')), {
-                type: 'income', amount: totalInc, category: 'Miscellaneous', paymentMethod: 'System',
-                description: `[Deleted] ${whName} - All Income`, companyId: CU.companyId,
-                createdBy: CU.uid, createdByName: CU.name || 'System', date: new Date().toISOString(), createdAt: serverTimestamp()
-            });
-        }
+        // Create clean, anonymous summary entries routed to Inventory
+            if (totalExp > 0) {
+                batch.set(doc(collection(db, 'expenses')), {
+                    type: 'expense', amount: totalExp, category: 'Inventory Stock', paymentMethod: 'System',
+                    description: `Warehouse Deleted: ${whName} (Expenses)`, companyId: CU.companyId, 
+                    createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
+                });
+            }
+            if (totalInc > 0) {
+                batch.set(doc(collection(db, 'expenses')), {
+                    type: 'income', amount: totalInc, category: 'Inventory Stock', paymentMethod: 'System',
+                    description: `Warehouse Deleted: ${whName} (Income)`, companyId: CU.companyId, 
+                    createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
+                });
+            }
     }
     
     // 4. Delete warehouse & sweep out pending requests
@@ -4114,19 +4114,20 @@ window.approveWarehouseDeleteReq = async function(notifId) {
                     batch.delete(d.ref);
                 }
             });
-            
-            if (totalExp > 0) {
-                batch.set(doc(collection(db, 'expenses')), {
-                    type: 'expense', amount: totalExp, category: 'Miscellaneous', paymentMethod: 'System',
-                    description: `[Deleted] ${whName} - All Expenses`, companyId: CU.companyId, createdBy: CU.uid, createdByName: CU.name || 'System', date: new Date().toISOString(), createdAt: serverTimestamp()
-                });
-            }
-            if (totalInc > 0) {
-                batch.set(doc(collection(db, 'expenses')), {
-                    type: 'income', amount: totalInc, category: 'Miscellaneous', paymentMethod: 'System',
-                    description: `[Deleted] ${whName} - All Income`, companyId: CU.companyId, createdBy: CU.uid, createdByName: CU.name || 'System', date: new Date().toISOString(), createdAt: serverTimestamp()
-                });
-            }
+        if (totalExp > 0) {
+            batch.set(doc(collection(db, 'expenses')), {
+                type: 'expense', amount: totalExp, category: 'Inventory Stock', paymentMethod: 'System',
+                description: `Warehouse Deleted: ${whName} (Expenses)`, companyId: CU.companyId,
+                createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
+            });
+        }
+        if (totalInc > 0) {
+            batch.set(doc(collection(db, 'expenses')), {
+                type: 'income', amount: totalInc, category: 'Inventory Stock', paymentMethod: 'System',
+                description: `Warehouse Deleted: ${whName} (Income)`, companyId: CU.companyId,
+                createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
+            });
+        }
         }
         
         // 4. Delete warehouse and notification
