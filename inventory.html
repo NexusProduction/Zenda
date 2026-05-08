@@ -2741,7 +2741,6 @@ window.toggleUnitDD = function() {
     trigger.classList.add('open');
   }
 };
-
 window.selectUnitOption = function(val) {
   // Updates the "Price Per [Unit]" text in the expense block automatically!
   const expUnitLbl = document.getElementById('exp-unit-lbl');
@@ -2757,9 +2756,18 @@ window.selectUnitOption = function(val) {
   const suffix = document.getElementById('ps-unit-suffix');
   if (suffix) suffix.textContent = val;
 
-  // ✅ NEW: Automatically update ALL Unit Conversion base labels to match!
+  // ✅ Automatically update ALL Unit Conversion base labels to match!
   document.querySelectorAll('.fixed-b-dynamic').forEach(lbl => {
     lbl.textContent = val;
+  });
+
+  // ✅ FIX: Force all conversion dropdowns to re-render so they block the new base unit!
+  document.querySelectorAll('.conv-wrap').forEach(wrap => {
+    const rowId = wrap.id.replace('wrap-', '');
+    const currentSel = document.getElementById('inp-' + rowId).value;
+    window.populateAltUnitsCustom(rowId, val, currentSel);
+    const container = wrap.closest('#addProdConvRows, #editConvRows');
+    if(container) checkConvDuplicateCustom(container);
   });
 
   document.getElementById('unit-dd').style.display = 'none';
@@ -3283,15 +3291,18 @@ window.populateAltUnitsCustom = function(rowId, baseUnit, currentName) {
   const inp = document.getElementById('inp-' + rowId);
   const lbl = document.getElementById('lbl-' + rowId);
   
-  // Safe Case-Insensitive Check blocks the base unit from appearing in the dropdown
+  // Safe Case-Insensitive Check blocks the base unit from appearing
   const safeBase = (baseUnit || '').toLowerCase();
   let opts = STD_UNITS.filter(u => u.toLowerCase() !== safeBase);
   
-  if (currentName && !opts.includes(currentName) && currentName.toLowerCase() !== safeBase) {
+  // If the user tries to force the base unit, reset it to prevent "1 KG = X KG"
+  let defaultVal = currentName;
+  if (!defaultVal || defaultVal.toLowerCase() === safeBase) {
+    defaultVal = opts.length > 0 ? opts[0] : '';
+  } else if (!opts.includes(currentName)) {
     opts.unshift(currentName);
   }
   
-  let defaultVal = currentName || (opts.length > 0 ? opts[0] : '');
   inp.value = defaultVal;
   lbl.textContent = defaultVal;
 
