@@ -2020,7 +2020,7 @@ body.is-premium .premium-lock-overlay {
           
           <div class="mfr" style="flex: 1;">
             <span class="mico" style="top: 50%; transform: translateY(-50%);">#</span>
-            <input type="number" id="eq" placeholder="Enter quantity" min="0.0001" max="9999999999" step="any" onkeydown="if(['e', 'E', '+', '-'].includes(event.key)) event.preventDefault();" oninput="if(this.value.length > 10) this.value = this.value.slice(0, 10); window.updateConvPreview()" style="height: 100%; margin: 0;"/>
+            <input type="number" id="eq" placeholder="Enter quantity" min="0.0001" max="9999999999" step="any" onkeydown="if(['e', 'E', '+', '-'].includes(event.key)) event.preventDefault();" oninput="if(this.value.length > 10) this.value = this.value.slice(0, 10); window.updateConvPreview(); window.calcEntryTotal();" style="height: 100%; margin: 0;"/>
           </div>
 
           <div class="cat-picker-wrap" id="entry-unit-wrap" style="width: 135px; flex-shrink: 0;">
@@ -2049,12 +2049,15 @@ body.is-premium .premium-lock-overlay {
           </div>
 
           <div class="mf" style="margin-bottom:14px">
-            <label id="costLabel">Total Cost</label>
-            <div class="mfr">
-              <span class="mico" style="display:flex; align-items:center; top:12px;">₹</span>
-              <input type="number" id="entryCost" placeholder="0.00" min="0" step="any">
-            </div>
-          </div>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <label style="margin-bottom:0;">Cost per <span id="entryCostUnitLbl" style="color:var(--accent); font-weight:800;">unit</span></label>
+    <span id="entryTotalCalc" style="font-size:14px; font-weight:800; color:var(--text-1); background:var(--accent-soft); color:var(--accent); padding:3px 10px; border-radius:8px; border:1px solid rgba(79,70,229,0.15);">Total: ₹ 0.00</span>
+  </div>
+  <div class="mfr">
+    <span class="mico" style="display:flex; align-items:center; top:12px;">₹</span>
+    <input type="number" id="entryCost" placeholder="0.00" min="0" step="any" oninput="window.calcEntryTotal()">
+  </div>
+</div>
           
           <div class="m2-stack" style="margin-bottom:0">
             <div class="mf" style="margin-bottom:0">
@@ -4414,6 +4417,56 @@ window.submitEntry = async function() {
   btn.textContent = 'Add Entry';
 };
 
-init();</script>
+// ── Per-unit cost calculator for Add Entry modal ──
+window.calcEntryTotal = function() {
+  const qty        = parseFloat(document.getElementById('eq')?.value) || 0;
+  const pricePerU  = parseFloat(document.getElementById('entryCost')?.value) || 0;
+  const total      = qty * pricePerU;
+  const el         = document.getElementById('entryTotalCalc');
+  if (el) el.textContent = `Total: ₹ ${total.toFixed(2)}`;
+};
+
+// ── Patch selectUnit to keep cost label in sync with chosen unit ──
+const _origSelectUnit = window.selectUnit;
+window.selectUnit = function(name, ratio) {
+  _origSelectUnit(name, ratio);
+  const lbl = document.getElementById('entryCostUnitLbl');
+  if (lbl) lbl.textContent = name;
+  window.calcEntryTotal();
+};
+
+// ── Patch openEntry to reset the per-unit cost UI on every open ──
+const _origOpenEntry = window.openEntry;
+window.openEntry = function(type) {
+  _origOpenEntry(type);
+  const costInp = document.getElementById('entryCost');
+  const totalEl = document.getElementById('entryTotalCalc');
+  const lblEl   = document.getElementById('entryCostUnitLbl');
+  if (costInp) costInp.value = '';
+  if (totalEl) totalEl.textContent = 'Total: ₹ 0.00';
+  if (lblEl && curProd) lblEl.textContent = curProd.unit || 'unit';
+};
+
+// ── Patch submitEntry so cost = pricePerUnit × qty (not raw input) ──
+const _origSubmitEntry = window.submitEntry;
+window.submitEntry = async function() {
+  // Swap out the raw entryCost value with the computed total before original runs
+  const qty        = parseFloat(document.getElementById('eq')?.value) || 0;
+  const pricePerU  = parseFloat(document.getElementById('entryCost')?.value) || 0;
+  const totalCost  = qty * pricePerU;
+
+  // Temporarily write total into the field so _origSubmitEntry picks it up
+  const costInp = document.getElementById('entryCost');
+  const saved   = costInp ? costInp.value : '';
+  if (costInp) costInp.value = totalCost > 0 ? totalCost : '';
+
+  await _origSubmitEntry();
+
+  // Restore original value (modal will be closed anyway, just safety)
+  if (costInp) costInp.value = saved;
+};
+
+init();
+</script>
 </body>
 </html>
