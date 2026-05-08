@@ -2161,15 +2161,26 @@ body.is-premium .premium-lock-overlay {
   </div>
 </div>
 <div class="mo" id="m-del-wh" onclick="if(event.target===this) window.closeM('m-del-wh')" style="align-items: center !important; padding: 16px !important;">
-  <div class="mbox" style="width: 100%; max-width: 420px; padding: 0; border-radius: 20px !important; margin: auto;">
-    <div style="padding: 20px 24px 16px; border-bottom: 1px solid var(--border-faint);">
-      <div style="font-family: var(--f-display); font-size: 1.25rem; font-weight: 800; color: var(--red);">Delete Warehouse</div>
-      <div style="font-size: 0.85rem; color: var(--text-3); font-weight: 500;" id="delWhSub">—</div>
+  <div class="mbox" style="width: 100%; max-width: 420px; padding: 0; border-radius: 24px !important; margin: auto;">
+    
+    <div style="padding: 24px 24px 16px; border-bottom: 1px solid var(--border-faint);">
+      <div style="font-family: var(--f-display); font-size: 1.35rem; font-weight: 800; color: var(--red); text-align: center; letter-spacing: -0.02em;">Delete Warehouse?</div>
+      <div style="font-size: 0.85rem; color: var(--text-3); font-weight: 600; text-align: center; margin-top: 4px;" id="delWhSub">—</div>
     </div>
-    <div style="padding: 20px 24px 24px;">
-      <p style="font-size: 0.95rem; color: var(--text-1); font-weight: 600; margin-bottom: 20px; line-height: 1.5;">This cannot be undone. All products and stock history will be permanently deleted.</p>
-      <div id="delWhErr" style="font-size:13px; color:var(--red); text-align:center;"></div>
-      <button class="btn-black" style="background: var(--red); width: 100%; border-radius: 12px; padding: 14px; font-size: 1rem; margin: 0;" id="delWhBtn" onclick="window.confirmDelWH()">Delete Forever</button>
+    
+    <div style="padding: 24px; display: flex; flex-direction: column; align-items: center;">
+      <div class="del-warn" style="border-width: 2px; font-weight: 700; margin-bottom: 20px; text-align: center; width: 100%; box-sizing: border-box;">⚠️ This cannot be undone. All products and stock history will be permanently deleted.</div>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--white-cool); border: 2px solid var(--border-strong); border-radius: 14px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="3" y1="6" x2="21" y2="6"></line></svg>
+          <span style="font-family: var(--f-display); font-weight: 800; font-size: 14px; color: var(--text-1);">Delete from Expense App</span>
+        </div>
+        <label class="tgl"><input type="checkbox" id="delWhExpSyncToggle" checked><span class="tgl-sl"></span></label>
+      </div>
+
+      <div id="delWhErr" style="font-size:13px; font-weight:700; color:var(--red); text-align:center; margin-bottom: 8px; min-height: 0;"></div>
+      <button class="btn-black" id="delWhBtn" onclick="window.confirmDelWH()" style="background:var(--red); width: 100%; border-radius: 14px; padding: 16px; font-size: 1.05rem; margin: 0; box-shadow:0 4px 12px rgba(220,38,38,0.2); transition: transform 0.2s, box-shadow 0.2s;">Confirm Delete</button>
     </div>
   </div>
 </div>
@@ -3025,17 +3036,12 @@ window.openWH=async function(wh){
       document.getElementById('delWhSub').textContent = `Delete "${whObj.name}"?`;
       const errEl = document.getElementById('delWhErr');
       if (errEl) errEl.innerHTML = ''; 
+      
+      // Forces toggle ON by default every time the modal opens
+      const syncTgl = document.getElementById('delWhExpSyncToggle');
+      if (syncTgl) syncTgl.checked = true;
+      
       window.openM('m-del-wh');
-    };
-  } else {
-    btnDel.innerHTML = `${trashIcon} <span>Request Delete</span>`;
-    btnDel.onclick = () => {
-      // SAFELY clear the reason and errors for staff requests (Fixed the crash!)
-      const reqReason = document.getElementById('reqDelReason');
-      const reqErr = document.getElementById('reqDelErr');
-      if(reqReason) reqReason.value = '';
-      if(reqErr) reqErr.innerHTML = ''; 
-      window.openM('m-req-del-wh');
     };
   }
 
@@ -3900,9 +3906,6 @@ function setMM(id,msg,type){const el=document.getElementById(id);if(!el)return;e
     lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
   }, { passive: true });
 })();
-  // ── WAREHOUSE DELETION & REQUEST LOGIC ──
-
-// Owner: Direct Deletion (No Password Required)
 window.confirmDelWH = async function() {
   const btn = document.getElementById('delWhBtn');
   btn.disabled = true;
@@ -3910,23 +3913,44 @@ window.confirmDelWH = async function() {
   try {
     const batch = writeBatch(db);
     
-    // 1. Delete all products in this warehouse (FIXED: Added companyId to satisfy Firebase Security)
+    // 1. Delete all products & Store their IDs
     const prodSnap = await getDocs(query(collection(db,'products'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
-    prodSnap.docs.forEach(d => batch.delete(d.ref));
+    const productIds = [];
+    prodSnap.docs.forEach(d => {
+        productIds.push(d.id);
+        batch.delete(d.ref);
+    });
     
-    // 2. Delete all entries in this warehouse (FIXED: Added companyId to satisfy Firebase Security)
+    // 2. Delete all entries in this warehouse
     const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     entSnap.docs.forEach(d => batch.delete(d.ref));
+
+    // 3. Delete linked Expenses if the user left the toggle ON
+    if (document.getElementById('delWhExpSyncToggle')?.checked && productIds.length > 0) {
+        const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
+        expSnap.docs.forEach(d => {
+            if (productIds.includes(d.data().productId)) {
+                // Soft-delete the expense safely
+                batch.update(d.ref, { 
+                    isDeleted: true, 
+                    deletedBy: CU.name, 
+                    deletedById: CU.uid, 
+                    deleteReason: "Warehouse Deleted", 
+                    deletedAt: serverTimestamp() 
+                });
+            }
+        });
+    }
     
-    // 3. Delete the warehouse itself
+    // 4. Delete the warehouse itself
     batch.delete(doc(db,'godowns',curWH));
     
-    // 4. BULK SWEEPER: Find any pending staff requests for this warehouse and erase them from owner inbox
+    // 5. Sweep out pending staff requests from inbox
     const dupeSnap = await getDocs(query(collection(db, 'users', CU.uid, 'notifications'), where('type', '==', 'warehouse_delete_request')));
     dupeSnap.docs.forEach(d => {
         const nData = d.data();
         if (nData.warehouseData && nData.warehouseData.id === curWH) {
-            batch.delete(d.ref); // Erase from inbox
+            batch.delete(d.ref); 
             if (nData.actorId) {
                 const staffNotifRef = doc(collection(db, 'users', nData.actorId, 'notifications'));
                 batch.set(staffNotifRef, {
@@ -3942,12 +3966,12 @@ window.confirmDelWH = async function() {
     await batch.commit();
     window.closeM('m-del-wh');
     window.showToast('Warehouse deleted permanently.', 'success');
-    showView('dash'); // Immediately switch back to the Inventory Home View safely
+    showView('dash'); 
   } catch(e) {
     document.getElementById('delWhErr').textContent = 'Failed: ' + e.message;
   }
   btn.disabled = false;
-  btn.textContent = 'Delete Forever';
+  btn.textContent = 'Confirm Delete';
 };
 
 // Staff: Send Request to Owner
