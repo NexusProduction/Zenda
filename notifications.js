@@ -88,21 +88,23 @@ export function renderNotifications(items, container) {
       task_declined:         { icon: '❌', cls: 'notif-icon-declined' },
       calendar_event_all:    { icon: '🗓️', cls: 'notif-icon-cal' },
       calendar_event_custom: { icon: '🗓️', cls: 'notif-icon-cal' },
-      warehouse_request:     { icon: '🏭', cls: 'notif-icon-task' } // Added Warehouse Icon
+      warehouse_request:     { icon: '🏭', cls: 'notif-icon-task' },
+      review_delete:         { icon: '🗑️', cls: 'notif-icon-declined' } // Added trash icon for deletion requests
     };
     const { icon, cls } = iconMap[item.type] || { icon: '🔔', cls: 'notif-icon-login' };
 
+    // Dynamic Action Buttons
     let actionButtons = '';
     
-    // NEW: Handle the review_delete request (Warehouse Deletion)
-    if (item.type === 'review_delete') {
-        actionButtons = `
-            <div style="margin-top: 12px;">
-                <button onclick="window.location.href='inventory.html?review_delete=${item.id}'" style="width:100%; padding:8px 16px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(79,70,229,0.25); transition:all 0.2s;">Review Request →</button>
-            </div>
-        `;
-    } 
-    // Handle Calendar Events
+    // 1. WAREHOUSE DELETION REQUESTS (Review Modal)
+    if (item.type === 'review_delete' && item.status === 'pending') {
+      actionButtons = `
+        <div style="margin-top: 12px;">
+            <button onclick="window.location.href='inventory.html?review_delete=${item.id}'" style="width:100%; padding:8px 16px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(79,70,229,0.25); transition:all 0.2s;">Review Request →</button>
+        </div>
+      `;
+    }
+    // 2. CALENDAR EVENTS
     else if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
       actionButtons = `
         <div style="margin-top: 8px; display: flex; gap: 8px;">
@@ -111,7 +113,7 @@ export function renderNotifications(items, container) {
         </div>
       `;
     } 
-    // Handle Warehouse Creation Requests
+    // 3. WAREHOUSE CREATION REQUESTS
     else if (item.type === 'warehouse_request') {
       actionButtons = `
         <div style="margin-top: 12px;">
@@ -119,7 +121,7 @@ export function renderNotifications(items, container) {
         </div>
       `;
     } 
-    // Default Dismiss for all others
+    // 4. DEFAULT (Dismiss)
     else {
       actionButtons = `
         <div style="margin-top: 8px;">
