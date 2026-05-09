@@ -3906,7 +3906,7 @@ function setMM(id,msg,type){const el=document.getElementById(id);if(!el)return;e
     lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
   }, { passive: true });
 })();
-// ── 1. OWNER: DIRECT DELETION (INDIVIDUAL SOFT-DELETE) ──
+// ── 1. OWNER: DIRECT DELETION (INDIVIDUAL GREY/DELETED THEME) ──
 window.confirmDelWH = async function() {
   const btn = document.getElementById('delWhBtn');
   btn.disabled = true; btn.textContent = 'Deleting...';
@@ -3924,7 +3924,7 @@ window.confirmDelWH = async function() {
     const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     entSnap.docs.forEach(d => batch.delete(d.ref));
 
-    // 3. Expense App Sync: One-by-One Soft Deletion (No Summary Rows!)
+    // 3. Expense App Sync: One-by-One Theme Change
     if (document.getElementById('delWhExpSyncToggle')?.checked && productIds.length > 0) {
         const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
         
@@ -3950,7 +3950,7 @@ window.confirmDelWH = async function() {
     
     await batch.commit();
     window.closeM('m-del-wh');
-    window.showToast('Warehouse & expenses successfully deleted.', 'success');
+    window.showToast('Warehouse deleted.', 'success');
     showView('dash'); 
   } catch(e) { document.getElementById('delWhErr').textContent = 'Failed: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Confirm Delete';
@@ -3975,7 +3975,6 @@ window.sendWHDeleteRequest = async function() {
     const whObj = WHs.find(w => w.id === curWH);
     if (!CU.ownerId) throw new Error("Owner ID not found.");
     
-    // Calculate accurate totals to send to the owner
     const prodSnap = await getDocs(query(collection(db,'products'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     
@@ -4067,7 +4066,6 @@ window.viewWarehouseDeleteReq = function(notifId) {
     document.body.appendChild(overlay);
 };
 
-// ── 3. OWNER: REVIEW & APPROVE STAFF REQUEST WITH TOGGLE ──
 window.approveWarehouseDeleteReq = async function(notifId) {
     const notif = window.pendingWarehouses[notifId];
     if(!notif || !notif.warehouseData) return;
@@ -4090,14 +4088,13 @@ window.approveWarehouseDeleteReq = async function(notifId) {
         const entSnap = await getDocs(query(collection(db,'entries'), where('godownId','==',whId)));
         entSnap.docs.forEach(d => batch.delete(d.ref));
         
-        // 3. Expense App Sync: One-by-One Soft Deletion (No Summary Rows!)
+        // 3. Expense App Sync: One-by-One Theme Change
         if (mergeExpenses && productIds.length > 0) {
             const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
             
             expSnap.docs.forEach(d => {
                 const data = d.data();
                 if (productIds.includes(data.productId)) {
-                    // Instantly switches the individual row to the gray 'Deleted' theme
                     batch.update(d.ref, {
                         isDeleted: true,
                         deletedBy: 'System Update',
@@ -4116,7 +4113,7 @@ window.approveWarehouseDeleteReq = async function(notifId) {
         
         if (notif.actorId) {
             await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
-                type: 'system', message: `Your request to delete warehouse "${whName}" was approved and executed.`, read: false, createdAt: Date.now()
+                type: 'system', message: `Your request to delete warehouse "${whName}" was approved.`, read: false, createdAt: Date.now()
             });
         }
         
