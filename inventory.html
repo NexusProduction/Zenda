@@ -2130,20 +2130,26 @@ body.is-premium .premium-lock-overlay {
   </div>
 </div>
 <div class="mo" id="m-del-wh" onclick="if(event.target===this) window.closeM('m-del-wh')" style="align-items: center !important; padding: 16px !important;">
-  <div class="mbox" style="width: 100%; max-width: 420px; padding: 0; border-radius: 24px !important; margin: auto;">
+  <div class="mbox" style="width: 100%; max-width: 420px; padding: 0; border-radius: 20px !important; margin: auto;">
     
     <div style="padding: 24px 24px 16px; border-bottom: 1px solid var(--border-faint);">
-      <div style="font-family: var(--f-display); font-size: 1.35rem; font-weight: 800; color: var(--red); text-align: center; letter-spacing: -0.02em;">Delete Warehouse?</div>
+      <div style="font-family: var(--f-display); font-size: 1.2rem; font-weight: 800; color: var(--text-1); text-align: center; letter-spacing: -0.01em;">Delete Warehouse</div>
       <div style="font-size: 0.85rem; color: var(--text-3); font-weight: 600; text-align: center; margin-top: 4px;" id="delWhSub">—</div>
     </div>
     
     <div style="padding: 24px; display: flex; flex-direction: column; align-items: center;">
-      <div class="del-warn" style="border-width: 2px; font-weight: 700; margin-bottom: 20px; text-align: center; width: 100%; box-sizing: border-box; background: var(--red); color: white;">⚠️ WARNING: If you delete this warehouse, all expenses and stock entries inside it will be permanently deleted. No recovery options.</div>
+      <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-2); text-align: center; margin-bottom: 24px; line-height: 1.5;">
+        Are you sure? All products, stock entries, and associated data will be permanently removed.
+      </div>
       
       <input type="hidden" id="delWhExpSyncToggle" checked>
 
       <div id="delWhErr" style="font-size:13px; font-weight:700; color:var(--red); text-align:center; margin-bottom: 8px; min-height: 0;"></div>
-      <button class="btn-black" id="delWhBtn" onclick="window.confirmDelWH()" style="background:var(--red); width: 100%; border-radius: 14px; padding: 16px; font-size: 1.05rem; margin: 0; box-shadow:0 4px 12px rgba(220,38,38,0.2); transition: transform 0.2s, box-shadow 0.2s;">Confirm Delete</button>
+      
+      <div style="display: flex; gap: 12px; width: 100%;">
+        <button onclick="window.closeM('m-del-wh')" style="flex: 1; padding: 12px; background: var(--surface-2); border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f-display); font-size: 0.95rem; font-weight: 700; color: var(--text-1); cursor: pointer; transition: background .2s;">Cancel</button>
+        <button id="delWhBtn" onclick="window.confirmDelWH()" style="flex: 1; padding: 12px; background: var(--white-pure); border: 1.5px solid var(--red-border); border-radius: 12px; font-family: var(--f-display); font-size: 0.95rem; font-weight: 700; color: var(--red); cursor: pointer; transition: all .2s;">Delete</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3456,6 +3462,39 @@ window.confirmDelProd=async function(){
     window.showToast('Failed to delete: ' + e.message,'e');
   }
   btn.disabled=false; btn.textContent='Delete Forever';
+};
+  window.confirmDelWH = async function() {
+  const btn = document.getElementById('delWhBtn');
+  btn.disabled = true; 
+  btn.textContent = 'Deleting...';
+  
+  try {
+    const batch = writeBatch(db);
+    
+    // 1. Delete all entries inside this warehouse
+    const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('godownId', '==', curWH)));
+    entSnap.docs.forEach(d => batch.delete(d.ref));
+    
+    // 2. Delete all products inside this warehouse
+    const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', curWH)));
+    prodSnap.docs.forEach(d => batch.delete(d.ref));
+    
+    // 3. Delete the warehouse document itself
+    batch.delete(doc(db, 'godowns', curWH));
+    
+    await batch.commit();
+    
+    window.closeM('m-del-wh'); 
+    showView('dash'); 
+    window.showToast('Warehouse deleted successfully.', 'success');
+    curWH = null;
+  } catch(e) {
+    const errEl = document.getElementById('delWhErr');
+    if (errEl) errEl.textContent = 'Failed: ' + e.message;
+  }
+  
+  btn.disabled = false; 
+  btn.textContent = 'Delete';
 };
 
 window.currentEntries = [];
