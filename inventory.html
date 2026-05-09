@@ -3585,49 +3585,39 @@ window.confirmDelEntry=async function(){
   btn.disabled=false;btn.textContent='Delete Entry';
 };
 
-window.toggleAddProdConv=function(el){document.getElementById('addProdConvBuilder').style.display=el.checked?'block':'none';const rows=document.getElementById('addProdConvRows');if(el.checked&&rows&&rows.children.length===0)window.addProdConvFormulaRow();};
-// Smart Limits for Add Product
+window.toggleAddProdConv = function(el) {
+  document.getElementById('addProdConvBuilder').style.display = el.checked ? 'block' : 'none';
+  const rows = document.getElementById('addProdConvRows');
+  if (el.checked && rows && rows.children.length === 0) window.addProdConvFormulaRow();
+};
+
 window.addProdConvFormulaRow = function() {
   const rows = document.getElementById('addProdConvRows');
   const btn = document.querySelector('#addProdConvBuilder .add-conv-btn');
-  
-  if (rows && rows.children.length >= 6) {
-    triggerLimitFeedback(btn); return;
-  }
+  if (rows && rows.children.length >= 6) { triggerLimitFeedback(btn); return; }
   appendFixedBaseConvRow(rows, document.getElementById('pu_fixed').value);
   updateBtnDullState(rows, btn);
 };
 
-// Smart Limits for Edit Product
 window.addEditConvFormulaRow = function() {
   const rows = document.getElementById('editConvRows');
   const btn = document.querySelector('#editConvBuilderContainer .add-conv-btn');
-  
-  if (rows && rows.children.length >= 6) {
-    triggerLimitFeedback(btn); return;
-  }
+  if (rows && rows.children.length >= 6) { triggerLimitFeedback(btn); return; }
   appendConvFormulaRow(rows, '', '', curProd.unit);
   updateBtnDullState(rows, btn);
 };
 
-// Provides Visual Feedback without Spamming Toasts
 function triggerLimitFeedback(btn) {
   if (btn) {
     btn.classList.remove('limit-bounce');
-    void btn.offsetWidth; // Force animation restart
+    void btn.offsetWidth; 
     btn.classList.add('limit-bounce');
-    
-    // NEW: Auto-remove the red highlight after the bounce finishes (300ms) so it goes back to gray!
     setTimeout(() => { btn.classList.remove('limit-bounce'); }, 300);
   }
-  
-  // Check if a toast is ALREADY showing to prevent spam
   const toastExists = Array.from(document.querySelectorAll('.custom-toast')).some(t => t.textContent.includes('Maximum 6'));
-  if (!toastExists) {
-    window.showToast('Maximum 6 conversions allowed.', 'error');
-  }
+  if (!toastExists) window.showToast('Maximum 6 conversions allowed.', 'error');
 }
-// Automatically dulls the button when limit is hit
+
 function updateBtnDullState(rows, btn) {
   if (!rows || !btn) return;
   if (rows.children.length >= 6) {
@@ -3637,7 +3627,6 @@ function updateBtnDullState(rows, btn) {
   }
 }
 
-// --- MISSING MODAL & ENTRY FUNCTIONS RESTORED ---
 window.openAddProd = function() {
   if(CU.role !== 'owner' && CU.role !== 'manager') {
     window.showToast('Only managers and owners can add products.', 'error');
@@ -3797,13 +3786,13 @@ window.sendWHDeleteRequest = async function() {
   btn.textContent = 'Send Request';
 };
 
-window.addProduct=async function(){
-  const name=document.getElementById('pn').value.trim();
-  const emoji=window._aiEmoji||'package';
-  const desc=document.getElementById('pdesc').value.trim();
+window.addProduct = async function() {
+  const name = document.getElementById('pn').value.trim();
+  const emoji = window._aiEmoji || 'package';
+  const desc = document.getElementById('pdesc').value.trim();
   
   const stockVal = document.getElementById('ps').value.trim();
-  const unit=document.getElementById('pu_fixed').value.trim();
+  const unit = document.getElementById('pu_fixed').value.trim();
   
   const pminEl = document.getElementById('pmin');
   const minRaw = pminEl ? pminEl.value : '';
@@ -3829,7 +3818,7 @@ window.addProduct=async function(){
 
   let convs=[];
   if(document.getElementById('addProdConvTgl')?.checked){
-    convs=getConvRowsFixedDataFromAdd();
+    convs=getConvRowsFixedData('addProdConvRows');
     if(convs===null){setMM('prodMsg','⚠ Check conversion values.','err');return;}
   }
 
