@@ -2668,16 +2668,41 @@ window.createWH = async function() {
   btn.innerHTML = 'Saving...';
   
   try {
-    await addDoc(collection(db, 'godowns'), {
+    const whData = {
       name: nameInp.value.trim(),
       location: locInp.value.trim(),
       category: catInp.value || 'General Storage',
       companyId: CU.companyId,
       createdBy: CU.uid,
-      createdAt: serverTimestamp() // Generates the server timestamp safely
-    });
+      createdAt: new Date().toISOString()
+    };
+
+    if (CU.role === 'owner') {
+        // Owners create it directly
+        await addDoc(collection(db, 'godowns'), {
+            ...whData,
+            createdAt: serverTimestamp()
+        });
+        window.showToast('Warehouse created successfully', 'success');
+    } else {
+        // Staff send a Request to Owner using the exact same structure as deletion!
+        if (CU.ownerId) {
+            await addDoc(collection(db, 'notifications', CU.ownerId, 'items'), {
+                type: 'review_create',
+                status: 'pending',
+                actorId: CU.uid,
+                actorName: CU.name,
+                message: `${CU.name} requested to create a new warehouse.`,
+                warehouseData: whData,
+                read: false,
+                createdAt: new Date().toISOString()
+            });
+            window.showToast("Creation request sent to owner.", "success");
+        } else {
+            window.showToast("Owner not found. Cannot send request.", "error");
+        }
+    }
     window.closeM('m-wh');
-    window.showToast('Warehouse created successfully', 'success');
     nameInp.value = ''; 
     locInp.value = '';
   } catch(e) {
