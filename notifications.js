@@ -93,10 +93,11 @@ export function renderNotifications(items, container) {
 
     let actionButtons = '';
     
-    // 🔥 BULLETPROOF CATCH-ALL FOR WAREHOUSE DELETION (Catches Old & New Data)
-    const isDeleteRequest = item.type === 'review_delete' || (item.message && item.message.toLowerCase().includes('delete warehouse'));
+    // 🔥 UNIFIED WAREHOUSE REQUESTS (Create & Delete)
+    const isReviewDelete = item.type === 'review_delete' || (item.message && item.message.toLowerCase().includes('delete warehouse'));
+    const isReviewCreate = item.type === 'review_create' || item.type === 'warehouse_request';
     
-    if (isDeleteRequest) {
+    if (isReviewDelete || isReviewCreate) {
       if (item.status === 'approved' || item.status === 'rejected') {
           actionButtons = `
             <div style="margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--tx3);">
@@ -107,14 +108,17 @@ export function renderNotifications(items, container) {
             </div>
           `;
       } else {
-      actionButtons = `
-        <div style="margin-top: 12px;">
-            <button onclick="window.location.href='inventory.html?review_delete=${item.id}'" style="width:100%; padding:8px 16px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(79,70,229,0.25); transition:all 0.2s;">Review Request →</button>
-        </div>
-      `;
-    }
-  } 
-  // Handle Calendar Events
+          // Determine the correct URL parameter based on the type
+          const linkTarget = isReviewDelete ? 'review_delete' : 'review_create';
+          
+          actionButtons = `
+            <div style="margin-top: 12px;">
+                <button onclick="window.location.href='inventory.html?${linkTarget}=${item.id}'" style="width:100%; padding:8px 16px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(79,70,229,0.25); transition:all 0.2s;">Review Request →</button>
+            </div>
+          `;
+      }
+    } 
+    // Handle Calendar Events
   else if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
     actionButtons = `
       <div style="margin-top: 8px; display: flex; gap: 8px;">
