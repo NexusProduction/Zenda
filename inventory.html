@@ -2614,7 +2614,6 @@ window.validateAndSaveWH = function() {
     window.createWH(); 
   }
 };
-  // ADD THIS NEW BLOCK: The function that actually saves the warehouse to the database
 window.createWH = async function() {
   const nameInp = document.getElementById('wn');
   const locInp = document.getElementById('wl');
@@ -2628,10 +2627,10 @@ window.createWH = async function() {
     await addDoc(collection(db, 'godowns'), {
       name: nameInp.value.trim(),
       location: locInp.value.trim(),
-      category: catInp.value,
+      category: catInp.value || 'General Storage',
       companyId: CU.companyId,
       createdBy: CU.uid,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp() // Generates the server timestamp safely
     });
     window.closeM('m-wh');
     window.showToast('Warehouse created successfully', 'success');
@@ -2898,13 +2897,16 @@ window.goBack = function() {
   }
 };
 
-// ── LOAD WAREHOUSES ──
 function loadWHs(){
   if(!CU.companyId)return;
   const q=query(collection(db,'godowns'),where('companyId','==',CU.companyId));
   onSnapshot(q,snap=>{
-    // Mapped AND Sorted by 'createdAt' so the newest warehouse is always on top!
-    WHs=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=> new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    // SAFELY Mapped and Sorted handling Firebase Timestamps properly
+    WHs=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b) => {
+        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt || 0);
+        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt || 0);
+        return timeB - timeA;
+    });
     renderWHs();
     
     // Sync stat numbers
