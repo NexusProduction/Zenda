@@ -3932,7 +3932,7 @@ function setMM(id,msg,type){const el=document.getElementById(id);if(!el)return;e
     lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
   }, { passive: true });
 })();
-// ── 1. OWNER: DIRECT DELETION (INDIVIDUAL GREY/DELETED THEME) ──
+// ── 1. OWNER: DIRECT DELETION (PERMANENT HARD-DELETE) ──
 window.confirmDelWH = async function() {
   const btn = document.getElementById('delWhBtn');
   btn.disabled = true; btn.textContent = 'Deleting...';
@@ -3950,21 +3950,15 @@ window.confirmDelWH = async function() {
     const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     entSnap.docs.forEach(d => batch.delete(d.ref));
 
-    // 3. Expense App Sync: One-by-One Theme Change
+    // 3. Expense App Sync: Permanent Hard-Delete!
     if (document.getElementById('delWhExpSyncToggle')?.checked && productIds.length > 0) {
         const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
         
         expSnap.docs.forEach(d => {
             const data = d.data();
             if (productIds.includes(data.productId)) {
-                // Instantly switches the individual row to the gray 'Deleted' theme
-                batch.update(d.ref, {
-                    isDeleted: true,
-                    deletedBy: 'System Update',
-                    deletedById: 'SYSTEM',
-                    deleteReason: `Warehouse Deleted: ${whName}`,
-                    deletedAt: serverTimestamp()
-                });
+                // Completely obliterates the expense from the database!
+                batch.delete(d.ref);
             }
         });
     }
@@ -3976,7 +3970,7 @@ window.confirmDelWH = async function() {
     
     await batch.commit();
     window.closeM('m-del-wh');
-    window.showToast('Warehouse deleted.', 'success');
+    window.showToast('Warehouse & expenses cleanly removed.', 'success');
     showView('dash'); 
   } catch(e) { document.getElementById('delWhErr').textContent = 'Failed: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Confirm Delete';
@@ -4096,6 +4090,7 @@ window.viewWarehouseDeleteReq = function(notifId) {
     document.body.appendChild(overlay);
 };
 
+// ── 3. OWNER: REVIEW & APPROVE STAFF REQUEST WITH TOGGLE (HARD-DELETE) ──
 window.approveWarehouseDeleteReq = async function(notifId) {
     const notif = window.pendingWarehouses[notifId];
     if(!notif || !notif.warehouseData) return;
@@ -4118,20 +4113,15 @@ window.approveWarehouseDeleteReq = async function(notifId) {
         const entSnap = await getDocs(query(collection(db,'entries'), where('godownId','==',whId)));
         entSnap.docs.forEach(d => batch.delete(d.ref));
         
-        // 3. Expense App Sync: One-by-One Theme Change
+        // 3. Expense App Sync: Permanent Hard-Delete!
         if (mergeExpenses && productIds.length > 0) {
             const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
             
             expSnap.docs.forEach(d => {
                 const data = d.data();
                 if (productIds.includes(data.productId)) {
-                    batch.update(d.ref, {
-                        isDeleted: true,
-                        deletedBy: 'System Update',
-                        deletedById: 'SYSTEM',
-                        deleteReason: `Warehouse Deleted: ${whName}`,
-                        deletedAt: serverTimestamp()
-                    });
+                    // Completely obliterates the expense from the database!
+                    batch.delete(d.ref);
                 }
             });
         }
@@ -4143,11 +4133,11 @@ window.approveWarehouseDeleteReq = async function(notifId) {
         
         if (notif.actorId) {
             await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
-                type: 'system', message: `Your request to delete warehouse "${whName}" was approved.`, read: false, createdAt: Date.now()
+                type: 'system', message: `Your request to delete warehouse "${whName}" was approved and executed.`, read: false, createdAt: Date.now()
             });
         }
         
-        if (window.showToast) window.showToast("Warehouse deleted successfully!", "success");
+        if (window.showToast) window.showToast("Warehouse completely removed!", "success");
         if (curWH === whId) window.goBack(); else loadWHs();
     } catch(e) { console.error(e); if (window.showToast) window.showToast("Failed to delete warehouse.", "error"); }
 };
