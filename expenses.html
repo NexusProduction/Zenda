@@ -988,7 +988,292 @@ document.querySelectorAll('.ftab').forEach(btn => {
     }
   });
 });
+// --- RESTORED CORE RENDERING ENGINES ---
+function getTime(e){if(e.date)return new Date(e.date).getTime();if(e.createdAt){if(typeof e.createdAt.toMillis==='function')return e.createdAt.toMillis();if(typeof e.createdAt.toDate==='function')return e.createdAt.toDate().getTime();return new Date(e.createdAt).getTime();}return 0;}
+function getDate(e){if(e.date)return new Date(e.date);if(e.createdAt){if(typeof e.createdAt.toDate==='function')return e.createdAt.toDate();return new Date(e.createdAt);}return new Date();}
+function filtered(){return allData.filter(e=>{if(catFilter&&e.category!==catFilter)return false;if(monthFilter){const d=getDate(e);const k=String(d.getFullYear());if(k!==monthFilter)return false;}if(searchVal&&!((e.description||'')+' '+(e.category||'')).toLowerCase().includes(searchVal))return false;return true;});}
+function renderAll(){updateSummary();renderList();if(panelOpen)renderBreakdown();}
 
+function updateSummary(){
+  const list=filtered().filter(e => !e.isDeleted);let inc=0,exp=0;
+  list.forEach(e=>{if(e.parsedType==='income')inc+=Number(e.amount)||0;else exp+=Number(e.amount)||0;});
+  const bal=inc-exp,fbal=(bal<0?'-₹ ':'₹ ')+fmt(Math.abs(bal))+'.00';
+  const db2=document.getElementById('d-balance');
+  if(db2) { db2.textContent=fbal; db2.style.setProperty('color', '#ffffff', 'important'); }
+  if(document.getElementById('d-income')) document.getElementById('d-income').textContent='₹ '+fmt(inc)+'.00';
+  if(document.getElementById('d-expense')) document.getElementById('d-expense').textContent='₹ '+fmt(exp)+'.00';
+  if(document.getElementById('m-balance')) document.getElementById('m-balance').textContent=fbal;
+  if(document.getElementById('m-income')) document.getElementById('m-income').textContent='₹ '+fmt(inc)+'.00';
+  if(document.getElementById('m-expense')) document.getElementById('m-expense').textContent='₹ '+fmt(exp)+'.00';
+
+  const totalCount = allData.filter(e => (!monthFilter || String(getDate(e).getFullYear()) === monthFilter) && !e.isDeleted).length;
+  const countEl = document.getElementById('ledger-count');
+  if (countEl) countEl.textContent = `(${totalCount})`;
+}
+
+function renderList(){
+  const list=filtered(),el=document.getElementById('exp-list'),pw=document.getElementById('pag-wrap');
+  if(!el) return;
+  const canDel=CU.role==='owner'||CU.role==='manager';
+
+  const isPremiumCategory = catFilter !== '' && catFilter !== 'Inventory Stock';
+  const showLock = !CU.isPremium && isPremiumCategory;
+
+  let bannerHTML = '';
+  if (showLock) {
+    if (CU.role === 'owner') {
+      bannerHTML = `<div style="background:var(--surface);border:1.5px solid var(--amber);padding:24px;border-radius:14px;text-align:center;box-shadow:var(--sh3);margin:20px auto;max-width:300px;"><div style="font-size:32px;margin-bottom:8px;">👑</div><div style="font-weight:700;color:var(--tx1);font-size:16px;margin-bottom:6px;">Premium Category</div><div style="font-size:13px;color:var(--tx2);margin-bottom:16px;">Upgrade to unlock and view ${catFilter} expenses.</div><button onclick="window.location.href='subscription.html'" style="background:var(--amber);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;width:100%;">Upgrade to Premium</button></div>`;
+    } else {
+      bannerHTML = `<div style="background:var(--surface);border:1.5px solid var(--amber);padding:24px;border-radius:14px;text-align:center;box-shadow:var(--sh3);margin:20px auto;max-width:300px;"><div style="font-size:32px;margin-bottom:8px;">🔒</div><div style="font-weight:700;color:var(--tx1);font-size:16px;margin-bottom:6px;">Premium Category</div><div style="font-size:13px;color:var(--tx2);margin-bottom:16px;">Ask the owner to upgrade to view ${catFilter} expenses.</div><button id="list-appeal-btn" onclick="window.requestUpgradeFromList()" style="background:var(--amber);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;width:100%;">Request to Upgrade</button></div>`;
+    }
+  }
+
+  if(!list.length){
+    if (showLock) { el.innerHTML = bannerHTML; } 
+    else { el.innerHTML=emptyHTML((searchVal||catFilter||monthFilter)?'No matching records':'No records yet',(searchVal||catFilter||monthFilter)?'Try adjusting your filters':'Tap + to add your first record'); }
+    if(pw) pw.style.display='none';
+    return;
+  }
+
+  const total=Math.ceil(list.length/PER_PAGE);
+  if(currentPage>total)currentPage=total;if(currentPage<1)currentPage=1;
+  const slice=list.slice((currentPage-1)*PER_PAGE,currentPage*PER_PAGE);
+  
+  const listHTML = slice.map((e,i)=>{
+    const cat=e.category||'Miscellaneous',color=CAT_COLOR[cat]||'#71717A',bg=CAT_BG[cat]||'#F4F4F5',svg=CAT_SVG[cat]||CAT_SVG['Miscellaneous'];
+    const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    const isInc=e.parsedType==='income';
+    let creatorNameRaw = e.createdByName || 'User';
+    if (e.createdBy === CU.uid) { creatorNameRaw = CU.name; } 
+    else if (e.createdBy === CU.ownerId && CU.ownerName) { creatorNameRaw = CU.ownerName; } 
+    else {
+        const cLower = creatorNameRaw.trim().toLowerCase();
+        if (cLower.includes('lala') || cLower.includes('vipul')) { creatorNameRaw = CU.role === 'owner' ? CU.name : (CU.ownerName || 'Owner'); }
+    }
+    const creatorName = creatorNameRaw.split(' ')[0];
+    
+    let actualDeletedByRaw = e.deletedBy || e.deletedByName || 'User';
+    if (e.deletedById === CU.uid) { actualDeletedByRaw = CU.name; } 
+    else if (e.deletedById === CU.ownerId && CU.ownerName) { actualDeletedByRaw = CU.ownerName; } 
+    else if (!e.deletedById && e.createdBy === CU.uid && (e.deletedBy === e.createdByName || e.deletedByName === e.createdByName)) { actualDeletedByRaw = CU.name; } 
+    else {
+        const dLower = actualDeletedByRaw.trim().toLowerCase();
+        if (dLower.includes('lala') || dLower.includes('vipul')) { actualDeletedByRaw = CU.role === 'owner' ? CU.name : (CU.ownerName || 'Owner'); }
+    }
+    const shortDeletedBy = actualDeletedByRaw.split(' ')[0];
+    
+    let delBtn = '';
+    if (!e.isDeleted) {
+      if (e.createdBy === CU.uid) {
+        delBtn = `<button class="del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`;
+      } else {
+        delBtn = `<button class="del-btn disabled-btn" onclick="event.stopPropagation(); window.showPermissionModal('${esc(creatorName)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`;
+      }
+    }
+      
+    let delDateStr = ds;
+    if (e.deletedAt) {
+      const dObj = typeof e.deletedAt.toDate === 'function' ? e.deletedAt.toDate() : new Date(e.deletedAt);
+      delDateStr = dObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+    }
+
+    let showCatPill = '';
+    if (catFilter === '') {
+      if (e.isDeleted) { showCatPill = `<div style="background: var(--surface2); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; color: var(--tx2); font-weight: 700; flex-shrink: 0;">${esc(cat)}</div>`; } 
+      else { showCatPill = `<span class="exp-cat-pill" style="background:${bg};color:${color}; flex-shrink: 0; padding: 4px 8px;">${esc(cat)}</span>`; }
+    }
+
+    let infoHTML = '';
+    let accordionHTML = '';
+
+    if (e.isDeleted) {
+      infoHTML = `<div style="display: flex; flex-direction: column; min-width: 0; width: 100%;"><div style="display: flex; align-items: center; width: 100%; min-width: 0;"><div class="exp-desc" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; text-decoration: line-through;">${esc(e.description)}</div><span class="exp-creator desk-only" style="font-size: 0.75rem; font-weight: 600; margin-left: 6px; flex-shrink: 0;">(Deleted by <span style="font-family: var(--f-hd); font-weight: 800; color: var(--tx2);">${esc(shortDeletedBy)}</span>)</span></div><span class="exp-creator mob-only" style="font-size: 0.75rem; font-weight: 600; margin-top: 3px; margin-left: 0;">(Deleted by <span style="font-family: var(--f-hd); font-weight: 800; color: var(--tx2);">${esc(shortDeletedBy)}</span>)</span><div class="hide-on-mobile" style="margin-top: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; width: 100%;">${showCatPill}<div style="display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; flex-shrink: 0;"><span style="color: var(--tx1); font-weight: 600;">${delDateStr}</span></div><div style="display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; gap: 4px; font-size: 0.75rem; flex: 0 1 auto; max-width: 100%; box-sizing: border-box;"><span style="color: var(--tx2); font-weight: 700; flex-shrink: 0;">Reason:</span> <span style="color: var(--tx1); font-weight: 600; word-break: break-word;">${esc(e.deleteReason)}</span></div></div></div>`;
+      accordionHTML = catFilter === '' ? `<div style="grid-column: span 2; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; padding-top: 4px;"><div style="display: flex; align-items: center; gap: 6px;">${showCatPill}<div style="display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; gap: 4px; font-size: 0.75rem; flex-shrink: 0;"><span style="color: var(--tx2); font-weight: 700;">Date:</span><span style="color: var(--tx1); font-weight: 600;">${delDateStr}</span></div></div><div style="display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; gap: 4px; font-size: 0.75rem; width: fit-content; max-width: 100%; box-sizing: border-box;"><span style="color: var(--tx2); font-weight: 700; flex-shrink: 0;">Reason:</span><span style="color: var(--tx1); font-weight: 600; word-break: break-word;">${esc(e.deleteReason)}</span></div></div>` : `<div style="grid-column: span 2; display: flex; align-items: flex-start; gap: 6px; flex-wrap: wrap; width: 100%; padding-top: 4px;"><div style="display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; gap: 4px; font-size: 0.75rem; flex-shrink: 0;"><span style="color: var(--tx2); font-weight: 700;">Date:</span><span style="color: var(--tx1); font-weight: 600;">${delDateStr}</span></div><div style="display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; gap: 4px; font-size: 0.75rem; flex: 0 1 auto; max-width: 100%; box-sizing: border-box;"><span style="color: var(--tx2); font-weight: 700; flex-shrink: 0;">Reason:</span><span style="color: var(--tx1); font-weight: 600; word-break: break-word;">${esc(e.deleteReason)}</span></div></div>`;
+    } else {
+      infoHTML = `<div style="display: flex; flex-direction: column; min-width: 0; width: 100%;"><div style="display: flex; align-items: center; width: 100%; min-width: 0;"><div class="exp-desc" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto;">${esc(e.description)}</div><span class="exp-creator desk-only" style="font-size: 0.75rem; color: var(--tx2); font-weight: 600; margin-left: 6px; flex-shrink: 0;">by <span style="font-family: var(--f-hd); font-weight: 800;">${esc(creatorName)}</span></span></div><span class="exp-creator mob-only" style="font-size: 0.75rem; color: var(--tx2); font-weight: 600; margin-top: 3px; margin-left: 0;">by <span style="font-family: var(--f-hd); font-weight: 800;">${esc(creatorName)}</span></span><div class="exp-meta hide-on-mobile" style="margin-top: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; width: 100%;">${showCatPill}<div style="display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; flex-shrink: 0;"><span style="color: var(--tx1); font-weight: 600;">${ds}</span></div><div style="display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; gap: 4px; font-size: 0.75rem; flex: 0 1 auto; max-width: 100%; box-sizing: border-box;"><span style="color: var(--tx2); font-weight: 700; flex-shrink: 0;">Payment:</span><span style="color: var(--tx1); font-weight: 600; word-break: break-word;">${esc(e.paymentMethod||'Cash')}</span></div></div></div>`;
+      accordionHTML = catFilter === '' ? `<div style="grid-column: span 2; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; padding-top: 4px;"><div style="display: flex; align-items: center; gap: 6px;">${showCatPill}<div style="display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; gap: 4px; font-size: 0.75rem; flex-shrink: 0;"><span style="color: var(--tx2); font-weight: 700;">Date:</span><span style="color: var(--tx1); font-weight: 600;">${ds}</span></div></div><div style="display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; gap: 4px; font-size: 0.75rem; width: fit-content; max-width: 100%; box-sizing: border-box;"><span style="color: var(--tx2); font-weight: 700; flex-shrink: 0;">Payment:</span><span style="color: var(--tx1); font-weight: 600; word-break: break-word;">${esc(e.paymentMethod||'Cash')}</span></div></div>` : `<div style="grid-column: span 2; display: flex; align-items: flex-start; gap: 6px; flex-wrap: wrap; width: 100%; padding-top: 4px;"><div style="display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; gap: 4px; font-size: 0.75rem; flex-shrink: 0;"><span style="color: var(--tx2); font-weight: 700;">Date:</span><span style="color: var(--tx1); font-weight: 600;">${ds}</span></div><div style="display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; gap: 4px; font-size: 0.75rem; flex: 0 1 auto; max-width: 100%; box-sizing: border-box;"><span style="color: var(--tx2); font-weight: 700; flex-shrink: 0;">Payment:</span><span style="color: var(--tx1); font-weight: 600; word-break: break-word;">${esc(e.paymentMethod||'Cash')}</span></div></div>`;
+    }
+
+    const rowClass = e.isDeleted ? 'exp-row is-deleted' : 'exp-row';
+
+    return `<div class="${rowClass}" style="animation-delay:${i*32}ms;" onclick="window.toggleRow(this, event)"><div class="exp-row-main"><div class="exp-ico" style="background:${bg};color:${color}">${svg}</div><div class="exp-info">${infoHTML}</div><div class="exp-amt ${isInc?'pos':'neg'}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>${delBtn}</div><div class="exp-details" onclick="event.stopPropagation();">${accordionHTML}</div></div>`;
+  }).join('');
+
+  if (showLock) {
+    el.innerHTML = `<div style="position:relative; min-height: 300px; overflow:hidden; border-radius:12px;"><div style="filter: blur(6px) grayscale(40%); opacity: 0.35; pointer-events: none; user-select: none;">${listHTML}</div><div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:100%; z-index:10; display:flex; justify-content:center; padding: 0 16px; box-sizing: border-box;">${bannerHTML}</div></div>`;
+    if(pw) pw.style.display='none'; 
+  } else {
+    el.innerHTML = listHTML;
+    if(total>1){if(pw) pw.style.display='flex';document.getElementById('pag-prev').disabled=currentPage===1;document.getElementById('pag-next').disabled=currentPage===total;document.getElementById('pag-info').textContent=currentPage+' / '+total;}
+    else{if(pw) pw.style.display='none';}
+  }
+}
+
+function renderBreakdown(){
+  const targetData = allData.filter(e => {
+    if (e.parsedType !== bpType) return false;
+    if (e.isDeleted) return false; 
+    if (monthFilter && String(getDate(e).getFullYear()) !== monthFilter) return false;
+    return true;
+  });
+
+  const groups = {};
+  CATS.forEach(c => groups[c.v] = 0);
+  targetData.forEach(e => { groups[e.category] = (groups[e.category] || 0) + (Number(e.amount) || 0); });
+
+  const totalAmount = Object.values(groups).reduce((s,v) => s + v, 0);
+  const smr = document.getElementById('show-more-row');
+  const body = document.getElementById('bp-body');
+  if (smr) smr.style.display = 'none';
+
+  const oldPos = {};
+  [...body.children].forEach(el => {
+    if(el.dataset.cat && el.offsetHeight > 0) {
+      oldPos[el.dataset.cat] = el.offsetTop;
+    }
+  });
+
+  if (totalAmount === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--tx3);font-family:var(--f-hd);font-size:.95rem;font-weight:700; animation: rowIn 0.4s cubic-bezier(0.22,1,0.36,1) both;">No data available</div>';
+    return; 
+  }
+
+  const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
+  body.innerHTML = sorted.map(([cat,amt], index) => {
+    const pct = Math.round(amt / totalAmount * 100);
+    const color = CAT_COLOR[cat] || '#71717A';
+    const bg = CAT_BG[cat] || '#F4F4F5';
+    const svg = CAT_SVG[cat] || CAT_SVG['Miscellaneous'];
+    const isZero = amt === 0 ? ' zero-amt' : '';
+    
+    const SHORT_MAP = {
+      'Inventory Stock': 'Inventory',
+      'Godown Expense': 'Godown',
+      'Office & Admin': 'Office',
+      'Raw Materials': 'Materials',
+      'Miscellaneous': 'Miscellaneous',
+      'Installation': 'Install'
+    };
+    const shortCat = SHORT_MAP[cat] || cat;
+
+    return `<div class="cat-item${isZero}" data-cat="${cat}" style="animation: rowIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: ${index * 35}ms;"><div class="cat-ico" style="background:${bg};color:${color}">${svg}</div><div class="cat-details"><div class="cat-top"><span class="cat-name"><span class="desk-only">${esc(cat)}</span><span class="mob-only">${esc(shortCat)}</span></span><span class="cat-val">₹${fmt(amt)}</span></div><div class="cat-bar-bg"><div class="cat-bar-fill" style="width: 0%; transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); background:${color}; height:100%; border-radius:99px;" data-w="${pct}%"></div></div><div class="cat-pct">${pct}% of ${bpType}</div></div></div>`;
+  }).join('');
+
+  setTimeout(() => {
+    body.querySelectorAll('.cat-bar-fill').forEach(bar => {
+      bar.style.width = bar.dataset.w;
+    });
+  }, 10);
+
+  [...body.children].forEach(el => {
+    const cat = el.dataset.cat;
+    if(oldPos[cat] !== undefined && el.offsetHeight > 0) {
+      el.style.animation = 'none'; 
+      const newTop = el.offsetTop;
+      const delta = oldPos[cat] - newTop;
+      if(delta !== 0) {
+        el.style.transform = `translateY(${delta}px)`;
+        el.style.transition = 'none';
+        requestAnimationFrame(() => {
+          el.style.transform = '';
+          el.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        });
+      }
+    }
+  });
+}
+
+function fmt(n){return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0});}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function emptyHTML(t,s){return `<div class="empty-exp"><div class="empty-exp-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="empty-exp-ttl">${esc(t)}</div><div class="empty-exp-sub">${esc(s)}</div></div>`;}
+
+function toast(msg, type='success') {
+  const icons = {
+    success: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    error: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    info: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12.01" y2="16"/><line x1="12" y1="8" x2="12" y2="12"/></svg>`
+  };
+  const c = document.getElementById('toast-container');
+  if(!c) return;
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.innerHTML = (icons[type] || '') + '<span>' + esc(msg) + '</span>';
+  c.appendChild(t);
+  setTimeout(() => {
+    t.style.animation = 'tOut .4s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+    setTimeout(() => t.remove(), 400);
+  }, 3000);
+}
+
+async function init(){
+  try{
+    const user=await getCurrentUser();
+    if(!user||!user.uid){
+      syncEl.textContent='Not signed in';syncEl.className='sync-badge sync-err';
+      setTimeout(()=>window.location.href='login.html',1500);return;
+    }
+    CU={uid:user.uid,role:user.role||'staff',companyId:user.companyId||user.uid,name:user.name||'Staff',isPremium:false,ownerId:null};
+
+    try{
+      const snap=await getDoc(doc(db,'companies',CU.companyId));
+      if(snap.exists()){
+        const d=snap.data();
+        CU.ownerId=d.ownerId||null;
+        let premium=d.isPremium===true;
+        if(premium&&d.subscriptionExpiry&&new Date()>new Date(d.subscriptionExpiry))premium=false;
+        CU.isPremium=premium;
+        
+        if (CU.role !== 'owner' && CU.ownerId) {
+            try {
+                const ownerSnap = await getDoc(doc(db, 'users', CU.ownerId));
+                if (ownerSnap.exists()) {
+                    CU.ownerName = ownerSnap.data().name;
+                }
+            } catch(err) { console.warn(err); }
+        }
+      }
+    }catch(_){ }
+
+    document.body.setAttribute('data-premium', CU.isPremium === true ? "true" : "false");
+
+    const q=query(collection(db,'expenses'),where('companyId','==',CU.companyId));
+    onSnapshot(q,snap=>{
+      allData=snap.docs.map(d=>{
+        const data=d.data();let pt=data.type||'expense';
+        if(!data.type){const u=(data.description||'').toUpperCase();if(u.includes('SALE')||u.includes('SOLD')||u.includes('STOCK OUT'))pt='income';}
+        
+        if (data.category === 'Inventory') data.category = 'Inventory Stock';
+        if (data.category === 'Material') data.category = 'Raw Materials';
+        
+        return{id:d.id,parsedType:pt,...data};
+      }).sort((a,b) => {
+        const timeA = getTime(a);
+        const timeB = getTime(b);
+        if (timeA === timeB) {
+          const getC = (obj) => {
+            if (!obj.createdAt) return 0;
+            if (typeof obj.createdAt.toMillis === 'function') return obj.createdAt.toMillis();
+            return new Date(obj.createdAt).getTime() || 0;
+          };
+          return getC(b) - getC(a);
+        }
+        return timeB - timeA;
+      });
+      
+      syncEl.textContent='Connected';
+      syncEl.className='sync-badge sync-live';
+      document.body.setAttribute('data-state', 'connected');
+      
+      renderAll();
+    },err=>{
+      syncEl.textContent='Sync Error';syncEl.className='sync-badge sync-err';
+      document.getElementById('exp-list').innerHTML=emptyHTML('Connection issue',err.message);
+    });
+  }catch(err){
+    syncEl.textContent='Error';syncEl.className='sync-badge sync-err';
+    document.getElementById('exp-list').innerHTML=emptyHTML('Failed to load',err.message||'');
+  }
+}
 let currentWarehouseId = null;
 let currentWarehouseName = '';
 
