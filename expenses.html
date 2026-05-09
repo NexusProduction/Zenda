@@ -1870,7 +1870,7 @@ document.addEventListener('click', e => {
     lastScrollY = currentScrollY;
   }, { passive: true });
 })();
-  // Fetch Godowns (Warehouses) and render them as rounded boxes with full names
+// Fetch Godowns (Warehouses) and render them as rounded boxes with full names
 function loadWarehousesForFinance() {
   if(!CU.companyId) return;
   const q = query(collection(db, 'godowns'), where('companyId', '==', CU.companyId));
@@ -1887,7 +1887,7 @@ function loadWarehousesForFinance() {
          btn.className = 'ftab';
          btn.style.borderRadius = '12px';
          btn.style.height = '36px';
-         btn.style.padding = '0 16px'; // Padding replaces fixed width to fit full name
+         btn.style.padding = '0 16px'; // Padding replaces fixed width to fit the full name!
          btn.style.display = 'inline-flex';
          btn.style.alignItems = 'center';
          btn.style.justifyContent = 'center';
@@ -1895,7 +1895,7 @@ function loadWarehousesForFinance() {
          btn.style.fontSize = '13.5px';
          btn.style.flexShrink = '0';
          
-         // Insert the full name!
+         // Insert the full name safely
          btn.textContent = wh.name || 'Warehouse';
          
          btn.onclick = () => {
@@ -1903,8 +1903,11 @@ function loadWarehousesForFinance() {
              document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
              btn.classList.add('on');
              
-             // TODO for Next Phase: Trigger the Product Card UI swap!
-             window.showToast("Warehouse selected! Rendering products next.", "info");
+             // Temp hack: Use the search bar to filter expenses strictly by this warehouse name
+             catFilter = ''; 
+             searchVal = wh.name; 
+             currentPage = 1;
+             renderAll();
          };
          
          whTabs.appendChild(btn);
@@ -1912,62 +1915,13 @@ function loadWarehousesForFinance() {
   });
 }
 
-// Hook it into the startup routine
+// Hook it into the startup routine (ONLY ONCE)
 const originalInit = init;
 init = async function() {
     await originalInit();
     loadWarehousesForFinance();
 };
-// Fetch Godowns (Warehouses) and render them as square tabs
-function loadWarehousesForFinance() {
-  if(!CU.companyId) return;
-  const q = query(collection(db, 'godowns'), where('companyId', '==', CU.companyId));
-  onSnapshot(q, snap => {
-     const whTabs = document.getElementById('warehouse-tabs');
-     if(!whTabs) return;
-     whTabs.innerHTML = ''; 
-     
-     snap.docs.forEach(docSnap => {
-         const wh = docSnap.data();
-         const btn = document.createElement('button');
-         
-         // Creating the square box with border radius
-         btn.className = 'ftab';
-         btn.style.borderRadius = '12px';
-         btn.style.width = '36px';
-         btn.style.height = '36px';
-         btn.style.padding = '0';
-         btn.style.display = 'inline-flex';
-         btn.style.alignItems = 'center';
-         btn.style.justifyContent = 'center';
-         btn.style.fontWeight = '800';
-         btn.style.fontSize = '15px';
-         btn.style.flexShrink = '0';
-         btn.title = wh.name;
-         
-         // Use the first letter of the warehouse name for the box icon
-         btn.textContent = wh.name ? wh.name.charAt(0).toUpperCase() : 'W';
-         
-         btn.onclick = () => {
-             // Visual highlight
-             document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
-             btn.classList.add('on');
-             
-             // TODO for Next Phase: Trigger the Product Card UI swap!
-             toast("Warehouse selected! Product View rendering coming next.", "info");
-         };
-         
-         whTabs.appendChild(btn);
-     });
-  });
-}
 
-// Hook our new function into the existing init sequence
-const originalInit = init;
-init = async function() {
-    await originalInit();
-    loadWarehousesForFinance();
-};
 init();
 </script>
 </body>
