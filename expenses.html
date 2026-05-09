@@ -1870,44 +1870,41 @@ document.addEventListener('click', e => {
     lastScrollY = currentScrollY;
   }, { passive: true });
 })();
-  function loadWarehousesForFinance() {
+  // Fetch Godowns (Warehouses) and render them as rounded boxes with full names
+function loadWarehousesForFinance() {
   if(!CU.companyId) return;
   const q = query(collection(db, 'godowns'), where('companyId', '==', CU.companyId));
   onSnapshot(q, snap => {
      const whTabs = document.getElementById('warehouse-tabs');
      if(!whTabs) return;
-     whTabs.innerHTML = ''; // Clear old buttons
+     whTabs.innerHTML = ''; 
      
      snap.docs.forEach(docSnap => {
          const wh = docSnap.data();
          const btn = document.createElement('button');
-         btn.className = 'ftab';
          
-         // Creating the square box with border radius
+         // Dynamically sizing box with border radius
+         btn.className = 'ftab';
          btn.style.borderRadius = '12px';
-         btn.style.width = '42px';
-         btn.style.height = '42px';
-         btn.style.padding = '0';
+         btn.style.height = '36px';
+         btn.style.padding = '0 16px'; // Padding replaces fixed width to fit full name
          btn.style.display = 'inline-flex';
          btn.style.alignItems = 'center';
          btn.style.justifyContent = 'center';
-         btn.style.fontWeight = '800';
-         btn.style.fontSize = '16px';
+         btn.style.fontWeight = '700';
+         btn.style.fontSize = '13.5px';
          btn.style.flexShrink = '0';
          
-         // Uses the first letter of the warehouse name
-         btn.textContent = wh.name ? wh.name.charAt(0).toUpperCase() : 'W';
+         // Insert the full name!
+         btn.textContent = wh.name || 'Warehouse';
          
          btn.onclick = () => {
              // Visual highlight
              document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
              btn.classList.add('on');
              
-             // Step 1 of your vision: Filter the finance view based on the clicked warehouse
-             catFilter = ''; 
-             searchVal = wh.name; // Temp hack to filter expenses strictly by warehouse name
-             currentPage = 1;
-             renderAll();
+             // TODO for Next Phase: Trigger the Product Card UI swap!
+             window.showToast("Warehouse selected! Rendering products next.", "info");
          };
          
          whTabs.appendChild(btn);
