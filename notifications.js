@@ -87,14 +87,16 @@ export function renderNotifications(items, container) {
       calendar_event_all:    { icon: '🗓️', cls: 'notif-icon-cal' },
       calendar_event_custom: { icon: '🗓️', cls: 'notif-icon-cal' },
       warehouse_request:     { icon: '🏭', cls: 'notif-icon-task' },
-      review_delete:         { icon: '🗑️', cls: 'notif-icon-declined' } // Trash icon for deletion requests!
+      review_delete:         { icon: '🗑️', cls: 'notif-icon-declined' } // Trash icon
     };
     const { icon, cls } = iconMap[item.type] || { icon: '🔔', cls: 'notif-icon-login' };
 
     let actionButtons = '';
     
-    // 1. WAREHOUSE DELETION REQUESTS (Review Modal)
-    if (item.type === 'review_delete') {
+    // 🔥 BULLETPROOF CATCH-ALL FOR WAREHOUSE DELETION (Catches Old & New Data)
+    const isDeleteRequest = item.type === 'review_delete' || (item.message && item.message.toLowerCase().includes('delete warehouse'));
+    
+    if (isDeleteRequest) {
       if (item.status === 'approved' || item.status === 'rejected') {
           actionButtons = `
             <div style="margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--tx3);">
@@ -113,7 +115,7 @@ export function renderNotifications(items, container) {
           `;
       }
     } 
-    // 2. CALENDAR EVENTS
+    // Handle Calendar Events
     else if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
       actionButtons = `
         <div style="margin-top: 8px; display: flex; gap: 8px;">
@@ -122,7 +124,7 @@ export function renderNotifications(items, container) {
         </div>
       `;
     } 
-    // 3. WAREHOUSE CREATION REQUESTS
+    // Handle Warehouse Creation Requests
     else if (item.type === 'warehouse_request') {
       actionButtons = `
         <div style="margin-top: 12px;">
@@ -130,7 +132,7 @@ export function renderNotifications(items, container) {
         </div>
       `;
     } 
-    // 4. DEFAULT (Dismiss)
+    // Default Dismiss
     else {
       actionButtons = `
         <div style="margin-top: 8px;">
