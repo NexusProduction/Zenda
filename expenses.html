@@ -1139,9 +1139,17 @@ function loadWarehousesForFinance() {
   });
 }
 
-// Safely execute using .then() to prevent variable duplication crashes
+// --- SAFELY EXECUTE WITHOUT OVERWRITING CORE FUNCTIONS ---
 init().then(() => {
-    loadWarehousesForFinance();
+    // Wait a brief half-second to guarantee the database connection is fully settled
+    setTimeout(() => {
+        if (CU && CU.companyId) {
+            loadWarehousesForFinance();
+        }
+    }, 500);
+}).catch(err => {
+    console.error("Startup Error:", err);
+    window.showToast("Failed to load warehouses.", "error");
 });
 </script>
 </body>
