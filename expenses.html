@@ -579,14 +579,14 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
         </div>
       </div>
       <div class="filter-tabs" id="cat-tabs" style="align-items: center;">
-  <button class="ftab on" onclick="filterCat('')">All</button>
-  <button class="ftab" onclick="filterCat('Salary')">Salary</button>
-  <button class="ftab" onclick="filterCat('Other')">Other</button>
+  <button class="ftab on" data-cat="">All</button>
+  <button class="ftab" data-cat="Salary">Salary</button>
+  <button class="ftab" data-cat="Miscellaneous">Other</button>
   
   <div style="width: 2px; height: 24px; background: var(--border-strong); margin: 0 8px; border-radius: 2px; flex-shrink: 0;"></div>
   
   <div id="warehouse-tabs" style="display: flex; gap: 8px;">
-    </div>
+  </div>
 </div>
       <div class="exp-list" id="exp-list">
         <div class="empty-exp">
@@ -659,52 +659,7 @@ body[data-state="connected"][data-premium="false"] .global-upgrade-btn { display
       <input type="text" id="exp-desc" class="fi" placeholder="Enter details (5-20 chars)" minlength="5" maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')">
     </div>
 
-    <div class="fg">
-      <label>Category</label>
-      <input type="hidden" id="exp-category" value="Inventory Stock">
-      <div class="cat-picker-wrap" id="cat-picker-wrap">
-        <div class="cat-picker-trigger" id="cat-picker-trigger" onclick="catPickerToggle()">
-          <div class="cpt-left">
-            <div class="cpt-icon" id="cpt-icon" style="background:#EEF2FF; color:var(--blue);">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-            </div>
-            <span id="cpt-label">Inventory Stock</span>
-          </div>
-          <svg class="cpt-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-        <div class="cat-picker-dropdown" id="cat-picker-dd" style="display:none"></div>
-      </div>
-
-      <div class="lock-card lc-owner" id="lc-owner">
-        <div class="lc-head">
-          <span class="lc-emoji">👑</span>
-          <div>
-            <div class="lc-title">Premium Category — Locked</div>
-            <div class="lc-sub">Upgrade your plan to log Godown, Installation, Logistics, Materials, Office, and Other expenses.</div>
-          </div>
-        </div>
-        <button class="lc-upgrade" onclick="window.location.href='subscription.html'">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          Upgrade to Premium
-        </button>
-      </div>
-
-      <div class="lock-card lc-staff" id="lc-staff">
-        <div class="lc-head">
-          <span class="lc-emoji">🔒</span>
-          <div>
-            <div class="lc-title">Category Locked</div>
-            <div class="lc-sub">Your company needs a Premium plan. Appeal to your owner.</div>
-          </div>
-        </div>
-        <div id="appeal-wrap">
-          <button class="lc-appeal" id="appeal-btn" onclick="doAppeal()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            Appeal for Upgrade
-          </button>
-        </div>
-      </div>
-    </div>
+    <input type="hidden" id="exp-category" value="Miscellaneous">
 
     <div class="fg-row mobile-split">
       <div class="fg" style="margin-bottom:0;">
@@ -1966,7 +1921,56 @@ init = async function() {
     await originalInit();
     loadWarehousesForFinance();
 };
+// Fetch Godowns (Warehouses) and render them as square tabs
+function loadWarehousesForFinance() {
+  if(!CU.companyId) return;
+  const q = query(collection(db, 'godowns'), where('companyId', '==', CU.companyId));
+  onSnapshot(q, snap => {
+     const whTabs = document.getElementById('warehouse-tabs');
+     if(!whTabs) return;
+     whTabs.innerHTML = ''; 
+     
+     snap.docs.forEach(docSnap => {
+         const wh = docSnap.data();
+         const btn = document.createElement('button');
+         
+         // Creating the square box with border radius
+         btn.className = 'ftab';
+         btn.style.borderRadius = '12px';
+         btn.style.width = '36px';
+         btn.style.height = '36px';
+         btn.style.padding = '0';
+         btn.style.display = 'inline-flex';
+         btn.style.alignItems = 'center';
+         btn.style.justifyContent = 'center';
+         btn.style.fontWeight = '800';
+         btn.style.fontSize = '15px';
+         btn.style.flexShrink = '0';
+         btn.title = wh.name;
+         
+         // Use the first letter of the warehouse name for the box icon
+         btn.textContent = wh.name ? wh.name.charAt(0).toUpperCase() : 'W';
+         
+         btn.onclick = () => {
+             // Visual highlight
+             document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
+             btn.classList.add('on');
+             
+             // TODO for Next Phase: Trigger the Product Card UI swap!
+             toast("Warehouse selected! Product View rendering coming next.", "info");
+         };
+         
+         whTabs.appendChild(btn);
+     });
+  });
+}
 
+// Hook our new function into the existing init sequence
+const originalInit = init;
+init = async function() {
+    await originalInit();
+    loadWarehousesForFinance();
+};
 init();
 </script>
 </body>
