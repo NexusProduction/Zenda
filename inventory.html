@@ -4092,17 +4092,29 @@ window.declineWarehouseDeleteReq = async function(notifId) {
         console.error(e);
     }
 };
-  window.openEntry=function(type){
-  if(!curProd)return;eType=type;window.setET(type);
-  document.getElementById('entryTitle').textContent='Add Entry';
-  document.getElementById('eq').value='';document.getElementById('en').value='';
-  const tgl=document.getElementById('logExpenseTgl');if(tgl)tgl.checked=false;
-  const ef=document.getElementById('expenseFields');if(ef)ef.style.display='none';
-  const cst=document.getElementById('entryCost');if(cst)cst.value='';
+  window.openEntry = function(type) {
+  if(!curProd) return;
+  eType = type;
+  window.setET(type);
+  document.getElementById('entryTitle').textContent = 'Add Entry';
+  document.getElementById('eq').value = '';
+  document.getElementById('en').value = '';
   
-  // Cleaned up the deleted elements so the script doesn't crash!
-  document.getElementById('entryMsg').textContent='';
-  document.getElementById('convPreview').style.display='none';
+  const tgl = document.getElementById('logExpenseTgl');
+  if(tgl) tgl.checked = false;
+  const ef = document.getElementById('expenseFields');
+  if(ef) ef.style.display = 'none';
+  
+  const costInp = document.getElementById('entryCost');
+  const totalEl = document.getElementById('entryTotalCalc');
+  const lblEl   = document.getElementById('entryCostUnitLbl');
+  if (costInp) costInp.value = '';
+  if (totalEl) totalEl.textContent = 'Total: ₹ 0.00';
+  if (lblEl && curProd) lblEl.textContent = curProd.unit || 'units';
+
+  document.getElementById('entryMsg').textContent = '';
+  document.getElementById('convPreview').style.display = 'none';
+  
   buildEntryUnitSel();
   
   if (typeof window.setupExpCatDropdown === 'function') window.setupExpCatDropdown();
@@ -4110,7 +4122,8 @@ window.declineWarehouseDeleteReq = async function(notifId) {
   
   window.openM('m-entry');
 };
-  function buildEntryUnitSel() {
+
+function buildEntryUnitSel() {
   const convs = curProd.conversions || [];
   selUnit = curProd.unit || 'units';
   const allUnits = [{name: curProd.unit || 'units', ratio: 1, isBase: true}, ...convs.map(c => ({name: c.name, ratio: c.ratio, isBase: false}))];
@@ -4126,12 +4139,17 @@ window.declineWarehouseDeleteReq = async function(notifId) {
   }
   const lbl = document.getElementById('entry-unit-lbl');
   if (lbl) lbl.textContent = selUnit;
+  const costLbl = document.getElementById('entryCostUnitLbl');
+  if (costLbl) costLbl.textContent = selUnit;
 }
 
 window.selectUnit = function(name, ratio) {
   selUnit = name;
   const lbl = document.getElementById('entry-unit-lbl');
   if (lbl) lbl.textContent = name;
+  
+  const costLbl = document.getElementById('entryCostUnitLbl');
+  if (costLbl) costLbl.textContent = name;
   
   const dd = document.getElementById('entry-unit-dd');
   if (dd) dd.style.display = 'none';
@@ -4146,6 +4164,7 @@ window.selectUnit = function(name, ratio) {
      else check.classList.add('hidden');
   });
   window.updateConvPreview();
+  window.calcEntryTotal();
 };
 
 window.toggleEntryUnitDD = function() {
@@ -4160,7 +4179,7 @@ window.toggleEntryUnitDD = function() {
     dd.style.display = 'block'; trigger.classList.add('open');
   }
 };
-// ── MISSING: openAddProd — resets & opens the Add Product modal ──
+
 window.openAddProd = function() {
   document.getElementById('pn').value = '';
   document.getElementById('pdesc').value = '';
@@ -4197,7 +4216,6 @@ window.openAddProd = function() {
   window.openM('m-prod');
 };
 
-// ── MISSING: setET — switches IN / OUT tabs in the entry modal ──
 window.setET = function(type) {
   eType = type;
   const btnIn  = document.getElementById('ettIn');
@@ -4215,13 +4233,11 @@ window.setET = function(type) {
 };
 
 window.updateConvPreview = function() {
-  // Hide the plain-text preview — conversion is shown inside the Total badge instead
   const preview = document.getElementById('convPreview');
   if (preview) preview.style.display = 'none';
   window.calcEntryTotal();
 };
 
-// ── MISSING: viewDelReason — opens the "Entry Deleted" info modal ──
 window.viewDelReason = function(entId) {
   const entry = (window.currentEntries || []).find(e => e.id === entId);
   if (!entry) return;
@@ -4238,7 +4254,22 @@ window.viewDelReason = function(entId) {
   window.openM('m-del-reason');
 };
 
-// ── MISSING: submitEntry — saves IN/OUT entry to Firestore & updates stock ──
+window.calcEntryTotal = function() {
+  const qty       = parseFloat(document.getElementById('eq')?.value) || 0;
+  const pricePerU = parseFloat(document.getElementById('entryCost')?.value) || 0;
+  const total     = qty * pricePerU;
+  const el        = document.getElementById('entryTotalCalc');
+  if (!el) return;
+
+  const conv = curProd ? (curProd.conversions || []).find(c => c.name === selUnit) : null;
+  if (conv && qty > 0) {
+    const base = +(qty * conv.ratio).toFixed(4);
+    el.textContent = `= ${base} ${curProd.unit || 'units'}  ·  ₹ ${total.toFixed(2)}`;
+  } else {
+    el.textContent = `Total: ₹ ${total.toFixed(2)}`;
+  }
+};
+
 window.submitEntry = async function() {
   const qtyRaw = parseFloat(document.getElementById('eq').value);
   const note   = document.getElementById('en').value.trim();
@@ -4251,7 +4282,6 @@ window.submitEntry = async function() {
     setMM('entryMsg', '⚠ Quantity too large.', 'err'); return;
   }
 
-  // Resolve base quantity via conversion ratio
   const conv    = (curProd.conversions || []).find(c => c.name === selUnit);
   const ratio   = conv ? conv.ratio : 1;
   const qtyBase = +(qtyRaw * ratio).toFixed(4);
@@ -4262,15 +4292,15 @@ window.submitEntry = async function() {
     : currentStock - qtyBase;
 
   if (eType === 'OUT' && newStock < 0) {
-    setMM('entryMsg',
-      `⚠ Only ${currentStock} ${curProd.unit || 'units'} in stock.`, 'err');
+    setMM('entryMsg', `⚠ Only ${currentStock} ${curProd.unit || 'units'} in stock.`, 'err');
     return;
   }
 
-  // Expense sync (premium-only)
   let logExpense = document.getElementById('logExpenseTgl')?.checked && CU.isPremium;
-  const cost     = parseFloat(document.getElementById('entryCost')?.value) || 0;
-  if (logExpense && cost <= 0) {
+  const pricePerU = parseFloat(document.getElementById('entryCost')?.value) || 0;
+  const totalCost = qtyRaw * pricePerU;
+
+  if (logExpense && totalCost <= 0) {
     setMM('entryMsg', '⚠ Enter a valid cost amount.', 'err'); return;
   }
 
@@ -4279,7 +4309,6 @@ window.submitEntry = async function() {
   btn.textContent = 'Saving…';
 
   try {
-    // 1 — Write entry
     const entryRef = await addDoc(collection(db, 'entries'), {
       type:      eType,
       qty:       qtyRaw,
@@ -4296,15 +4325,11 @@ window.submitEntry = async function() {
       createdAt: serverTimestamp()
     });
 
-    // 2 — Update product stock
     const safeStock = Math.max(0, newStock);
     await updateDoc(doc(db, 'products', curProd.id), { stock: safeStock });
     curProd.stock = safeStock;
 
-    // Refresh detail card numbers
-    const isLow = curProd.minStock != null
-      ? safeStock <= curProd.minStock
-      : safeStock <= 0;
+    const isLow = curProd.minStock != null ? safeStock <= curProd.minStock : safeStock <= 0;
     const stockEl = document.getElementById('pdStock');
     if (stockEl) {
       stockEl.textContent = safeStock;
@@ -4313,13 +4338,12 @@ window.submitEntry = async function() {
     const unitEl = document.getElementById('pdUnit');
     if (unitEl) unitEl.textContent = (curProd.unit || 'units') + ' in stock';
 
-    // 3 — Optional expense record
-    if (logExpense && cost > 0) {
+    if (logExpense && totalCost > 0) {
       const expCat    = document.getElementById('entryExpCategory')?.value || 'Inventory Stock';
       const payMethod = document.getElementById('entryPayMethod')?.value   || 'Cash';
       await addDoc(collection(db, 'expenses'), {
         type:            eType === 'IN' ? 'expense' : 'income',
-        amount:          cost,
+        amount:          totalCost,
         category:        expCat,
         paymentMethod:   payMethod,
         description:     `${curProd.name} — Stock ${eType}`,
@@ -4333,80 +4357,21 @@ window.submitEntry = async function() {
       });
     }
 
-    // 4 — Sync prods[] cache so the product list row updates instantly
     const idx = prods.findIndex(p => p.id === curProd.id);
     if (idx > -1) prods[idx].stock = safeStock;
 
     window.closeM('m-entry');
     await loadEntries(curProd.id);
-    window.showToast(
-      `${eType === 'IN' ? '+' : '-'}${qtyRaw} ${selUnit} recorded ✓`, 'success'
-    );
+    window.showToast(`${eType === 'IN' ? '+' : '-'}${qtyRaw} ${selUnit} recorded ✓`, 'success');
   } catch(e) {
     setMM('entryMsg', '❌ Failed: ' + e.message, 'err');
   }
 
   btn.disabled    = false;
   btn.textContent = 'Add Entry';
-};
-
-window.calcEntryTotal = function() {
-  const qty       = parseFloat(document.getElementById('eq')?.value) || 0;
-  const pricePerU = parseFloat(document.getElementById('entryCost')?.value) || 0;
-  const total     = qty * pricePerU;
-  const el        = document.getElementById('entryTotalCalc');
-  if (!el) return;
-
-  // If a conversion unit is selected, show base equivalent + total in one badge
-  const conv = curProd ? (curProd.conversions || []).find(c => c.name === selUnit) : null;
-  if (conv && qty > 0) {
-    const base = +(qty * conv.ratio).toFixed(4);
-    el.textContent = `= ${base} ${curProd.unit || 'units'}  ·  ₹ ${total.toFixed(2)}`;
-  } else {
-    el.textContent = `Total: ₹ ${total.toFixed(2)}`;
-  }
-};
-
-// ── Patch selectUnit to keep cost label in sync with chosen unit ──
-const _origSelectUnit = window.selectUnit;
-window.selectUnit = function(name, ratio) {
-  _origSelectUnit(name, ratio);
-  const lbl = document.getElementById('entryCostUnitLbl');
-  if (lbl) lbl.textContent = name;
-  window.calcEntryTotal();
-};
-
-// ── Patch openEntry to reset the per-unit cost UI on every open ──
-const _origOpenEntry = window.openEntry;
-window.openEntry = function(type) {
-  _origOpenEntry(type);
   const costInp = document.getElementById('entryCost');
-  const totalEl = document.getElementById('entryTotalCalc');
-  const lblEl   = document.getElementById('entryCostUnitLbl');
   if (costInp) costInp.value = '';
-  if (totalEl) totalEl.textContent = 'Total: ₹ 0.00';
-  if (lblEl && curProd) lblEl.textContent = curProd.unit || 'unit';
 };
-
-// ── Patch submitEntry so cost = pricePerUnit × qty (not raw input) ──
-const _origSubmitEntry = window.submitEntry;
-window.submitEntry = async function() {
-  // Swap out the raw entryCost value with the computed total before original runs
-  const qty        = parseFloat(document.getElementById('eq')?.value) || 0;
-  const pricePerU  = parseFloat(document.getElementById('entryCost')?.value) || 0;
-  const totalCost  = qty * pricePerU;
-
-  // Temporarily write total into the field so _origSubmitEntry picks it up
-  const costInp = document.getElementById('entryCost');
-  const saved   = costInp ? costInp.value : '';
-  if (costInp) costInp.value = totalCost > 0 ? totalCost : '';
-
-  await _origSubmitEntry();
-
-  // Restore original value (modal will be closed anyway, just safety)
-  if (costInp) costInp.value = saved;
-};
-
 init();
 </script>
 </body>
