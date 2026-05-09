@@ -92,22 +92,35 @@ export function renderNotifications(items, container) {
     };
     const { icon, cls } = iconMap[item.type] || { icon: '🔔', cls: 'notif-icon-login' };
 
-    // Dynamic Action Buttons
     let actionButtons = '';
-    if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
+    
+    // NEW: Handle the review_delete request (Warehouse Deletion)
+    if (item.type === 'review_delete') {
+        actionButtons = `
+            <div style="margin-top: 12px;">
+                <button onclick="window.location.href='inventory.html?review_delete=${item.id}'" style="width:100%; padding:8px 16px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(79,70,229,0.25); transition:all 0.2s;">Review Request →</button>
+            </div>
+        `;
+    } 
+    // Handle Calendar Events
+    else if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
       actionButtons = `
         <div style="margin-top: 8px; display: flex; gap: 8px;">
           <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
           <button class="btn btn-xs btn-primary" onclick="window.location.href='calendar.html?date=${item.eventDate || ''}'">(Open in app)</button>
         </div>
       `;
-    } else if (item.type === 'warehouse_request') {
+    } 
+    // Handle Warehouse Creation Requests
+    else if (item.type === 'warehouse_request') {
       actionButtons = `
         <div style="margin-top: 12px;">
             <button onclick="window.viewWarehouseReq('${item.id}')" style="width:100%; padding:8px 16px; background:#10B981; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.25); transition:all 0.2s;">Review Request →</button>
         </div>
       `;
-    } else {
+    } 
+    // Default Dismiss for all others
+    else {
       actionButtons = `
         <div style="margin-top: 8px;">
             <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
