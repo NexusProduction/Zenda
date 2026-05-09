@@ -3932,7 +3932,7 @@ function setMM(id,msg,type){const el=document.getElementById(id);if(!el)return;e
     lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
   }, { passive: true });
 })();
-// ── 1. OWNER: DIRECT DELETION (PERMANENT HARD-DELETE) ──
+// ── 1. OWNER: DIRECT DELETION (CLEAN SUMMARY ROWS) ──
 window.confirmDelWH = async function() {
   const btn = document.getElementById('delWhBtn');
   btn.disabled = true; btn.textContent = 'Deleting...';
@@ -3950,17 +3950,35 @@ window.confirmDelWH = async function() {
     const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     entSnap.docs.forEach(d => batch.delete(d.ref));
 
-    // 3. Expense App Sync: Permanent Hard-Delete!
+    // 3. Expense App Sync: Merge & Delete
     if (document.getElementById('delWhExpSyncToggle')?.checked && productIds.length > 0) {
         const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
+        let totalExp = 0; let totalInc = 0;
         
         expSnap.docs.forEach(d => {
             const data = d.data();
             if (productIds.includes(data.productId)) {
-                // Completely obliterates the expense from the database!
-                batch.delete(d.ref);
+                if (data.type === 'income') totalInc += Number(data.amount) || 0;
+                else totalExp += Number(data.amount) || 0;
+                batch.delete(d.ref); // Completely erase individual line!
             }
         });
+        
+        // Create clean summary entries in 'Inventory Stock' with NO usernames
+        if (totalExp > 0) {
+            batch.set(doc(collection(db, 'expenses')), {
+                type: 'expense', amount: totalExp, category: 'Inventory Stock', paymentMethod: 'System',
+                description: `Warehouse Deleted: ${whName} (Expenses)`, companyId: CU.companyId,
+                createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
+            });
+        }
+        if (totalInc > 0) {
+            batch.set(doc(collection(db, 'expenses')), {
+                type: 'income', amount: totalInc, category: 'Inventory Stock', paymentMethod: 'System',
+                description: `Warehouse Deleted: ${whName} (Income)`, companyId: CU.companyId,
+                createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
+            });
+        }
     }
     
     // 4. Delete warehouse & sweep out pending requests
@@ -3970,127 +3988,13 @@ window.confirmDelWH = async function() {
     
     await batch.commit();
     window.closeM('m-del-wh');
-    window.showToast('Warehouse & expenses cleanly removed.', 'success');
+    window.showToast('Warehouse deleted & expenses merged.', 'success');
     showView('dash'); 
   } catch(e) { document.getElementById('delWhErr').textContent = 'Failed: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Confirm Delete';
 };
 
-// ── 2. STAFF: SEND REQUEST WITH TOTAL IN/OUT DATA & EXPENSE TOGGLE ──
-window.sendWHDeleteRequest = async function() {
-  const reason = document.getElementById('reqDelReason').value.trim();
-  const errEl = document.getElementById('reqDelErr'); errEl.textContent = '';
-  // Capture if the staff wants to merge expenses
-  const mergeExp = document.getElementById('reqDelExpSyncToggle')?.checked || false;
-
-  if(reason.length < 5) {
-    errEl.innerHTML = '<div style="margin-bottom:12px;">⚠ Please provide a reason (at least 5 characters).</div>';
-    const txtBox = document.getElementById('reqDelReason');
-    if (txtBox) { txtBox.style.borderColor = 'var(--red)'; txtBox.style.backgroundColor = '#FEF2F2'; setTimeout(() => { txtBox.style.borderColor = 'var(--border)'; txtBox.style.backgroundColor = 'var(--bg-canvas)'; }, 2000); }
-    return; 
-  }
-
-  const btn = document.getElementById('reqDelBtn');
-  btn.disabled = true; btn.textContent = 'Sending...';
-
-  try {
-    const whObj = WHs.find(w => w.id === curWH);
-    if (!CU.ownerId) throw new Error("Owner ID not found.");
-    
-    // Calculate accurate totals to send to the owner
-    const prodSnap = await getDocs(query(collection(db,'products'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
-    const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
-    
-    let totalIn = 0; let totalOut = 0;
-    entSnap.docs.forEach(d => {
-        const e = d.data();
-        if(!e.deleted) {
-            if(e.type === 'IN') totalIn += Number(e.qtyBase || e.qty || 0);
-            if(e.type === 'OUT') totalOut += Number(e.qtyBase || e.qty || 0);
-        }
-    });
-
-    const notifDoc = doc(collection(db, 'users', CU.ownerId, 'notifications'));
-    await setDoc(notifDoc, {
-      type: 'warehouse_delete_request',
-      message: `${CU.name} requested to delete warehouse: "${whObj.name}"`,
-      actionText: 'Review Request',
-      actionUrl: `inventory.html?review_delete=${notifDoc.id}`,
-      // Send the staff's mergeExpenses toggle choice to the owner
-      warehouseData: { id: curWH, name: whObj.name, productCount: prodSnap.size, totalIn: totalIn, totalOut: totalOut, reason: reason, mergeExpenses: mergeExp, companyId: CU.companyId, requestedBy: CU.uid },
-      actorId: CU.uid, actorName: CU.name, read: false, status: 'pending', createdAt: Date.now()
-    });
-
-    window.closeM('m-req-del-wh');
-    window.showToast('Deletion request sent to Owner', 'success');
-  } catch(e) { errEl.textContent = '❌ Failed: ' + e.message; }
-  btn.disabled = false; btn.textContent = 'Send Request';
-};
-
 // ── 3. OWNER: REVIEW & APPROVE STAFF REQUEST WITH TOGGLE ──
-window.viewWarehouseDeleteReq = function(notifId) {
-    const notif = window.pendingWarehouses[notifId];
-    if(!notif || !notif.warehouseData) return;
-    const data = notif.warehouseData;
-    const requesterName = notif.actorName ? notif.actorName.replace(/</g, "&lt;").replace(/>/g, "&gt;") : 'Staff Member';
-
-    const overlay = document.createElement('div');
-    overlay.id = `wh-del-modal-${notifId}`;
-    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:99999; animation: fadeIn 0.2s ease-out; padding: 16px; transition: opacity 0.25s ease;';
-    
-    overlay.innerHTML = `
-        <div class="wh-modal-content" style="background:var(--white-pure); border-radius:24px; width:100%; max-width:400px; box-shadow:0 32px 80px rgba(0,0,0,0.3); overflow:hidden; transform: scale(0.95); animation: toastIn 0.3s forwards; transition: transform 0.25s ease, opacity 0.25s ease;">
-            <div style="background: linear-gradient(135deg, #EF4444, #B91C1C); height: 65px; position: relative;"></div>
-            <div style="padding: 0 32px 32px; text-align: center; position: relative;">
-                <div style="width: 68px; height: 68px; background: #fff; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: -34px auto 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.08); border: 4px solid var(--white-pure); position: relative; z-index: 2;">🗑️</div>
-                <h3 style="margin:0 0 4px; font-size:1.35rem; color:var(--text-1); font-weight:800; letter-spacing:-0.02em;">Delete Warehouse</h3>
-                <p style="margin:0 0 24px; color:var(--text-3); font-size:0.9rem; font-weight:600;">Requested by <span style="color:var(--text-1);">${requesterName}</span></p>
-                
-                <div style="background: var(--bg-canvas); border-radius: 16px; padding: 12px 24px; border: 1px solid var(--border); text-align: left; display: flex; flex-direction: column;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--border);">
-                        <div style="font-size:0.75rem; color:var(--text-3); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Name</div>
-                        <div style="font-size:0.95rem; color:var(--text-1); font-weight:800; text-align:right; max-width:65%; word-break:break-word;">${esc(data.name)}</div>
-                    </div>
-                    
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--border);">
-                        <div style="font-size:0.75rem; color:var(--text-3); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Activity</div>
-                        <div style="font-size:0.85rem; font-weight:800; text-align:right; line-height: 1.5;">
-                            <span style="color:var(--text-1)">${data.productCount || 0} Products</span><br>
-                            <span style="color:var(--green)">+${data.totalIn || 0} IN</span> • <span style="color:var(--red)">-${data.totalOut || 0} OUT</span>
-                        </div>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0;">
-                        <div style="font-size:0.75rem; color:var(--text-3); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Reason</div>
-                        <div style="color:var(--text-1); font-size:0.85rem; font-weight:600; text-align:right; max-width:65%; word-break:break-word;">"${esc(data.reason || 'No reason provided')}"</div>
-                    </div>
-                </div>
-
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--white-cool); border: 2px solid var(--border-strong); border-radius: 12px; margin-top: 16px;">
-                  <span style="font-family: var(--f-display); font-weight: 800; font-size: 13px; color: var(--text-1);">Merge Expenses</span>
-                  <label class="tgl" style="transform: scale(0.85); margin: 0;"><input type="checkbox" id="approveExpSyncToggle-${notifId}" checked><span class="tgl-sl"></span></label>
-                </div>
-            </div>
-
-            <div style="padding: 0 32px 32px; display:flex; gap:12px;">
-                <button onclick="window.declineWarehouseDeleteReq('${notifId}'); this.closest('#wh-del-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--white-pure); color:var(--text-1); border:1.5px solid var(--border); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--bg-canvas)';" onmouseout="this.style.background='var(--white-pure)';">Decline</button>
-                <button onclick="window.approveWarehouseDeleteReq('${notifId}'); this.closest('#wh-del-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--red); color:#fff; border:none; box-shadow:0 4px 12px rgba(239,68,68,0.3); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">Approve</button>
-            </div>
-        </div>
-    `;
-    
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            overlay.style.opacity = '0';
-            const content = overlay.querySelector('.wh-modal-content');
-            if(content) { content.style.transform = 'scale(0.9)'; content.style.opacity = '0'; }
-            setTimeout(() => overlay.remove(), 250);
-        }
-    });
-    document.body.appendChild(overlay);
-};
-
-// ── 3. OWNER: REVIEW & APPROVE STAFF REQUEST WITH TOGGLE (HARD-DELETE) ──
 window.approveWarehouseDeleteReq = async function(notifId) {
     const notif = window.pendingWarehouses[notifId];
     if(!notif || !notif.warehouseData) return;
@@ -4113,17 +4017,34 @@ window.approveWarehouseDeleteReq = async function(notifId) {
         const entSnap = await getDocs(query(collection(db,'entries'), where('godownId','==',whId)));
         entSnap.docs.forEach(d => batch.delete(d.ref));
         
-        // 3. Expense App Sync: Permanent Hard-Delete!
+        // 3. Expense App Sync: Merge & Delete
         if (mergeExpenses && productIds.length > 0) {
             const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
+            let totalExp = 0; let totalInc = 0;
             
             expSnap.docs.forEach(d => {
                 const data = d.data();
                 if (productIds.includes(data.productId)) {
-                    // Completely obliterates the expense from the database!
+                    if (data.type === 'income') totalInc += Number(data.amount) || 0;
+                    else totalExp += Number(data.amount) || 0;
                     batch.delete(d.ref);
                 }
             });
+            
+            if (totalExp > 0) {
+                batch.set(doc(collection(db, 'expenses')), {
+                    type: 'expense', amount: totalExp, category: 'Inventory Stock', paymentMethod: 'System',
+                    description: `Warehouse Deleted: ${whName} (Expenses)`, companyId: CU.companyId,
+                    createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
+                });
+            }
+            if (totalInc > 0) {
+                batch.set(doc(collection(db, 'expenses')), {
+                    type: 'income', amount: totalInc, category: 'Inventory Stock', paymentMethod: 'System',
+                    description: `Warehouse Deleted: ${whName} (Income)`, companyId: CU.companyId,
+                    createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
+                });
+            }
         }
         
         // 4. Delete warehouse and notification
@@ -4133,11 +4054,11 @@ window.approveWarehouseDeleteReq = async function(notifId) {
         
         if (notif.actorId) {
             await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
-                type: 'system', message: `Your request to delete warehouse "${whName}" was approved and executed.`, read: false, createdAt: Date.now()
+                type: 'system', message: `Your request to delete warehouse "${whName}" was approved.`, read: false, createdAt: Date.now()
             });
         }
         
-        if (window.showToast) window.showToast("Warehouse completely removed!", "success");
+        if (window.showToast) window.showToast("Warehouse deleted & expenses merged!", "success");
         if (curWH === whId) window.goBack(); else loadWHs();
     } catch(e) { console.error(e); if (window.showToast) window.showToast("Failed to delete warehouse.", "error"); }
 };
