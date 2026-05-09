@@ -3627,7 +3627,6 @@ function triggerLimitFeedback(btn) {
     window.showToast('Maximum 6 conversions allowed.', 'error');
   }
 }
-
 // Automatically dulls the button when limit is hit
 function updateBtnDullState(rows, btn) {
   if (!rows || !btn) return;
@@ -3637,6 +3636,167 @@ function updateBtnDullState(rows, btn) {
     btn.classList.remove('disabled-dull', 'limit-bounce');
   }
 }
+
+// --- MISSING MODAL & ENTRY FUNCTIONS RESTORED ---
+window.openAddProd = function() {
+  if(CU.role !== 'owner' && CU.role !== 'manager') {
+    window.showToast('Only managers and owners can add products.', 'error');
+    return;
+  }
+  document.getElementById('pn').value = '';
+  document.getElementById('pdesc').value = '';
+  document.getElementById('ps').value = '';
+  document.getElementById('pu_fixed').value = 'Piece';
+  document.getElementById('unit-lbl').textContent = 'Piece';
+  document.getElementById('unit-icon').innerHTML = window.getExtIcon('puzzle');
+  
+  const expBlock = document.getElementById('addProdExpenseBlock');
+  if (expBlock) expBlock.style.display = 'none';
+  const tgl = document.getElementById('addProdExpTgl');
+  if (tgl) tgl.checked = false;
+  window.toggleExpFields(tgl || {checked: false});
+  
+  const convTgl = document.getElementById('addProdConvTgl');
+  if (convTgl) convTgl.checked = false;
+  const convBldr = document.getElementById('addProdConvBuilder');
+  if (convBldr) convBldr.style.display = 'none';
+  const convRows = document.getElementById('addProdConvRows');
+  if (convRows) convRows.innerHTML = '';
+  
+  setMM('prodMsg', '', '');
+  window.openM('m-prod');
+};
+
+window.openEntry = function(type) {
+  eType = type;
+  document.getElementById('eq').value = '';
+  document.getElementById('en').value = '';
+  document.getElementById('entryCost').value = '';
+  document.getElementById('convPreview').style.display = 'none';
+  setMM('entryMsg', '', '');
+  
+  document.getElementById('ettIn').classList.toggle('on', type === 'IN');
+  document.getElementById('ettOut').classList.toggle('on', type === 'OUT');
+  
+  const tgl = document.getElementById('logExpenseTgl');
+  if (tgl) tgl.checked = false;
+  document.getElementById('expenseFields').style.display = 'none';
+  
+  selUnit = curProd.unit || 'Piece';
+  document.getElementById('entry-unit-lbl').textContent = selUnit;
+  
+  const dd = document.getElementById('entry-unit-dd');
+  let opts = [curProd.unit || 'Piece'];
+  if(curProd.conversions) {
+    opts = opts.concat(curProd.conversions.map(c => c.name));
+  }
+  if(dd) {
+    dd.innerHTML = opts.map(u => `
+      <div class="cat-opt" style="padding: 12px 16px;" onclick="window.selectEntryUnit('${u}')">
+        <span class="copt-name" style="font-size: 14px; font-weight: 700; color: var(--text-1);">${u}</span>
+      </div>
+    `).join('');
+  }
+  
+  window.openM('m-entry');
+};
+
+window.setET = function(type) {
+  eType = type;
+  document.getElementById('ettIn').classList.toggle('on', type === 'IN');
+  document.getElementById('ettOut').classList.toggle('on', type === 'OUT');
+  window.calcEntryTotal();
+};
+
+window.selectEntryUnit = function(u) {
+  selUnit = u;
+  document.getElementById('entry-unit-lbl').textContent = u;
+  document.getElementById('entry-unit-dd').style.display = 'none';
+  window.updateConvPreview();
+  window.calcEntryTotal();
+};
+
+window.toggleEntryUnitDD = function() {
+  const dd = document.getElementById('entry-unit-dd');
+  dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+};
+
+window.updateConvPreview = function() {
+  const qtyRaw = parseFloat(document.getElementById('eq').value) || 0;
+  const preview = document.getElementById('convPreview');
+  if (!qtyRaw || selUnit === (curProd.unit || 'Piece')) {
+     preview.style.display = 'none';
+     return;
+  }
+  const conv = (curProd.conversions || []).find(c => c.name === selUnit);
+  const ratio = conv ? conv.ratio : 1;
+  const baseQty = +(qtyRaw * ratio).toFixed(4);
+  preview.textContent = "= " + baseQty + " " + (curProd.unit || 'Piece') + " (Base)";
+  preview.style.display = 'block';
+};
+
+window.calcEntryTotal = function() {
+   const qty = parseFloat(document.getElementById('eq').value) || 0;
+   const cost = parseFloat(document.getElementById('entryCost').value) || 0;
+   const total = qty * cost;
+   const lbl = document.getElementById('entryTotalCalc');
+   if(lbl) lbl.textContent = "Total: ₹ " + total.toFixed(2);
+   const uLbl = document.getElementById('entryCostUnitLbl');
+   if(uLbl) uLbl.textContent = selUnit || 'unit';
+};
+
+window.viewDelReason = async function(id) {
+   const entry = window.currentEntries.find(e => e.id === id);
+   if(!entry) return;
+   document.getElementById('drDeletedBy').textContent = entry.deletedByName || 'Unknown';
+   document.getElementById('drReason').textContent = entry.deleteReason || 'No reason provided';
+   
+   const dObj = typeof entry.deletedAt?.toDate === 'function' ? entry.deletedAt.toDate() : new Date(entry.deletedAt);
+   document.getElementById('drTime').textContent = dObj.toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+   window.openM('m-del-reason');
+};
+
+window.sendWHDeleteRequest = async function() {
+  const reason = document.getElementById('reqDelReason').value.trim();
+  const errEl = document.getElementById('reqDelErr');
+  if (reason.length < 10) {
+    errEl.textContent = 'Reason must be at least 10 characters.';
+    return;
+  }
+  
+  const btn = document.getElementById('reqDelBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  
+  try {
+    if (CU.ownerId) {
+      const syncTgl = document.getElementById('reqDelExpSyncToggle');
+      await addDoc(collection(db, 'users', CU.ownerId, 'notifications'), {
+        type: 'review_delete',
+        status: 'pending',
+        actorId: CU.uid,
+        actorName: CU.name,
+        message: `${CU.name} requested to delete warehouse "${WHs.find(w => w.id === curWH)?.name || 'Unknown'}".`,
+        warehouseData: {
+           id: curWH,
+           name: WHs.find(w => w.id === curWH)?.name || 'Unknown',
+           reason: reason,
+           syncExpense: syncTgl ? syncTgl.checked : true
+        },
+        createdAt: serverTimestamp()
+      });
+      window.showToast("Deletion request sent to owner.", "success");
+      window.closeM('m-req-del-wh');
+    } else {
+      window.showToast("Owner not found.", "error");
+    }
+  } catch (e) {
+    errEl.textContent = 'Failed: ' + e.message;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Send Request';
+};
+
 window.addProduct=async function(){
   const name=document.getElementById('pn').value.trim();
   const emoji=window._aiEmoji||'package';
