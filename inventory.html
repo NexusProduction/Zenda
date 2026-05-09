@@ -2858,26 +2858,41 @@ async function init(){
   }
 
   const reviewTarget = new URLSearchParams(location.search).get('review_delete');
-  if (reviewTarget && CU.role === 'owner') {
-    getDoc(doc(db, 'users', CU.uid, 'notifications', reviewTarget)).then(snap => {
-      if (snap.exists()) {
-        const nd = snap.data();
-        if (nd.status === 'pending' && nd.warehouseData) {
-          window.openReviewModal(nd.warehouseData.id, nd.warehouseData.name, nd.warehouseData.productCount, nd.warehouseData.reason, snap.id);
-        }
+      if (reviewTarget && CU.role === 'owner') {
+        getDoc(doc(db, 'users', CU.uid, 'notifications', reviewTarget)).then(snap => {
+          if (snap.exists()) {
+            const nd = snap.data();
+            if (nd.status === 'pending' && nd.warehouseData) {
+              window.openReviewModal(nd.warehouseData.id, nd.warehouseData.name, nd.warehouseData.productCount, nd.warehouseData.reason, snap.id);
+            }
+          }
+        });
       }
-    });
-  }
-  showView('dash');
-  loadWHs();
-  // Removed crashing 'listenProductsLive' and 'listenTodayEntries' ghost functions
-  setupUnitDropdowns();
-}
+      showView('dash');
+      loadWHs();
+      // Removed ghost functions that were crashing the script
+      setupUnitDropdowns();
+    }
 
 function setSyncBadge(type,text){
   syncEl.className='sync-badge '+type;
   syncEl.innerHTML=text;
 }
+
+// CRITICAL FIX: These prevent the list from crashing when rendering text/dates
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function ago(dateInput) {
+    if (!dateInput) return '';
+    const d = typeof dateInput.toDate === 'function' ? dateInput.toDate() : new Date(dateInput);
+    const now = new Date();
+    const diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    if (diff < 2592000) return Math.floor(diff / 86400) + 'd ago';
+    return d.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+}
+
 // ── VIEWS ──
 function showView(v){document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));document.getElementById('v-'+v).classList.add('active');}
 window.goBack = function() {
