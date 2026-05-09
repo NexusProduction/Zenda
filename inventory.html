@@ -3639,46 +3639,23 @@ window.addProduct=async function(){
   const minRaw = pminEl ? pminEl.value : '';
   const minStock = minRaw !== '' ? parseFloat(minRaw) : undefined;
 
-// ✅ FIX: Changes 'const' to 'let' and forcefully disables expense syncing for free users
   let logExpense = document.getElementById('addProdExpTgl')?.checked;
-  if (!CU.isPremium) logExpense = false;  const pricePerUnit = parseFloat(document.getElementById('addProdCost')?.value) || 0;
+  if (!CU.isPremium) logExpense = false;  
+  const pricePerUnit = parseFloat(document.getElementById('addProdCost')?.value) || 0;
   const expCat = document.getElementById('addProdExpCat')?.value || 'Inventory Stock';
-  
-  // ✅ FIX: Grab the payment method value
   const payMethod = document.getElementById('addProdPayMethod')?.value || 'Cash';
 
-  // NEW STRICT VALIDATIONS
-  if(!name || name.length > 20){
-    setMM('prodMsg','⚠ Name must be 1 to 20 characters.','err');
-    return;
-  }
-  if(!desc || desc.length < 5 || desc.length > 25){
-    setMM('prodMsg','⚠ Description must be 5 to 25 characters.','err');
-    return;
-  }
-  if(stockVal === ''){
-    setMM('prodMsg','⚠ Opening stock is required.','err');
-    return;
-  }
+  if(!name || name.length > 20){ setMM('prodMsg','⚠ Name must be 1 to 20 characters.','err'); return; }
+  if(!desc || desc.length < 5 || desc.length > 25){ setMM('prodMsg','⚠ Description must be 5 to 25 characters.','err'); return; }
+  if(stockVal === ''){ setMM('prodMsg','⚠ Opening stock is required.','err'); return; }
   
   const stock = parseFloat(stockVal);
-  if(stock < 0){
-    setMM('prodMsg','⚠ Opening stock cannot be negative.','err');
-    return;
-  }
-// NEW: Maximum 8 digits allowed (99,999,999)
-  if(stock > 99999999){
-    setMM('prodMsg','⚠ Maximum opening stock is 8 digits.','err');
-    return;
-  }
+  if(stock < 0){ setMM('prodMsg','⚠ Opening stock cannot be negative.','err'); return; }
+  if(stock > 99999999){ setMM('prodMsg','⚠ Maximum opening stock is 8 digits.','err'); return; }
   
-  // Real Math calculation for the database
   const cost = stock * pricePerUnit;
 
-  if(logExpense && cost <= 0) {
-    setMM('prodMsg','⚠ Enter a valid price per unit for the expense.','err');
-    return;
-  }
+  if(logExpense && cost <= 0) { setMM('prodMsg','⚠ Enter a valid price per unit for the expense.','err'); return; }
 
   let convs=[];
   if(document.getElementById('addProdConvTgl')?.checked){
@@ -3705,14 +3682,14 @@ window.addProduct=async function(){
         productId:pRef.id,godownId:curWH,companyId:cid,who:CU.name||'Owner',createdBy:CU.uid,deleted:false,createdAt:serverTimestamp()
       });
 
-      // 3. Create linked Expense (if toggled ON)
+      // 3. Create linked Expense with EXACT Naming Format!
       if (logExpense && cost > 0) {
         await addDoc(collection(db,'expenses'), {
           type: 'expense',
           amount: Number(cost),
           category: expCat,
-          paymentMethod: payMethod, // ✅ FIX: Push Payment Method to Database!
-          description: name + ' (Opening Stock)',
+          paymentMethod: payMethod,
+          description: `${name} Stock IN ${stock} ${unit}`,
           relatedEntryId: entryRef.id,
           productId: pRef.id,
           companyId: cid,
@@ -3730,579 +3707,31 @@ window.addProduct=async function(){
     setMM('prodMsg','❌ Failed: '+e.message,'err');
   }
 };
-function getConvRowsFixedDataFromAdd(){const rows=document.querySelectorAll('#addProdConvRows .conv-row-fixed');const convs=[];const seen=new Set();for(const row of rows){const mult=parseFloat(row.querySelector('.mult-inp').value);const altUnit=row.querySelector('.alt-unit-sel').value;if(seen.has(altUnit)||!mult||mult<=0||!altUnit)return null;seen.add(altUnit);convs.push({name:altUnit,ratio:mult});}return convs;}
-
-window.createWH = async function(){
-  // Premium Limit Check (1 Warehouse for Free users)
-  if (!CU.isPremium && WHs.length >= 1) {
-    window.closeM('m-wh');
-    window.showToast('Free plan limited to 1 warehouse. Please upgrade.', 'error');
-    setTimeout(() => {
-      window.location.href = 'subscription.html';
-    }, 1500);
-    return;
-  }
-
-  const nameInp = document.getElementById('wn');
-  const locInp = document.getElementById('wl');
-  const customInp = document.getElementById('wcc-custom');
-  const name = nameInp.value.trim();
-  const loc = locInp.value.trim();
-  const raw = document.getElementById('wc').value;
-  const cat = raw === 'Other...' ? (customInp.value.trim() || 'Other') : raw;
-  const msgEl = document.getElementById('whMsg');
-  
-  // Reset styles
-  nameInp.style.borderColor = 'var(--border)';
-  locInp.style.borderColor = 'var(--border)';
-  msgEl.style.color = 'var(--red)';
-  msgEl.textContent = '';
-
-  // 1. Mandatory Check
-  if(!name || !loc){
-    if(!name) nameInp.style.borderColor = 'var(--red)';
-    if(!loc) locInp.style.borderColor = 'var(--red)';
-    msgEl.textContent = '⚠ Both name and location are required.';
-    return;
-  }
-  
-  // 2. Length Validation (5-20 chars)
-  if(name.length < 5 || name.length > 20) {
-    nameInp.style.borderColor = 'var(--red)';
-    msgEl.textContent = '⚠ Name must be between 5 and 20 characters.';
-    return;
-  }
-  if(loc.length < 5 || loc.length > 20) {
-    locInp.style.borderColor = 'var(--red)';
-    msgEl.textContent = '⚠ Location must be between 5 and 20 characters.';
-    return;
-  }
-  
-  msgEl.style.color = 'var(--text-3)';
-  msgEl.textContent = CU.role === 'owner' ? 'Creating…' : 'Sending Request…';
-  
-  try {
-    const cid = CU.companyId;
-    
-    if (CU.role === 'owner') {
-      // 1. Direct Creation for Owners
-      await addDoc(collection(db,'godowns'),{name,location:loc,category:cat,companyId:cid,createdBy:CU.uid,createdAt:new Date().toISOString()});
-      window.showToast('Warehouse created', 'success'); // Removed duplicate tick
-    } else {
-      // 2. Notification Request for Staff
-      if (!CU.ownerId) throw new Error("Owner ID not found.");
-      
-      const notifRef = collection(db, 'users', CU.ownerId, 'notifications');
-      await addDoc(notifRef, {
-        type: 'warehouse_request',
-        message: `${CU.name} wants to add a new warehouse: "${name}"`,
-        warehouseData: { name: name, location: loc, category: cat, companyId: cid, createdBy: CU.uid },
-        actorId: CU.uid,
-        actorName: CU.name,
-        read: false,
-        status: 'pending',
-        createdAt: Date.now()
-      });
-      window.showToast('Request sent to Owner', 'success'); // Removed duplicate tick
-    }
-
-    // FULL Cleanup & Close (Including Custom Category Field)
-    ['wn','wl','wcc-custom'].forEach(id => { 
-      const el = document.getElementById(id);
-      if(el) { el.value = ''; el.style.borderColor = 'var(--border)'; }
-    });
-    
-    // Reset Custom Input Visibility & Data
-    if (customInp) customInp.style.display = 'none';
-    document.getElementById('wh-category').value = 'General Storage';
-    document.getElementById('wc').value = 'General Storage';
-    
-    // Reset UI Dropdown visually back to default
-    document.getElementById('wh-cpt-icon').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3" ry="3"/></svg>';
-    document.getElementById('wh-cpt-icon').style.background = '#EEF2FF';
-    document.getElementById('wh-cpt-icon').style.color = '#4F46E5';
-    document.getElementById('wh-cpt-label').textContent = 'General Storage';
-
-    msgEl.textContent = '';
-    window.closeM('m-wh');
-    
-  } catch(e) {
-    msgEl.style.color = 'var(--red)';
-    msgEl.textContent = '❌ Failed: ' + e.message;
-  }
-};
-window.openLowStockModal=function(){
-  const list=document.getElementById('lowStockList');
-  if(lowStockGlobal.length===0){
-    list.innerHTML='<div style="text-align:center;color:var(--text-3);padding:24px;font-size:14px;font-weight:600">No products currently low.</div>';
-  } else {
-    list.innerHTML=lowStockGlobal.map(p=>{
-      // Safely hide the "Min: undefined" text if it doesn't exist
-      const minTxt = (p.minStock !== undefined && p.minStock !== null) ? `<span style="opacity:0.4;margin:0 6px">•</span> <span style="color:var(--text-3)">Min: ${p.minStock}</span>` : '';
-      
-      return `
-      <div class="low-stock-item" onclick="window.routeToProduct('${p.godownId}', '${p.id}')">
-        <div style="display:flex;align-items:center;gap:14px">
-          <div style="background:white;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;box-shadow:0 4px 10px rgba(220,38,38,0.15);padding:10px;box-sizing:border-box;">${window.getExtIcon(p.emoji)}</div>
-          <div>
-            <div style="font-family:var(--f-display);font-weight:800;color:var(--text-1);font-size:15px;margin-bottom:1px;text-transform:capitalize;">${esc(p.name)}</div>
-            <div style="font-size:0.85rem;font-family:var(--f-body);font-weight:700;color:var(--red);">Stock: <span style="font-size:0.9rem;font-weight:800;">${p.stock}</span> ${esc(p.unit)} ${minTxt}</div>
-          </div>
-        </div>
-        <button class="btn-black" style="padding:8px 16px; border-radius:10px; width:auto; font-size:13px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); pointer-events:none;">View</button>
-      </div>
-    `}).join('');
-  }
-  window.openM('m-low-stock');
-};
-
-// Bulletproof Routing & Fog Animation Function
-window.routeToProduct = async function(whId, pId) {
-  window.closeM('m-low-stock');
-  
-  // Safely open the warehouse, then the product page
-  await window.openWH({id: whId});
-  await window.openProd(pId);
-  
-  // Apply the Fog Highlight Animation
-  setTimeout(() => {
-    const hero = document.querySelector('.pd-hero');
-    if (hero) {
-      hero.classList.remove('focus-fog');
-      void hero.offsetWidth; // Restart animation
-      hero.classList.add('focus-fog');
-    }
-  }, 50);
-};
-
-function listenProductsLive(){
-  const cid=CU.companyId;if(!cid)return;
-  if(prodsListener)prodsListener();
-  prodsListener=onSnapshot(query(collection(db,'products'),where('companyId','==',cid)),snap=>{
-    const prds=snap.docs.map(d=>d.data());
-    const sP=document.getElementById('sProds');if(sP)sP.textContent=prds.length;
-    const sPm=document.getElementById('sProdsm');if(sPm)sPm.textContent=prds.length;
-    const low=prds.filter(p=>p.minStock!=null?p.stock<=p.minStock:p.stock<=0);
-    lowStockGlobal=low;
-    const sL=document.getElementById('sLow');if(sL)sL.textContent=low.length;
-    const sLm=document.getElementById('sLowm');if(sLm)sLm.textContent=low.length;
-    const la=document.getElementById('lowAlert');
-    if(la){
-      if(low.length){
-        la.classList.add('show');
-        const dTxt = document.getElementById('lowTxtDesk');
-        const mTxt = document.getElementById('lowTxtMob');
-        if(dTxt) dTxt.textContent=`${low.length} product${low.length>1?'s':''} below minimum stock.`;
-        if(mTxt) mTxt.textContent=`${low.length} minimum Product`;
-      }else{
-        la.classList.remove('show');
-      }
-    }
-  },()=>{});
-}
-function listenTodayEntries(){
-  const cid=CU.companyId;if(!cid)return;const today=new Date();today.setHours(0,0,0,0);
-  onSnapshot(query(collection(db,'entries'),where('companyId','==',cid)),snap=>{
-    const count=snap.docs.filter(d=>{const e=d.data();if(e.deleted||e.isActivity)return false;const ts=e.createdAt?.toDate?e.createdAt.toDate():new Date(e.createdAt||0);return ts>=today;}).length;
-    const sE=document.getElementById('sEnt');if(sE)sE.textContent=count;
-    const sEm=document.getElementById('sEntm');if(sEm)sEm.textContent=count;
-  },()=>{});
-}
-
-// ── UTILS ──
-function ago(iso){if(!iso)return'';const ts=iso?.toDate?iso.toDate():new Date(iso);const d=Date.now()-ts;if(d<60000)return'just now';if(d<3600000)return Math.floor(d/60000)+'m ago';if(d<86400000)return Math.floor(d/3600000)+'h ago';return ts.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}
-function esc(s=''){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function setMM(id,msg,type){const el=document.getElementById(id);if(!el)return;el.textContent=msg;el.className='mmsg'+(type==='err'?' err':'');}
-// --- SMART SCROLL APPBAR ---
-(function() {
-  const appbar = document.getElementById('appbar');
-  let lastScrollY = window.scrollY || 0;
-  
-  window.addEventListener('scroll', () => {
-    const currentScrollY = window.scrollY || document.documentElement.scrollTop;
-    
-    if (currentScrollY <= 0) {
-      appbar.classList.remove('nav-hidden'); // Always show at the absolute top
-    } else if (currentScrollY > lastScrollY && currentScrollY > 60) {
-      appbar.classList.add('nav-hidden'); // Hide when scrolling down
-    } else if (currentScrollY < lastScrollY) {
-      appbar.classList.remove('nav-hidden'); // Show instantly when scrolling up
-    }
-    
-    lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
-  }, { passive: true });
-})();
-// ── 1. OWNER: DIRECT DELETION (CLEAN SUMMARY ROWS) ──
-window.confirmDelWH = async function() {
-  const btn = document.getElementById('delWhBtn');
-  btn.disabled = true; btn.textContent = 'Deleting...';
-  try {
-    const batch = writeBatch(db);
-    const whObj = WHs.find(w => w.id === curWH);
-    const whName = whObj ? whObj.name : 'Warehouse';
-    
-    // 1. Get & Delete all products
-    const prodSnap = await getDocs(query(collection(db,'products'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
-    const productIds = [];
-    prodSnap.docs.forEach(d => { productIds.push(d.id); batch.delete(d.ref); });
-    
-    // 2. Delete all entries
-    const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
-    entSnap.docs.forEach(d => batch.delete(d.ref));
-
-    // 3. Expense App Sync: Merge & Delete
-    if (document.getElementById('delWhExpSyncToggle')?.checked && productIds.length > 0) {
-        const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
-        let totalExp = 0; let totalInc = 0;
-        
-        expSnap.docs.forEach(d => {
-            const data = d.data();
-            if (productIds.includes(data.productId)) {
-                if (data.type === 'income') totalInc += Number(data.amount) || 0;
-                else totalExp += Number(data.amount) || 0;
-                batch.delete(d.ref); // Completely erase individual line!
-            }
-        });
-        
-        // Create clean summary entries in 'Inventory Stock' with NO usernames
-        if (totalExp > 0) {
-            batch.set(doc(collection(db, 'expenses')), {
-                type: 'expense', amount: totalExp, category: 'Inventory Stock', paymentMethod: 'System',
-                description: `Warehouse Deleted: ${whName} (Expenses)`, companyId: CU.companyId,
-                createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
-            });
-        }
-        if (totalInc > 0) {
-            batch.set(doc(collection(db, 'expenses')), {
-                type: 'income', amount: totalInc, category: 'Inventory Stock', paymentMethod: 'System',
-                description: `Warehouse Deleted: ${whName} (Income)`, companyId: CU.companyId,
-                createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
-            });
-        }
-    }
-    
-    // 4. Delete warehouse & sweep out pending requests
-    batch.delete(doc(db,'godowns',curWH));
-    const dupeSnap = await getDocs(query(collection(db, 'users', CU.uid, 'notifications'), where('type', '==', 'warehouse_delete_request')));
-    dupeSnap.docs.forEach(d => { if (d.data().warehouseData?.id === curWH) batch.delete(d.ref); });
-    
-    await batch.commit();
-    window.closeM('m-del-wh');
-    window.showToast('Warehouse deleted & expenses merged.', 'success');
-    showView('dash'); 
-  } catch(e) { document.getElementById('delWhErr').textContent = 'Failed: ' + e.message; }
-  btn.disabled = false; btn.textContent = 'Confirm Delete';
-};
-
-// ── 3. OWNER: REVIEW & APPROVE STAFF REQUEST WITH TOGGLE ──
-window.approveWarehouseDeleteReq = async function(notifId) {
-    const notif = window.pendingWarehouses[notifId];
-    if(!notif || !notif.warehouseData) return;
-    const whId = notif.warehouseData.id;
-    const whName = notif.warehouseData.name;
-    const mergeExpenses = document.getElementById(`approveExpSyncToggle-${notifId}`)?.checked;
-
-    const notifCard = document.querySelector(`.notif-card[data-id="${notifId}"]`);
-    if (notifCard) { notifCard.classList.add('slide-left-out'); setTimeout(() => notifCard.remove(), 350); }
-
-    try {
-        const batch = writeBatch(db);
-        
-        // 1. Delete all products & Store IDs
-        const prodSnap = await getDocs(query(collection(db,'products'), where('godownId','==',whId)));
-        const productIds = [];
-        prodSnap.docs.forEach(d => { productIds.push(d.id); batch.delete(d.ref); });
-        
-        // 2. Delete all entries
-        const entSnap = await getDocs(query(collection(db,'entries'), where('godownId','==',whId)));
-        entSnap.docs.forEach(d => batch.delete(d.ref));
-        
-        // 3. Expense App Sync: Merge & Delete
-        if (mergeExpenses && productIds.length > 0) {
-            const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId', '==', CU.companyId)));
-            let totalExp = 0; let totalInc = 0;
-            
-            expSnap.docs.forEach(d => {
-                const data = d.data();
-                if (productIds.includes(data.productId)) {
-                    if (data.type === 'income') totalInc += Number(data.amount) || 0;
-                    else totalExp += Number(data.amount) || 0;
-                    batch.delete(d.ref);
-                }
-            });
-            
-            if (totalExp > 0) {
-                batch.set(doc(collection(db, 'expenses')), {
-                    type: 'expense', amount: totalExp, category: 'Inventory Stock', paymentMethod: 'System',
-                    description: `Warehouse Deleted: ${whName} (Expenses)`, companyId: CU.companyId,
-                    createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
-                });
-            }
-            if (totalInc > 0) {
-                batch.set(doc(collection(db, 'expenses')), {
-                    type: 'income', amount: totalInc, category: 'Inventory Stock', paymentMethod: 'System',
-                    description: `Warehouse Deleted: ${whName} (Income)`, companyId: CU.companyId,
-                    createdBy: 'SYSTEM', createdByName: 'System Update', date: new Date().toISOString(), createdAt: serverTimestamp()
-                });
-            }
-        }
-        
-        // 4. Delete warehouse and notification
-        batch.delete(doc(db,'godowns',whId));
-        if (auth.currentUser) batch.delete(doc(db, 'users', auth.currentUser.uid, 'notifications', notifId));
-        await batch.commit();
-        
-        if (notif.actorId) {
-            await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
-                type: 'system', message: `Your request to delete warehouse "${whName}" was approved.`, read: false, createdAt: Date.now()
-            });
-        }
-        
-        if (window.showToast) window.showToast("Warehouse deleted & expenses merged!", "success");
-        if (curWH === whId) window.goBack(); else loadWHs();
-    } catch(e) { console.error(e); if (window.showToast) window.showToast("Failed to delete warehouse.", "error"); }
-};
-
-window.declineWarehouseDeleteReq = async function(notifId) {
-    const notif = window.pendingWarehouses[notifId];
-    if(!notif) return;
-
-    const notifCard = document.querySelector(`.notif-card[data-id="${notifId}"]`);
-    if (notifCard) {
-        notifCard.classList.add('slide-left-out');
-        setTimeout(() => notifCard.remove(), 350);
-    }
-
-    try {
-        if (auth.currentUser) {
-            await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'notifications', notifId));
-        }
-        
-        if (notif.actorId && notif.warehouseData) {
-            await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
-                type: 'system',
-                message: `Your request to delete warehouse "${notif.warehouseData.name}" was declined by the owner.`,
-                read: false,
-                createdAt: Date.now()
-            });
-        }
-        
-        if (window.showToast) window.showToast("Delete request declined.", "info");
-    } catch(e) {
-        console.error(e);
-    }
-};
-  window.openEntry = function(type) {
-  if(!curProd) return;
-  eType = type;
-  window.setET(type);
-  document.getElementById('entryTitle').textContent = 'Add Entry';
-  document.getElementById('eq').value = '';
-  document.getElementById('en').value = '';
-  
-  const tgl = document.getElementById('logExpenseTgl');
-  if(tgl) tgl.checked = false;
-  const ef = document.getElementById('expenseFields');
-  if(ef) ef.style.display = 'none';
-  
-  const costInp = document.getElementById('entryCost');
-  const totalEl = document.getElementById('entryTotalCalc');
-  const lblEl   = document.getElementById('entryCostUnitLbl');
-  if (costInp) costInp.value = '';
-  if (totalEl) totalEl.textContent = 'Total: ₹ 0.00';
-  if (lblEl && curProd) lblEl.textContent = curProd.unit || 'units';
-
-  document.getElementById('entryMsg').textContent = '';
-  document.getElementById('convPreview').style.display = 'none';
-  
-  buildEntryUnitSel();
-  
-  if (typeof window.setupExpCatDropdown === 'function') window.setupExpCatDropdown();
-  if (typeof window.setupPayMethodDropdowns === 'function') window.setupPayMethodDropdowns();
-  
-  window.openM('m-entry');
-};
-
-function buildEntryUnitSel() {
-  const convs = curProd.conversions || [];
-  selUnit = curProd.unit || 'units';
-  const allUnits = [{name: curProd.unit || 'units', ratio: 1, isBase: true}, ...convs.map(c => ({name: c.name, ratio: c.ratio, isBase: false}))];
-  
-  const dd = document.getElementById('entry-unit-dd');
-  if (dd) {
-    dd.innerHTML = allUnits.map(u => `
-      <div class="cat-opt" style="padding: 10px 14px;" onclick="window.selectUnit('${esc(u.name)}', ${u.ratio})">
-        <span class="copt-name" style="font-size: 13.5px; font-weight: 800; color: var(--text-1);">${esc(u.name)}</span>
-        <svg class="unit-check ${u.name === selUnit ? '' : 'hidden'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-      </div>
-    `).join('');
-  }
-  const lbl = document.getElementById('entry-unit-lbl');
-  if (lbl) lbl.textContent = selUnit;
-  const costLbl = document.getElementById('entryCostUnitLbl');
-  if (costLbl) costLbl.textContent = selUnit;
-}
-
-window.selectUnit = function(name, ratio) {
-  selUnit = name;
-  const lbl = document.getElementById('entry-unit-lbl');
-  if (lbl) lbl.textContent = name;
-  
-  const costLbl = document.getElementById('entryCostUnitLbl');
-  if (costLbl) costLbl.textContent = name;
-  
-  const dd = document.getElementById('entry-unit-dd');
-  if (dd) dd.style.display = 'none';
-  
-  const wrap = document.getElementById('entry-unit-wrap');
-  if (wrap) wrap.querySelector('.cat-picker-trigger')?.classList.remove('open');
-  
-  document.querySelectorAll('#entry-unit-dd .cat-opt').forEach(opt => {
-     const optName = opt.querySelector('.copt-name').textContent;
-     const check = opt.querySelector('.unit-check');
-     if (optName === name) check.classList.remove('hidden');
-     else check.classList.add('hidden');
-  });
-  window.updateConvPreview();
-  window.calcEntryTotal();
-};
-
-window.toggleEntryUnitDD = function() {
-  const wrap = document.getElementById('entry-unit-wrap');
-  const trigger = wrap.querySelector('.cat-picker-trigger');
-  const dd = document.getElementById('entry-unit-dd');
-  if (dd.style.display === 'block') {
-    dd.style.display = 'none'; trigger.classList.remove('open');
-  } else {
-    document.querySelectorAll('.cat-picker-dropdown').forEach(d => d.style.display = 'none');
-    document.querySelectorAll('.cat-picker-trigger').forEach(t => t.classList.remove('open'));
-    dd.style.display = 'block'; trigger.classList.add('open');
-  }
-};
-
-window.openAddProd = function() {
-  document.getElementById('pn').value = '';
-  document.getElementById('pdesc').value = '';
-  document.getElementById('ps').value = '';
-  document.getElementById('prodMsg').textContent = '';
-
-  window._aiEmoji = 'package';
-  const nameIcon = document.getElementById('nameEmojiIcon');
-  if (nameIcon) nameIcon.innerHTML = window.getExtIcon('package');
-
-  window.selectUnitOption(STD_UNITS[0]);
-
-  const expBlock  = document.getElementById('addProdExpenseBlock');
-  const expTgl    = document.getElementById('addProdExpTgl');
-  const expFields = document.getElementById('addProdExpFields');
-  const convTgl   = document.getElementById('addProdConvTgl');
-  const convBld   = document.getElementById('addProdConvBuilder');
-  const convRows  = document.getElementById('addProdConvRows');
-  const costInp   = document.getElementById('addProdCost');
-  const totalEl   = document.getElementById('exp-total-calc');
-
-  if (expBlock)  expBlock.style.display  = 'none';
-  if (expTgl)    expTgl.checked          = false;
-  if (expFields) expFields.style.display = 'none';
-  if (convTgl)   convTgl.checked         = false;
-  if (convBld)   convBld.style.display   = 'none';
-  if (convRows)  convRows.innerHTML      = '';
-  if (costInp)   costInp.value           = '';
-  if (totalEl)   totalEl.textContent     = 'Total: ₹ 0.00';
-
-  if (typeof window.setupExpCatDropdown    === 'function') window.setupExpCatDropdown();
-  if (typeof window.setupPayMethodDropdowns === 'function') window.setupPayMethodDropdowns();
-
-  window.openM('m-prod');
-};
-
-window.setET = function(type) {
-  eType = type;
-  const btnIn  = document.getElementById('ettIn');
-  const btnOut = document.getElementById('ettOut');
-  if (btnIn)  btnIn.classList.toggle('on',  type === 'IN');
-  if (btnOut) btnOut.classList.toggle('on', type === 'OUT');
-
-  const logExpText = document.getElementById('logExpText');
-  if (logExpText)
-    logExpText.textContent = type === 'IN' ? 'Log as Expense?' : 'Log as Revenue?';
-
-  const entryBtn = document.getElementById('entryBtn');
-  if (entryBtn)
-    entryBtn.textContent = type === 'IN' ? 'Add Entry' : 'Record OUT';
-};
-
-window.updateConvPreview = function() {
-  const preview = document.getElementById('convPreview');
-  if (preview) preview.style.display = 'none';
-  window.calcEntryTotal();
-};
-
-window.viewDelReason = function(entId) {
-  const entry = (window.currentEntries || []).find(e => e.id === entId);
-  if (!entry) return;
-
-  const byEl   = document.getElementById('drDeletedBy');
-  const rsEl   = document.getElementById('drReason');
-  const tmEl   = document.getElementById('drTime');
-  if (byEl) byEl.textContent = entry.deletedByName || '—';
-  if (rsEl) rsEl.textContent = entry.deleteReason  || '—';
-  if (tmEl) tmEl.textContent = entry.deletedAt
-    ? new Date(entry.deletedAt).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
-    : '—';
-
-  window.openM('m-del-reason');
-};
-
-window.calcEntryTotal = function() {
-  const qty       = parseFloat(document.getElementById('eq')?.value) || 0;
-  const pricePerU = parseFloat(document.getElementById('entryCost')?.value) || 0;
-  const total     = qty * pricePerU;
-  const el        = document.getElementById('entryTotalCalc');
-  if (!el) return;
-
-  const conv = curProd ? (curProd.conversions || []).find(c => c.name === selUnit) : null;
-  if (conv && qty > 0) {
-    const base = +(qty * conv.ratio).toFixed(4);
-    el.textContent = `= ${base} ${curProd.unit || 'units'}  ·  ₹ ${total.toFixed(2)}`;
-  } else {
-    el.textContent = `Total: ₹ ${total.toFixed(2)}`;
-  }
-};
 
 window.submitEntry = async function() {
   const qtyRaw = parseFloat(document.getElementById('eq').value);
   const note   = document.getElementById('en').value.trim();
   const btn    = document.getElementById('entryBtn');
 
-  if (!qtyRaw || qtyRaw <= 0) {
-    setMM('entryMsg', '⚠ Enter a valid quantity.', 'err'); return;
-  }
-  if (qtyRaw > 9999999999) {
-    setMM('entryMsg', '⚠ Quantity too large.', 'err'); return;
-  }
+  if (!qtyRaw || qtyRaw <= 0) { setMM('entryMsg', '⚠ Enter a valid quantity.', 'err'); return; }
+  if (qtyRaw > 9999999999) { setMM('entryMsg', '⚠ Quantity too large.', 'err'); return; }
 
   const conv    = (curProd.conversions || []).find(c => c.name === selUnit);
   const ratio   = conv ? conv.ratio : 1;
   const qtyBase = +(qtyRaw * ratio).toFixed(4);
 
   const currentStock = curProd.stock || 0;
-  const newStock     = eType === 'IN'
-    ? currentStock + qtyBase
-    : currentStock - qtyBase;
+  const newStock     = eType === 'IN' ? currentStock + qtyBase : currentStock - qtyBase;
 
   if (eType === 'OUT' && newStock < 0) {
-    setMM('entryMsg', `⚠ Only ${currentStock} ${curProd.unit || 'units'} in stock.`, 'err');
-    return;
+    setMM('entryMsg', `⚠ Only ${currentStock} ${curProd.unit || 'units'} in stock.`, 'err'); return;
   }
-// Expense sync (Unlocked for seamless syncing)
+
   let logExpense = document.getElementById('logExpenseTgl')?.checked;
   const pricePerU = parseFloat(document.getElementById('entryCost')?.value) || 0;
   const totalCost = qtyRaw * pricePerU;
 
-  if (logExpense && totalCost <= 0) {
-    setMM('entryMsg', '⚠ Enter a valid cost amount.', 'err'); return;
-  }
+  if (logExpense && totalCost <= 0) { setMM('entryMsg', '⚠ Enter a valid cost amount.', 'err'); return; }
 
   setMM('entryMsg', 'Saving…', '');
   btn.disabled    = true;
@@ -4338,15 +3767,17 @@ window.submitEntry = async function() {
     const unitEl = document.getElementById('pdUnit');
     if (unitEl) unitEl.textContent = (curProd.unit || 'units') + ' in stock';
 
+    // EXACT NAMING FORMAT!
     if (logExpense && totalCost > 0) {
       const expCat    = document.getElementById('entryExpCategory')?.value || 'Inventory Stock';
       const payMethod = document.getElementById('entryPayMethod')?.value   || 'Cash';
+      
       await addDoc(collection(db, 'expenses'), {
         type:            eType === 'IN' ? 'expense' : 'income',
         amount:          totalCost,
         category:        expCat,
         paymentMethod:   payMethod,
-        description:     `${curProd.name} — Stock ${eType}`,
+        description:     `${curProd.name} Stock ${eType} ${qtyRaw} ${selUnit}`,
         relatedEntryId:  entryRef.id,
         productId:       curProd.id,
         companyId:       CU.companyId,
