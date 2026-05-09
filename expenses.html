@@ -1915,6 +1915,57 @@ document.addEventListener('click', e => {
     lastScrollY = currentScrollY;
   }, { passive: true });
 })();
+  function loadWarehousesForFinance() {
+  if(!CU.companyId) return;
+  const q = query(collection(db, 'godowns'), where('companyId', '==', CU.companyId));
+  onSnapshot(q, snap => {
+     const whTabs = document.getElementById('warehouse-tabs');
+     if(!whTabs) return;
+     whTabs.innerHTML = ''; // Clear old buttons
+     
+     snap.docs.forEach(docSnap => {
+         const wh = docSnap.data();
+         const btn = document.createElement('button');
+         btn.className = 'ftab';
+         
+         // Creating the square box with border radius
+         btn.style.borderRadius = '12px';
+         btn.style.width = '42px';
+         btn.style.height = '42px';
+         btn.style.padding = '0';
+         btn.style.display = 'inline-flex';
+         btn.style.alignItems = 'center';
+         btn.style.justifyContent = 'center';
+         btn.style.fontWeight = '800';
+         btn.style.fontSize = '16px';
+         btn.style.flexShrink = '0';
+         
+         // Uses the first letter of the warehouse name
+         btn.textContent = wh.name ? wh.name.charAt(0).toUpperCase() : 'W';
+         
+         btn.onclick = () => {
+             // Visual highlight
+             document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
+             btn.classList.add('on');
+             
+             // Step 1 of your vision: Filter the finance view based on the clicked warehouse
+             catFilter = ''; 
+             searchVal = wh.name; // Temp hack to filter expenses strictly by warehouse name
+             currentPage = 1;
+             renderAll();
+         };
+         
+         whTabs.appendChild(btn);
+     });
+  });
+}
+
+// Hook it into the startup routine
+const originalInit = init;
+init = async function() {
+    await originalInit();
+    loadWarehousesForFinance();
+};
 
 init();
 </script>
