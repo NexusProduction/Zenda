@@ -2187,18 +2187,30 @@ body.is-premium .premium-lock-overlay {
 
 <!-- STAFF DELETE REQUEST MODAL (Centered, Compressed) -->
 <div class="mo" id="m-req-del-wh" onclick="if(event.target===this) window.closeM('m-req-del-wh')" style="align-items: center !important; padding: 16px !important;">
-  <div class="mbox" style="width: 100%; max-width: 420px; padding: 0; border-radius: 20px !important; margin: auto;">
-    <div style="padding: 20px 24px 16px; border-bottom: 1px solid var(--border-faint);">
-      <div style="font-family: var(--f-display); font-size: 1.25rem; font-weight: 800; color: var(--red);">Request Deletion</div>
-      <div style="font-size: 0.85rem; color: var(--text-3); font-weight: 500;">Send approval to owner</div>
+  <div class="mbox" style="width: 100%; max-width: 420px; padding: 0; border-radius: 24px !important; margin: auto;">
+    
+    <div style="padding: 24px 24px 16px; border-bottom: 1px solid var(--border-faint);">
+      <div style="font-family: var(--f-display); font-size: 1.35rem; font-weight: 800; color: var(--red); text-align: center; letter-spacing: -0.02em;">Request Deletion?</div>
+      <div style="font-size: 0.85rem; color: var(--text-3); font-weight: 600; text-align: center; margin-top: 4px;" id="reqDelWhSub">Send approval to owner</div>
     </div>
-    <div style="padding: 20px 24px 24px;">
-      <div class="fg" style="margin-bottom: 16px;">
-        <label style="display: block; font-size: 0.75rem; font-weight: 800; color: var(--text-1); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Reason for deletion</label>
-        <input type="text" id="reqDelReason" class="finp" placeholder="Enter reason (5-20 chars)" maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s]/g, '')" style="width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f-body); font-size: 0.95rem; font-weight: 600; background: var(--bg-canvas); color: var(--text-1); outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='var(--accent)'; this.style.backgroundColor='var(--white-pure)'; this.style.boxShadow='0 0 0 3px var(--accent-glow)';" onblur="this.style.borderColor='var(--border)'; this.style.backgroundColor='var(--bg-canvas)'; this.style.boxShadow='none';">
+    
+    <div style="padding: 24px; display: flex; flex-direction: column; align-items: center;">
+      <div class="del-warn" style="border-width: 2px; font-weight: 700; margin-bottom: 20px; text-align: center; width: 100%; box-sizing: border-box;">⚠️ The owner must approve this request before anything is deleted.</div>
+      
+      <div class="fg" style="margin-bottom: 16px; width: 100%;">
+        <input type="text" id="reqDelReason" class="finp" placeholder="Reason (max 20 chars)" maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s]/g, '')" style="width: 100%; padding: 16px; border: 2px solid var(--border-strong); border-radius: 14px; font-family: var(--f-body); font-size: 1rem; font-weight: 700; background: var(--white-pure); color: var(--text-1); outline: none; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.02); text-align: center;" onfocus="this.style.borderColor='var(--accent)'; this.style.boxShadow='0 0 0 4px var(--accent-glow)';">
       </div>
-      <div id="reqDelErr" style="font-size:13px; color:var(--red); text-align:center;"></div>
-      <button class="btn-black" id="reqDelBtn" style="width: 100%; border-radius: 12px; padding: 14px; font-size: 1rem; background: #09090B; margin: 0;" onclick="window.sendWHDeleteRequest()">Send Request</button>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--white-cool); border: 2px solid var(--border-strong); border-radius: 14px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="3" y1="6" x2="21" y2="6"></line></svg>
+          <span style="font-family: var(--f-display); font-weight: 800; font-size: 14px; color: var(--text-1);">Merge Expenses</span>
+        </div>
+        <label class="tgl"><input type="checkbox" id="reqDelExpSyncToggle" checked><span class="tgl-sl"></span></label>
+      </div>
+
+      <div id="reqDelErr" style="font-size:13px; font-weight:700; color:var(--red); text-align:center; margin-bottom: 8px; min-height: 0;"></div>
+      <button class="btn-black" id="reqDelBtn" onclick="window.sendWHDeleteRequest()" style="background:#09090B; width: 100%; border-radius: 14px; padding: 16px; font-size: 1.05rem; margin: 0; box-shadow:0 4px 12px rgba(0,0,0,0.1); transition: transform 0.2s, box-shadow 0.2s;">Send Request</button>
     </div>
   </div>
 </div>
@@ -3043,9 +3055,23 @@ window.openWH=async function(wh){
       
       window.openM('m-del-wh');
     };
+  } else {
+    // STAFF BUTTON LOGIC
+    btnDel.innerHTML = `${trashIcon} <span>Request Delete</span>`;
+    btnDel.onclick = () => {
+      document.getElementById('reqDelWhSub').textContent = `Request to delete "${whObj.name}"`;
+      const errEl = document.getElementById('reqDelErr');
+      const reasonEl = document.getElementById('reqDelReason');
+      if (errEl) errEl.innerHTML = ''; 
+      if (reasonEl) reasonEl.value = '';
+      
+      // Forces toggle ON by default every time the modal opens
+      const syncTgl = document.getElementById('reqDelExpSyncToggle');
+      if (syncTgl) syncTgl.checked = true;
+      
+      window.openM('m-req-del-wh');
+    };
   }
-
-  // Allow ALL roles (Owner, Manager, Staff) to add products
   const canAdd = true; 
   const btnPC = document.getElementById('btnAddProdPC'); if(btnPC) btnPC.classList.toggle('hidden', !canAdd);
   const btnMob = document.getElementById('btnAddProdMobile'); if(btnMob) btnMob.classList.toggle('hidden', !canAdd);
@@ -3956,10 +3982,12 @@ window.confirmDelWH = async function() {
   btn.disabled = false; btn.textContent = 'Confirm Delete';
 };
 
-// ── 2. STAFF: SEND REQUEST WITH TOTAL IN/OUT DATA ──
+// ── 2. STAFF: SEND REQUEST WITH TOTAL IN/OUT DATA & EXPENSE TOGGLE ──
 window.sendWHDeleteRequest = async function() {
   const reason = document.getElementById('reqDelReason').value.trim();
   const errEl = document.getElementById('reqDelErr'); errEl.textContent = '';
+  // Capture if the staff wants to merge expenses
+  const mergeExp = document.getElementById('reqDelExpSyncToggle')?.checked || false;
 
   if(reason.length < 5) {
     errEl.innerHTML = '<div style="margin-bottom:12px;">⚠ Please provide a reason (at least 5 characters).</div>';
@@ -3975,6 +4003,7 @@ window.sendWHDeleteRequest = async function() {
     const whObj = WHs.find(w => w.id === curWH);
     if (!CU.ownerId) throw new Error("Owner ID not found.");
     
+    // Calculate accurate totals to send to the owner
     const prodSnap = await getDocs(query(collection(db,'products'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', CU.companyId), where('godownId','==',curWH)));
     
@@ -3993,7 +4022,8 @@ window.sendWHDeleteRequest = async function() {
       message: `${CU.name} requested to delete warehouse: "${whObj.name}"`,
       actionText: 'Review Request',
       actionUrl: `inventory.html?review_delete=${notifDoc.id}`,
-      warehouseData: { id: curWH, name: whObj.name, productCount: prodSnap.size, totalIn: totalIn, totalOut: totalOut, reason: reason, companyId: CU.companyId, requestedBy: CU.uid },
+      // Send the staff's mergeExpenses toggle choice to the owner
+      warehouseData: { id: curWH, name: whObj.name, productCount: prodSnap.size, totalIn: totalIn, totalOut: totalOut, reason: reason, mergeExpenses: mergeExp, companyId: CU.companyId, requestedBy: CU.uid },
       actorId: CU.uid, actorName: CU.name, read: false, status: 'pending', createdAt: Date.now()
     });
 
