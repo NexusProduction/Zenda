@@ -107,31 +107,42 @@ export function renderNotifications(items, container) {
             </div>
           `;
       } else {
-          // Generates the blue Review Request button linking straight to the modal!
-          actionButtons = `
-            <div style="margin-top: 12px;">
-                <button onclick="window.location.href='inventory.html?review_delete=${item.id}'" style="width:100%; padding:8px 16px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(79,70,229,0.25); transition:all 0.2s;">Review Request →</button>
-            </div>
-          `;
-      }
-    } 
-    // Handle Calendar Events
-    else if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
-      actionButtons = `
-        <div style="margin-top: 8px; display: flex; gap: 8px;">
-          <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
-          <button class="btn btn-xs btn-primary" onclick="window.location.href='calendar.html?date=${item.eventDate || ''}'">(Open in app)</button>
-        </div>
-      `;
-    } 
-    // Handle Warehouse Creation Requests
-    else if (item.type === 'warehouse_request') {
       actionButtons = `
         <div style="margin-top: 12px;">
-            <button onclick="window.viewWarehouseReq('${item.id}')" style="width:100%; padding:8px 16px; background:#10B981; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.25); transition:all 0.2s;">Review Request →</button>
+            <button onclick="window.location.href='inventory.html?review_delete=${item.id}'" style="width:100%; padding:8px 16px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(79,70,229,0.25); transition:all 0.2s;">Review Request →</button>
         </div>
       `;
-    } 
+    }
+  } 
+  // Handle Calendar Events
+  else if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
+    actionButtons = `
+      <div style="margin-top: 8px; display: flex; gap: 8px;">
+        <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
+        <button class="btn btn-xs btn-primary" onclick="window.location.href='calendar.html?date=${item.eventDate || ''}'">(Open in app)</button>
+      </div>
+    `;
+  } 
+  // Handle Warehouse Creation Requests
+  else if (item.type === 'warehouse_request') {
+    if (item.status === 'approved' || item.status === 'rejected') {
+         actionButtons = `
+            <div style="margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--tx3);">
+               Status: ${item.status.toUpperCase()}
+            </div>
+            <div style="margin-top: 8px;">
+                <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
+            </div>
+          `;
+    } else {
+        // Now properly routes to inventory.html using a distinct URL parameter
+        actionButtons = `
+          <div style="margin-top: 12px;">
+              <button onclick="window.location.href='inventory.html?review_create=${item.id}'" style="width:100%; padding:8px 16px; background:#10B981; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.25); transition:all 0.2s;">Review Request →</button>
+          </div>
+        `;
+    }
+  }
     // Default Dismiss
     else {
       actionButtons = `
@@ -172,81 +183,3 @@ export function escapeHtml(str = '') {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
-
-window.viewWarehouseReq = function(notifId) {
-    const notif = window.currentNotifs[notifId];
-    if(!notif || !notif.warehouseData) {
-        alert("No warehouse details attached to this request.");
-        return;
-    }
-    const data = notif.warehouseData;
-
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:99999;';
-    overlay.innerHTML = `
-        <div style="background:#fff; padding:24px; border-radius:16px; width:90%; max-width:340px; box-shadow:0 12px 40px rgba(0,0,0,0.2);">
-            <h3 style="margin-top:0; margin-bottom:16px; font-size:18px; font-family:'Plus Jakarta Sans', sans-serif;">Warehouse Details</h3>
-            <div style="font-size:14px; color:#3D3F4A; line-height:1.6; font-family:'DM Sans', sans-serif;">
-                <p style="margin:8px 0;"><strong>Name:</strong> ${escapeHtml(data.name)}</p>
-                <p style="margin:8px 0;"><strong>Location:</strong> ${escapeHtml(data.location)}</p>
-                <p style="margin:8px 0;"><strong>Category:</strong> ${escapeHtml(data.category)}</p>
-            </div>
-            <button onclick="this.parentElement.parentElement.remove()" style="width:100%; margin-top:20px; padding:10px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer;">Close</button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-};
-
-// 2. APPROVE BUTTON LOGIC
-window.approveWarehouseReq = async function(notifId, staffId) {
-    const notif = window.currentNotifs[notifId];
-    if(!notif || !notif.warehouseData) return;
-
-    try {
-        // A. Create the warehouse in the master database
-        await addDoc(collection(db, 'godowns'), notif.warehouseData);
-
-        // B. Delete the notification from the owner's feed
-        const uid = getAuth().currentUser.uid;
-        await deleteDoc(doc(db, 'notifications', uid, 'items', notifId));
-
-        // C. Notify the staff member that it was approved
-        if (staffId) {
-            await addDoc(collection(db, 'notifications', staffId, 'items'), {
-                type: 'system',
-                message: `Your request to add warehouse "${notif.warehouseData.name}" was approved!`,
-                read: false,
-                createdAt: new Date().toISOString()
-            });
-        }
-
-        alert("Warehouse approved and created successfully!");
-    } catch(e) {
-        console.error("Approval failed:", e);
-        alert("Failed to approve warehouse.");
-    }
-};
-
-// 3. DECLINE BUTTON LOGIC
-window.declineWarehouseReq = async function(notifId, staffId) {
-    const notif = window.currentNotifs[notifId];
-    if(!notif) return;
-
-    try {
-        // A. Delete the notification from the owner's feed
-        const uid = getAuth().currentUser.uid;
-        await deleteDoc(doc(db, 'notifications', uid, 'items', notifId));
-
-        // B. Notify the staff member that it was rejected
-        if(staffId && notif.warehouseData) {
-            await addDoc(collection(db, 'notifications', staffId, 'items'), {
-                type: 'system',
-                message: `Your request to add warehouse "${notif.warehouseData.name}" was declined.`,
-                read: false,
-                createdAt: new Date().toISOString()
-            });
-        }
-    } catch(e) {
-        console.error("Decline failed:", e);
-    }
-};
