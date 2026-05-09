@@ -64,7 +64,6 @@ export async function markAllRead(userId) {
 export function renderNotifications(items, container) {
   if (!container) return;
 
-  // Initialize a global object to hold notification data for the buttons to access
   window.currentNotifs = window.currentNotifs || {};
 
   if (!items.length) {
@@ -78,7 +77,6 @@ export function renderNotifications(items, container) {
   }
 
   container.innerHTML = items.map(item => {
-    // Store data globally for action buttons
     window.currentNotifs[item.id] = item;
 
     const iconMap = {
@@ -89,21 +87,32 @@ export function renderNotifications(items, container) {
       calendar_event_all:    { icon: '🗓️', cls: 'notif-icon-cal' },
       calendar_event_custom: { icon: '🗓️', cls: 'notif-icon-cal' },
       warehouse_request:     { icon: '🏭', cls: 'notif-icon-task' },
-      review_delete:         { icon: '🗑️', cls: 'notif-icon-declined' } // Added trash icon for deletion requests
+      review_delete:         { icon: '🗑️', cls: 'notif-icon-declined' } // Trash icon for deletion requests!
     };
     const { icon, cls } = iconMap[item.type] || { icon: '🔔', cls: 'notif-icon-login' };
 
-    // Dynamic Action Buttons
     let actionButtons = '';
     
     // 1. WAREHOUSE DELETION REQUESTS (Review Modal)
-    if (item.type === 'review_delete' && item.status === 'pending') {
-      actionButtons = `
-        <div style="margin-top: 12px;">
-            <button onclick="window.location.href='inventory.html?review_delete=${item.id}'" style="width:100%; padding:8px 16px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(79,70,229,0.25); transition:all 0.2s;">Review Request →</button>
-        </div>
-      `;
-    }
+    if (item.type === 'review_delete') {
+      if (item.status === 'approved' || item.status === 'rejected') {
+          actionButtons = `
+            <div style="margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--tx3);">
+               Status: ${item.status.toUpperCase()}
+            </div>
+            <div style="margin-top: 8px;">
+                <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
+            </div>
+          `;
+      } else {
+          // Generates the blue Review Request button linking straight to the modal!
+          actionButtons = `
+            <div style="margin-top: 12px;">
+                <button onclick="window.location.href='inventory.html?review_delete=${item.id}'" style="width:100%; padding:8px 16px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(79,70,229,0.25); transition:all 0.2s;">Review Request →</button>
+            </div>
+          `;
+      }
+    } 
     // 2. CALENDAR EVENTS
     else if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
       actionButtons = `
@@ -143,7 +152,6 @@ export function renderNotifications(items, container) {
   }).join('');
 }
 
-// ---- Update notification badge count ----
 export function updateBadge(count) {
   const badge = document.getElementById('notif-badge');
   if (!badge) return;
@@ -155,7 +163,6 @@ export function updateBadge(count) {
   }
 }
 
-// ---- Escape HTML ----
 export function escapeHtml(str = '') {
   return str
     .replace(/&/g, '&amp;')
@@ -164,11 +171,6 @@ export function escapeHtml(str = '') {
     .replace(/"/g, '&quot;');
 }
 
-// =============================================
-// GLOBAL NOTIFICATION ACTIONS
-// =============================================
-
-// 1. VIEW BUTTON LOGIC
 window.viewWarehouseReq = function(notifId) {
     const notif = window.currentNotifs[notifId];
     if(!notif || !notif.warehouseData) {
