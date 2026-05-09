@@ -2901,23 +2901,41 @@ async function init(){
     if (modalSub) modalSub.textContent = 'Send creation request to owner';
   }
 
-  // URL CHECKER: Runs perfectly after everything is loaded into Window!
-  const reviewTarget = new URLSearchParams(location.search).get('review_delete');
-  if (reviewTarget) { // Removed strict owner check to guarantee it forces the modal open if the user clicked the link
-    getDoc(doc(db, 'notifications', CU.uid, 'items', reviewTarget)).then(snap => {
-          if (snap.exists()) {
-            const nd = snap.data();
-            if (nd.status === 'pending' && nd.warehouseData) {
-              window.openReviewModal(nd.warehouseData.id, nd.warehouseData.name, nd.warehouseData.productCount, nd.warehouseData.reason, snap.id);
-            }
-          }
-        });
+  // URL CHECKER: Catches both Delete and Create requests!
+  const reviewDelTarget = new URLSearchParams(location.search).get('review_delete');
+  const reviewCreateTarget = new URLSearchParams(location.search).get('review_create');
+  
+  if (reviewDelTarget) {
+    getDoc(doc(db, 'notifications', CU.uid, 'items', reviewDelTarget)).then(snap => {
+      if (snap.exists()) {
+        const nd = snap.data();
+        if (nd.status === 'pending' && nd.warehouseData) {
+          currentReviewType = 'delete';
+          window.openReviewModal(nd.warehouseData.id, nd.warehouseData.name, 0, nd.warehouseData.reason, snap.id, nd.actorName);
+        }
       }
-      showView('dash');
-      loadWHs();
-      // Removed ghost functions that were crashing the script
-      setupUnitDropdowns();
-    }
+    }).catch(err => console.error("Review Load Error:", err));
+  }
+  
+  if (reviewCreateTarget) {
+    getDoc(doc(db, 'notifications', CU.uid, 'items', reviewCreateTarget)).then(snap => {
+      if (snap.exists()) {
+        const nd = snap.data();
+        if (nd.status === 'pending' && nd.warehouseData) {
+          currentReviewType = 'create';
+          pendingCreateData = nd.warehouseData; // Save data for approval
+          
+          currentReviewNotificationId = snap.id;
+          
+          // Re-use the existing modal but swap the text for Creation
+          document.getElementById('reviewMsg').innerHTML = `<b>${esc(nd.actorName || 'Staff')}</b> wants to create a new warehouse: <b>"${esc(nd.warehouseData.name)}"</b>.`;
+          document.getElementById('reviewReason').innerHTML = `Location: ${esc(nd.warehouseData.location)}<br>Category: ${esc(nd.warehouseData.category)}`;
+          setMM('reviewErr', '', '');
+          window.openM('m-review');
+        }
+      }
+    }).catch(err => console.error("Review Load Error:", err));
+  }
 
 function setSyncBadge(type,text){
   syncEl.className='sync-badge '+type;
@@ -3878,62 +3896,55 @@ window.openReviewModal = function(whId, whName, count, reason, notifId, actorNam
     
     window.openM('m-review');
 };
+let currentReviewType = ''; // 'delete' or 'create'
+let pendingCreateData = null; // Holds the warehouse data if it's a creation request
 
-// Processes the Owner's Approve/Reject choice
 window.processWhReview = async function(action) {
     const btnApprove = document.getElementById('btnApproveWh');
     const btnReject = document.getElementById('btnRejectWh');
-    
-    btnApprove.disabled = true;
-    btnReject.disabled = true;
+    btnApprove.disabled = true; btnReject.disabled = true;
     
     try {
-        if (action === 'approve') {
-            const batch = writeBatch(db);
-            
-            // Delete entries
-            const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
-            entSnap.docs.forEach(d => batch.delete(d.ref));
-            
-            // Delete products
-            const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
-            prodSnap.docs.forEach(d => batch.delete(d.ref));
-            
-            // Delete warehouse
-            batch.delete(doc(db, 'godowns', currentReviewWarehouseId));
-            
-            // Mark notification as approved
-            batch.update(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), {
-                status: 'approved',
-                updatedAt: serverTimestamp()
-            });
-            
-            await batch.commit();
-            window.showToast("Warehouse deleted successfully.", "success");
-            showView('dash'); 
-            
-        } else {
-            // Reject the request
-            await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), {
-                status: 'rejected',
-                updatedAt: serverTimestamp()
-            });
-            window.showToast("Deletion request rejected.", "info");
+        if (currentReviewType === 'delete') {
+            if (action === 'approve') {
+                const batch = writeBatch(db);
+                const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
+                entSnap.docs.forEach(d => batch.delete(d.ref));
+                const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
+                prodSnap.docs.forEach(d => batch.delete(d.ref));
+                batch.delete(doc(db, 'godowns', currentReviewWarehouseId));
+                
+                batch.update(doc(db, 'notifications', CU.uid, 'items', currentReviewNotificationId), { status: 'approved' });
+                await batch.commit();
+                window.showToast("Warehouse deleted successfully.", "success");
+                showView('dash'); 
+            } else {
+                await updateDoc(doc(db, 'notifications', CU.uid, 'items', currentReviewNotificationId), { status: 'rejected' });
+                window.showToast("Deletion request declined.", "info");
+            }
+        } 
+        else if (currentReviewType === 'create') {
+            if (action === 'approve' && pendingCreateData) {
+                // Creates the warehouse using the data attached to the notification
+                await addDoc(collection(db, 'godowns'), pendingCreateData);
+                await updateDoc(doc(db, 'notifications', CU.uid, 'items', currentReviewNotificationId), { status: 'approved' });
+                window.showToast("Warehouse approved and created!", "success");
+            } else {
+                await updateDoc(doc(db, 'notifications', CU.uid, 'items', currentReviewNotificationId), { status: 'rejected' });
+                window.showToast("Creation request declined.", "info");
+            }
         }
         
         window.closeM('m-review');
-        
-        // Clean URL so the modal doesn't pop up again on refresh
         const url = new URL(window.location);
         url.searchParams.delete('review_delete');
+        url.searchParams.delete('review_create');
         window.history.replaceState({}, document.title, url);
         
     } catch(e) {
-        document.getElementById('reviewErr').textContent = 'Error: ' + e.message;
+        setMM('reviewErr', '❌ Error: ' + e.message, 'err');
     }
-    
-    btnApprove.disabled = false;
-    btnReject.disabled = false;
+    btnApprove.disabled = false; btnReject.disabled = false;
 };
 
 // ... Your existing addProduct code ...
