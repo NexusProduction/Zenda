@@ -2614,6 +2614,35 @@ window.validateAndSaveWH = function() {
     window.createWH(); 
   }
 };
+  // ADD THIS NEW BLOCK: The function that actually saves the warehouse to the database
+window.createWH = async function() {
+  const nameInp = document.getElementById('wn');
+  const locInp = document.getElementById('wl');
+  const catInp = document.getElementById('wc');
+  const btn = document.getElementById('btn-create-wh');
+  
+  btn.disabled = true;
+  btn.innerHTML = 'Saving...';
+  
+  try {
+    await addDoc(collection(db, 'godowns'), {
+      name: nameInp.value.trim(),
+      location: locInp.value.trim(),
+      category: catInp.value,
+      companyId: CU.companyId,
+      createdBy: CU.uid,
+      createdAt: serverTimestamp()
+    });
+    window.closeM('m-wh');
+    window.showToast('Warehouse created successfully', 'success');
+    nameInp.value = ''; 
+    locInp.value = '';
+  } catch(e) {
+    window.showToast('Error: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Save Record';
+};
 // ── ONLINE 2D ICON ENGINE (Replaces Emojis) ──
 window.getExtIcon = function(name) {
   const icon = name || 'package';
