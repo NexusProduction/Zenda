@@ -2721,51 +2721,24 @@ window.handleAssign = async function() {
       window.openModal('decline-modal');
     };
 
-    // --- INITIALIZATION ---
     async function init() {
       try {
         await requireAuth('login.html');
         const cu = await getCurrentUser();
-        if (!cu) { window.location.href = 'login.html'; return; }
-        
-        window.CU = cu;
-        
-        // Setup Real-time Listeners
-        setupListeners();
-        
-        // Setup UI
-        window.setupUI();
-        
-        // REMOVE LOADER MANUALLY IF AUTOMATIC TIMEOUT FAILS
+        if (!cu) { location.href = 'login.html'; return; }
+        window.CU = cu; saveSession(cu); window.CU._notifyList = cu.notifyApps || [];
+        setupUI(); window.buildProfile(); subscribeAll();
+
+        // Removes loader manually if automatic timeout fails
         const loader = document.getElementById('loading-overlay');
         if (loader) {
             loader.style.opacity = '0';
             setTimeout(() => loader.remove(), 600);
         }
-        
-      } catch (e) {
-        console.error("Dashboard Load Error:", e);
-        window.showToast("Failed to load data. Please refresh.", "error");
-      }
+      } catch (e) { console.error("Dashboard Init Error: ", e); }
     }
 
-    function setupListeners() {
-      // Listen for My Tasks
-      const qTasks = query(collection(db, 'tasks'), orderBy('createdAt', 'desc'));
-      const unsub = onSnapshot(qTasks, (snap) => {
-        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        window.myTasks = all.filter(t => t.assignedTo === window.CU.uid);
-        window.assignedByMeTasks = all.filter(t => t.assignedBy === window.CU.uid);
-        
-        window.updateAllStats();
-        window.renderTasksList();
-        window.renderRecentTasks();
-      });
-      unsubs.push(unsub);
-    }
-
-    // Run Init
-    init();
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
   </script>
 </body>
 </html>
