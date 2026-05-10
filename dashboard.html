@@ -2663,5 +2663,109 @@ window.handleAssign = async function() {
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
   </script>
+  <script type="module">
+    import { auth, db } from './firebase-config.js';
+    import { requireAuth, getCurrentUser } from './auth.js';
+    import { doc, getDoc, updateDoc, addDoc, collection, query, orderBy, limit, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    // --- GLOBAL STATE ---
+    window.CU = null;
+    window.myTasks = [];
+    window.assignedByMeTasks = [];
+    window.allStaff = [];
+    window.taskTab = 'pending';
+    let unsubs = [];
+
+    // --- CRITICAL: ATTACH FUNCTIONS TO WINDOW FOR HTML ONCLICK ---
+    window.showView = function(v) {
+      window.closeAllPanels();
+      ['home', 'tasks', 'staff'].forEach(n => {
+        const el = document.getElementById('view-' + n);
+        if (el) el.classList.toggle('hidden', n !== v);
+      });
+      // Update Nav active states
+      document.querySelectorAll('.sidebar-item, .bn-item').forEach(el => el.classList.remove('active'));
+      document.getElementById('nav-' + v)?.classList.add('active');
+      document.getElementById('bn-' + v)?.classList.add('active');
+      
+      if (v === 'tasks') window.renderTasksList();
+    };
+
+    window.openProfile = function() {
+      window.buildProfile();
+      document.getElementById('panel-overlay')?.classList.add('visible');
+      if (window.innerWidth >= 769) {
+        document.getElementById('profile-side-panel')?.classList.add('open');
+      } else {
+        document.getElementById('profile-page-mobile')?.classList.add('open');
+      }
+    };
+
+    window.doAcceptTask = async function(taskId) {
+      window.showToast("Completing task...", "info");
+      try {
+        await updateDoc(doc(db, 'tasks', taskId), { 
+          status: 'done', 
+          completedAt: Date.now() 
+        });
+        window.showToast("Task marked as done!", "success");
+      } catch (e) {
+        window.showToast("Error: " + e.message, "error");
+      }
+    };
+
+    window.openDeclineModal = function(id, title) {
+      window.pendingDeclineId = id;
+      document.getElementById('decline-task-title').textContent = title;
+      window.openModal('decline-modal');
+    };
+
+    // --- INITIALIZATION ---
+    async function init() {
+      try {
+        await requireAuth('login.html');
+        const cu = await getCurrentUser();
+        if (!cu) { window.location.href = 'login.html'; return; }
+        
+        window.CU = cu;
+        
+        // Setup Real-time Listeners
+        setupListeners();
+        
+        // Setup UI
+        window.setupUI();
+        
+        // REMOVE LOADER MANUALLY IF AUTOMATIC TIMEOUT FAILS
+        const loader = document.getElementById('loading-overlay');
+        if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 600);
+        }
+        
+      } catch (e) {
+        console.error("Dashboard Load Error:", e);
+        window.showToast("Failed to load data. Please refresh.", "error");
+      }
+    }
+
+    function setupListeners() {
+      // Listen for My Tasks
+      const qTasks = query(collection(db, 'tasks'), orderBy('createdAt', 'desc'));
+      const unsub = onSnapshot(qTasks, (snap) => {
+        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        window.myTasks = all.filter(t => t.assignedTo === window.CU.uid);
+        window.assignedByMeTasks = all.filter(t => t.assignedBy === window.CU.uid);
+        
+        window.updateAllStats();
+        window.renderTasksList();
+        window.renderRecentTasks();
+      });
+      unsubs.push(unsub);
+    }
+
+    // Run Init
+    init();
+  </script>
 </body>
 </html>
