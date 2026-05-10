@@ -87,43 +87,82 @@ export function renderNotifications(items, container) {
       calendar_event_all:    { icon: '🗓️', cls: 'notif-icon-cal' },
       calendar_event_custom: { icon: '🗓️', cls: 'notif-icon-cal' },
       warehouse_request:     { icon: '🏭', cls: 'notif-icon-task' },
-      review_delete:         { icon: '🗑️', cls: 'notif-icon-declined' }
+      review_delete:         { icon: '🗑️', cls: 'notif-icon-declined' },
+      review_create:         { icon: '🏭', cls: 'notif-icon-task' },
+      warehouse_reviewed:    { icon: '📬', cls: 'notif-icon-done' }
     };
     const { icon, cls } = iconMap[item.type] || { icon: '🔔', cls: 'notif-icon-login' };
 
     let actionButtons = '';
-    
-    // 🔥 STRICT CHECK FOR ANY WAREHOUSE REQUEST (Create OR Delete)
-    const isWhRequest = item.type === 'review_delete' || item.type === 'review_create' || item.type === 'warehouse_request';
-    
+
+    // ── Warehouse CREATE request (staff → manager review) ──
+    const isCreateRequest = item.type === 'review_create' || item.type === 'warehouse_request';
+    const isDeleteRequest = item.type === 'review_delete';
+    const isWhRequest     = isCreateRequest || isDeleteRequest;
+
     if (isWhRequest) {
-      if (item.status === 'approved' || item.status === 'rejected') {
-          actionButtons = `
-            <div style="margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--tx3);">
-               Status: ${item.status.toUpperCase()}
-            </div>
-            <div style="margin-top: 8px;">
-                <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
-            </div>
-          `;
+      const requestId = item.relatedId || item.id;
+
+      if (item.status === 'approved' || item.status === 'rejected' || item.status === 'declined') {
+        // Already reviewed — show outcome badge
+        const isApproved = item.status === 'approved';
+        actionButtons = `
+          <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="
+              display:inline-flex;align-items:center;gap:5px;
+              padding:4px 12px;border-radius:100px;font-size:12px;font-weight:700;
+              background:${isApproved ? '#ECFDF5' : '#FEF2F2'};
+              color:${isApproved ? '#059669' : '#DC2626'};
+              border:1.5px solid ${isApproved ? '#A7F3D0' : '#FECACA'};
+            ">
+              ${isApproved ? '✓ Approved' : '✕ Declined'}
+            </span>
+            <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
+          </div>
+        `;
       } else {
-          // Force the correct URL parameter based on the type
-          const isDelete = item.type === 'review_delete' || (item.message && item.message.toLowerCase().includes('delete'));
-          const urlParam = isDelete ? 'review_delete' : 'review_create';
-          
-          // Generate a custom button style based on whether it is a delete request
-          const btnBg = isDelete ? '#DC2626' : '#4F46E5'; // Red for Delete, Indigo for Create
-          const btnShadow = isDelete ? 'rgba(220, 38, 38, 0.25)' : 'rgba(79, 70, 229, 0.25)';
-          const btnText = isDelete ? 'Review Deletion →' : 'Review Request →';
-          
-          actionButtons = `
-            <div style="margin-top: 12px;">
-                <button onclick="window.location.href='inventory.html?${urlParam}=${item.id}'" style="width:100%; padding:8px 16px; background:${btnBg}; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 4px 12px ${btnShadow}; transition:all 0.2s;">${btnText}</button>
-            </div>
-          `;
+        // Pending — show Review button with appropriate color
+        const isDelete  = isDeleteRequest || (item.message && item.message.toLowerCase().includes('delete'));
+        const btnBg     = isDelete ? '#DC2626' : '#059669';
+        const btnShadow = isDelete ? 'rgba(220,38,38,0.20)' : 'rgba(5,150,105,0.20)';
+        const btnText   = isDelete ? '🗑️ Review Deletion' : '🏭 Review Request';
+
+        actionButtons = `
+          <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+            <button
+              onclick="window.openWarehouseReview('${requestId}')"
+              style="
+                flex:1;padding:9px 14px;
+                background:${btnBg};color:#fff;border:none;border-radius:10px;
+                font-size:0.83rem;font-weight:700;cursor:pointer;
+                box-shadow:0 4px 12px ${btnShadow};
+                transition:all 0.2s;font-family:inherit;
+                display:flex;align-items:center;justify-content:center;gap:6px;
+              "
+              onmouseover="this.style.opacity='0.88'"
+              onmouseout="this.style.opacity='1'"
+            >${btnText}</button>
+            <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')" style="white-space:nowrap;">Dismiss</button>
+          </div>
+        `;
       }
-    } 
-    // Handle Calendar Events
+    }
+    // ── Result notification (sent back to requester) ──
+    else if (item.type === 'warehouse_reviewed') {
+      const isApproved = item.message && item.message.includes('approved');
+      actionButtons = `
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+          <span style="
+            padding:4px 12px;border-radius:100px;font-size:12px;font-weight:700;
+            background:${isApproved ? '#ECFDF5' : '#FEF2F2'};
+            color:${isApproved ? '#059669' : '#DC2626'};
+            border:1.5px solid ${isApproved ? '#A7F3D0' : '#FECACA'};
+          ">${isApproved ? '✓ Approved' : '✕ Declined'}</span>
+          <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Got it</button>
+        </div>
+      `;
+    }
+    // ── Calendar events ──
     else if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
       actionButtons = `
         <div style="margin-top: 8px; display: flex; gap: 8px;">
@@ -131,12 +170,12 @@ export function renderNotifications(items, container) {
           <button class="btn btn-xs btn-primary" onclick="window.location.href='calendar.html?date=${item.eventDate || ''}'">(Open in app)</button>
         </div>
       `;
-    } 
-    // Default Dismiss
+    }
+    // ── Default — simple dismiss ──
     else {
       actionButtons = `
         <div style="margin-top: 8px;">
-            <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
+          <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
         </div>
       `;
     }
@@ -153,6 +192,13 @@ export function renderNotifications(items, container) {
     `;
   }).join('');
 }
+
+// ── Global handler: open warehouse review page ──
+// Called by the "Review Request" button in notifications
+window.openWarehouseReview = function(requestId) {
+  if (!requestId) return;
+  window.location.href = `warehouse-review.html?id=${requestId}`;
+};
 
 export function updateBadge(count) {
   const badge = document.getElementById('notif-badge');
