@@ -3191,4 +3191,777 @@ function renderProds(list){
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px 20px; width:100%; flex:1; box-sizing:border-box;">
         <div style="color:var(--text-3); margin-bottom:16px;">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A22 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+        </div>
+        <div style="font-size:18px; font-family:var(--f-display); font-weight:800; color:var(--text-1); margin-bottom:8px; letter-spacing:-0.01em;">No products yet</div>
+        <div style="font-size:14px; font-weight:600; color:var(--text-3); max-width:260px; line-height:1.5;">Tap Add Product to create your first item</div>
+      </div>`;
+    if (pagWrap) pagWrap.innerHTML = '';
+    return;
+  }
+  
+  // Setup pagination math (Limit 10 per page)
+  const totalPages = Math.ceil(list.length / PROD_PER_PAGE);
+  if (prodCurrentPage > totalPages) prodCurrentPage = totalPages;
+  if (prodCurrentPage < 1) prodCurrentPage = 1;
+  
+  const startIndex = (prodCurrentPage - 1) * PROD_PER_PAGE;
+  const slice = list.slice(startIndex, startIndex + PROD_PER_PAGE);
+  
+  el.innerHTML = slice.map(p=>{
+    const isLow = p.minStock != null ? p.stock <= p.minStock : p.stock <= 0;
+    
+    // 🔥 Clean Redesigned Badge
+    const lowBadge = isLow ? `<span class="low-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Low</span>` : '';
+    
+    return `
+    <div class="prow" onclick="window.openProd('${p.id}')">
+      <div class="prow-ico">${window.getExtIcon(p.emoji)}</div>
+      <div class="prow-info">
+        <div class="prow-name-wrap">
+          <div class="prow-name">${esc(p.name)}</div>
+          ${lowBadge}
+        </div>
+        <div class="prow-meta">${p.desc ? esc(p.desc) : 'No description'}</div>
+      </div>
+      <div class="prow-stk">
+        <span class="prow-num${isLow?' low':''}">${p.stock||0}</span>
+        <span class="prow-unit">${esc(p.unit||'units')}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (totalPages > 1) {
+    if (pagWrap) pagWrap.innerHTML = `
+      <div class="pag-wrap" style="margin:0 !important; border-radius:0 !important; border:none !important; border-top:1px solid rgba(0,0,0,0.08) !important; background:var(--white-pure) !important; backdrop-filter:none !important;">
+        <button class="pag-btn" onclick="window.changeEntryPage(-1)" ${window.entryCurrentPage === 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Prev</button>
+        <span class="pag-info">${window.entryCurrentPage} / ${totalPages}</span>
+        <button class="pag-btn" onclick="window.changeEntryPage(1)" ${window.entryCurrentPage === totalPages ? 'disabled' : ''}>Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>`;
+  } else {
+    if (pagWrap) pagWrap.innerHTML = '';
+  }
+}
+
+window.openProd=async function(pId, highlight = false){
+  curProd=prods.find(x=>x.id===pId);if(!curProd)return;
+  const p=curProd;const isLow=p.minStock!=null?p.stock<=p.minStock:p.stock<=0;
+  document.getElementById('pdEmoji').innerHTML=window.getExtIcon(p.emoji);
+  document.getElementById('pdName').textContent=p.name;
+  document.getElementById('pdDesc').textContent=p.desc||'';
+  document.getElementById('pdStock').textContent=p.stock||0;
+  document.getElementById('pdStock').className='pd-big'+(isLow?' low':'');
+  document.getElementById('pdUnit').textContent=(p.unit||'units')+' in stock';
+  document.getElementById('pdMin').textContent=p.minStock!=null?p.minStock:'—';
+  const canM=CU.role==='owner'||CU.role==='manager';
+  const pab=document.getElementById('prodActionBtns');if(pab)pab.style.display=canM?'flex':'none';
+  const ceb=document.getElementById('convEditBtn');if(ceb)ceb.style.display=canM?'inline-flex':'none';
+  
+  // Apply the Fog highlight animation if triggered from the Low Stock Modal
+  if(highlight) {
+    const heroCard = document.querySelector('.pd-hero');
+    if(heroCard) {
+      heroCard.classList.remove('focus-fog');
+      void heroCard.offsetWidth; // Force a DOM reflow to restart animation
+      heroCard.classList.add('focus-fog');
+    }
+  }
+
+  showView('prod');renderConversionsDetail(p);await loadEntries(pId);
+};
+
+function renderConversionsDetail(p){
+  const convs=p.conversions||[];const el=document.getElementById('convList');
+  if(!convs.length){el.innerHTML='<div class="conv-empty">No conversions. Edit product to define relationships.</div>';return;}
+  el.innerHTML='<div>'+convs.map(c=>`<div class="conv-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span style="margin-left:10px;font-weight:500">1 ${esc(curProd.unit||'units')}</span><span style="margin:0 10px;color:var(--border-strong)">=</span><span class="conv-eq">${Number(c.ratio.toFixed(4))} ${esc(c.name)}</span></div>`).join('')+'</div>';
+}
+
+// ── MERGED EDIT ──
+window.openMergedEdit=function(){
+  if(!curProd)return;setMM('editProdMsg','','');
+  document.getElementById('editProdSub').textContent=`Edit: ${curProd.name}`;
+  document.getElementById('editProdNameInp').value=curProd.name;
+  const mi=document.getElementById('editProdMinInp');if(mi){mi.value=curProd.minStock!==undefined?curProd.minStock:'';mi.type='number';mi.min='0';mi.step='any';}
+  document.getElementById('editProdBaseLabel').textContent=curProd.unit||'units';
+  const hasC=curProd.conversions&&curProd.conversions.length>0;
+  const tgl=document.getElementById('editConvTgl');if(tgl)tgl.checked=hasC;
+  const bldr=document.getElementById('editConvBuilderContainer');if(bldr)bldr.style.display=hasC?'block':'none';
+  const rows=document.getElementById('editConvRows');if(rows)rows.innerHTML='';
+  if(hasC)curProd.conversions.forEach(c=>appendConvFormulaRow(rows,c.name,Number(c.ratio.toFixed(4)),curProd.unit));
+  window.openM('m-edit-prod');
+};
+window.toggleEditConvBuilder=function(el){document.getElementById('editConvBuilderContainer').style.display=el.checked?'block':'none';const rows=document.getElementById('editConvRows');if(el.checked&&rows&&rows.children.length===0)window.addEditConvFormulaRow();};
+
+// Premium Responsive UI for the "Add Product" conversion row
+function appendFixedBaseConvRow(container,fixedBase){
+  const rowId = 'cr-' + Date.now() + Math.floor(Math.random()*1000);
+  const row=document.createElement('div');
+  row.className='conv-row-fixed';
+  row.innerHTML=`
+    <div class="conv-row-left">
+      1 <span class="fixed-b-dynamic">${esc(fixedBase)}</span> <span style="color:var(--text-4); margin:0 2px;">=</span>
+    </div>
+    <input type="number" step="any" min="0.0001" placeholder="Qty" class="mult-inp" required>
+    
+    <div class="cat-picker-wrap conv-wrap" id="wrap-${rowId}" style="width: 105px; flex-shrink: 1;">
+      <div class="cat-picker-trigger" onclick="window.toggleConvDD('${rowId}')" style="height: 38px; padding: 0 10px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 2px 4px rgba(0,0,0,0.02); border-radius: 8px; background: var(--white-pure); transition: all 0.2s;">
+        <span class="cpt-label" id="lbl-${rowId}" style="font-size: 13px; font-weight: 700; color: var(--text-1);">Unit</span>
+        <svg class="cpt-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="cat-picker-dropdown" id="dd-${rowId}" style="max-height: 140px; top: calc(100% + 4px); padding: 4px 0; min-width: 110px;"></div>
+    </div>
+    <input type="hidden" class="alt-unit-sel" id="inp-${rowId}" value="">
+    
+    <button class="conv-rm" type="button" onclick="window.removeConvRow(this)">✕</button>
+  `;
+  container.appendChild(row);
+  window.populateAltUnitsCustom(rowId, fixedBase, '');
+  row.querySelector('.mult-inp').addEventListener('input', () => checkConvDuplicateCustom(container));
+}
+
+// Premium Responsive UI for the "Edit Product" conversion row
+function appendConvFormulaRow(container,name,ratioMult,baseUnit){
+  const base=baseUnit||'KG';
+  const rowId = 'cr-' + Date.now() + Math.floor(Math.random()*1000);
+  const row=document.createElement('div');
+  row.className='conv-row-fixed';
+  row.innerHTML=`
+    <div class="conv-row-left">
+      1 <span class="fixed-b-dynamic">${esc(base)}</span> <span style="color:var(--text-4); margin:0 2px;">=</span>
+    </div>
+    <input type="number" step="any" min="0.0001" placeholder="Qty" value="${ratioMult||''}" class="mult-inp" required>
+    
+    <div class="cat-picker-wrap conv-wrap" id="wrap-${rowId}" style="width: 105px; flex-shrink: 1;">
+      <div class="cat-picker-trigger" onclick="window.toggleConvDD('${rowId}')" style="height: 38px; padding: 0 10px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 2px 4px rgba(0,0,0,0.02); border-radius: 8px; background: var(--white-pure); transition: all 0.2s;">
+        <span class="cpt-label" id="lbl-${rowId}" style="font-size: 13px; font-weight: 700; color: var(--text-1);">Unit</span>
+        <svg class="cpt-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="cat-picker-dropdown" id="dd-${rowId}" style="max-height: 140px; top: calc(100% + 4px); padding: 4px 0; min-width: 110px;"></div>
+    </div>
+    <input type="hidden" class="alt-unit-sel" id="inp-${rowId}" value="">
+    
+    <button class="conv-rm" type="button" onclick="window.removeConvRow(this)">✕</button>
+  `;
+  container.appendChild(row);
+  window.populateAltUnitsCustom(rowId, base, name);
+  row.querySelector('.mult-inp').addEventListener('input', () => checkConvDuplicateCustom(container));
+}
+
+// --- AUTO-OFF & RESTORE LOGIC ---
+window.removeConvRow = function(btn) {
+  const row = btn.closest('.conv-row-fixed');
+  const container = row.parentElement;
+  row.remove();
+  
+  if (container.children.length === 0) {
+    if (container.id === 'addProdConvRows') {
+      const tgl = document.getElementById('addProdConvTgl');
+      if (tgl) { tgl.checked = false; window.toggleAddProdConv(tgl); }
+    } else if (container.id === 'editConvRows') {
+      const tgl = document.getElementById('editConvTgl');
+      if (tgl) { tgl.checked = false; window.toggleEditConvBuilder(tgl); }
+    }
+  } else {
+    try { if(typeof checkConvDuplicateCustom === 'function') checkConvDuplicateCustom(container); } catch(e) {}
+  }
+  
+  document.querySelectorAll('.add-conv-btn').forEach(b => {
+    b.classList.remove('disabled-dull', 'limit-bounce');
+  });
+};
+
+window.populateAltUnitsCustom = function(rowId, baseUnit, currentName) {
+  const dd = document.getElementById('dd-' + rowId);
+  const inp = document.getElementById('inp-' + rowId);
+  const lbl = document.getElementById('lbl-' + rowId);
+  
+  const safeBase = (baseUnit || '').toLowerCase();
+  let opts = STD_UNITS.filter(u => u.toLowerCase() !== safeBase);
+  
+  let defaultVal = currentName;
+  if (!defaultVal || defaultVal.toLowerCase() === safeBase) {
+    defaultVal = opts.length > 0 ? opts[0] : '';
+  } else if (!opts.includes(currentName)) {
+    opts.unshift(currentName);
+  }
+  
+  inp.value = defaultVal;
+  lbl.textContent = defaultVal;
+
+  if(dd) {
+    dd.innerHTML = opts.map(u => `
+      <div class="cat-opt" style="padding: 8px 12px;" onclick="window.selectConvUnit('${rowId}', '${u}')">
+        <span class="copt-name" style="font-size: 13px; font-weight: 700; color: var(--text-1);">${u}</span>
+        <svg class="unit-check ${u === defaultVal ? '' : 'hidden'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+    `).join('');
+  }
+};
+
+window.toggleConvDD = function(rowId) {
+  const wrap = document.getElementById('wrap-' + rowId);
+  const trigger = wrap.querySelector('.cat-picker-trigger');
+  const dd = document.getElementById('dd-' + rowId);
+  if(dd.style.display === 'block') {
+    dd.style.display = 'none'; trigger.classList.remove('open');
+  } else {
+    document.querySelectorAll('.conv-wrap .cat-picker-dropdown').forEach(d => d.style.display = 'none');
+    document.querySelectorAll('.conv-wrap .cat-picker-trigger').forEach(t => t.classList.remove('open'));
+    dd.style.display = 'block'; trigger.classList.add('open');
+  }
+};
+
+window.selectConvUnit = function(rowId, val) {
+  document.getElementById('inp-' + rowId).value = val;
+  document.getElementById('lbl-' + rowId).textContent = val;
+  const dd = document.getElementById('dd-' + rowId);
+  dd.style.display = 'none';
+  document.getElementById('wrap-' + rowId).querySelector('.cat-picker-trigger').classList.remove('open');
+  
+  dd.querySelectorAll('.cat-opt').forEach(opt => {
+     const name = opt.querySelector('.copt-name').textContent;
+     const check = opt.querySelector('.unit-check');
+     if(name === val) check.classList.remove('hidden');
+     else check.classList.add('hidden');
+  });
+  
+  const container = document.getElementById('wrap-' + rowId).closest('#addProdConvRows, #editConvRows');
+  if (container) checkConvDuplicateCustom(container);
+};
+
+function checkConvDuplicateCustom(cont){
+  const wrappers = cont.querySelectorAll('.conv-wrap');
+  const seen = new Set();
+  wrappers.forEach(w => {
+    const trigger = w.querySelector('.cat-picker-trigger');
+    trigger.style.borderColor = 'var(--border-strong)';
+  });
+  wrappers.forEach(w => {
+    const rowId = w.id.replace('wrap-', '');
+    const val = document.getElementById('inp-' + rowId).value;
+    const trigger = w.querySelector('.cat-picker-trigger');
+    if(seen.has(val)) trigger.style.borderColor = 'var(--red)';
+    else seen.add(val);
+  });
+}
+
+window.saveMergedProd=async function(){
+  const newName=document.getElementById('editProdNameInp').value.trim();if(!newName){setMM('editProdMsg','⚠ Enter product name.','err');return;}
+  const mi=document.getElementById('editProdMinInp');const minStock=mi&&mi.value!==''?parseFloat(mi.value):null;
+  let convs=[];
+  if(document.getElementById('editConvTgl')?.checked){convs=getConvRowsFixedData('editConvRows');if(convs===null){setMM('editProdMsg','⚠ Check conversion values.','err');return;}}
+  setMM('editProdMsg','Saving…','');
+  try{
+    const updates={name:newName,minStock:minStock,conversions:convs};const logs=[];
+    if(newName!==curProd.name)logs.push(`Prod name changed from "${curProd.name}" to "${newName}"`);
+    if(JSON.stringify(convs)!==JSON.stringify(curProd.conversions||[]))logs.push('Product conversions updated.');
+    await updateDoc(doc(db,'products',curProd.id),updates);
+    if(logs.length>0)await addDoc(collection(db,'entries'),{type:'LOG',qty:0,qtyBase:0,unit:'',entryUnit:'',note:`${CU.role} (${CU.name}) made changes: ${logs.join('. ')}`,productId:curProd.id,godownId:curWH,companyId:CU.companyId,who:CU.name||'Owner',createdBy:CU.uid,deleted:false,isActivity:true,createdAt:serverTimestamp()});
+    curProd.name=newName;curProd.minStock=minStock;curProd.conversions=convs;
+    document.getElementById('pdName').textContent=newName;document.getElementById('pdMin').textContent=minStock!==null?minStock:'—';
+    const idx=prods.findIndex(p=>p.id===curProd.id);if(idx>-1)prods[idx].name=newName;
+    renderConversionsDetail(curProd);window.closeM('m-edit-prod');await loadEntries(curProd.id);window.showToast('Product updated ✓','s');
+  }catch(e){setMM('editProdMsg','❌ Failed: '+e.message,'err');}
+};
+
+function getConvRowsFixedData(containerId){const rows=document.querySelectorAll(`#${containerId} .conv-row-fixed`);const convs=[];const seen=new Set();for(const row of rows){const mult=parseFloat(row.querySelector('.mult-inp').value);const altUnit=row.querySelector('.alt-unit-sel').value;if(seen.has(altUnit)||!mult||mult<=0||!altUnit)return null;seen.add(altUnit);convs.push({name:altUnit,ratio:mult});}return convs;}
+
+// ── DELETE PRODUCT ──
+window.prepDelProd=function(){
+  if(CU.role!=='owner'&&CU.role!=='manager'){window.showToast('Manager/Owner only.','e');return;}
+  document.getElementById('delProdSub').textContent=`Delete "${curProd.name}"?`;
+  window.openM('m-del-prod');
+};
+
+window.confirmDelProd=async function(){
+  const btn=document.getElementById('delProdBtn');
+  btn.disabled=true; btn.textContent='Deleting...';
+  try{
+    const batch=writeBatch(db);
+    const snap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));
+    snap.docs.forEach(d=>batch.delete(d.ref));
+    
+    const rl=CU.role.charAt(0).toUpperCase()+CU.role.slice(1);
+    const logRef=doc(collection(db,'entries'));
+    batch.set(logRef,{type:'LOG',qty:0,qtyBase:0,unit:'',entryUnit:'',note:`${rl} (${CU.name}) deleted product: "${curProd.name}"`,productId:'DELETED',godownId:curWH,companyId:CU.companyId,who:CU.name||'Owner',createdBy:CU.uid,deleted:false,isActivity:true,createdAt:serverTimestamp()});
+    batch.delete(doc(db,'products',curProd.id));
+    await batch.commit();
+    window.closeM('m-del-prod'); showView('wh'); await loadProds(curWH);
+    window.showToast(`Product deleted.`,'s');
+  }catch(e){
+    window.showToast('Failed to delete: ' + e.message,'e');
+  }
+  btn.disabled=false; btn.textContent='Delete Forever';
+};
+
+window.confirmDelWH = async function() {
+  const btn = document.getElementById('delWhBtn');
+  btn.disabled = true; 
+  btn.textContent = 'Deleting...';
+  
+  try {
+    const batch = writeBatch(db);
+    
+    const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('godownId', '==', curWH)));
+    entSnap.docs.forEach(d => batch.delete(d.ref));
+    
+    const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', curWH)));
+    prodSnap.docs.forEach(d => batch.delete(d.ref));
+    
+    batch.delete(doc(db, 'godowns', curWH));
+    
+    await batch.commit();
+    
+    window.closeM('m-del-wh'); 
+    showView('dash'); 
+    window.showToast('Warehouse deleted successfully.', 'success');
+    curWH = null;
+  } catch(e) {
+    const errEl = document.getElementById('delWhErr');
+    if (errEl) errEl.textContent = 'Failed: ' + e.message;
+  }
+  
+  btn.disabled = false; 
+  btn.textContent = 'Delete';
+};
+
+window.currentEntries = [];
+window.entryCurrentPage = 1;
+const ENTRY_PER_PAGE = 10;
+
+async function loadEntries(pId){
+  document.getElementById('eList').innerHTML='<div class="e-empty">Loading…</div>';
+  try{
+    const snap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',pId)));
+    
+    window.currentEntries = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>new Date(b.createdAt?.toDate?b.createdAt.toDate():b.createdAt||0)-new Date(a.createdAt?.toDate?a.createdAt.toDate():a.createdAt||0));
+    window.entryCurrentPage = 1;
+
+    const active=window.currentEntries.filter(e=>!e.deleted);
+    document.getElementById('pdIn').textContent=active.filter(e=>e.type==='IN').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
+    document.getElementById('pdOut').textContent=active.filter(e=>e.type==='OUT').reduce((s,e)=>s+(e.qtyBase||e.qty||0),0);
+    
+    const eTitle = document.getElementById('eCntTitle');
+    if (eTitle) eTitle.textContent = window.currentEntries.length > 0 ? `STOCK HISTORY (${window.currentEntries.length})` : 'STOCK HISTORY';
+
+    window.renderEntries();
+  }catch(e){document.getElementById('eList').innerHTML=`<div class="e-empty" style="color:var(--red)">Error: ${e.message}</div>`;}
+}
+
+window.changeEntryPage = function(dir) {
+  window.entryCurrentPage += dir;
+  window.renderEntries();
+};
+
+window.renderEntries = function() {
+  const entries = window.currentEntries || [];
+  const el = document.getElementById('eList');
+  const pagWrap = document.getElementById('entryPagination');
+
+  if(!entries.length){
+     el.innerHTML='<div class="e-empty">No entries yet.</div>';
+     if (pagWrap) pagWrap.innerHTML = '';
+     return;
+  }
+
+  const totalPages = Math.ceil(entries.length / ENTRY_PER_PAGE);
+  if (window.entryCurrentPage > totalPages) window.entryCurrentPage = totalPages;
+  if (window.entryCurrentPage < 1) window.entryCurrentPage = 1;
+
+  const startIndex = (window.entryCurrentPage - 1) * ENTRY_PER_PAGE;
+  const slice = entries.slice(startIndex, startIndex + ENTRY_PER_PAGE);
+
+  el.innerHTML = slice.map(e => {
+      // 1. System Logs
+      if(e.type==='LOG'||e.isActivity)return `<div class="erow"><div class="e-ind" style="background:var(--accent-soft);border:1px solid rgba(79,70,229,.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">System Log</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.note)} • ${ago(e.createdAt)}</div></div></div>`;
+      
+      const canDel=!e.deleted&&(CU.role==='owner'||CU.role==='manager'||e.createdBy===CU.uid);
+      const delBtn=canDel?`<button style="background:var(--red-soft);border:1.5px solid var(--red-border);color:var(--red);width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s;" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`:'';
+      
+      // 2. Deleted Rows
+      if(e.deleted)return `<div class="erow del-row" style="opacity:.6;cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--white-dim);border:1px solid var(--border-strong);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em; text-decoration:line-through;">${esc(e.who||'Unknown')}</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.deleteMessage||'Deleted')} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
+      
+      // 3. Active IN/OUT Rows
+      const isInc = e.type === 'IN';
+      const arrow = isInc ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
+      const amtStr = (isInc ? '+' : '-') + (e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty}`:e.qty);
+      const untStr = esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units');
+      
+      return `<div class="erow">
+        <div class="e-ind ${isInc?'e-in':'e-out'}">${arrow}</div>
+        <div class="e-body">
+          <div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">${esc(e.who||'Unknown')}</div>
+          <div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${e.note ? esc(e.note) : (isInc?'Stock In':'Stock Out')} • ${ago(e.createdAt)}</div>
+        </div>
+        <div class="e-right" style="display:flex; align-items:center; gap:12px;">
+          <div style="text-align:right;">
+            <span class="e-qty ${isInc?'e-qi':'e-qo'}" style="font-family:var(--f-display); font-size:18px; font-weight:800;">${amtStr}</span>
+            <span class="e-unit" style="font-size:11px; font-weight:700; color:var(--text-4); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-top:2px;">${untStr}</span>
+          </div>
+          ${delBtn}
+        </div>
+      </div>`;
+  }).join('');
+
+  if (totalPages > 1) {
+    if (pagWrap) pagWrap.innerHTML = `
+      <div class="pag-wrap" style="margin:0 !important;border-radius:0 !important;border:none !important;border-top:1px solid rgba(0,0,0,0.08) !important;background:var(--white-pure) !important;backdrop-filter:none !important;">
+        <button class="pag-btn" onclick="window.changeEntryPage(-1)" ${window.entryCurrentPage === 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Prev</button>
+        <span class="pag-info">${window.entryCurrentPage} / ${totalPages}</span>
+        <button class="pag-btn" onclick="window.changeEntryPage(1)" ${window.entryCurrentPage === totalPages ? 'disabled' : ''}>Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>`;
+  } else {
+    if (pagWrap) pagWrap.innerHTML = '';
+  }
+};
+
+window.prepDelEntry=function(entId){entToDelete=entId;document.getElementById('delReason').value='';document.getElementById('delExpSyncToggle').checked=true;document.getElementById('delEntMsg').textContent='';window.openM('m-del-entry');};
+
+window.confirmDelEntry=async function(){
+  const reason=document.getElementById('delReason').value.trim();
+  const len=reason.length;
+  if(len<10){setMM('delEntMsg','⚠ Write at least 10 characters.','err');return;}
+  
+  const btn=document.getElementById('delEntBtn');btn.disabled=true;btn.textContent='Deleting…';
+  try{
+    const snap=await getDoc(doc(db,'entries',entToDelete));
+    const e=snap.data();
+    const isOwn=e.createdBy===CU.uid;
+    const amt=`${e.qty} ${e.entryUnit||e.unit||''}`.trim();
+    const msg=isOwn?`${CU.name} deleted their own entry of ${amt} ${e.type}`:`${CU.role} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;
+    
+    // 1. Mark Entry as Deleted
+    await updateDoc(doc(db,'entries',entToDelete),{deleted:true,deleteReason:reason,deleteMessage:msg,deletedBy:CU.uid,deletedByName:CU.name||'Owner',deletedAt:new Date().toISOString()});
+    
+    // 2. Cross-App Sync: Delete linked Expense
+    if (document.getElementById('delExpSyncToggle').checked) {
+       const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId','==',CU.companyId), where('relatedEntryId','==',entToDelete)));
+       expSnap.docs.forEach(d => {
+          updateDoc(doc(db,'expenses',d.id), { isDeleted: true, deletedBy: CU.name, deletedById: CU.uid, deleteReason: reason, deletedAt: serverTimestamp() });
+       });
+    }
+
+    window.closeM('m-del-entry');
+    await loadEntries(curProd.id); 
+    
+    const allSnap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));
+    const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted);
+    const newStock=Math.max(0,activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0));
+    await updateDoc(doc(db,'products',curProd.id),{stock:newStock});
+    curProd.stock=newStock;
+    document.getElementById('pdStock').textContent=newStock;
+    window.showToast('Entry deleted.','');
+  }catch(e){setMM('delEntMsg','❌ Failed: '+e.message,'err');}
+  btn.disabled=false;btn.textContent='Delete Entry';
+};
+
+window.toggleAddProdConv = function(el) {
+  document.getElementById('addProdConvBuilder').style.display = el.checked ? 'block' : 'none';
+  const rows = document.getElementById('addProdConvRows');
+  if (el.checked && rows && rows.children.length === 0) window.addProdConvFormulaRow();
+};
+
+window.addProdConvFormulaRow = function() {
+  const rows = document.getElementById('addProdConvRows');
+  const btn = document.querySelector('#addProdConvBuilder .add-conv-btn');
+  if (rows && rows.children.length >= 6) { triggerLimitFeedback(btn); return; }
+  appendFixedBaseConvRow(rows, document.getElementById('pu_fixed').value);
+  updateBtnDullState(rows, btn);
+};
+
+window.addEditConvFormulaRow = function() {
+  const rows = document.getElementById('editConvRows');
+  const btn = document.querySelector('#editConvBuilderContainer .add-conv-btn');
+  if (rows && rows.children.length >= 6) { triggerLimitFeedback(btn); return; }
+  appendConvFormulaRow(rows, '', '', curProd.unit);
+  updateBtnDullState(rows, btn);
+};
+
+function triggerLimitFeedback(btn) {
+  if (btn) {
+    btn.classList.remove('limit-bounce');
+    void btn.offsetWidth; 
+    btn.classList.add('limit-bounce');
+    setTimeout(() => { btn.classList.remove('limit-bounce'); }, 300);
+  }
+  const toastExists = Array.from(document.querySelectorAll('.custom-toast')).some(t => t.textContent.includes('Maximum 6'));
+  if (!toastExists) window.showToast('Maximum 6 conversions allowed.', 'error');
+}
+
+function updateBtnDullState(rows, btn) {
+  if (!rows || !btn) return;
+  if (rows.children.length >= 6) {
+    btn.classList.add('disabled-dull');
+  } else {
+    btn.classList.remove('disabled-dull', 'limit-bounce');
+  }
+}
+
+window.openAddProd = function() {
+  if(CU.role !== 'owner' && CU.role !== 'manager') {
+    window.showToast('Only managers and owners can add products.', 'error');
+    return;
+  }
+  document.getElementById('pn').value = '';
+  document.getElementById('pdesc').value = '';
+  document.getElementById('ps').value = '';
+  document.getElementById('pu_fixed').value = 'Piece';
+  document.getElementById('unit-lbl').textContent = 'Piece';
+  document.getElementById('unit-icon').innerHTML = window.getExtIcon('puzzle');
+  
+  const expBlock = document.getElementById('addProdExpenseBlock');
+  if (expBlock) expBlock.style.display = 'none';
+  const tgl = document.getElementById('addProdExpTgl');
+  if (tgl) tgl.checked = false;
+  window.toggleExpFields(tgl || {checked: false});
+  
+  const convTgl = document.getElementById('addProdConvTgl');
+  if (convTgl) convTgl.checked = false;
+  const convBldr = document.getElementById('addProdConvBuilder');
+  if (convBldr) convBldr.style.display = 'none';
+  const convRows = document.getElementById('addProdConvRows');
+  if (convRows) convRows.innerHTML = '';
+  
+  setMM('prodMsg', '', '');
+  window.openM('m-prod');
+};
+
+window.openEntry = function(type) {
+  eType = type;
+  document.getElementById('eq').value = '';
+  document.getElementById('en').value = '';
+  document.getElementById('entryCost').value = '';
+  document.getElementById('convPreview').style.display = 'none';
+  setMM('entryMsg', '', '');
+  
+  document.getElementById('ettIn').classList.toggle('on', type === 'IN');
+  document.getElementById('ettOut').classList.toggle('on', type === 'OUT');
+  
+  const tgl = document.getElementById('logExpenseTgl');
+  if (tgl) tgl.checked = false;
+  document.getElementById('expenseFields').style.display = 'none';
+  
+  selUnit = curProd.unit || 'Piece';
+  document.getElementById('entry-unit-lbl').textContent = selUnit;
+  
+  const dd = document.getElementById('entry-unit-dd');
+  let opts = [curProd.unit || 'Piece'];
+  if(curProd.conversions) {
+    opts = opts.concat(curProd.conversions.map(c => c.name));
+  }
+  if(dd) {
+    dd.innerHTML = opts.map(u => `
+      <div class="cat-opt" style="padding: 12px 16px;" onclick="window.selectEntryUnit('${u}')">
+        <span class="copt-name" style="font-size: 14px; font-weight: 700; color: var(--text-1);">${u}</span>
+      </div>
+    `).join('');
+  }
+  
+  window.openM('m-entry');
+};
+
+window.setET = function(type) {
+  eType = type;
+  document.getElementById('ettIn').classList.toggle('on', type === 'IN');
+  document.getElementById('ettOut').classList.toggle('on', type === 'OUT');
+  window.calcEntryTotal();
+};
+
+window.selectEntryUnit = function(u) {
+  selUnit = u;
+  document.getElementById('entry-unit-lbl').textContent = u;
+  document.getElementById('entry-unit-dd').style.display = 'none';
+  window.updateConvPreview();
+  window.calcEntryTotal();
+};
+
+window.toggleEntryUnitDD = function() {
+  const dd = document.getElementById('entry-unit-dd');
+  dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+};
+
+window.updateConvPreview = function() {
+  const qtyRaw = parseFloat(document.getElementById('eq').value) || 0;
+  const preview = document.getElementById('convPreview');
+  if (!qtyRaw || selUnit === (curProd.unit || 'Piece')) {
+     preview.style.display = 'none';
+     return;
+  }
+  const conv = (curProd.conversions || []).find(c => c.name === selUnit);
+  const ratio = conv ? conv.ratio : 1;
+  const baseQty = +(qtyRaw * ratio).toFixed(4);
+  preview.textContent = "= " + baseQty + " " + (curProd.unit || 'Piece') + " (Base)";
+  preview.style.display = 'block';
+};
+
+window.calcEntryTotal = function() {
+   const qty = parseFloat(document.getElementById('eq').value) || 0;
+   const cost = parseFloat(document.getElementById('entryCost').value) || 0;
+   const total = qty * cost;
+   const lbl = document.getElementById('entryTotalCalc');
+   if(lbl) lbl.textContent = "Total: ₹ " + total.toFixed(2);
+   const uLbl = document.getElementById('entryCostUnitLbl');
+   if(uLbl) uLbl.textContent = selUnit || 'unit';
+};
+
+window.viewDelReason = async function(id) {
+   const entry = window.currentEntries.find(e => e.id === id);
+   if(!entry) return;
+   document.getElementById('drDeletedBy').textContent = entry.deletedByName || 'Unknown';
+   document.getElementById('drReason').textContent = entry.deleteReason || 'No reason provided';
+   
+   const dObj = typeof entry.deletedAt?.toDate === 'function' ? entry.deletedAt.toDate() : new Date(entry.deletedAt);
+   document.getElementById('drTime').textContent = dObj.toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+   window.openM('m-del-reason');
+};
+
+window.sendWHDeleteRequest = async function() {
+  const reason = document.getElementById('reqDelReason').value.trim();
+  const errEl = document.getElementById('reqDelErr');
+  if (reason.length < 10) {
+    errEl.textContent = 'Reason must be at least 10 characters.';
+    return;
+  }
+  
+  const btn = document.getElementById('reqDelBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  
+  try {
+    if (CU.ownerId) {
+      const syncTgl = document.getElementById('reqDelExpSyncToggle');
+      await addDoc(collection(db, 'users', CU.ownerId, 'notifications'), {
+        type: 'inventory_review_delete',
+        app: 'inventory',
+        title: 'Warehouse Deletion Request',
+        icon: 'trash-2',
+        status: 'pending',
+        actorId: CU.uid,
+        actorName: CU.name,
+        message: `${CU.name} requested to delete warehouse "${WHs.find(w => w.id === curWH)?.name || 'Unknown'}".`,
+        warehouseData: {
+           id: curWH,
+           name: WHs.find(w => w.id === curWH)?.name || 'Unknown',
+           reason: reason,
+           syncExpense: syncTgl ? syncTgl.checked : true
+        },
+        createdAt: serverTimestamp()
+      });
+      window.showToast("Deletion request sent to owner.", "success");
+      window.closeM('m-req-del-wh');
+    } else {
+      window.showToast("Owner not found.", "error");
+    }
+  } catch (e) {
+    errEl.textContent = 'Failed: ' + e.message;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Send Request';
+};
+
+window.openReviewModal = function(whId, whName, reason, notifId, actorName, type, whData) {
+    currentReviewWarehouseId = whId;
+    currentReviewNotificationId = notifId;
+    currentReviewType = type;
+    pendingCreateData = whData;
+    
+    const titleEl = document.getElementById('reviewTitle');
+    const btnContainer = document.getElementById('reviewActionButtons');
+    const msgEl = document.getElementById('reviewMsg');
+    const reasonEl = document.getElementById('reviewReason');
+    
+    if (type === 'delete') {
+        titleEl.textContent = 'Review Deletion';
+        titleEl.classList.add('mttl-red'); 
+        
+        msgEl.innerHTML = `<b>${esc(actorName)}</b> requested to delete warehouse <b>"${esc(whName)}"</b>.`;
+        reasonEl.textContent = reason || 'No reason provided.';
+        
+        btnContainer.innerHTML = `
+          <button class="btn-ghost-red" id="btnRejectWh" onclick="window.processWhReview('reject')" style="flex: 1; height: 46px; border-radius: 12px; font-weight: 700;">Decline</button>
+          <button class="btn-black-red" id="btnApproveWh" onclick="window.processWhReview('approve')" style="flex: 1; margin: 0; height: 46px; font-weight: 700;">Approve</button>
+        `;
+    } else {
+        titleEl.textContent = 'Review Request';
+        titleEl.classList.remove('mttl-red'); 
+        
+        msgEl.innerHTML = `<b>${esc(actorName)}</b> wants to create a new warehouse: <b>"${esc(whName)}"</b>.`;
+        reasonEl.innerHTML = `Location: ${esc(whData?.location)}<br>Category: ${esc(whData?.category)}`;
+        
+        btnContainer.innerHTML = `
+          <button class="btn-danger" id="btnRejectWh" onclick="window.processWhReview('reject')" style="flex: 1; height: 46px;">Decline</button>
+          <button class="btn-black" id="btnApproveWh" onclick="window.processWhReview('approve')" style="flex: 1; margin: 0; height: 46px;">Approve</button>
+        `;
+    }
+    
+    document.getElementById('reviewErr').textContent = '';
+    window.openM('m-review');
+};
+
+let currentReviewNotificationId = null;
+let currentReviewWarehouseId = null;
+let currentReviewType = ''; 
+let pendingCreateData = null; 
+
+window.processWhReview = async function(action) {
+    const errEl = document.getElementById('reviewErr');
+    const btnApprove = document.getElementById('btnApproveWh');
+    const btnReject = document.getElementById('btnRejectWh');
+    btnApprove.disabled = true; btnReject.disabled = true;
+    
+    errEl.textContent = 'Processing...';
+    errEl.style.color = '#D97706'; 
+    
+    try {
+        if (currentReviewType === 'delete') {
+            if (action === 'approve') {
+                const batch = writeBatch(db);
+                const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
+                entSnap.docs.forEach(d => batch.delete(d.ref));
+                const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
+                prodSnap.docs.forEach(d => batch.delete(d.ref));
+                
+                batch.delete(doc(db, 'godowns', currentReviewWarehouseId));
+                batch.update(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
+                await batch.commit();
+                
+                window.showToast("Warehouse deleted successfully.", "success"); 
+                showView('dash'); 
+            } else {
+                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
+                window.showToast("Deletion request declined.", "info");
+            }
+        } 
+        else if (currentReviewType === 'create') {
+            if (action === 'approve' && pendingCreateData) {
+                await addDoc(collection(db, 'godowns'), pendingCreateData);
+                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
+                window.showToast("Warehouse approved and created!", "success");
+            } else {
+                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
+                window.showToast("Creation request declined.", "info");
+            }
+        }
+        
+        window.closeM('m-review');
+        
+        const url = new URL(window.location);
+        url.searchParams.delete('inventory_review_delete');
+        url.searchParams.delete('inventory_review_create');
+        window.history.replaceState({}, document.title, url);
+        
+    } catch(e) {
+        errEl.textContent = '❌ Error: ' + e.message;
+        errEl.style.color = '#DC2626';
+    } finally {
+        btnApprove.disabled = false; btnReject.disabled = false;
+    }
+};
+
+init();
+</script>
+</body>
+</html>
