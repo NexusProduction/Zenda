@@ -111,9 +111,14 @@ export function renderNotifications(items, container) {
           const isDelete = item.type === 'review_delete' || (item.message && item.message.toLowerCase().includes('delete'));
           const urlParam = isDelete ? 'review_delete' : 'review_create';
           
+          // Generate a custom button style based on whether it is a delete request
+          const btnBg = isDelete ? '#DC2626' : '#4F46E5'; // Red for Delete, Indigo for Create
+          const btnShadow = isDelete ? 'rgba(220, 38, 38, 0.25)' : 'rgba(79, 70, 229, 0.25)';
+          const btnText = isDelete ? 'Review Deletion →' : 'Review Request →';
+          
           actionButtons = `
             <div style="margin-top: 12px;">
-                <button onclick="window.location.href='inventory.html?${urlParam}=${item.id}'" style="width:100%; padding:8px 16px; background:#4F46E5; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(79,70,229,0.25); transition:all 0.2s;">Review Request →</button>
+                <button onclick="window.location.href='inventory.html?${urlParam}=${item.id}'" style="width:100%; padding:8px 16px; background:${btnBg}; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 4px 12px ${btnShadow}; transition:all 0.2s;">${btnText}</button>
             </div>
           `;
       }
