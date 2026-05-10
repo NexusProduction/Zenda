@@ -3038,13 +3038,17 @@ let currentReviewWarehouseId = null;
 let currentReviewType = ''; 
 let pendingCreateData = null; 
 
+// Helper to escape HTML and prevent breaking strings
 function esc(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 window.closeM = function(id) {
     const el = document.getElementById(id);
-    if(el) el.style.display = 'none';
+    if(el) {
+        el.style.display = 'none';
+        document.body.style.overflow = ''; // Restore scrolling
+    }
 };
 
 window.openReviewModal = function(whId, whName, reason, notifId, actorName, type, whData) {
@@ -3055,30 +3059,35 @@ window.openReviewModal = function(whId, whName, reason, notifId, actorName, type
     
     const titleEl = document.getElementById('reviewTitle');
     const btnContainer = document.getElementById('reviewActionButtons');
+    const msgEl = document.getElementById('reviewMsg');
+    const reasonEl = document.getElementById('reviewReason');
+    
+    // Stop background scrolling
+    document.body.style.overflow = 'hidden';
     
     if (type === 'delete') {
         titleEl.textContent = 'Review Deletion';
         titleEl.style.color = '#DC2626'; // Red text for deletion
         
-        document.getElementById('reviewMsg').innerHTML = `<b>${esc(actorName)}</b> requested to delete warehouse <b>"${esc(whName)}"</b>.`;
-        document.getElementById('reviewReason').textContent = reason || 'No reason provided.';
+        msgEl.innerHTML = `<b>${esc(actorName)}</b> requested to delete warehouse <b>"${esc(whName)}"</b>.`;
+        reasonEl.textContent = reason || 'No reason provided.';
         
         // Exact styling for Danger/Deletion (Red Theme)
         btnContainer.innerHTML = `
-          <button onclick="window.processWhReview('reject')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#FEF2F2; color:#DC2626; border:1.5px solid #FECACA; cursor:pointer;">Decline</button>
-          <button onclick="window.processWhReview('approve')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#DC2626; color:#fff; border:none; box-shadow:0 4px 12px rgba(220,38,38,0.2); cursor:pointer;">Approve Deletion</button>
+          <button onclick="window.processWhReview('reject')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#FEF2F2; color:#DC2626; border:1.5px solid #FECACA; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Decline</button>
+          <button onclick="window.processWhReview('approve')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#DC2626; color:#fff; border:none; box-shadow:0 4px 12px rgba(220,38,38,0.2); cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Approve Deletion</button>
         `;
     } else {
         titleEl.textContent = 'Review Request';
         titleEl.style.color = '#0D0F14'; // Standard text for creation
         
-        document.getElementById('reviewMsg').innerHTML = `<b>${esc(actorName)}</b> wants to create a new warehouse: <b>"${esc(whName)}"</b>.`;
-        document.getElementById('reviewReason').innerHTML = `Location: ${esc(whData?.location)}<br>Category: ${esc(whData?.category)}`;
+        msgEl.innerHTML = `<b>${esc(actorName)}</b> wants to create a new warehouse: <b>"${esc(whName)}"</b>.`;
+        reasonEl.innerHTML = `Location: ${esc(whData?.location)}<br>Category: ${esc(whData?.category)}`;
         
         // Exact styling for Standard/Creation (Black Theme)
         btnContainer.innerHTML = `
-          <button onclick="window.processWhReview('reject')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; cursor:pointer;">Decline</button>
-          <button onclick="window.processWhReview('approve')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#09090B; color:#fff; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.1); cursor:pointer;">Approve Creation</button>
+          <button onclick="window.processWhReview('reject')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Decline</button>
+          <button onclick="window.processWhReview('approve')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#09090B; color:#fff; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.1); cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Approve Creation</button>
         `;
     }
     
@@ -3089,6 +3098,10 @@ window.openReviewModal = function(whId, whName, reason, notifId, actorName, type
 
 window.processWhReview = async function(action) {
     const errEl = document.getElementById('reviewErr');
+    const buttons = document.querySelectorAll('#reviewActionButtons button');
+    
+    // Disable buttons and show processing
+    buttons.forEach(b => b.disabled = true);
     errEl.textContent = 'Processing...';
     errEl.style.color = '#D97706'; // Amber while loading
     
@@ -3107,20 +3120,20 @@ window.processWhReview = async function(action) {
                 batch.update(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
                 await batch.commit();
                 
-                alert("Warehouse deleted successfully."); 
+                window.showToast("Warehouse deleted successfully.", "success"); 
             } else {
                 await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
-                alert("Deletion request declined.");
+                window.showToast("Deletion request declined.", "info");
             }
         } 
         else if (currentReviewType === 'create') {
             if (action === 'approve' && pendingCreateData) {
                 await addDoc(collection(db, 'godowns'), pendingCreateData);
                 await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
-                alert("Warehouse approved and created!");
+                window.showToast("Warehouse approved and created!", "success");
             } else {
                 await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
-                alert("Creation request declined.");
+                window.showToast("Creation request declined.", "info");
             }
         }
         
@@ -3128,6 +3141,8 @@ window.processWhReview = async function(action) {
     } catch(e) {
         errEl.textContent = '❌ Error: ' + e.message;
         errEl.style.color = '#DC2626';
+    } finally {
+        buttons.forEach(b => b.disabled = false);
     }
 };
 init();
