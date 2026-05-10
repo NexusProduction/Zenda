@@ -2695,17 +2695,34 @@ window.handleAssign = async function() {
   </script>
   <script type="module">
     import { auth, db } from './firebase-config.js';
-    import { requireAuth, getCurrentUser } from './auth.js';
-    import { doc, getDoc, updateDoc, addDoc, collection, query, orderBy, limit, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { requireAuth, logout, getCurrentUser } from './auth.js';
+    import { copyToClipboard, saveSession } from './utils.js';
+    import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, writeBatch, query, orderBy, limit, onSnapshot, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-    // --- GLOBAL STATE ---
-    window.CU = null;
-    window.myTasks = [];
-    window.assignedByMeTasks = [];
-    window.allStaff = [];
-    window.taskTab = 'pending';
-    let unsubs = [];
+    // Wildcard imports
+    import * as StaffModule from './staff.js';
+    import * as TasksModule from './tasks.js';
+    import * as AppsModule from './apps.js';
+
+    const { listenCompanyStaff, getAssignableStaff, createStaff, deleteStaffMember } = StaffModule;
+    const { listenMyTasks, listenAssignedByMe } = TasksModule;
+    const { listenInstalledApps } = AppsModule;
+
+    window.markNotifRead = async function(notifId) {
+        const el = document.querySelector(`.notif-item[data-id="${notifId}"]`);
+        if (el) el.style.display = 'none';
+        if (window.CU && window.CU.uid) {
+            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+        }
+    };
+
+    window.handleLogout = async function() {
+        try {
+            if (typeof logout === 'function') await logout();
+        } catch (e) { console.error(e); }
+        window.location.href = 'login.html';
+    };
 
     // --- CRITICAL: ATTACH FUNCTIONS TO WINDOW FOR HTML ONCLICK ---
     window.showView = function(v) {
@@ -2735,10 +2752,7 @@ window.handleAssign = async function() {
     window.doAcceptTask = async function(taskId) {
       window.showToast("Completing task...", "info");
       try {
-        await updateDoc(doc(db, 'tasks', taskId), { 
-          status: 'done', 
-          completedAt: Date.now() 
-        });
+        await updateDoc(doc(db, 'tasks', taskId), { status: 'done', completedAt: Date.now() });
         window.showToast("Task marked as done!", "success");
       } catch (e) {
         window.showToast("Error: " + e.message, "error");
