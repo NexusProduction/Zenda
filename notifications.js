@@ -95,14 +95,12 @@ export function renderNotifications(items, container) {
 
     let actionButtons = '';
 
-    // ── Warehouse CREATE request (staff → manager review) ──
-    const isCreateRequest = item.type === 'review_create' || item.type === 'warehouse_request';
-    const isDeleteRequest = item.type === 'review_delete';
+   // ── Warehouse CREATE request (staff → manager review) ──
+    const isCreateRequest = item.type === 'review_create' || item.type === 'warehouse_request' || item.type === 'inventory_review_create';
+    const isDeleteRequest = item.type === 'review_delete' || item.type === 'inventory_review_delete';
     const isWhRequest     = isCreateRequest || isDeleteRequest;
 
     if (isWhRequest) {
-      const requestId = item.relatedId || item.id;
-
       if (item.status === 'approved' || item.status === 'rejected' || item.status === 'declined') {
         // Already reviewed — show outcome badge
         const isApproved = item.status === 'approved';
@@ -122,27 +120,27 @@ export function renderNotifications(items, container) {
         `;
       } else {
         // Pending — show Review button with appropriate color
-        const isDelete  = isDeleteRequest || (item.message && item.message.toLowerCase().includes('delete'));
-        const btnBg     = isDelete ? '#DC2626' : '#059669';
-        const btnShadow = isDelete ? 'rgba(220,38,38,0.20)' : 'rgba(5,150,105,0.20)';
-        const btnText   = isDelete ? '🗑️ Review Deletion' : '🏭 Review Request';
-
+        const isDelete = isDeleteRequest || (item.message && item.message.toLowerCase().includes('delete'));
+        const urlParam = isDelete ? 'inventory_review_delete' : 'inventory_review_create';
+        const reviewType = isDelete ? 'delete' : 'create';
+        
+        const btnBg = isDelete ? '#DC2626' : '#09090B'; 
+        const btnShadow = isDelete ? 'rgba(220, 38, 38, 0.25)' : 'rgba(0, 0, 0, 0.25)';
+        const btnText = isDelete ? 'Review Deletion' : 'Review Request';
+        
+        // Extract data safely to pass to the popup
+        const whId = item.warehouseData?.id || '';
+        const whName = item.warehouseData?.name || '';
+        const whReason = item.warehouseData?.reason || '';
+        const actorName = item.actorName || 'Staff';
+        // Ensure quotes don't break the onclick string
+        const rawData = item.warehouseData || {};
+        const safeDataStr = JSON.stringify(rawData).replace(/"/g, '&quot;');
+        
         actionButtons = `
-          <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
-            <button
-              onclick="window.openWarehouseReview('${requestId}')"
-              style="
-                flex:1;padding:9px 14px;
-                background:${btnBg};color:#fff;border:none;border-radius:10px;
-                font-size:0.83rem;font-weight:700;cursor:pointer;
-                box-shadow:0 4px 12px ${btnShadow};
-                transition:all 0.2s;font-family:inherit;
-                display:flex;align-items:center;justify-content:center;gap:6px;
-              "
-              onmouseover="this.style.opacity='0.88'"
-              onmouseout="this.style.opacity='1'"
-            >${btnText}</button>
-            <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')" style="white-space:nowrap;">Dismiss</button>
+          <div style="margin-top: 12px; display:flex; gap:8px;">
+              <button onclick="if(window.openReviewModal) { window.openReviewModal('${whId}', '${escapeHtml(whName)}', '${escapeHtml(whReason)}', '${item.id}', '${escapeHtml(actorName)}', '${reviewType}', JSON.parse('${safeDataStr}'.replace(/&quot;/g, '\\"'))); } else { window.location.href='inventory.html?${urlParam}=${item.id}'; }" style="flex:1; padding:9px 16px; background:${btnBg}; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 4px 12px ${btnShadow}; transition:all 0.2s;">${btnText}</button>
+              <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')" style="white-space:nowrap; padding: 0 12px; border-radius:10px;">Dismiss</button>
           </div>
         `;
       }
