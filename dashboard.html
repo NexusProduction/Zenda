@@ -812,20 +812,15 @@
     import * as StaffModule from './staff.js';
     import * as TasksModule from './tasks.js';
     import * as AppsModule from './apps.js';
-    import { copyToClipboard, saveSession } from './utils.js';
-    import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, writeBatch, query, orderBy, limit, onSnapshot, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-    // Wildcard imports to prevent strict JavaScript "export missing" crashes
-    import * as StaffModule from './staff.js';
-    import * as TasksModule from './tasks.js';
-    import * as AppsModule from './apps.js';
 
     const { listenCompanyStaff, getAssignableStaff, createStaff, deleteStaffMember } = StaffModule;
     const { listenMyTasks, listenAssignedByMe } = TasksModule;
     const { listenInstalledApps } = AppsModule;
 
-    // Safe Notification Reader (bypasses missing external functions)
+    const { listenCompanyStaff, getAssignableStaff, createStaff, deleteStaffMember } = StaffModule;
+    const { listenMyTasks, listenAssignedByMe } = TasksModule;
+    const { listenInstalledApps } = AppsModule;
+
     window.markNotifRead = async function(notifId) {
         const el = document.querySelector(`.notif-item[data-id="${notifId}"]`);
         if (el) el.style.display = 'none';
@@ -2689,19 +2684,23 @@ window.handleAssign = async function() {
     }
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
-  </script>
-  window.doAcceptTask = async function(taskId) {
-  window.showToast("Completing task...", "info");
-  try {
-    await updateDoc(doc(db, 'tasks', taskId), { status: 'done', completedAt: Date.now() });
-    window.showToast("Task marked as done!", "success");
-  } catch (e) { window.showToast("Error: " + e.message, "error"); }
-};
+    // ── ADD THESE TWO FUNCTIONS RIGHT BEFORE async function init() ──
 
-window.openDeclineModal = function(id, title) {
-  pendingDeclineId = id;  // use the existing let variable, not window.pendingDeclineId
-  document.getElementById('decline-task-title').textContent = title;
-  window.openModal('decline-modal');
-};
+    window.doAcceptTask = async function(taskId) {
+      window.showToast("Completing task...", "info");
+      try {
+        await updateDoc(doc(db, 'tasks', taskId), { status: 'done', completedAt: Date.now() });
+        window.showToast("Task marked as done!", "success");
+      } catch (e) { window.showToast("Error: " + e.message, "error"); }
+    };
+
+    window.openDeclineModal = function(id, title) {
+      pendingDeclineId = id;
+      document.getElementById('decline-task-title').textContent = title;
+      window.openModal('decline-modal');
+    };
+
+    async function init() {   // ← existing line, don't change
+  </script>
 </body>
 </html>
