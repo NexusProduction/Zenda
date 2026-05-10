@@ -817,10 +817,6 @@
     const { listenMyTasks, listenAssignedByMe } = TasksModule;
     const { listenInstalledApps } = AppsModule;
 
-    const { listenCompanyStaff, getAssignableStaff, createStaff, deleteStaffMember } = StaffModule;
-    const { listenMyTasks, listenAssignedByMe } = TasksModule;
-    const { listenInstalledApps } = AppsModule;
-
     window.markNotifRead = async function(notifId) {
         const el = document.querySelector(`.notif-item[data-id="${notifId}"]`);
         if (el) el.style.display = 'none';
@@ -1605,16 +1601,6 @@
       });
     };
 
-    window.markNotifRead = async function(notifId) {
-        // Hide it visually instantly
-        const el = document.querySelector(`.notif-item[data-id="${notifId}"]`);
-        if (el) el.style.display = 'none';
-        
-        // Update the database (ensure CU.uid exists here)
-        if (window.CU && window.CU.uid) {
-            await markNotificationRead(window.CU.uid, notifId);
-        }
-    };
     window.openCalendarApp = async function(btn, notifId, dateStr) {
         // 1. Change text instantly so you know it's working
         btn.textContent = 'Opening...';
@@ -2683,9 +2669,6 @@ window.handleAssign = async function() {
       } catch (e) { console.error("Dashboard Init Error: ", e); }
     }
 
-    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
-    // ── ADD THESE TWO FUNCTIONS RIGHT BEFORE async function init() ──
-
     window.doAcceptTask = async function(taskId) {
       window.showToast("Completing task...", "info");
       try {
@@ -2700,7 +2683,17 @@ window.handleAssign = async function() {
       window.openModal('decline-modal');
     };
 
-    async function init() {   // ← existing line, don't change
+    async function init() {
+      try {
+        await requireAuth('login.html');
+        const cu = await getCurrentUser();
+        if (!cu) { location.href = 'login.html'; return; }
+        window.CU = cu; saveSession(cu); window.CU._notifyList = cu.notifyApps || [];
+        setupUI(); window.buildProfile(); subscribeAll();
+      } catch (e) { console.error("Dashboard Init Error: ", e); }
+    }
+
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
   </script>
 </body>
 </html>
