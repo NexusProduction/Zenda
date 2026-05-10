@@ -2201,64 +2201,6 @@ body.is-premium .premium-lock-overlay {
     </div>
   </div>
 </div>
-
-<div class="mo" id="m-review" onclick="if(event.target===this) window.closeM('m-review')">
-  <div class="mbox" style="max-width: 440px; padding: 0; border-radius: 20px;">
-    <div class="mhd" style="border-bottom: 2px solid var(--border-strong); padding: 24px 24px 14px; justify-content: center;">
-      <div class="mttl mttl-red" style="font-size: 1.25rem; font-weight: 800; text-align: center; width: 100%; font-family: var(--f-display); letter-spacing: -0.01em; margin-bottom: 0;">Review Request</div>
-      <div style="font-size: 0.85rem; color: var(--text-3); font-weight: 600; text-align: center; margin-top: 4px;">Warehouse Management</div>
-    </div>
-    
-    <div class="mbd" style="padding: 24px;">
-      <div class="mf" style="margin-bottom: 20px;">
-        <div style="font-size:15px; text-align:center; color:var(--text-1); font-weight:600; line-height:1.5;" id="reviewMsg">
-          </div>
-      </div>
-
-      <div class="mf" style="margin-bottom: 24px;">
-        <label style="text-align: center; display: block; margin-bottom: 8px;">Details / Reason</label>
-        <div style="font-size:15px; line-height:1.6; padding:16px; background:var(--white-pure); border:2px solid var(--border-strong); border-radius:12px; font-weight:700; color:var(--text-2); text-align: center;" id="reviewReason">
-          </div>
-      </div>
-
-      <div class="mmsg" id="reviewErr" style="margin-bottom: 16px; min-height: 18px;"></div>
-      
-      <div style="display: flex; gap: 12px;">
-        <button class="btn-ghost-red" id="btnRejectWh" onclick="window.processWhReview('reject')" style="flex: 1; height: 46px; border-radius: 12px; font-weight: 700;">Decline</button>
-        <button class="btn-black-red" id="btnApproveWh" onclick="window.processWhReview('approve')" style="flex: 1; margin: 0; height: 46px; font-weight: 700;">Approve</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="mo" id="m-review" onclick="if(event.target===this) window.closeM('m-review')">
-  <div class="mbox" style="max-width: 440px; padding: 0; border-radius: 20px;">
-    <div class="mhd" style="border-bottom: 2px solid var(--border-strong); padding: 24px 24px 14px; justify-content: center;">
-      <div class="mttl" style="color:var(--text-1); font-size: 1.25rem; font-weight: 800; text-align: center; width: 100%; font-family: var(--f-display); letter-spacing: -0.01em; margin-bottom: 0;">Review Request</div>
-      <div style="font-size: 0.85rem; color: var(--text-3); font-weight: 600; text-align: center; margin-top: 4px;">Warehouse Deletion</div>
-    </div>
-    
-    <div class="mbd" style="padding: 24px;">
-      <div class="mf" style="margin-bottom: 20px;">
-        <div style="font-size:15px; text-align:center; color:var(--text-1); font-weight:600; line-height:1.5;" id="reviewMsg">
-          </div>
-      </div>
-
-      <div class="mf" style="margin-bottom: 24px;">
-        <label style="text-align: center; display: block; margin-bottom: 8px;">Reason provided</label>
-        <div style="font-size:15px; line-height:1.6; padding:16px; background:var(--white-pure); border:2px solid var(--border-strong); border-radius:12px; font-weight:700; color:var(--text-2); text-align: center;" id="reviewReason">
-          </div>
-      </div>
-
-      <div class="mmsg" id="reviewErr" style="margin-bottom: 16px; min-height: 18px;"></div>
-      
-      <div style="display: flex; gap: 12px;">
-        <button class="btn-danger" id="btnRejectWh" onclick="window.processWhReview('reject')" style="flex: 1; height: 46px;">Decline</button>
-        <button class="btn-black" id="btnApproveWh" onclick="window.processWhReview('approve')" style="flex: 1; margin: 0; height: 46px;">Approve</button>
-      </div>
-    </div>
-  </div>
-</div>
 <div id="custom-toast-container"></div>
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -2998,14 +2940,26 @@ async function init(){
                 const nd = snap.data();
                 if (nd.status === 'pending' && nd.warehouseData) {
                   currentReviewType = 'create';
-                  pendingCreateData = nd.warehouseData; // Save data for approval
-                  
+                  pendingCreateData = nd.warehouseData; 
                   currentReviewNotificationId = snap.id;
                   
-                  // Re-use the existing modal but swap the text for Creation
+                  // Style adjustments for Creation
+                  const titleEl = document.getElementById('reviewTitle');
+                  const btnContainer = document.getElementById('reviewActionButtons');
+                  
+                  titleEl.textContent = 'Review Request';
+                  titleEl.classList.remove('mttl-red'); // Removes Red class
+                  
                   document.getElementById('reviewMsg').innerHTML = `<b>${esc(nd.actorName || 'Staff')}</b> wants to create a new warehouse: <b>"${esc(nd.warehouseData.name)}"</b>.`;
                   document.getElementById('reviewReason').innerHTML = `Location: ${esc(nd.warehouseData.location)}<br>Category: ${esc(nd.warehouseData.category)}`;
                   setMM('reviewErr', '', '');
+                  
+                  // Inject standard buttons for creation
+                  btnContainer.innerHTML = `
+                    <button class="btn-danger" id="btnRejectWh" onclick="window.processWhReview('reject')" style="flex: 1; height: 46px;">Decline</button>
+                    <button class="btn-black" id="btnApproveWh" onclick="window.processWhReview('approve')" style="flex: 1; margin: 0; height: 46px;">Approve</button>
+                  `;
+
                   window.openM('m-review');
                 }
               }
@@ -3963,15 +3917,27 @@ window.sendWHDeleteRequest = async function() {
 
 let currentReviewNotificationId = null;
 let currentReviewWarehouseId = null;
-
 // Opens the modal when the owner clicks the notification
 window.openReviewModal = function(whId, whName, count, reason, notifId, actorName) {
     currentReviewWarehouseId = whId;
     currentReviewNotificationId = notifId;
     
+    // Style adjustments for Deletion
+    const titleEl = document.getElementById('reviewTitle');
+    const btnContainer = document.getElementById('reviewActionButtons');
+    
+    titleEl.textContent = 'Review Deletion';
+    titleEl.classList.add('mttl-red'); // Makes text Red
+    
     document.getElementById('reviewMsg').innerHTML = `<b>${esc(actorName || 'Staff')}</b> requested to delete warehouse <b>"${esc(whName)}"</b>.`;
     document.getElementById('reviewReason').textContent = reason || 'No reason provided.';
     document.getElementById('reviewErr').textContent = '';
+    
+    // Inject custom Red buttons for deletion
+    btnContainer.innerHTML = `
+      <button class="btn-ghost-red" id="btnRejectWh" onclick="window.processWhReview('reject')" style="flex: 1; height: 46px; border-radius: 12px; font-weight: 700;">Decline</button>
+      <button class="btn-black-red" id="btnApproveWh" onclick="window.processWhReview('approve')" style="flex: 1; margin: 0; height: 46px; font-weight: 700;">Approve</button>
+    `;
     
     window.openM('m-review');
 };
