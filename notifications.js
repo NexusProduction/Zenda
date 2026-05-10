@@ -133,13 +133,15 @@ export function renderNotifications(items, container) {
         const whName = item.warehouseData?.name || '';
         const whReason = item.warehouseData?.reason || '';
         const actorName = item.actorName || 'Staff';
-        // Ensure quotes don't break the onclick string
         const rawData = item.warehouseData || {};
-        const safeDataStr = JSON.stringify(rawData).replace(/"/g, '&quot;');
+        
+        // Use a global variable to store the data temporarily to avoid quote-escaping nightmares in the onclick string
+        window._tempReviewData = window._tempReviewData || {};
+        window._tempReviewData[item.id] = rawData;
         
         actionButtons = `
           <div style="margin-top: 12px; display:flex; gap:8px;">
-              <button onclick="if(window.openReviewModal) { window.openReviewModal('${whId}', '${escapeHtml(whName)}', '${escapeHtml(whReason)}', '${item.id}', '${escapeHtml(actorName)}', '${reviewType}', JSON.parse('${safeDataStr}'.replace(/&quot;/g, '\\"'))); } else { window.location.href='inventory.html?${urlParam}=${item.id}'; }" style="flex:1; padding:9px 16px; background:${btnBg}; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 4px 12px ${btnShadow}; transition:all 0.2s;">${btnText}</button>
+              <button onclick="if(window.openReviewModal) { window.openReviewModal('${whId}', '${escapeHtml(whName)}', '${escapeHtml(whReason)}', '${item.id}', '${escapeHtml(actorName)}', '${reviewType}', window._tempReviewData['${item.id}']); } else { window.location.href='inventory.html?${urlParam}=${item.id}'; }" style="flex:1; padding:9px 16px; background:${btnBg}; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 4px 12px ${btnShadow}; transition:all 0.2s;">${btnText}</button>
               <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')" style="white-space:nowrap; padding: 0 12px; border-radius:10px;">Dismiss</button>
           </div>
         `;
