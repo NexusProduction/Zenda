@@ -86,91 +86,12 @@ export function renderNotifications(items, container) {
       task_declined:         { icon: '❌', cls: 'notif-icon-declined' },
       calendar_event_all:    { icon: '🗓️', cls: 'notif-icon-cal' },
       calendar_event_custom: { icon: '🗓️', cls: 'notif-icon-cal' },
-      warehouse_request:     { icon: '🏭', cls: 'notif-icon-task' },
-      review_delete:         { icon: '🗑️', cls: 'notif-icon-declined' },
-      review_create:         { icon: '🏭', cls: 'notif-icon-task' },
-      warehouse_reviewed:    { icon: '📬', cls: 'notif-icon-done' }
     };
     const { icon, cls } = iconMap[item.type] || { icon: '🔔', cls: 'notif-icon-login' };
 
     let actionButtons = '';
 
-   // ── Warehouse CREATE request (staff → manager review) ──
-    const isCreateRequest = item.type === 'review_create' || item.type === 'warehouse_request' || item.type === 'inventory_review_create';
-    const isDeleteRequest = item.type === 'review_delete' || item.type === 'inventory_review_delete';
-    const isWhRequest     = isCreateRequest || isDeleteRequest;
-
-    if (isWhRequest) {
-      if (item.status === 'approved' || item.status === 'rejected' || item.status === 'declined') {
-        // Already reviewed — show outcome badge
-        const isApproved = item.status === 'approved';
-        actionButtons = `
-          <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="
-              display:inline-flex;align-items:center;gap:5px;
-              padding:4px 12px;border-radius:100px;font-size:12px;font-weight:700;
-              background:${isApproved ? '#ECFDF5' : '#FEF2F2'};
-              color:${isApproved ? '#059669' : '#DC2626'};
-              border:1.5px solid ${isApproved ? '#A7F3D0' : '#FECACA'};
-            ">
-              ${isApproved ? '✓ Approved' : '✕ Declined'}
-            </span>
-            <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
-          </div>
-        `;
-      } else {
-        // Pending — show Review button with appropriate color
-        const isDelete = isDeleteRequest || (item.message && item.message.toLowerCase().includes('delete'));
-        const urlParam = isDelete ? 'inventory_review_delete' : 'inventory_review_create';
-        const reviewType = isDelete ? 'delete' : 'create';
-        
-        const btnBg = isDelete ? '#DC2626' : '#09090B'; 
-        const btnShadow = isDelete ? 'rgba(220, 38, 38, 0.25)' : 'rgba(0, 0, 0, 0.25)';
-        const btnText = isDelete ? 'Review Deletion' : 'Review Request';
-        
-        // Extract data safely to pass to the popup
-        const whId = item.warehouseData?.id || '';
-        const whName = item.warehouseData?.name || '';
-        const whReason = item.warehouseData?.reason || '';
-        const actorName = item.actorName || 'Staff';
-        const rawData = item.warehouseData || {};
-        
-        // Use a global variable to store the data temporarily to avoid quote-escaping nightmares in the onclick string
-        window._tempReviewData = window._tempReviewData || {};
-        window._tempReviewData[item.id] = rawData;
-        
-        actionButtons = `
-          <div style="margin-top: 12px; display:flex; gap:8px;">
-              <button onclick="if(window.openReviewModal) { window.openReviewModal('${whId}', '${escapeHtml(whName)}', '${escapeHtml(whReason)}', '${item.id}', '${escapeHtml(actorName)}', '${reviewType}', window._tempReviewData['${item.id}']); } else { window.location.href='inventory.html?${urlParam}=${item.id}'; }" style="flex:1; padding:9px 16px; background:${btnBg}; color:#fff; border:none; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 4px 12px ${btnShadow}; transition:all 0.2s;">${btnText}</button>
-              <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')" style="white-space:nowrap; padding: 0 12px; border-radius:10px;">Dismiss</button>
-          </div>
-        `;
-      }
-    }
-    // ── Result notification (sent back to requester) ──
-    else if (item.type === 'warehouse_reviewed') {
-      const isApproved = item.message && item.message.includes('approved');
-      actionButtons = `
-        <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
-          <span style="
-            padding:4px 12px;border-radius:100px;font-size:12px;font-weight:700;
-            background:${isApproved ? '#ECFDF5' : '#FEF2F2'};
-            color:${isApproved ? '#059669' : '#DC2626'};
-            border:1.5px solid ${isApproved ? '#A7F3D0' : '#FECACA'};
-          ">${isApproved ? '✓ Approved' : '✕ Declined'}</span>
-          <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Got it</button>
-        </div>
-      `;
-    }
-    // ── Calendar events ──
-    else if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
-      actionButtons = `
-        <div style="margin-top: 8px; display: flex; gap: 8px;">
-          <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
-          <button class="btn btn-xs btn-primary" onclick="window.location.href='calendar.html?date=${item.eventDate || ''}'">(Open in app)</button>
-        </div>
-      `;
-    }
+   if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
     // ── Default — simple dismiss ──
     else {
       actionButtons = `
