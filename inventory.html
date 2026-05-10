@@ -2146,36 +2146,6 @@ body.is-premium .premium-lock-overlay {
   </div>
 </div>
 
-<div class="mo" id="m-req-del-wh" onclick="if(event.target===this) window.closeM('m-req-del-wh')">
-  <div class="mbox" style="max-width: 440px; padding: 0; border-radius: 20px;">
-    <div class="mhd" style="border-bottom: 2px solid var(--border-strong); padding: 24px 24px 14px; justify-content: center;">
-      <div class="mttl mttl-red" style="font-size: 1.25rem; font-weight: 800; text-align: center; width: 100%; font-family: var(--f-display); letter-spacing: -0.01em; margin-bottom: 0;">Request Deletion</div>
-      <div style="font-size: 0.85rem; color: var(--text-3); font-weight: 600; text-align: center; margin-top: 4px;" id="reqDelWhSub">Send approval to owner</div>
-    </div>
-    
-    <div class="mbd" style="padding: 24px;">
-      <div class="del-warn" style="border-width: 2px; font-weight: 700; margin-bottom: 20px; text-align: center;">
-        ⚠️ The owner must approve this request before the warehouse is deleted.
-      </div>
-      
-      <div class="fg" style="margin-bottom: 20px;">
-        <label style="text-align: center; display: block; margin-bottom: 8px;">Reason</label>
-        <div class="mfr">
-          <input type="text" id="reqDelReason" class="finp" placeholder="Reason (min 10 chars)" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s]/g, '')" style="text-align: center;">
-        </div>
-      </div>
-
-      <input type="hidden" id="reqDelExpSyncToggle" checked>
-
-      <div class="mmsg" id="reqDelErr" style="margin-bottom: 16px; min-height: 18px;"></div>
-      
-      <div style="display: flex; gap: 12px;">
-        <button class="btn-ghost-red" onclick="window.closeM('m-req-del-wh')" style="flex: 1; border-radius: 12px; height: 46px; font-weight: 700;">Cancel</button>
-        <button class="btn-black-red" id="reqDelBtn" onclick="window.sendWHDeleteRequest()" style="flex: 1; margin: 0; height: 46px; font-weight: 700;">Send Request</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <div id="custom-toast-container"></div>
 <script type="module">
@@ -2614,7 +2584,6 @@ window.validateAndSaveWH = function() {
     window.createWH(); 
   }
 };
-
 window.createWH = async function() {
   const nameInp = document.getElementById('wn');
   const locInp = document.getElementById('wl');
@@ -2625,41 +2594,15 @@ window.createWH = async function() {
   btn.innerHTML = 'Saving...';
   
   try {
-    const whData = {
+    await addDoc(collection(db, 'godowns'), {
       name: nameInp.value.trim(),
       location: locInp.value.trim(),
       category: catInp.value || 'General Storage',
       companyId: CU.companyId,
       createdBy: CU.uid,
-      createdAt: new Date().toISOString()
-    };
-
-    if (CU.role === 'owner') {
-        await addDoc(collection(db, 'godowns'), {
-            ...whData,
-            createdAt: serverTimestamp()
-        });
-        window.showToast('Warehouse created successfully', 'success');
-    } else {
-        if (CU.ownerId) {
-            await addDoc(collection(db, 'users', CU.ownerId, 'notifications'), {
-                type: 'inventory_review_create', 
-                app: 'inventory', 
-                title: 'New Warehouse Request',
-                icon: 'package', 
-                status: 'pending',
-                actorId: CU.uid,
-                actorName: CU.name,
-                message: `${CU.name} requested to create a new warehouse.`,
-                warehouseData: whData,
-                read: false,
-                createdAt: serverTimestamp()
-            });
-            window.showToast("Creation request sent to owner.", "success");
-        } else {
-            window.showToast("Owner not found. Cannot send request.", "error");
-        }
-    }
+      createdAt: serverTimestamp()
+    });
+    window.showToast('Warehouse created successfully', 'success');
     window.closeM('m-wh');
     nameInp.value = ''; 
     locInp.value = '';
@@ -2876,23 +2819,6 @@ async function init(){
     if (modalBtn) modalBtn.textContent = 'Request';
     if (modalSub) modalSub.textContent = 'Send creation request to owner';
   }
-
-  // URL CHECKER: Handled correctly via Inventory redirect
-  const reviewDelTarget = new URLSearchParams(location.search).get('inventory_review_delete');
-  const reviewCreateTarget = new URLSearchParams(location.search).get('inventory_review_create');
-  
-  if (reviewDelTarget) {
-    getDoc(doc(db, 'users', CU.uid, 'notifications', reviewDelTarget)).then(snap => {
-      if (snap.exists()) {
-        const nd = snap.data();
-        if (nd.status === 'pending' && nd.warehouseData) {
-          currentReviewType = 'delete';
-          window.openReviewModal(nd.warehouseData.id, nd.warehouseData.name, 0, nd.warehouseData.reason, snap.id, nd.actorName);
-        }
-      }
-    }).catch(err => console.error("Review Load Error:", err));
-  }
-  
   if (reviewCreateTarget) {
     getDoc(doc(db, 'users', CU.uid, 'notifications', reviewCreateTarget)).then(snap => {
       if (snap.exists()) {
@@ -3101,35 +3027,17 @@ window.openWH=async function(wh){
   const isManager=CU.role==='manager';
   
   const btnDel = document.getElementById('btnDelWH');
-  const trashIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
+const trashIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
   
-  if (isOwner) {
-    btnDel.innerHTML = `${trashIcon} <span>Delete</span>`;
-    btnDel.onclick = () => {
-      document.getElementById('delWhSub').textContent = `Delete "${whObj.name}"?`;
-      const errEl = document.getElementById('delWhErr');
-      if (errEl) errEl.innerHTML = ''; 
-      
-      const syncTgl = document.getElementById('delWhExpSyncToggle');
-      if (syncTgl) syncTgl.checked = true;
-      
-      window.openM('m-del-wh');
-    };
-  } else {
-    btnDel.innerHTML = `${trashIcon} <span>Request Delete</span>`;
-    btnDel.onclick = () => {
-      document.getElementById('reqDelWhSub').textContent = `Request to delete "${whObj.name}"`;
-      const errEl = document.getElementById('reqDelErr');
-      const reasonEl = document.getElementById('reqDelReason');
-      if (errEl) errEl.innerHTML = ''; 
-      if (reasonEl) reasonEl.value = '';
-      
-      const syncTgl = document.getElementById('reqDelExpSyncToggle');
-      if (syncTgl) syncTgl.checked = true;
-      
-      window.openM('m-req-del-wh');
-    };
-  }
+  btnDel.innerHTML = `${trashIcon} <span>Delete</span>`;
+  btnDel.onclick = () => {
+    document.getElementById('delWhSub').textContent = `Delete "${whObj.name}"?`;
+    const errEl = document.getElementById('delWhErr');
+    if (errEl) errEl.innerHTML = '';
+    const syncTgl = document.getElementById('delWhExpSyncToggle');
+    if (syncTgl) syncTgl.checked = true;
+    window.openM('m-del-wh');
+  };
   const canAdd = true; 
   const btnPC = document.getElementById('btnAddProdPC'); if(btnPC) btnPC.classList.toggle('hidden', !canAdd);
   const btnMob = document.getElementById('btnAddProdMobile'); if(btnMob) btnMob.classList.toggle('hidden', !canAdd);
@@ -3817,150 +3725,6 @@ window.viewDelReason = async function(id) {
    document.getElementById('drTime').textContent = dObj.toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
    window.openM('m-del-reason');
 };
-
-window.sendWHDeleteRequest = async function() {
-  const reason = document.getElementById('reqDelReason').value.trim();
-  const errEl = document.getElementById('reqDelErr');
-  if (reason.length < 10) {
-    errEl.textContent = 'Reason must be at least 10 characters.';
-    return;
-  }
-  
-  const btn = document.getElementById('reqDelBtn');
-  btn.disabled = true;
-  btn.textContent = 'Sending...';
-  
-  try {
-    if (CU.ownerId) {
-      const syncTgl = document.getElementById('reqDelExpSyncToggle');
-      await addDoc(collection(db, 'users', CU.ownerId, 'notifications'), {
-        type: 'inventory_review_delete',
-        app: 'inventory',
-        title: 'Warehouse Deletion Request',
-        icon: 'trash-2',
-        status: 'pending',
-        actorId: CU.uid,
-        actorName: CU.name,
-        message: `${CU.name} requested to delete warehouse "${WHs.find(w => w.id === curWH)?.name || 'Unknown'}".`,
-        warehouseData: {
-           id: curWH,
-           name: WHs.find(w => w.id === curWH)?.name || 'Unknown',
-           reason: reason,
-           syncExpense: syncTgl ? syncTgl.checked : true
-        },
-        createdAt: serverTimestamp()
-      });
-      window.showToast("Deletion request sent to owner.", "success");
-      window.closeM('m-req-del-wh');
-    } else {
-      window.showToast("Owner not found.", "error");
-    }
-  } catch (e) {
-    errEl.textContent = 'Failed: ' + e.message;
-  }
-  btn.disabled = false;
-  btn.textContent = 'Send Request';
-};
-
-window.openReviewModal = function(whId, whName, reason, notifId, actorName, type, whData) {
-    currentReviewWarehouseId = whId;
-    currentReviewNotificationId = notifId;
-    currentReviewType = type;
-    pendingCreateData = whData;
-    
-    const titleEl = document.getElementById('reviewTitle');
-    const btnContainer = document.getElementById('reviewActionButtons');
-    const msgEl = document.getElementById('reviewMsg');
-    const reasonEl = document.getElementById('reviewReason');
-    
-    if (type === 'delete') {
-        titleEl.textContent = 'Review Deletion';
-        titleEl.classList.add('mttl-red'); 
-        
-        msgEl.innerHTML = `<b>${esc(actorName)}</b> requested to delete warehouse <b>"${esc(whName)}"</b>.`;
-        reasonEl.textContent = reason || 'No reason provided.';
-        
-        btnContainer.innerHTML = `
-          <button class="btn-ghost-red" id="btnRejectWh" onclick="window.processWhReview('reject')" style="flex: 1; height: 46px; border-radius: 12px; font-weight: 700;">Decline</button>
-          <button class="btn-black-red" id="btnApproveWh" onclick="window.processWhReview('approve')" style="flex: 1; margin: 0; height: 46px; font-weight: 700;">Approve</button>
-        `;
-    } else {
-        titleEl.textContent = 'Review Request';
-        titleEl.classList.remove('mttl-red'); 
-        
-        msgEl.innerHTML = `<b>${esc(actorName)}</b> wants to create a new warehouse: <b>"${esc(whName)}"</b>.`;
-        reasonEl.innerHTML = `Location: ${esc(whData?.location)}<br>Category: ${esc(whData?.category)}`;
-        
-        btnContainer.innerHTML = `
-          <button class="btn-danger" id="btnRejectWh" onclick="window.processWhReview('reject')" style="flex: 1; height: 46px;">Decline</button>
-          <button class="btn-black" id="btnApproveWh" onclick="window.processWhReview('approve')" style="flex: 1; margin: 0; height: 46px;">Approve</button>
-        `;
-    }
-    
-    document.getElementById('reviewErr').textContent = '';
-    window.openM('m-review');
-};
-
-let currentReviewNotificationId = null;
-let currentReviewWarehouseId = null;
-let currentReviewType = ''; 
-let pendingCreateData = null; 
-
-window.processWhReview = async function(action) {
-    const errEl = document.getElementById('reviewErr');
-    const btnApprove = document.getElementById('btnApproveWh');
-    const btnReject = document.getElementById('btnRejectWh');
-    btnApprove.disabled = true; btnReject.disabled = true;
-    
-    errEl.textContent = 'Processing...';
-    errEl.style.color = '#D97706'; 
-    
-    try {
-        if (currentReviewType === 'delete') {
-            if (action === 'approve') {
-                const batch = writeBatch(db);
-                const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
-                entSnap.docs.forEach(d => batch.delete(d.ref));
-                const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
-                prodSnap.docs.forEach(d => batch.delete(d.ref));
-                
-                batch.delete(doc(db, 'godowns', currentReviewWarehouseId));
-                batch.update(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
-                await batch.commit();
-                
-                window.showToast("Warehouse deleted successfully.", "success"); 
-                showView('dash'); 
-            } else {
-                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
-                window.showToast("Deletion request declined.", "info");
-            }
-        } 
-        else if (currentReviewType === 'create') {
-            if (action === 'approve' && pendingCreateData) {
-                await addDoc(collection(db, 'godowns'), pendingCreateData);
-                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
-                window.showToast("Warehouse approved and created!", "success");
-            } else {
-                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
-                window.showToast("Creation request declined.", "info");
-            }
-        }
-        
-        window.closeM('m-review');
-        
-        const url = new URL(window.location);
-        url.searchParams.delete('inventory_review_delete');
-        url.searchParams.delete('inventory_review_create');
-        window.history.replaceState({}, document.title, url);
-        
-    } catch(e) {
-        errEl.textContent = '❌ Error: ' + e.message;
-        errEl.style.color = '#DC2626';
-    } finally {
-        btnApprove.disabled = false; btnReject.disabled = false;
-    }
-};
-
 init();
 </script>
 </body>
