@@ -2700,7 +2700,7 @@ window.handleAssign = async function() {
     import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, writeBatch, query, orderBy, limit, onSnapshot, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-    // Wildcard imports
+    // Wildcard imports to prevent strict JavaScript "export missing" crashes
     import * as StaffModule from './staff.js';
     import * as TasksModule from './tasks.js';
     import * as AppsModule from './apps.js';
@@ -2718,35 +2718,8 @@ window.handleAssign = async function() {
     };
 
     window.handleLogout = async function() {
-        try {
-            if (typeof logout === 'function') await logout();
-        } catch (e) { console.error(e); }
+        try { if (typeof logout === 'function') await logout(); } catch (e) { console.error(e); }
         window.location.href = 'login.html';
-    };
-
-    // --- CRITICAL: ATTACH FUNCTIONS TO WINDOW FOR HTML ONCLICK ---
-    window.showView = function(v) {
-      window.closeAllPanels();
-      ['home', 'tasks', 'staff'].forEach(n => {
-        const el = document.getElementById('view-' + n);
-        if (el) el.classList.toggle('hidden', n !== v);
-      });
-      // Update Nav active states
-      document.querySelectorAll('.sidebar-item, .bn-item').forEach(el => el.classList.remove('active'));
-      document.getElementById('nav-' + v)?.classList.add('active');
-      document.getElementById('bn-' + v)?.classList.add('active');
-      
-      if (v === 'tasks') window.renderTasksList();
-    };
-
-    window.openProfile = function() {
-      window.buildProfile();
-      document.getElementById('panel-overlay')?.classList.add('visible');
-      if (window.innerWidth >= 769) {
-        document.getElementById('profile-side-panel')?.classList.add('open');
-      } else {
-        document.getElementById('profile-page-mobile')?.classList.add('open');
-      }
     };
 
     window.doAcceptTask = async function(taskId) {
@@ -2754,9 +2727,7 @@ window.handleAssign = async function() {
       try {
         await updateDoc(doc(db, 'tasks', taskId), { status: 'done', completedAt: Date.now() });
         window.showToast("Task marked as done!", "success");
-      } catch (e) {
-        window.showToast("Error: " + e.message, "error");
-      }
+      } catch (e) { window.showToast("Error: " + e.message, "error"); }
     };
 
     window.openDeclineModal = function(id, title) {
@@ -2772,8 +2743,8 @@ window.handleAssign = async function() {
         if (!cu) { location.href = 'login.html'; return; }
         window.CU = cu; saveSession(cu); window.CU._notifyList = cu.notifyApps || [];
         setupUI(); window.buildProfile(); subscribeAll();
-
-        // Removes loader manually if automatic timeout fails
+        
+        // Remove loader manually to prevent infinite spin
         const loader = document.getElementById('loading-overlay');
         if (loader) {
             loader.style.opacity = '0';
