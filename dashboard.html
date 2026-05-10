@@ -813,7 +813,37 @@
     import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, writeBatch, query, orderBy, limit, onSnapshot, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { listenNotifications, renderNotifications, updateBadge, markNotificationRead, markAllRead } from './notifications.js';
+    import { auth, db } from './firebase-config.js';
+    import { requireAuth, logout, getCurrentUser } from './auth.js';
+    import { copyToClipboard, saveSession } from './utils.js';
+    import { doc, getDoc, deleteDoc, updateDoc, addDoc, collection, writeBatch, query, orderBy, limit, onSnapshot, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
+    // Wildcard imports to prevent strict JavaScript "export missing" crashes
+    import * as StaffModule from './staff.js';
+    import * as TasksModule from './tasks.js';
+    import * as AppsModule from './apps.js';
+
+    const { listenCompanyStaff, getAssignableStaff, createStaff, deleteStaffMember } = StaffModule;
+    const { listenMyTasks, listenAssignedByMe } = TasksModule;
+    const { listenInstalledApps } = AppsModule;
+
+    // Safe Notification Reader (bypasses missing external functions)
+    window.markNotifRead = async function(notifId) {
+        const el = document.querySelector(`.notif-item[data-id="${notifId}"]`);
+        if (el) el.style.display = 'none';
+        if (window.CU && window.CU.uid) {
+            await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
+        }
+    };
+
+    // Missing Sign Out function (fixes broken sign out button)
+    window.handleLogout = async function() {
+        try {
+            if (typeof logout === 'function') await logout();
+        } catch (e) { console.error(e); }
+        window.location.href = 'login.html';
+    };
 
     // ── UPGRADE BUTTON HANDLER ──
     window.handleUpgradeClick = async function() {
