@@ -779,7 +779,30 @@
     .custom-toast.out { animation: customToastOut 0.3s forwards !important; }
   </style>
   <div id="custom-toast-container"></div>
+<div class="mo" id="m-review" style="position: fixed; inset: 0; background: rgba(13,15,20,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 600; display: none; align-items: center; justify-content: center; padding: 16px;" onclick="if(event.target===this) window.closeM('m-review')">
+  <div class="mbox" style="background: #fff; width: 100%; max-width: 440px; padding: 0; border-radius: 20px; box-shadow: 0 24px 60px rgba(0,0,0,0.15);">
+    <div class="mhd" style="border-bottom: 2px solid #D0D2DB; padding: 24px 24px 14px; display: flex; flex-direction: column; align-items: center;">
+      <div id="reviewTitle" style="font-size: 1.25rem; font-weight: 800; text-align: center; width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.01em; margin-bottom: 0;">Review Request</div>
+      <div style="font-size: 0.85rem; color: #6C6F80; font-weight: 600; text-align: center; margin-top: 4px;">Warehouse Management</div>
+    </div>
+    
+    <div class="mbd" style="padding: 24px;">
+      <div style="margin-bottom: 20px;">
+        <div style="font-size:15px; text-align:center; color:#0D0F14; font-weight:600; line-height:1.5; font-family: 'DM Sans', sans-serif;" id="reviewMsg"></div>
+      </div>
 
+      <div style="margin-bottom: 24px;">
+        <label style="text-align: center; display: block; margin-bottom: 8px; font-size:11px; font-weight:700; color:#6C6F80; text-transform:uppercase; letter-spacing:0.05em; font-family:'Plus Jakarta Sans', sans-serif;">Details / Reason</label>
+        <div style="font-size:15px; line-height:1.6; padding:16px; background:#F8F9FC; border:2px solid #D0D2DB; border-radius:12px; font-weight:700; color:#3D3F4A; text-align: center; font-family: 'DM Sans', sans-serif;" id="reviewReason"></div>
+      </div>
+
+      <div id="reviewErr" style="margin-bottom: 16px; min-height: 18px; font-size:13px; font-weight:600; text-align:center; color:#DC2626; font-family: 'DM Sans', sans-serif;"></div>
+      
+      <div style="display: flex; gap: 12px; font-family: 'Plus Jakarta Sans', sans-serif;" id="reviewActionButtons">
+        </div>
+    </div>
+  </div>
+</div>
   <script type="module">
     import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
     import { requireAuth, logout, getCurrentUser } from './auth.js';
@@ -3005,7 +3028,108 @@ window.declineWarehouseDeleteReq = async function(notifId) {
         console.error(e);
     }
 };
+// =============================================
+// WAREHOUSE REVIEW LOGIC (NATIVE DASHBOARD)
+// =============================================
+import { doc, updateDoc, collection, query, where, getDocs, deleteDoc, writeBatch, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+let currentReviewNotificationId = null;
+let currentReviewWarehouseId = null;
+let currentReviewType = ''; 
+let pendingCreateData = null; 
+
+function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+window.closeM = function(id) {
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+};
+
+window.openReviewModal = function(whId, whName, reason, notifId, actorName, type, whData) {
+    currentReviewWarehouseId = whId;
+    currentReviewNotificationId = notifId;
+    currentReviewType = type;
+    pendingCreateData = whData;
+    
+    const titleEl = document.getElementById('reviewTitle');
+    const btnContainer = document.getElementById('reviewActionButtons');
+    
+    if (type === 'delete') {
+        titleEl.textContent = 'Review Deletion';
+        titleEl.style.color = '#DC2626'; // Red text for deletion
+        
+        document.getElementById('reviewMsg').innerHTML = `<b>${esc(actorName)}</b> requested to delete warehouse <b>"${esc(whName)}"</b>.`;
+        document.getElementById('reviewReason').textContent = reason || 'No reason provided.';
+        
+        // Exact styling for Danger/Deletion (Red Theme)
+        btnContainer.innerHTML = `
+          <button onclick="window.processWhReview('reject')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#FEF2F2; color:#DC2626; border:1.5px solid #FECACA; cursor:pointer;">Decline</button>
+          <button onclick="window.processWhReview('approve')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#DC2626; color:#fff; border:none; box-shadow:0 4px 12px rgba(220,38,38,0.2); cursor:pointer;">Approve Deletion</button>
+        `;
+    } else {
+        titleEl.textContent = 'Review Request';
+        titleEl.style.color = '#0D0F14'; // Standard text for creation
+        
+        document.getElementById('reviewMsg').innerHTML = `<b>${esc(actorName)}</b> wants to create a new warehouse: <b>"${esc(whName)}"</b>.`;
+        document.getElementById('reviewReason').innerHTML = `Location: ${esc(whData?.location)}<br>Category: ${esc(whData?.category)}`;
+        
+        // Exact styling for Standard/Creation (Black Theme)
+        btnContainer.innerHTML = `
+          <button onclick="window.processWhReview('reject')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; cursor:pointer;">Decline</button>
+          <button onclick="window.processWhReview('approve')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#09090B; color:#fff; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.1); cursor:pointer;">Approve Creation</button>
+        `;
+    }
+    
+    document.getElementById('reviewErr').textContent = '';
+    const modal = document.getElementById('m-review');
+    if(modal) modal.style.display = 'flex';
+};
+
+window.processWhReview = async function(action) {
+    const errEl = document.getElementById('reviewErr');
+    errEl.textContent = 'Processing...';
+    errEl.style.color = '#D97706'; // Amber while loading
+    
+    try {
+        if (currentReviewType === 'delete') {
+            if (action === 'approve') {
+                const batch = writeBatch(db);
+                // Wipe attached dependencies first
+                const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
+                entSnap.docs.forEach(d => batch.delete(d.ref));
+                const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
+                prodSnap.docs.forEach(d => batch.delete(d.ref));
+                
+                // Wipe warehouse & update notification
+                batch.delete(doc(db, 'godowns', currentReviewWarehouseId));
+                batch.update(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
+                await batch.commit();
+                
+                alert("Warehouse deleted successfully."); 
+            } else {
+                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
+                alert("Deletion request declined.");
+            }
+        } 
+        else if (currentReviewType === 'create') {
+            if (action === 'approve' && pendingCreateData) {
+                await addDoc(collection(db, 'godowns'), pendingCreateData);
+                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
+                alert("Warehouse approved and created!");
+            } else {
+                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
+                alert("Creation request declined.");
+            }
+        }
+        
+        window.closeM('m-review');
+    } catch(e) {
+        errEl.textContent = '❌ Error: ' + e.message;
+        errEl.style.color = '#DC2626';
+    }
+};
 init();
 </script>
 </body>
