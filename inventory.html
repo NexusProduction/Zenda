@@ -2943,29 +2943,33 @@ async function init(){
   }
   
   if (reviewCreateTarget) {
-    getDoc(doc(db, 'notifications', CU.uid, 'items', reviewCreateTarget)).then(snap => {
-      if (snap.exists()) {
-        const nd = snap.data();
-        if (nd.status === 'pending' && nd.warehouseData) {
-          currentReviewType = 'create';
-          pendingCreateData = nd.warehouseData; // Save data for approval
-          
-          currentReviewNotificationId = snap.id;
-          
-          // Re-use the existing modal but swap the text for Creation
-          document.getElementById('reviewMsg').innerHTML = `<b>${esc(nd.actorName || 'Staff')}</b> wants to create a new warehouse: <b>"${esc(nd.warehouseData.name)}"</b>.`;
-          document.getElementById('reviewReason').innerHTML = `Location: ${esc(nd.warehouseData.location)}<br>Category: ${esc(nd.warehouseData.category)}`;
-          setMM('reviewErr', '', '');
-          window.openM('m-review');
-        }
-      }
-    }).catch(err => console.error("Review Load Error:", err));
-  }
+            getDoc(doc(db, 'notifications', CU.uid, 'items', reviewCreateTarget)).then(snap => {
+              if (snap.exists()) {
+                const nd = snap.data();
+                if (nd.status === 'pending' && nd.warehouseData) {
+                  currentReviewType = 'create';
+                  pendingCreateData = nd.warehouseData; // Save data for approval
+                  
+                  currentReviewNotificationId = snap.id;
+                  
+                  // Re-use the existing modal but swap the text for Creation
+                  document.getElementById('reviewMsg').innerHTML = `<b>${esc(nd.actorName || 'Staff')}</b> wants to create a new warehouse: <b>"${esc(nd.warehouseData.name)}"</b>.`;
+                  document.getElementById('reviewReason').innerHTML = `Location: ${esc(nd.warehouseData.location)}<br>Category: ${esc(nd.warehouseData.category)}`;
+                  setMM('reviewErr', '', '');
+                  window.openM('m-review');
+                }
+              }
+            }).catch(err => console.error("Review Load Error:", err));
+          }
 
-function setSyncBadge(type,text){
-  syncEl.className='sync-badge '+type;
-  syncEl.innerHTML=text;
-}
+          // ✅ FIX: Added the missing call to load data, and the missing closing brace!
+          loadWHs();
+        }
+
+        function setSyncBadge(type,text){
+          syncEl.className='sync-badge '+type;
+          syncEl.innerHTML=text;
+        }
 
 // --- CRITICAL MISSING HELPER FUNCTIONS ---
 function esc(s) {
