@@ -91,15 +91,18 @@ export function renderNotifications(items, container) {
 
     let actionButtons = '';
 
-   if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
-    // ── Default — simple dismiss ──
-    else {
-      actionButtons = `
-        <div style="margin-top: 8px;">
-          <button class="btn btn-xs btn-ghost" onclick="window.markNotifRead('${item.id}')">Dismiss</button>
-        </div>
-      `;
-    }
+   } else if (item.type === 'calendar_event_all' || item.type === 'calendar_event_custom') {
+    actionButtons = `
+      <button class="btn btn-primary" style="padding:8px 16px;font-size:0.85rem; width: fit-content;" onclick="window.openCalendarApp(this, '${item.id}', '${item.eventDate || ''}')">Open in app</button>
+      <button class="btn btn-secondary" style="padding:8px 16px;font-size:0.85rem; font-weight:700; border-radius: 8px; width: fit-content; border: 2px solid var(--bd-color);" onclick="window.dismissAlert(this)">Dismiss</button>
+    `;
+} else {
+    actionButtons = `
+      <div style="margin-top: 8px;">
+        <button class="btn btn-secondary" style="padding:8px 16px;font-size:0.85rem;" onclick="window.dismissAlert(this)">Dismiss</button>
+      </div>
+    `;
+}
 
     return `
       <div class="notif-item ${item.read ? '' : 'unread'}" data-id="${item.id}">
