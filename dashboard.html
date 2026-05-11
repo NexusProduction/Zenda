@@ -3043,108 +3043,377 @@ function esc(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-window.closeM = function(id) {
-    const el = document.getElementById(id);
-    if(el) {
-        el.style.display = 'none';
-        document.body.style.overflow = ''; // Restore scrolling
-    }
-};
+// =============================================
+    // WAREHOUSE NOTIFICATION & REVIEW LOGIC
+    // =============================================
+    window.pendingWarehouses = window.pendingWarehouses || {};
+    let currentReviewNotificationId = null;
+    let currentReviewWarehouseId = null;
+    let currentReviewType = ''; 
+    let pendingCreateData = null;
 
-window.openReviewModal = function(whId, whName, reason, notifId, actorName, type, whData) {
-    currentReviewWarehouseId = whId;
-    currentReviewNotificationId = notifId;
-    currentReviewType = type;
-    pendingCreateData = whData;
-    
-    const titleEl = document.getElementById('reviewTitle');
-    const btnContainer = document.getElementById('reviewActionButtons');
-    const msgEl = document.getElementById('reviewMsg');
-    const reasonEl = document.getElementById('reviewReason');
-    
-    // Stop background scrolling
-    document.body.style.overflow = 'hidden';
-    
-    if (type === 'delete') {
-        titleEl.textContent = 'Review Deletion';
-        titleEl.style.color = '#DC2626'; // Red text for deletion
-        
-        msgEl.innerHTML = `<b>${esc(actorName)}</b> requested to delete warehouse <b>"${esc(whName)}"</b>.`;
-        reasonEl.textContent = reason || 'No reason provided.';
-        
-        // Exact styling for Danger/Deletion (Red Theme)
-        btnContainer.innerHTML = `
-          <button onclick="window.processWhReview('reject')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#FEF2F2; color:#DC2626; border:1.5px solid #FECACA; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Decline</button>
-          <button onclick="window.processWhReview('approve')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#DC2626; color:#fff; border:none; box-shadow:0 4px 12px rgba(220,38,38,0.2); cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Approve Deletion</button>
-        `;
-    } else {
-        titleEl.textContent = 'Review Request';
-        titleEl.style.color = '#0D0F14'; // Standard text for creation
-        
-        msgEl.innerHTML = `<b>${esc(actorName)}</b> wants to create a new warehouse: <b>"${esc(whName)}"</b>.`;
-        reasonEl.innerHTML = `Location: ${esc(whData?.location)}<br>Category: ${esc(whData?.category)}`;
-        
-        // Exact styling for Standard/Creation (Black Theme)
-        btnContainer.innerHTML = `
-          <button onclick="window.processWhReview('reject')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Decline</button>
-          <button onclick="window.processWhReview('approve')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#09090B; color:#fff; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.1); cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Approve Creation</button>
-        `;
-    }
-    
-    document.getElementById('reviewErr').textContent = '';
-    const modal = document.getElementById('m-review');
-    if(modal) modal.style.display = 'flex';
-};
+    window.closeM = function(id) {
+        const el = document.getElementById(id);
+        if(el) {
+            el.style.display = 'none';
+            document.body.style.overflow = ''; // Restore scrolling
+        }
+    };
 
-window.processWhReview = async function(action) {
-    const errEl = document.getElementById('reviewErr');
-    const buttons = document.querySelectorAll('#reviewActionButtons button');
-    
-    // Disable buttons and show processing
-    buttons.forEach(b => b.disabled = true);
-    errEl.textContent = 'Processing...';
-    errEl.style.color = '#D97706'; // Amber while loading
-    
-    try {
-        if (currentReviewType === 'delete') {
-            if (action === 'approve') {
-                const batch = writeBatch(db);
-                // Wipe attached dependencies first
-                const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
-                entSnap.docs.forEach(d => batch.delete(d.ref));
-                const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
-                prodSnap.docs.forEach(d => batch.delete(d.ref));
-                
-                // Wipe warehouse & update notification
-                batch.delete(doc(db, 'godowns', currentReviewWarehouseId));
-                batch.update(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
-                await batch.commit();
-                
-                window.showToast("Warehouse deleted successfully.", "success"); 
-            } else {
-                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
-                window.showToast("Deletion request declined.", "info");
+    window.viewWarehouseReq = function(notifId) {
+        const notif = window.pendingWarehouses[notifId];
+        if(!notif || !notif.warehouseData) return;
+        const data = notif.warehouseData;
+        
+        const requesterName = notif.actorName ? notif.actorName.replace(/</g, "&lt;").replace(/>/g, "&gt;") : 'Staff Member';
+
+        const overlay = document.createElement('div');
+        overlay.id = `wh-modal-${notifId}`;
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:99999; animation: fadeIn 0.2s ease-out; padding: 16px; transition: opacity 0.25s ease;';
+        
+        overlay.innerHTML = `
+            <div class="wh-modal-content" style="background:var(--bg-surface); border-radius:24px; width:100%; max-width:400px; box-shadow:0 32px 80px rgba(0,0,0,0.3); overflow:hidden; transform: scale(0.95); animation: toastIn 0.3s forwards; transition: transform 0.25s ease, opacity 0.25s ease;">
+                <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); height: 65px; position: relative;"></div>
+                <div style="padding: 0 32px 32px; text-align: center; position: relative;">
+                    <div style="width: 68px; height: 68px; background: #fff; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: -34px auto 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.08); border: 4px solid var(--bg-surface); position: relative; z-index: 2;">
+                        🏭
+                    </div>
+                    <h3 style="margin:0 0 4px; font-size:1.35rem; color:var(--tx-main); font-weight:800; letter-spacing:-0.02em;">Warehouse Request</h3>
+                    <p style="margin:0 0 28px; color:var(--tx-muted); font-size:0.9rem; font-weight:600;">Requested by <span style="color:var(--tx-main);">${requesterName}</span></p>
+                    <div style="background: var(--bg-page); border-radius: 16px; padding: 12px 24px; border: 1px solid var(--bd-color); text-align: left; display: flex; flex-direction: column;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--bd-color);">
+                            <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Name</div>
+                            <div style="font-size:0.95rem; color:var(--tx-main); font-weight:800; text-align:right; max-width:65%; word-break:break-word;">${data.name}</div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--bd-color);">
+                            <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Location</div>
+                            <div style="font-size:0.9rem; color:var(--tx-main); font-weight:700; display:flex; align-items:flex-start; justify-content:flex-end; gap:6px; max-width:65%; text-align:right;">
+                                <span style="word-break:break-word;">${data.location}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0;">
+                            <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Category</div>
+                            <div style="color:var(--ac); font-size:0.95rem; font-weight:800; text-transform:capitalize; text-align:right; max-width:65%; word-break:break-word;">
+                                ${data.category}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="padding: 0 32px 32px; display:flex; gap:12px;">
+                    <button onclick="window.declineWarehouseReq('${notifId}'); this.closest('#wh-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--bg-surface); color:var(--danger); border:1.5px solid var(--bd-color); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;">Decline</button>
+                    <button onclick="window.approveWarehouseReq('${notifId}'); this.closest('#wh-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--success); color:#fff; border:none; box-shadow:0 4px 12px rgba(52,199,89,0.3); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;">Approve</button>
+                </div>
+            </div>
+        `;
+        
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.remove(), 250);
             }
-        } 
-        else if (currentReviewType === 'create') {
-            if (action === 'approve' && pendingCreateData) {
-                await addDoc(collection(db, 'godowns'), pendingCreateData);
-                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
-                window.showToast("Warehouse approved and created!", "success");
-            } else {
-                await updateDoc(doc(db, 'users', CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
-                window.showToast("Creation request declined.", "info");
+        });
+        document.body.appendChild(overlay);
+    };
+
+    window.approveWarehouseReq = async function(notifId) {
+        const notif = window.pendingWarehouses[notifId];
+        if(!notif) return;
+
+        const notifCard = document.querySelector(`.notif-card[data-id="${notifId}"]`);
+        if (notifCard) {
+            notifCard.classList.add('slide-left-out');
+            setTimeout(() => notifCard.remove(), 350);
+        }
+
+        try {
+            await addDoc(collection(db, 'godowns'), notif.warehouseData);
+            await deleteDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId));
+            
+            if (notif.actorId) {
+                await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
+                    type: 'system',
+                    message: `Your request to add warehouse "${notif.warehouseData.name}" was approved!`,
+                    read: false,
+                    createdAt: Date.now()
+                });
             }
+            if (window.showToast) window.showToast("Warehouse approved and created!", "success");
+        } catch(e) {
+            console.error(e);
+            if (window.showToast) window.showToast("Failed to approve warehouse.", "error");
+        }
+    };
+
+    window.declineWarehouseReq = async function(notifId) {
+        const notif = window.pendingWarehouses[notifId];
+        if(!notif) return;
+
+        const notifCard = document.querySelector(`.notif-card[data-id="${notifId}"]`);
+        if (notifCard) {
+            notifCard.classList.add('slide-left-out');
+            setTimeout(() => notifCard.remove(), 350);
+        }
+
+        try {
+            await deleteDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId));
+            
+            if (notif.actorId && notif.warehouseData) {
+                await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
+                    type: 'system',
+                    message: `Your request to add warehouse "${notif.warehouseData.name}" was declined.`,
+                    read: false,
+                    createdAt: Date.now()
+                });
+            }
+            if (window.showToast) window.showToast("Warehouse request declined.", "info");
+        } catch(e) { console.error(e); }
+    };
+
+    window.viewWarehouseDeleteReq = function(notifId) {
+        try {
+            const notif = window.pendingWarehouses[notifId];
+            if(!notif || !notif.warehouseData) return;
+            
+            const data = notif.warehouseData;
+            const safeName = data.name ? String(data.name).replace(/</g, "&lt;").replace(/>/g, "&gt;") : "Unknown";
+            const safeReason = data.reason ? String(data.reason).replace(/</g, "&lt;").replace(/>/g, "&gt;") : "No reason provided";
+            const requesterName = notif.actorName ? String(notif.actorName).replace(/</g, "&lt;").replace(/>/g, "&gt;") : 'Staff Member';
+
+            const overlay = document.createElement('div');
+            overlay.id = `wh-del-modal-${notifId}`;
+            overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:99999; animation: fadeIn 0.2s ease-out; padding: 16px; transition: opacity 0.25s ease;';
+            
+            overlay.innerHTML = `
+                <div class="wh-modal-content" style="background:var(--bg-surface); border-radius:24px; width:100%; max-width:400px; box-shadow:0 32px 80px rgba(0,0,0,0.3); overflow:hidden; transform: scale(0.95); animation: toastIn 0.3s forwards; transition: transform 0.25s ease, opacity 0.25s ease;">
+                    <div style="background: linear-gradient(135deg, #EF4444, #B91C1C); height: 65px; position: relative;"></div>
+                    <div style="padding: 0 32px 32px; text-align: center; position: relative;">
+                        <div style="width: 68px; height: 68px; background: #fff; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: -34px auto 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.08); border: 4px solid var(--bg-surface); position: relative; z-index: 2;">
+                            🗑️
+                        </div>
+                        <h3 style="margin:0 0 4px; font-size:1.35rem; color:var(--tx-main); font-weight:800; letter-spacing:-0.02em;">Delete Warehouse</h3>
+                        <p style="margin:0 0 28px; color:var(--tx-muted); font-size:0.9rem; font-weight:600;">Requested by <span style="color:var(--tx-main);">${requesterName}</span></p>
+                        
+                        <div style="background: var(--bg-page); border-radius: 16px; padding: 12px 24px; border: 1px solid var(--bd-color); text-align: left; display: flex; flex-direction: column;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--bd-color);">
+                                <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Name</div>
+                                <div style="font-size:0.95rem; color:var(--tx-main); font-weight:800; text-align:right; max-width:65%; word-break:break-word;">${safeName}</div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--bd-color);">
+                                <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Contains</div>
+                                <div style="font-size:0.9rem; color:var(--danger); font-weight:800; max-width:65%; text-align:right;">
+                                    ${data.productCount || 0} Products
+                                </div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0;">
+                                <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Reason</div>
+                                <div style="color:var(--tx-main); font-size:0.85rem; font-weight:600; text-align:right; max-width:65%; word-break:break-word;">
+                                    "${safeReason}"
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding: 0 32px 32px; display:flex; gap:12px;">
+                        <button onclick="window.declineWarehouseDeleteReq('${notifId}'); this.closest('#wh-del-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--bg-surface); color:var(--tx-main); border:1.5px solid var(--bd-color); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;">Decline</button>
+                        <button onclick="window.approveWarehouseDeleteReq('${notifId}'); this.closest('#wh-del-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--danger); color:#fff; border:none; box-shadow:0 4px 12px rgba(239,68,68,0.3); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;">Approve</button>
+                    </div>
+                </div>
+            `;
+            
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.remove(), 250);
+                }
+            });
+            document.body.appendChild(overlay);
+        } catch(err) { console.error(err); }
+    };
+
+    window.approveWarehouseDeleteReq = async function(notifId) {
+        const notif = window.pendingWarehouses[notifId];
+        if(!notif || !notif.warehouseData) return;
+        const whId = notif.warehouseData.id;
+
+        const notifCard = document.querySelector(`.notif-card[data-id="${notifId}"]`);
+        if (notifCard) {
+            notifCard.classList.add('slide-left-out');
+            setTimeout(() => notifCard.remove(), 350);
+        }
+
+        try {
+            const batch = writeBatch(db);
+            const prodSnap = await getDocs(query(collection(db,'products'), where('companyId', '==', window.CU.companyId), where('godownId','==',whId)));
+            prodSnap.docs.forEach(d => batch.delete(d.ref));
+            
+            const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', window.CU.companyId), where('godownId','==',whId)));
+            entSnap.docs.forEach(d => batch.delete(d.ref));
+            
+            batch.delete(doc(db,'godowns',whId));
+            
+            if (window.CU && window.CU.uid) {
+                batch.delete(doc(db, 'users', window.CU.uid, 'notifications', notifId));
+                const dupeSnap = await getDocs(query(collection(db, 'users', window.CU.uid, 'notifications'), where('type', '==', 'warehouse_delete_request')));
+                dupeSnap.docs.forEach(d => {
+                    const nData = d.data();
+                    if (d.id !== notifId && nData.warehouseData && nData.warehouseData.id === whId) {
+                        batch.delete(d.ref); 
+                    }
+                });
+            }
+            
+            await batch.commit();
+            
+            if (notif.actorId) {
+                await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
+                    type: 'system',
+                    message: `Your request to delete warehouse "${notif.warehouseData.name}" was approved and executed.`,
+                    read: false,
+                    createdAt: Date.now()
+                });
+            }
+            
+            if (window.showToast) window.showToast("Warehouse deleted successfully!", "success");
+        } catch(e) { console.error(e); }
+    };
+
+    window.declineWarehouseDeleteReq = async function(notifId) {
+        const notif = window.pendingWarehouses[notifId];
+        if(!notif) return;
+
+        const notifCard = document.querySelector(`.notif-card[data-id="${notifId}"]`);
+        if (notifCard) {
+            notifCard.classList.add('slide-left-out');
+            setTimeout(() => notifCard.remove(), 350);
+        }
+
+        try {
+            if (window.CU && window.CU.uid) {
+                await deleteDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId));
+            }
+            
+            if (notif.actorId && notif.warehouseData) {
+                await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
+                    type: 'system',
+                    message: `Your request to delete warehouse "${notif.warehouseData.name}" was declined by the owner.`,
+                    read: false,
+                    createdAt: Date.now()
+                });
+            }
+            if (window.showToast) window.showToast("Delete request declined.", "info");
+        } catch(e) { console.error(e); }
+    };
+
+    window.openReviewModal = function(whId, whName, reason, notifId, actorName, type, whData) {
+        currentReviewWarehouseId = whId;
+        currentReviewNotificationId = notifId;
+        currentReviewType = type;
+        pendingCreateData = whData;
+        
+        const titleEl = document.getElementById('reviewTitle');
+        const btnContainer = document.getElementById('reviewActionButtons');
+        const msgEl = document.getElementById('reviewMsg');
+        const reasonEl = document.getElementById('reviewReason');
+        
+        document.body.style.overflow = 'hidden';
+        
+        if (type === 'delete') {
+            titleEl.textContent = 'Review Deletion';
+            titleEl.style.color = '#DC2626'; 
+            msgEl.innerHTML = `<b>${esc(actorName)}</b> requested to delete warehouse <b>"${esc(whName)}"</b>.`;
+            reasonEl.textContent = reason || 'No reason provided.';
+            btnContainer.innerHTML = `
+              <button onclick="window.processWhReview('reject')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#FEF2F2; color:#DC2626; border:1.5px solid #FECACA; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Decline</button>
+              <button onclick="window.processWhReview('approve')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#DC2626; color:#fff; border:none; box-shadow:0 4px 12px rgba(220,38,38,0.2); cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Approve Deletion</button>
+            `;
+        } else {
+            titleEl.textContent = 'Review Request';
+            titleEl.style.color = '#0D0F14'; 
+            msgEl.innerHTML = `<b>${esc(actorName)}</b> wants to create a new warehouse: <b>"${esc(whName)}"</b>.`;
+            reasonEl.innerHTML = `Location: ${esc(whData?.location)}<br>Category: ${esc(whData?.category)}`;
+            btnContainer.innerHTML = `
+              <button onclick="window.processWhReview('reject')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Decline</button>
+              <button onclick="window.processWhReview('approve')" style="flex:1; height:46px; border-radius:12px; font-weight:700; background:#09090B; color:#fff; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.1); cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif;">Approve Creation</button>
+            `;
         }
         
-        window.closeM('m-review');
-    } catch(e) {
-        errEl.textContent = '❌ Error: ' + e.message;
-        errEl.style.color = '#DC2626';
-    } finally {
-        buttons.forEach(b => b.disabled = false);
+        document.getElementById('reviewErr').textContent = '';
+        const modal = document.getElementById('m-review');
+        if(modal) modal.style.display = 'flex';
+    };
+
+    window.processWhReview = async function(action) {
+        const errEl = document.getElementById('reviewErr');
+        const buttons = document.querySelectorAll('#reviewActionButtons button');
+        buttons.forEach(b => b.disabled = true);
+        errEl.textContent = 'Processing...';
+        errEl.style.color = '#D97706'; 
+        
+        try {
+            if (currentReviewType === 'delete') {
+                if (action === 'approve') {
+                    const batch = writeBatch(db);
+                    const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', window.CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
+                    entSnap.docs.forEach(d => batch.delete(d.ref));
+                    const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', window.CU.companyId), where('godownId', '==', currentReviewWarehouseId)));
+                    prodSnap.docs.forEach(d => batch.delete(d.ref));
+                    batch.delete(doc(db, 'godowns', currentReviewWarehouseId));
+                    batch.update(doc(db, 'users', window.CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
+                    await batch.commit();
+                    window.showToast("Warehouse deleted successfully.", "success"); 
+                } else {
+                    await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
+                    window.showToast("Deletion request declined.", "info");
+                }
+            } 
+            else if (currentReviewType === 'create') {
+                if (action === 'approve' && pendingCreateData) {
+                    await addDoc(collection(db, 'godowns'), pendingCreateData);
+                    await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', currentReviewNotificationId), { status: 'approved' });
+                    window.showToast("Warehouse approved and created!", "success");
+                } else {
+                    await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', currentReviewNotificationId), { status: 'rejected' });
+                    window.showToast("Creation request declined.", "info");
+                }
+            }
+            window.closeM('m-review');
+        } catch(e) {
+            errEl.textContent = '❌ Error: ' + e.message;
+            errEl.style.color = '#DC2626';
+        } finally {
+            buttons.forEach(b => b.disabled = false);
+        }
+    };
+
+    // --- SYSTEM BOOT ---
+    async function init() {
+      try {
+        await requireAuth('login.html');
+        const cu = await getCurrentUser();
+        if (!cu) { location.href = 'login.html'; return; }
+        
+        window.CU = cu; 
+        saveSession(cu); 
+        window.CU._notifyList = cu.notifyApps || [];
+        
+        setupUI(); 
+        window.buildProfile(); 
+        subscribeAll();
+
+        const loader = document.getElementById('loading-overlay');
+        if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                if(loader.parentNode) loader.remove();
+            }, 600);
+        }
+      } catch (e) { console.error("Dashboard Init Error: ", e); }
     }
-};
-</script>
+
+    if (document.readyState === 'loading') { 
+        document.addEventListener('DOMContentLoaded', init); 
+    } else { 
+        init(); 
+    }
+  </script>
 </body>
 </html>
