@@ -763,7 +763,11 @@
     // 1. Core Firebase Imports
     import { auth, db } from './firebase-config.js';
     import { requireAuth, logout, getCurrentUser } from './auth.js';
-    import { copyToClipboard, saveSession } from './utils.js';
+import { copyToClipboard, saveSession } from './utils.js';
+
+import * as StaffModule from './staff.js';
+import * as TasksModule from './tasks.js';
+import * as AppsModule from './apps.js';
     import { 
         doc, getDoc, deleteDoc, updateDoc, addDoc, collection, writeBatch, 
         query, orderBy, limit, onSnapshot, where, getDocs, setDoc 
@@ -2553,65 +2557,24 @@
     }
 
     async function init() {
-      try {
-        await requireAuth('login.html');
-        const cu = await getCurrentUser();
-        if (!cu) { location.href = 'login.html'; return; }
-        
-        window.CU = cu; 
-        if (typeof saveSession === 'function') saveSession(cu); 
-        window.CU._notifyList = cu.notifyApps || [];
-        
-        setupUI(); 
-        if (typeof window.buildProfile === 'function') { window.buildProfile(); }
-        subscribeAll();
+  console.log("INIT START");
 
-        const loader = document.getElementById('loading-overlay');
-        if (loader) {
-            loader.style.opacity = '0';
-            setTimeout(() => { if(loader.parentNode) loader.remove(); }, 600);
-        }
-      } catch (e) { 
-        console.error("Dashboard Init Error: ", e); 
-        alert("CRITICAL ERROR LOADING DASHBOARD:\n" + e.message); // This will pop up if it crashes!
-        const loader = document.getElementById('loading-overlay');
-        if (loader) loader.remove(); // Force remove loader so you can at least see the screen
-      }
+  try {
+    await requireAuth('login.html');
+    console.log("AUTH OK");
+
+    const cu = await getCurrentUser();
+    console.log("CURRENT USER", cu);
+
+    if (!cu) {
+      console.error("USER NULL");
+      return;
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-        const cu = await getCurrentUser();
-        if (!cu) { location.href = 'login.html'; return; }
-        
-        window.CU = cu; 
-        if (typeof saveSession === 'function') saveSession(cu); 
-        window.CU._notifyList = cu.notifyApps || [];
-        
-        setupUI(); 
-        if (typeof window.buildProfile === 'function') window.buildProfile(); 
-        subscribeAll();
-
-        const loader = document.getElementById('loading-overlay');
-        if (loader) {
-            loader.style.opacity = '0';
-            setTimeout(() => {
-                if(loader.parentNode) loader.remove();
-            }, 600);
-        }
-      } catch (e) { 
-        console.error("Dashboard Init Error: ", e); 
-        alert("CRASH PREVENTED: " + e.message + "\nCheck browser console for more details.");
-        
-        // Force the loading screen off so you aren't stuck
-        const loader = document.getElementById('loading-overlay');
-        if (loader) loader.remove();
-      }
-    }
-    }
+  } catch(err){
+    console.error("INIT ERROR", err);
+  }
+}
   </script>
 </body>
 </html>
