@@ -2382,7 +2382,36 @@
     if (document.readyState === 'loading') { 
         document.addEventListener('DOMContentLoaded', init); 
     } else { 
-        init(); 
+        init(async function init() {
+      try {
+        await requireAuth('login.html');
+        const cu = await getCurrentUser();
+        if (!cu) { location.href = 'login.html'; return; }
+        
+        window.CU = cu; 
+        if (typeof saveSession === 'function') saveSession(cu); 
+        window.CU._notifyList = cu.notifyApps || [];
+        
+        setupUI(); 
+        if (typeof window.buildProfile === 'function') window.buildProfile(); 
+        subscribeAll();
+
+        const loader = document.getElementById('loading-overlay');
+        if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                if(loader.parentNode) loader.remove();
+            }, 600);
+        }
+      } catch (e) { 
+        console.error("Dashboard Init Error: ", e); 
+        alert("CRASH PREVENTED: " + e.message + "\nCheck browser console for more details.");
+        
+        // Force the loading screen off so you aren't stuck
+        const loader = document.getElementById('loading-overlay');
+        if (loader) loader.remove();
+      }
+    }
     }
   </script>
 </body>
