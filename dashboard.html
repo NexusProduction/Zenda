@@ -2303,10 +2303,210 @@
         el.innerHTML = src ? `<img src="${src}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : ini;
     };
     
-    // Safety fallback: buildProfile is completely missing from your code!
-    if (typeof window.buildProfile !== 'function') {
-        window.buildProfile = function() { console.warn("buildProfile bypassed to prevent crash."); };
+    // ── ALL MISSING RENDER FUNCTIONS — FIXED ──
+
+    function buildTaskCard(task, showActions) {
+        const isDone = task.status === 'done';
+        const isDeclined = task.status === 'declined';
+        const dStr = task.dueDate
+            ? new Date(task.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : '';
+        const overdue = !isDone && !isDeclined && window.isOverdue && window.isOverdue(task.dueDate);
+        const pMap = {
+            High:   { bg: 'var(--danger-light)', c: 'var(--danger)' },
+            Medium: { bg: '#FFFBEB',             c: 'var(--warning)' },
+            Low:    { bg: 'var(--success-light)', c: 'var(--success)' }
+        };
+        const p = pMap[task.priority] || pMap.Medium;
+        let actions = '';
+        if (showActions && !isDone && !isDeclined) {
+            if (task.assignedTo === window.CU?.uid) {
+                actions += `<button class="btn btn-primary" style="padding:7px 14px;font-size:0.82rem;" onclick="event.stopPropagation();window.doMarkDone('${task.id}')">Mark Done</button>`;
+                actions += `<button class="btn btn-secondary" style="padding:7px 14px;font-size:0.82rem;" onclick="event.stopPropagation();window.openDeclineModal('${task.id}','${esc(task.title||'')}')">Decline</button>`;
+            }
+            if (task.assignedBy === window.CU?.uid) {
+                actions += `<button class="task-delete-inline" onclick="event.stopPropagation();window.openDeleteTaskModal('${task.id}','${esc(task.title||'')}')">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete</button>`;
+            }
+        }
+        return `<div class="premium-task-card${task.priority === 'High' ? ' priority-high' : task.priority === 'Medium' ? ' priority-medium' : ''}" id="task-${task.id}">
+            <div style="display:flex;align-items:flex-start;gap:12px;width:100%;">
+                <div class="card-checkbox${isDone ? ' done' : ''}">
+                    ${isDone ? '<svg stroke-dasharray="24" stroke-dashoffset="0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                </div>
+                <div class="card-content-wrap">
+                    <div class="card-title${isDone ? ' done' : ''}">${esc(task.title || 'Untitled')}</div>
+                    <div class="card-meta-strip">
+                        ${dStr ? `<div class="card-time-block"${overdue ? ' style="color:var(--danger);"' : ''}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            ${overdue ? '<span>Overdue · </span>' : ''}${dStr}</div>` : ''}
+                        ${task.priority ? `<span class="priority-tag" style="background:${p.bg};color:${p.c};">${task.priority}</span>` : ''}
+                        ${isDone ? `<span class="done-badge-solid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Done</span>` : ''}
+                        ${isDeclined ? `<span class="priority-tag" style="background:var(--danger-light);color:var(--danger);">Declined</span>` : ''}
+                    </div>
+                    ${task.description ? `<div style="font-size:0.82rem;color:var(--tx-muted);margin-top:4px;">${esc(task.description)}</div>` : ''}
+                    ${isDeclined && task.reason ? `<div style="font-size:0.82rem;color:var(--tx-muted);margin-top:4px;">Reason: ${esc(task.reason)}</div>` : ''}
+                    ${showActions && actions ? `<div style="margin-top:10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;">${actions}</div>` : ''}
+                </div>
+            </div>
+        </div>`;
     }
+
+    window.renderRecentTasks = function() {
+        const el = document.getElementById('recent-tasks');
+        if (!el) return;
+        const role = window.CU?.role;
+        let tasks = [];
+        if (role === 'owner' || role === 'manager') {
+            tasks = [...(window.assignedByMeTasks || [])].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 5);
+        } else {
+            tasks = [...(window.myTasks || [])].filter(t => t.status === 'pending').sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 5);
+        }
+        if (!tasks.length) {
+            el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--tx-muted);">
+                <div style="font-size:2rem;margin-bottom:8px">📋</div>
+                <div style="font-weight:700;">No tasks yet</div>
+                <div style="font-size:0.9rem;margin-top:4px;">Tasks assigned to you will appear here.</div>
+            </div>`;
+            return;
+        }
+        el.innerHTML = tasks.map(t => buildTaskCard(t, false)).join('');
+    };
+
+    window.renderTasksList = function() {
+        const el = document.getElementById('tasks-list');
+        if (!el) return;
+        const tab = window.taskTab || 'assigned-to-me';
+        const myT = window.myTasks || [];
+        const byMeT = window.assignedByMeTasks || [];
+        let tasks = [];
+        const dedup = (arr) => { const seen = new Set(); return arr.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; }); };
+        if (tab === 'assigned-to-me')  { tasks = myT.filter(t => t.status === 'pending'); }
+        else if (tab === 'assigned-by-me') { tasks = byMeT; }
+        else if (tab === 'done')      { tasks = dedup([...myT, ...byMeT]).filter(t => t.status === 'done'); }
+        else if (tab === 'declined')  { tasks = dedup([...myT, ...byMeT]).filter(t => t.status === 'declined'); }
+        if (!tasks.length) {
+            el.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--tx-muted);">
+                <div style="font-size:2rem;margin-bottom:8px">✅</div>
+                <div style="font-weight:700;">No tasks here</div>
+            </div>`;
+            return;
+        }
+        el.innerHTML = tasks.map(t => buildTaskCard(t, true)).join('');
+    };
+
+    window.setTaskTab = function(tab, btn) {
+        window.taskTab = tab;
+        document.querySelectorAll('#task-tab-row .ftab').forEach(b => b.classList.remove('on'));
+        if (btn) {
+            btn.classList.add('on');
+        } else {
+            const b = document.querySelector(`[data-tab="${tab}"]`);
+            if (b) b.classList.add('on');
+        }
+        if (window.renderTasksList) window.renderTasksList();
+    };
+
+    window.openDeclineModal = function(taskId, title) {
+        pendingDeclineId = taskId;
+        const titleEl = document.getElementById('decline-task-title');
+        if (titleEl) titleEl.textContent = title || '';
+        const reasonEl = document.getElementById('decline-reason');
+        if (reasonEl) reasonEl.value = '';
+        window.openModal('decline-modal');
+    };
+
+    window.doMarkDone = async function(taskId) {
+        const cardEl = document.getElementById('task-' + taskId);
+        if (cardEl) { cardEl.style.opacity = '0.5'; cardEl.style.pointerEvents = 'none'; }
+        try {
+            await updateDoc(doc(db, 'tasks', taskId), { status: 'done', completedAt: new Date().toISOString() });
+            const t = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])].find(x => x.id === taskId);
+            if (t) { t.status = 'done'; t.completedAt = new Date().toISOString(); }
+            window.updateAllStats();
+            window.renderTasksList();
+            window.renderRecentTasks();
+            window.showToast('Task marked as done! ✓', 'success');
+        } catch(e) {
+            if (cardEl) { cardEl.style.opacity = '1'; cardEl.style.pointerEvents = ''; }
+            window.showToast('Error: ' + e.message, 'error');
+        }
+    };
+
+    window.renderStaffCards = function(staff) {
+        const el = document.getElementById('staff-cards-list');
+        if (!el) return;
+        const sc = document.getElementById('staff-count-sub');
+        const members = (staff || []).filter(s => s.role !== 'owner');
+        if (sc) sc.textContent = `${members.length} ${members.length !== 1 ? 'members' : 'member'}`;
+        if (!staff?.length) {
+            el.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--tx-muted);">
+                <div style="font-size:2rem;margin-bottom:8px">👥</div>
+                <div style="font-weight:700;">No team members yet</div>
+                <div style="font-size:0.9rem;margin-top:4px;">Add staff from the button above.</div>
+            </div>`;
+            return;
+        }
+        const canManage = window.CU?.role === 'owner' || window.CU?.role === 'manager';
+        el.innerHTML = staff.map(s => {
+            const col = window.avatarColor(s.name || ''), ini = window.getInitials(s.name || '');
+            return `<div class="team-card">
+                ${canManage ? `<button class="btn-icon-danger-absolute" title="Remove" onclick="window.openDeleteModal('${s.uid}','${esc(s.name||'')}','${esc(s.email||'')}','${esc(s.passwordHint||'')}')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                </button>` : ''}
+                <div class="team-card-top">
+                    <div class="team-profile-info">
+                        <div class="team-av" style="background:${col};color:#fff;">${ini}</div>
+                        <div class="team-text-block">
+                            <div class="team-name">${esc(s.name || '')}</div>
+                            <div class="team-role">${esc(s.designation || s.role || 'Staff')}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="team-email">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    ${esc(s.email || 'No email')}
+                </div>
+                <div class="team-card-actions">
+                    ${canManage ? `<button class="btn btn-secondary w-full" onclick="window.quickAssign('${s.uid}')">Assign Task</button>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+    };
+
+    window.buildProfile = function() {
+        const cu = window.CU;
+        if (!cu) return;
+        const col = window.avatarColor(cu.name || ''), ini = window.getInitials(cu.name || '');
+        const makeHTML = (sfx) => `
+            <div style="padding:24px;">
+                <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:28px;border-bottom:1px solid var(--bd-color);margin-bottom:20px;">
+                    <div class="av" style="width:76px;height:76px;font-size:26px;margin-bottom:12px;background:${col};color:#fff;">${ini}</div>
+                    <div style="font-weight:800;font-size:1.1rem;letter-spacing:-0.01em;">${esc(cu.name || '')}</div>
+                    <div style="color:var(--tx-muted);font-size:0.9rem;margin-top:4px;">${esc(cu.email || '')}</div>
+                    <div style="margin-top:10px;"><span style="background:var(--ac-light);color:var(--ac);padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">${cu.role || ''}</span></div>
+                    ${cu.uniqueId ? `<div style="margin-top:8px;font-family:monospace;font-size:0.8rem;color:var(--tx-muted);">ID: ${esc(cu.uniqueId)}</div>` : ''}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" id="lbl-prof-name-${sfx}">Full Name</label>
+                    <input class="form-input prof-input-readonly" id="prof-name-${sfx}" value="${esc(cu.name || '')}" readonly oninput="window.checkProfileNameLength(this,'${sfx}')">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input class="form-input prof-input-readonly" id="prof-email-${sfx}" value="${esc(cu.email || '')}" readonly>
+                </div>
+                <button id="btn-save-prof-${sfx}" class="btn btn-primary w-full" style="display:none;margin-bottom:8px;" onclick="window.saveProfileData('${sfx}')">Save Changes</button>
+                <button class="btn btn-ghost w-full" style="margin-bottom:8px;" onclick="window.enableProfileEdit('${sfx}')">Edit Profile</button>
+                <div style="border-top:1px solid var(--bd-color);margin-top:16px;padding-top:16px;">
+                    <button class="btn w-full" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger-light);" onclick="window.handleLogout()">Sign Out</button>
+                </div>
+            </div>
+        `;
+        const d = document.getElementById('profile-body-desktop');
+        if (d) d.innerHTML = makeHTML('desk');
+        const m = document.getElementById('profile-body-mobile');
+        if (m) m.innerHTML = makeHTML('mob');
+    };
 
     function setupUI() {
       const { name, role } = window.CU;
@@ -2379,12 +2579,11 @@
       }
     }
 
-    if (document.readyState === 'loading') { 
-        document.addEventListener('DOMContentLoaded', init); 
-    } else { 
-        init(async function init() {
-      try {
-        await requireAuth('login.html');
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
         const cu = await getCurrentUser();
         if (!cu) { location.href = 'login.html'; return; }
         
