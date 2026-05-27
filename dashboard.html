@@ -1193,31 +1193,25 @@ window.taskTab = 'pending';
     };
 
     window.markNotifRead = async function(notifId) {
-        // Hide it visually instantly
         const el = document.querySelector(`.notif-item[data-id="${notifId}"]`);
         if (el) el.style.display = 'none';
         
-        // Update the database (ensure CU.uid exists here)
         if (window.CU && window.CU.uid) {
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
         }
     };
     
     window.openCalendarApp = async function(btn, notifId, dateStr) {
-        // 1. Change text instantly so you know it's working
         btn.textContent = 'Opening...';
         btn.style.opacity = '0.7';
         btn.style.pointerEvents = 'none';
 
-        // 2. FORCE the database to mark it as read before we leave the page. 
-        // This guarantees it will be permanently gone when you return.
         try {
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' });
         } catch (e) {
             console.error('DB update failed', e);
         }
 
-        // 3. Wait just half a second (500ms) so you actually see "Opening...", then redirect!
         setTimeout(() => {
             window.location.href = 'calendar.html?date=' + (dateStr || '');
         }, 500);
@@ -1231,7 +1225,6 @@ window.taskTab = 'pending';
         
         setTimeout(() => {
             card.remove();
-            // Automatically show "You're all caught up!" if this was the last notification
             const el = document.getElementById('notif-body');
             if (el && el.querySelectorAll('.notif-card').length === 0) {
                 el.innerHTML = `<div class="empty" style="padding:60px 20px;text-align:center;animation:fadeIn 0.3s ease;"><div style="margin-bottom:16px;display:flex;justify-content:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div style="color:var(--tx-main);font-size:1rem;font-weight:700;">You're all caught up!</div></div>`;
@@ -1614,7 +1607,6 @@ window.taskTab = 'pending';
         loadBtn(actionBtn, true);
         
         try {
-            // 1. Execute Database changes if approved
             if (action === 'approve') {
                 if (req.type === 'add') {
                     if (typeof createStaff === 'function') {
@@ -1631,10 +1623,8 @@ window.taskTab = 'pending';
                 }
             }
             
-            // 2. Update Notification Status
             await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', req.notifId), { read: true, status: 'read' });
             
-            // 3. Send RETURN notification back to staff member securely
             if (req.reqId && req.reqId.trim() !== '' && req.reqId !== 'undefined' && req.reqId !== 'null') {
                 const actionText = action === 'approve' ? 'approved' : 'declined';
                 const typeText = req.type === 'add' ? `add a new staff member` : `remove a staff member`;
@@ -1652,7 +1642,6 @@ window.taskTab = 'pending';
                 }
             }
             
-            // 4. UI Cleanup
             window.showToast(`Request ${action === 'approve' ? 'Approved' : 'Declined'}!`, action === 'approve' ? 'success' : 'info');
             document.getElementById('staff-request-modal').classList.remove('open');
             
@@ -1669,7 +1658,7 @@ window.taskTab = 'pending';
         }
     };
 
-    // 9. Warehouse Approval Modals (From User Code)
+    // 9. Warehouse Approval Modals 
     window.viewWarehouseReq = function(notifId) {
         const notif = window.pendingWarehouses[notifId];
         if(!notif || !notif.warehouseData) return;
@@ -2262,19 +2251,12 @@ window.taskTab = 'pending';
       }
     }
 
-    window.isOverdue = function(dateStr) {
-        if (!dateStr) return false;
-        const d = new Date(dateStr); d.setHours(23, 59, 59, 999);
-        return new Date() > d;
-    };
-
     window.updateAllStats = function() {
         const combined = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])];
         const uniqueMap = new Map();
         combined.forEach(t => uniqueMap.set(t.id, t));
         const unique = Array.from(uniqueMap.values());
         
-        // Notice we added 'window.' in front of isOverdue here
         const p = unique.filter(t => t.status !== 'done' && t.status !== 'declined' && !window.isOverdue(t.dueDate)).length;
         const d = unique.filter(t => t.status === 'done').length;
         
@@ -2323,23 +2305,6 @@ window.taskTab = 'pending';
 
     window.openApp = function(id) { const m = {calendar: 'calendar.html', inventory: 'inventory.html', expenses: 'expenses.html'}; const f = m[id]; if (f) location.href = f + (window.CU?.uid ? '?uid=' + window.CU.uid : ''); else window.showToast('App not found!', 'error'); };
     window.openAppLib = function() { window.location.href = 'app-library.html'; };
-
-    // 13. UI Setup & Boot
-    // We are adding the missing functions right above setupUI so they don't crash
-    window.avatarColor = function(name) {
-        const colors = ['#0066CC', '#34C759', '#FF9500', '#FF3B30', '#AF52DE'];
-        let hash = 0;
-        for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        return colors[Math.abs(hash) % colors.length];
-    };
-    window.getInitials = function(name) { return (name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(); };
-    window.setAv = function(id, ini, col, size, src) {
-        const el = document.getElementById(id); if (!el) return;
-        el.style.backgroundColor = col; el.style.color = 'white';
-        el.innerHTML = src ? `<img src="${src}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : ini;
-    };
-    
-    // ── ALL MISSING RENDER FUNCTIONS — FIXED ──
 
     function buildTaskCard(task, showActions) {
         const isDone = task.status === 'done';
@@ -2443,111 +2408,10 @@ window.taskTab = 'pending';
         if (window.renderTasksList) window.renderTasksList();
     };
 
-    window.openDeclineModal = function(taskId, title) {
-        pendingDeclineId = taskId;
-        const titleEl = document.getElementById('decline-task-title');
-        if (titleEl) titleEl.textContent = title || '';
-        const reasonEl = document.getElementById('decline-reason');
-        if (reasonEl) reasonEl.value = '';
-        window.openModal('decline-modal');
-    };
-
-    window.doMarkDone = async function(taskId) {
-        const cardEl = document.getElementById('task-' + taskId);
-        if (cardEl) { cardEl.style.opacity = '0.5'; cardEl.style.pointerEvents = 'none'; }
-        try {
-            await updateDoc(doc(db, 'tasks', taskId), { status: 'done', completedAt: new Date().toISOString() });
-            const t = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])].find(x => x.id === taskId);
-            if (t) { t.status = 'done'; t.completedAt = new Date().toISOString(); }
-            window.updateAllStats();
-            window.renderTasksList();
-            window.renderRecentTasks();
-            window.showToast('Task marked as done! ✓', 'success');
-        } catch(e) {
-            if (cardEl) { cardEl.style.opacity = '1'; cardEl.style.pointerEvents = ''; }
-            window.showToast('Error: ' + e.message, 'error');
-        }
-    };
-
-    window.renderStaffCards = function(staff) {
-        const el = document.getElementById('staff-cards-list');
-        if (!el) return;
-        const sc = document.getElementById('staff-count-sub');
-        const members = (staff || []).filter(s => s.role !== 'owner');
-        if (sc) sc.textContent = `${members.length} ${members.length !== 1 ? 'members' : 'member'}`;
-        if (!staff?.length) {
-            el.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--tx-muted);">
-                <div style="font-size:2rem;margin-bottom:8px">👥</div>
-                <div style="font-weight:700;">No team members yet</div>
-                <div style="font-size:0.9rem;margin-top:4px;">Add staff from the button above.</div>
-            </div>`;
-            return;
-        }
-        const canManage = window.CU?.role === 'owner' || window.CU?.role === 'manager';
-        el.innerHTML = staff.map(s => {
-            const col = window.avatarColor(s.name || ''), ini = window.getInitials(s.name || '');
-            return `<div class="team-card">
-                ${canManage ? `<button class="btn-icon-danger-absolute" title="Remove" onclick="window.openDeleteModal('${s.uid}','${esc(s.name||'')}','${esc(s.email||'')}','${esc(s.passwordHint||'')}')">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
-                </button>` : ''}
-                <div class="team-card-top">
-                    <div class="team-profile-info">
-                        <div class="team-av" style="background:${col};color:#fff;">${ini}</div>
-                        <div class="team-text-block">
-                            <div class="team-name">${esc(s.name || '')}</div>
-                            <div class="team-role">${esc(s.designation || s.role || 'Staff')}</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="team-email">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                    ${esc(s.email || 'No email')}
-                </div>
-                <div class="team-card-actions">
-                    ${canManage ? `<button class="btn btn-secondary w-full" onclick="window.quickAssign('${s.uid}')">Assign Task</button>` : ''}
-                </div>
-            </div>`;
-        }).join('');
-    };
-
-    window.buildProfile = function() {
-        const cu = window.CU;
-        if (!cu) return;
-        const col = window.avatarColor(cu.name || ''), ini = window.getInitials(cu.name || '');
-        const makeHTML = (sfx) => `
-            <div style="padding:24px;">
-                <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:28px;border-bottom:1px solid var(--bd-color);margin-bottom:20px;">
-                    <div class="av" style="width:76px;height:76px;font-size:26px;margin-bottom:12px;background:${col};color:#fff;">${ini}</div>
-                    <div style="font-weight:800;font-size:1.1rem;letter-spacing:-0.01em;">${esc(cu.name || '')}</div>
-                    <div style="color:var(--tx-muted);font-size:0.9rem;margin-top:4px;">${esc(cu.email || '')}</div>
-                    <div style="margin-top:10px;"><span style="background:var(--ac-light);color:var(--ac);padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">${cu.role || ''}</span></div>
-                    ${cu.uniqueId ? `<div style="margin-top:8px;font-family:monospace;font-size:0.8rem;color:var(--tx-muted);">ID: ${esc(cu.uniqueId)}</div>` : ''}
-                </div>
-                <div class="form-group">
-                    <label class="form-label" id="lbl-prof-name-${sfx}">Full Name</label>
-                    <input class="form-input prof-input-readonly" id="prof-name-${sfx}" value="${esc(cu.name || '')}" readonly oninput="window.checkProfileNameLength(this,'${sfx}')">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input class="form-input prof-input-readonly" id="prof-email-${sfx}" value="${esc(cu.email || '')}" readonly>
-                </div>
-                <button id="btn-save-prof-${sfx}" class="btn btn-primary w-full" style="display:none;margin-bottom:8px;" onclick="window.saveProfileData('${sfx}')">Save Changes</button>
-                <button class="btn btn-ghost w-full" style="margin-bottom:8px;" onclick="window.enableProfileEdit('${sfx}')">Edit Profile</button>
-                <div style="border-top:1px solid var(--bd-color);margin-top:16px;padding-top:16px;">
-                    <button class="btn w-full" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger-light);" onclick="window.handleLogout()">Sign Out</button>
-                </div>
-            </div>
-        `;
-        const d = document.getElementById('profile-body-desktop');
-        if (d) d.innerHTML = makeHTML('desk');
-        const m = document.getElementById('profile-body-mobile');
-        if (m) m.innerHTML = makeHTML('mob');
-    };
-
+    // 13. UI Setup & Boot
     function setupUI() {
       const { name, role } = window.CU;
       
-      // Added 'window.' to these missing functions
       const col = window.avatarColor(name), ini = window.getInitials(name);
       const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
       window.setAv('topbar-avatar', ini, col, 38, src); 
@@ -2589,35 +2453,44 @@ window.taskTab = 'pending';
     }
 
     async function init() {
-    console.log("STEP 1 INIT START");
+      console.log("STEP 1 INIT START");
+      try {
+          console.log("STEP 2 BEFORE AUTH");
+          await requireAuth('login.html');
+          
+          console.log("STEP 3 AFTER AUTH");
+          const cu = await getCurrentUser();
+          
+          console.log("STEP 4 USER =", cu);
+          window.CU = cu;
+          
+          if (!cu) {
+              console.error("STEP 5 USER NULL");
+              return;
+          }
+          
+          console.log("STEP 6 USER OK");
 
-    try {
+          // -------------------------------------------------------------
+          // CRITICAL FIX: We must actually boot up the UI. 
+          // Your previous code successfully validated the user and 
+          // then stopped without rendering the dashboard.
+          // -------------------------------------------------------------
+          setupUI();
+          subscribeAll();
+          window.showView('home');
 
-        console.log("STEP 2 BEFORE AUTH");
+      } catch(err) {
+          console.error("INIT CRASH", err);
+      }
+  }
 
-        await requireAuth('login.html');
+  // ---------------------------------------------------------------------
+  // CRITICAL FIX: The init() function was defined but completely ignored.
+  // We execute it here at the end of the module to kick off the app.
+  // ---------------------------------------------------------------------
+  init();
 
-        console.log("STEP 3 AFTER AUTH");
-
-        const cu = await getCurrentUser();
-
-        console.log("STEP 4 USER =", cu);
-
-        window.CU = cu;
-
-        if (!cu) {
-            console.error("STEP 5 USER NULL");
-            return;
-        }
-
-        console.log("STEP 6 USER OK");
-
-    } catch(err) {
-
-        console.error("INIT CRASH", err);
-
-    }
-}
-  </script>
+</script>
 </body>
 </html>
