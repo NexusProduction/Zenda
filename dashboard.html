@@ -428,7 +428,96 @@
         text-overflow: ellipsis;
       }
     }
-    
+    /* --- WORLD-CLASS MAGNETIC MORPH WIDGET --- */
+    @media (min-width: 769px) {
+      .magnetic-wrap {
+        position: relative;
+        width: 100%;
+        display: flex;
+        justify-content: flex-start;
+        perspective: 1000px;
+        z-index: 50;
+      }
+
+      /* Resting Pill -> Hover Card Morph */
+      .sb-prof-widget {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 6px 16px 6px 6px; 
+        border-radius: 40px; /* Starts as a pill */
+        background: var(--bg-surface);
+        border: 2px solid #E5E5EA; 
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+        will-change: transform, border-radius, padding;
+      }
+      
+      .sb-prof-widget:hover {
+        padding: 10px 20px 10px 10px;
+        border-radius: 20px; /* Morphs into short card */
+        border-color: #D1D1D6;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+      }
+
+      /* Parallax Avatar Wrapper */
+      .sb-av-wrap {
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+        will-change: transform;
+      }
+      .sb-av {
+        width: 42px; height: 42px; border-radius: 14px; 
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 1.15rem; flex-shrink: 0;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
+      }
+
+      /* Smooth Text Morphing via Grid Stack */
+      .sb-info-stack {
+        display: grid;
+        align-items: center;
+      }
+      .sb-name-resting, .sb-hover-content {
+        grid-area: 1 / 1;
+        transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .sb-name-resting {
+        font-weight: 800; font-size: 1.05rem; color: var(--tx-main);
+        letter-spacing: -0.01em;
+        opacity: 1; visibility: visible; transform: translateX(0);
+      }
+      .sb-hover-content {
+        display: flex; flex-direction: column; gap: 4px;
+        opacity: 0; visibility: hidden; transform: translateX(10px);
+        white-space: nowrap;
+      }
+
+      /* Hover Triggers for text swap */
+      .sb-prof-widget:hover .sb-name-resting {
+        opacity: 0; visibility: hidden; transform: translateX(-10px);
+      }
+      .sb-prof-widget:hover .sb-hover-content {
+        opacity: 1; visibility: visible; transform: translateX(0);
+      }
+
+      .sb-name-full {
+        font-weight: 800; font-size: 1.05rem; color: var(--tx-main);
+        line-height: 1.1;
+      }
+      .sb-small-upgrade {
+        background: linear-gradient(135deg, #FF9500, #E68600);
+        color: white; border: none; border-radius: 6px;
+        padding: 4px 10px; font-size: 0.75rem; font-weight: 800;
+        cursor: pointer; width: fit-content;
+        box-shadow: 0 2px 6px rgba(255,149,0,0.25);
+        transition: transform 0.2s; font-family: inherit;
+      }
+      .sb-small-upgrade:hover { transform: scale(1.05); box-shadow: 0 4px 10px rgba(255,149,0,0.3); }
+      .sb-role-text {
+        font-size: 0.8rem; color: var(--tx-muted); font-weight: 700;
+      }
+    }
   </style>
 </head>
 <body>
@@ -887,7 +976,7 @@ let currentReviewNotificationId = null;
 let currentReviewWarehouseId = null;
 let currentReviewType = ''; 
 let pendingCreateData = null; 
-// --- MAGNETIC REPEL ENGINE ---
+// --- MAGNETIC ATTRACT & MORPH ENGINE ---
 window.setupMagneticProfile = function() {
     const wrap = document.getElementById('sb-magnetic-wrap');
     const widget = document.getElementById('sb-main-widget');
@@ -903,28 +992,28 @@ window.setupMagneticProfile = function() {
         const distX = e.clientX - centerX;
         const distY = e.clientY - centerY;
 
-        // REPEL LOGIC: Negative multiplier pushes it away from the cursor
+        // ATTRACT LOGIC: Positive multiplier pulls the card toward the cursor
         const maxMove = 12;
-        const repelX = Math.max(-maxMove, Math.min(maxMove, -distX * 0.15));
-        const repelY = Math.max(-maxMove, Math.min(maxMove, -distY * 0.15));
+        const attractX = Math.max(-maxMove, Math.min(maxMove, distX * 0.15));
+        const attractY = Math.max(-maxMove, Math.min(maxMove, distY * 0.15));
         
         widget.style.transition = 'none';
         if(avWrap) avWrap.style.transition = 'none';
 
-        // Card dodges the mouse
-        widget.style.transform = `translate(${repelX}px, ${repelY}px)`;
+        // Card follows the mouse smoothly
+        widget.style.transform = `translate(${attractX}px, ${attractY}px)`;
         
-        // Icon pops up and repels even harder, creating the 3D magnet effect
+        // Icon repels (moves opposite to the card's movement) and scales up, creating a 3D dual-magnet effect
         if(avWrap) {
-            const avX = Math.max(-maxMove, Math.min(maxMove, -distX * 0.25));
-            const avY = Math.max(-maxMove, Math.min(maxMove, -distY * 0.25));
-            avWrap.style.transform = `translate(${avX}px, ${avY}px) scale(1.15)`;
+            const repelX = Math.max(-maxMove, Math.min(maxMove, -distX * 0.2));
+            const repelY = Math.max(-maxMove, Math.min(maxMove, -distY * 0.2));
+            avWrap.style.transform = `translate(${repelX}px, ${repelY}px) scale(1.12)`;
         }
     });
 
     wrap.addEventListener('mouseleave', () => {
         // Snap back using a bouncy spring curve
-        widget.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2), box-shadow 0.3s, border-color 0.3s';
+        widget.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2), border-radius 0.4s, padding 0.4s, box-shadow 0.4s';
         widget.style.transform = `translate(0px, 0px)`;
         
         if(avWrap) {
@@ -2538,6 +2627,7 @@ function setupUI() {
                     const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;">` : avIni;
                     
                     const fullName = window.CU.name || 'User';
+                    const firstName = fullName.split(' ')[0]; // Gets only first name for resting state
                     
                     // Format role e.g. "Owner" or "Staff"
                     const roleStr = window.CU.role ? window.CU.role.charAt(0).toUpperCase() + window.CU.role.slice(1) : 'Staff';
@@ -2545,24 +2635,25 @@ function setupUI() {
                     const desigStr = window.CU.designation ? ` (${window.CU.designation})` : '';
                     const roleDisplay = `${roleStr}${desigStr}`;
                     
-                    // If not premium, show upgrade button. If premium, show role text.
+                    // If not premium, show upgrade button. If premium, show formatted designation text.
                     const subTextHtml = !ip 
                         ? `<button onclick="event.stopPropagation(); window.location.href='subscription.html'" class="sb-small-upgrade">👑 Upgrade Plan</button>` 
                         : `<div class="sb-role-text">${esc(roleDisplay)}</div>`;
                     
                     subCard.innerHTML = `
                     <div class="magnetic-wrap" id="sb-magnetic-wrap">
-                        
                         <div class="sb-prof-widget" id="sb-main-widget" onclick="window.openProfile()">
                             <div class="sb-av-wrap" id="sb-av-wrap">
                                 <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
                             </div>
                             <div class="sb-info-stack">
-                                <div class="sb-name">${esc(fullName)}</div>
-                                ${subTextHtml}
+                                <div class="sb-name-resting">${esc(firstName)}</div>
+                                <div class="sb-hover-content">
+                                    <div class="sb-name-full">${esc(fullName)}</div>
+                                    ${subTextHtml}
+                                </div>
                             </div>
                         </div>
-
                     </div>
                     `;
 
