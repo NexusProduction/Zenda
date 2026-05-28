@@ -13,117 +13,69 @@
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   
   <script>
-/* =========================
-   SAFE APP INITIALIZER
-========================= */
+/* ==========================================
+   ZENDA APPLE MAGNETIC ENGINE V2
+========================================== */
 
-window.APP_READY = false;
+(function(){
 
-async function init() {
-  try {
-    console.log("Zenda init started...");
+  const card = document.getElementById("liquid-profile");
 
-    // Prevent double init
-    if (window.APP_READY) return;
-    window.APP_READY = true;
+  if(!card) return;
 
-    // ---------- DEFAULT SAFE OBJECTS ----------
-    window.CU = window.CU || {
-      role: "staff",
-      name: "User"
-    };
+  let rect = null;
+  let raf = null;
 
-    window.tasks = window.tasks || [];
-    window.staff = window.staff || [];
-    window.notifications = window.notifications || [];
+  function update(e){
 
-    // ---------- SAFE ELEMENT CHECKS ----------
-    const statsGrid = document.getElementById("stats-grid");
-    const appsGrid = document.getElementById("apps-grid");
-    const recentTasks = document.getElementById("recent-tasks");
+    rect = card.getBoundingClientRect();
 
-    // ---------- DASHBOARD CONTENT ----------
-    if (statsGrid) {
-      statsGrid.innerHTML = `
-        <div class="stat-card">
-          <div style="font-size:32px;font-weight:800;">0</div>
-          <div style="margin-top:8px;color:var(--tx-muted);font-weight:600;">
-            Total Tasks
-          </div>
-        </div>
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-        <div class="stat-card">
-          <div style="font-size:32px;font-weight:800;">0</div>
-          <div style="margin-top:8px;color:var(--tx-muted);font-weight:600;">
-            Completed
-          </div>
-        </div>
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
 
-        <div class="stat-card">
-          <div style="font-size:32px;font-weight:800;">0</div>
-          <div style="margin-top:8px;color:var(--tx-muted);font-weight:600;">
-            Pending
-          </div>
-        </div>
+    const rotateY = (x - centerX) / 14;
+    const rotateX = (centerY - y) / 14;
+
+    const moveX = (x - centerX) / 26;
+    const moveY = (y - centerY) / 26;
+
+    cancelAnimationFrame(raf);
+
+    raf = requestAnimationFrame(() => {
+
+      card.style.transform = `
+        perspective(1600px)
+        rotateX(${rotateX}deg)
+        rotateY(${rotateY}deg)
+        translateX(${moveX}px)
+        translateY(${moveY - 4}px)
+        scale(1.018)
       `;
-    }
+    });
+  }
 
-    if (appsGrid) {
-      appsGrid.innerHTML = `
-        <div class="app-squircle-wrap">
-          <div class="app-squircle" style="background:#EEF2FF;">
-            📋
-          </div>
-          <div class="app-name">Tasks</div>
-        </div>
+  function reset(){
 
-        <div class="app-squircle-wrap">
-          <div class="app-squircle" style="background:#F3F4F6;">
-            👥
-          </div>
-          <div class="app-name">Team</div>
-        </div>
+    cancelAnimationFrame(raf);
 
-        <div class="app-squircle-wrap">
-          <div class="app-squircle" style="background:#FEF3C7;">
-            📈
-          </div>
-          <div class="app-name">Reports</div>
-        </div>
+    card.style.transform = `
+      perspective(1600px)
+      rotateX(0deg)
+      rotateY(0deg)
+      translateX(0px)
+      translateY(0px)
+      scale(1)
+    `;
+  }
 
-        <div class="app-squircle-wrap">
-          <div class="app-squircle" style="background:#DCFCE7;">
-            ⚙️
-          </div>
-          <div class="app-name">Settings</div>
-        </div>
-      `;
-    }
+  card.addEventListener("mousemove", update);
 
-    if (recentTasks) {
-      recentTasks.innerHTML = `
-        <div class="premium-task-card">
-          <div class="card-title">
-            Dashboard Loaded Successfully
-          </div>
+  card.addEventListener("mouseleave", reset);
 
-          <div style="color:var(--tx-muted);margin-top:8px;">
-            Your UI is working correctly now.
-          </div>
-        </div>
-      `;
-    }
-}
-
-/* =========================
-   START APP
-========================= */
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
+})();
 </script>
 
   <style>
@@ -444,148 +396,573 @@ if (document.readyState === "loading") {
     .custom-toast.info { background: var(--ac-light); color: var(--ac); border-color: rgba(0,102,204,0.2); }
     .custom-toast.out { animation: customToastOut 0.3s forwards !important; }
 
-    /* --- SIDEBAR PROFILE CARD (Liquid Glass Tooltips) --- */
-    /* --- SIDEBAR STATIC PROFILE CARD --- */
-    @media (min-width: 769px) {
-      .sb-prof-card {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px; 
-        border-radius: 14px; /* Square with a little border radius */
-        background: var(--bg-surface);
-        border: 1px solid var(--bd-color); 
-        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        width: 100%;
-      }
-      .sb-prof-card:hover {
-        background: var(--bg-page);
-        border-color: #D1D1D6;
-      }
-      .sb-av {
-        width: 42px; height: 42px; border-radius: 10px; 
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 800; font-size: 1.15rem; flex-shrink: 0;
-      }
-      .sb-info-stack {
-        display: flex; flex-direction: column; justify-content: center; gap: 3px;
-        overflow: hidden;
-      }
-      .sb-name-full {
-        font-weight: 800; font-size: 0.95rem; color: var(--tx-main);
-        line-height: 1.1; letter-spacing: -0.01em;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      }
-      .sb-small-upgrade {
-        background: linear-gradient(135deg, #FF9500, #E68600);
-        color: white; border: none; border-radius: 6px;
-        padding: 4px 8px; font-size: 0.7rem; font-weight: 800;
-        cursor: pointer; width: fit-content;
-        box-shadow: 0 2px 6px rgba(255,149,0,0.25);
-        transition: transform 0.2s; font-family: inherit;
-      }
-      .sb-small-upgrade:hover { transform: scale(1.05); }
-      .sb-role-text {
-        font-size: 0.75rem; color: var(--tx-muted); font-weight: 700;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      }
-    }
-    /* --- WORLD-CLASS MAGNETIC MORPH WIDGET --- */
-    @media (min-width: 769px) {
-      .magnetic-wrap {
-        position: relative;
-        width: 100%;
-        display: flex;
-        justify-content: flex-start;
-        perspective: 1000px;
-        z-index: 50;
-        padding: 10px; /* Padding provides a safe zone for the magnet math */
-        margin-left: -10px;
-      }
+    /* =========================================================
+   ZENDA APPLE LIQUID SYSTEM V2
+========================================================= */
 
-      /* Resting Pill -> Hover Card Morph */
-      .sb-prof-widget {
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
-        padding: 6px 16px 6px 6px; 
-        border-radius: 40px; /* Starts as a pill */
-        background: var(--bg-surface);
-        border: 2px solid #E5E5EA; 
-        cursor: pointer;
-        user-select: none;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15);
-        transform-origin: center left;
-        will-change: transform, border-radius, padding, border-color;
-      }
-      
-      .sb-prof-widget:hover {
-        padding: 10px 20px 10px 10px;
-        border-radius: 20px; /* Morphs into short card */
-        border-color: #D1D1D6;
-        box-shadow: 0 12px 28px rgba(0,0,0,0.08);
-      }
+:root{
+  --liquid-bg:rgba(255,255,255,.72);
+  --liquid-border:rgba(255,255,255,.88);
+  --liquid-shadow:
+    0 20px 60px rgba(0,0,0,.12),
+    0 6px 18px rgba(0,0,0,.06);
 
-      /* Parallax Avatar Wrapper */
-      .sb-av-wrap {
-        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15);
-        will-change: transform;
-      }
-      .sb-av {
-        width: 42px; height: 42px; border-radius: 14px; 
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 800; font-size: 1.15rem; flex-shrink: 0;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
-      }
+  --liquid-blur:blur(26px);
+}
 
-      /* Smooth Text Morphing via Grid Stack */
-      .sb-info-stack {
-        display: grid;
-        align-items: center;
-        min-height: 42px;
-      }
-      .sb-name-resting, .sb-hover-content {
-        grid-area: 1 / 1;
-        transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      .sb-name-resting {
-        font-weight: 800; font-size: 1.05rem; color: var(--tx-main);
-        letter-spacing: -0.01em;
-        opacity: 1; pointer-events: auto; transform: translateX(0);
-      }
-      .sb-hover-content {
-        display: flex; flex-direction: column; gap: 4px;
-        opacity: 0; pointer-events: none; transform: translateX(10px);
-        white-space: nowrap;
-      }
+/* =========================
+   MAIN WRAPPER
+========================= */
 
-      /* Hover Triggers for text swap */
-      .sb-prof-widget:hover .sb-name-resting {
-        opacity: 0; pointer-events: none; transform: translateX(-10px);
-      }
-      .sb-prof-widget:hover .sb-hover-content {
-        opacity: 1; pointer-events: auto; transform: translateX(0);
-      }
+.magnetic-wrap{
+  position:relative;
+  width:100%;
+  perspective:1600px;
+  padding:8px;
+}
 
-      .sb-name-full {
-        font-weight: 800; font-size: 1.05rem; color: var(--tx-main);
-        line-height: 1.1; letter-spacing: -0.01em;
-      }
-      .sb-small-upgrade {
-        background: linear-gradient(135deg, #FF9500, #E68600);
-        color: white; border: none; border-radius: 6px;
-        padding: 4px 10px; font-size: 0.75rem; font-weight: 800;
-        cursor: pointer; width: fit-content;
-        box-shadow: 0 2px 6px rgba(255,149,0,0.25);
-        transition: transform 0.2s; font-family: inherit;
-      }
-      .sb-small-upgrade:hover { transform: scale(1.05); box-shadow: 0 4px 10px rgba(255,149,0,0.3); }
-      .sb-role-text {
-        font-size: 0.75rem; color: var(--tx-muted); font-weight: 700;
-      }
-    }
+/* =========================
+   PROFILE WIDGET
+========================= */
+
+.sb-prof-widget{
+  position:relative;
+  overflow:visible;
+
+  display:flex;
+  align-items:center;
+  gap:14px;
+
+  width:100%;
+
+  padding:12px;
+
+  border-radius:30px;
+
+  background:var(--liquid-bg);
+
+  backdrop-filter:var(--liquid-blur);
+  -webkit-backdrop-filter:var(--liquid-blur);
+
+  border:1px solid var(--liquid-border);
+
+  box-shadow:var(--liquid-shadow);
+
+  transition:
+    transform .28s cubic-bezier(.22,1,.36,1),
+    border-radius .45s cubic-bezier(.22,1,.36,1),
+    box-shadow .35s ease;
+
+  will-change:transform;
+}
+
+/* glow */
+
+.sb-prof-widget::before{
+  content:"";
+
+  position:absolute;
+  inset:0;
+
+  border-radius:inherit;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,.55),
+      rgba(255,255,255,.12)
+    );
+
+  z-index:-1;
+}
+
+/* hover */
+
+.sb-prof-widget:hover{
+  border-radius:36px;
+
+  transform:
+    translateY(-4px)
+    scale(1.015);
+
+  box-shadow:
+    0 30px 80px rgba(0,0,0,.16),
+    0 10px 24px rgba(0,0,0,.06);
+}
+
+/* =========================
+   AVATAR
+========================= */
+
+.sb-av-wrap{
+  position:relative;
+  flex-shrink:0;
+}
+
+.sb-av{
+  width:56px;
+  height:56px;
+
+  border-radius:20px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #0A84FF,
+      #0057D9
+    );
+
+  color:white;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-size:1.25rem;
+  font-weight:900;
+
+  box-shadow:
+    0 14px 28px rgba(0,113,227,.32);
+
+  transition:
+    transform .35s cubic-bezier(.22,1,.36,1),
+    border-radius .35s ease;
+}
+
+.sb-prof-widget:hover .sb-av{
+  transform:
+    rotate(-3deg)
+    scale(1.06)
+    translateY(-2px);
+
+  border-radius:24px;
+}
+
+/* =========================
+   BIG FLOAT AVATAR
+========================= */
+
+.sb-avatar-preview{
+  position:absolute;
+
+  bottom:82px;
+  left:-4px;
+
+  width:120px;
+  height:120px;
+
+  border-radius:38px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #0A84FF,
+      #0057D9
+    );
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-size:2.6rem;
+  font-weight:900;
+  color:white;
+
+  box-shadow:
+    0 40px 70px rgba(0,0,0,.18);
+
+  opacity:0;
+  pointer-events:none;
+
+  transform:
+    translateY(20px)
+    scale(.84)
+    rotate(-8deg);
+
+  transition:
+    all .46s cubic-bezier(.22,1,.36,1);
+
+  z-index:999;
+}
+
+.sb-avatar-preview::after{
+  content:"";
+
+  position:absolute;
+
+  bottom:-10px;
+  left:30px;
+
+  width:20px;
+  height:20px;
+
+  background:#0068DB;
+
+  transform:rotate(45deg);
+
+  border-radius:5px;
+}
+
+.sb-av-wrap:hover .sb-avatar-preview{
+  opacity:1;
+
+  transform:
+    translateY(0)
+    scale(1)
+    rotate(0deg);
+}
+
+/* =========================
+   TEXT AREA
+========================= */
+
+.sb-info-stack{
+  position:relative;
+
+  flex:1;
+
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+
+  gap:5px;
+}
+
+.sb-name-resting{
+  font-size:1rem;
+  font-weight:800;
+  color:#111;
+  letter-spacing:-0.02em;
+}
+
+.sb-designation{
+  width:fit-content;
+
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+
+  padding:6px 12px;
+
+  border-radius:999px;
+
+  background:
+    rgba(0,0,0,.06);
+
+  color:#111;
+
+  font-size:.72rem;
+  font-weight:800;
+}
+
+/* =========================
+   FLOAT PROFILE CARD
+========================= */
+
+.sb-hover-card{
+  position:absolute;
+
+  left:0;
+  top:-210px;
+
+  width:290px;
+
+  padding:22px;
+
+  border-radius:32px;
+
+  background:
+    rgba(255,255,255,.78);
+
+  backdrop-filter:blur(30px);
+  -webkit-backdrop-filter:blur(30px);
+
+  border:1px solid rgba(255,255,255,.92);
+
+  box-shadow:
+    0 40px 90px rgba(0,0,0,.16);
+
+  opacity:0;
+  pointer-events:none;
+
+  transform:
+    translateY(24px)
+    scale(.92);
+
+  transition:
+    all .45s cubic-bezier(.22,1,.36,1);
+
+  z-index:999;
+}
+
+.sb-hover-card::after{
+  content:"";
+
+  position:absolute;
+
+  bottom:-10px;
+  left:40px;
+
+  width:20px;
+  height:20px;
+
+  background:white;
+
+  transform:rotate(45deg);
+
+  border-radius:5px;
+}
+
+.sb-info-stack:hover .sb-hover-card{
+  opacity:1;
+
+  transform:
+    translateY(0)
+    scale(1);
+}
+
+/* =========================
+   HOVER CONTENT
+========================= */
+
+.sb-hover-top{
+  display:flex;
+  align-items:center;
+  gap:14px;
+
+  margin-bottom:18px;
+}
+
+.sb-hover-big{
+  width:60px;
+  height:60px;
+
+  border-radius:20px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #0A84FF,
+      #0057D9
+    );
+
+  color:white;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-size:1.5rem;
+  font-weight:900;
+}
+
+.sb-hover-name{
+  font-size:1.06rem;
+  font-weight:800;
+  color:#111;
+}
+
+.sb-hover-mail{
+  margin-top:3px;
+
+  font-size:.82rem;
+  font-weight:600;
+  color:#6E6E73;
+}
+
+.sb-hover-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.sb-hover-stat{
+  padding:12px;
+
+  border-radius:18px;
+
+  background:
+    rgba(255,255,255,.72);
+
+  border:1px solid rgba(0,0,0,.04);
+}
+
+.sb-hover-label{
+  font-size:.7rem;
+  font-weight:700;
+  color:#8E8E93;
+
+  letter-spacing:.08em;
+  text-transform:uppercase;
+
+  margin-bottom:4px;
+}
+
+.sb-hover-value{
+  font-size:.92rem;
+  font-weight:800;
+  color:#111;
+}
+
+/* =========================
+   UPGRADE BUTTON
+========================= */
+
+.sb-small-upgrade{
+  border:none;
+
+  width:fit-content;
+
+  padding:7px 14px;
+
+  border-radius:999px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #FFB340,
+      #FF9500
+    );
+
+  color:white;
+
+  font-size:.75rem;
+  font-weight:800;
+
+  cursor:pointer;
+
+  box-shadow:
+    0 12px 24px rgba(255,149,0,.24);
+
+  transition:
+    transform .24s ease,
+    box-shadow .24s ease;
+}
+
+.sb-small-upgrade:hover{
+  transform:
+    translateY(-2px)
+    scale(1.05);
+
+  box-shadow:
+    0 18px 34px rgba(255,149,0,.34);
+}
+
+/* =========================
+   UPGRADE PANEL
+========================= */
+
+.sb-upgrade-pop{
+  position:absolute;
+
+  bottom:66px;
+  right:-10px;
+
+  width:270px;
+
+  padding:20px;
+
+  border-radius:30px;
+
+  background:
+    rgba(255,255,255,.78);
+
+  backdrop-filter:blur(30px);
+  -webkit-backdrop-filter:blur(30px);
+
+  border:1px solid rgba(255,255,255,.9);
+
+  box-shadow:
+    0 30px 80px rgba(0,0,0,.14);
+
+  opacity:0;
+  pointer-events:none;
+
+  transform:
+    translateY(18px)
+    scale(.92);
+
+  transition:
+    all .44s cubic-bezier(.22,1,.36,1);
+
+  z-index:999;
+}
+
+.sb-upgrade-pop::after{
+  content:"";
+
+  position:absolute;
+
+  bottom:-9px;
+  right:42px;
+
+  width:18px;
+  height:18px;
+
+  background:white;
+
+  transform:rotate(45deg);
+
+  border-radius:4px;
+}
+
+.sb-small-upgrade:hover + .sb-upgrade-pop{
+  opacity:1;
+
+  transform:
+    translateY(0)
+    scale(1);
+}
+
+.sb-feature{
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  margin-bottom:12px;
+
+  font-size:.84rem;
+  font-weight:700;
+}
+
+.sb-feature-dot{
+  width:8px;
+  height:8px;
+
+  border-radius:50%;
+
+  background:#0A84FF;
+}
+
+.sb-upgrade-cta{
+  width:100%;
+
+  margin-top:14px;
+
+  border:none;
+
+  border-radius:18px;
+
+  padding:12px;
+
+  background:#111;
+
+  color:white;
+
+  font-size:.92rem;
+  font-weight:800;
+
+  cursor:pointer;
+
+  transition:
+    transform .22s ease,
+    opacity .22s ease;
+}
+
+.sb-upgrade-cta:hover{
+  transform:scale(1.02);
+  opacity:.92;
+}
   </style>
 </head>
 <body>
@@ -644,7 +1021,142 @@ if (document.readyState === "loading") {
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> My Team
         </div>
       </nav>
-      <div class="sidebar-footer" id="sidebar-footer"></div>
+      <div class="magnetic-wrap">
+
+  <div class="sb-prof-widget" id="liquid-profile">
+
+    <div class="sb-av-wrap">
+
+      <div class="sb-avatar-preview">
+        AK
+      </div>
+
+      <div class="sb-av">
+        AK
+      </div>
+
+    </div>
+
+    <div class="sb-info-stack">
+
+      <div class="sb-hover-card">
+
+        <div class="sb-hover-top">
+
+          <div class="sb-hover-big">
+            AK
+          </div>
+
+          <div>
+            <div class="sb-hover-name">
+              Ayush Kumar
+            </div>
+
+            <div class="sb-hover-mail">
+              ayush@zenda.app
+            </div>
+          </div>
+
+        </div>
+
+        <div class="sb-hover-grid">
+
+          <div class="sb-hover-stat">
+            <div class="sb-hover-label">
+              Role
+            </div>
+
+            <div class="sb-hover-value">
+              Owner
+            </div>
+          </div>
+
+          <div class="sb-hover-stat">
+            <div class="sb-hover-label">
+              Tasks
+            </div>
+
+            <div class="sb-hover-value">
+              28 Active
+            </div>
+          </div>
+
+          <div class="sb-hover-stat">
+            <div class="sb-hover-label">
+              Status
+            </div>
+
+            <div class="sb-hover-value">
+              Premium
+            </div>
+          </div>
+
+          <div class="sb-hover-stat">
+            <div class="sb-hover-label">
+              Team
+            </div>
+
+            <div class="sb-hover-value">
+              12 Members
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="sb-name-resting">
+        Ayush Kumar
+      </div>
+
+      <!-- PREMIUM USER -->
+      <div class="sb-designation">
+        👑 Owner
+      </div>
+
+      <!-- FREE USER -->
+      <!--
+      <button class="sb-small-upgrade">
+        👑 Upgrade
+      </button>
+
+      <div class="sb-upgrade-pop">
+
+        <div class="sb-feature">
+          <div class="sb-feature-dot"></div>
+          Unlimited Staff
+        </div>
+
+        <div class="sb-feature">
+          <div class="sb-feature-dot"></div>
+          Smart Analytics
+        </div>
+
+        <div class="sb-feature">
+          <div class="sb-feature-dot"></div>
+          Priority Support
+        </div>
+
+        <div class="sb-feature">
+          <div class="sb-feature-dot"></div>
+          Multi Warehouse
+        </div>
+
+        <button
+          class="sb-upgrade-cta"
+          onclick="window.location.href='subscription.html'"
+        >
+          Upgrade Now
+        </button>
+
+      </div>
+      -->
+
+    </div>
+
+  </div>
+
+</div>
     </aside>
 
     <main class="main-content">
