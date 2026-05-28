@@ -110,7 +110,7 @@
     .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-size: 0.95rem; color: var(--tx-muted); background: transparent; transition: all 0.2s; font-weight: 600; border-radius: 12px; cursor: pointer; }
     .sidebar-item:hover { background: var(--bg-page); color: var(--tx-main); }
     .sidebar-item.active { background: var(--ac-light) !important; color: var(--ac) !important; font-weight: 700; border-right: none; }
-    .sidebar-footer { padding: 24px 16px; border-top: 1.5px solid var(--bd-color); }
+    .sidebar-footer { padding: 12px 16px 20px; border-top: 1.5px solid var(--bd-color); }
 
     .main-content { flex: 1; height: 100%; overflow-y: auto; overflow-x: hidden; padding: 40px; background: var(--bg-page); position: relative; min-width: 0; }
     .fade-in-section { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -344,42 +344,51 @@
     .custom-toast.out { animation: customToastOut 0.3s forwards !important; }
 
     /* --- SIDEBAR PROFILE CARD (Liquid Glass Tooltips) --- */
+    /* --- SIDEBAR STATIC PROFILE CARD --- */
     @media (min-width: 769px) {
-      .sb-footer-prof {
-        display: flex; align-items: center; gap: 12px;
-        padding: 12px; border-radius: 16px;
-        background: var(--bg-page); border: 1px solid var(--bd-color);
-        position: relative; cursor: pointer; transition: all 0.3s ease;
+      .sb-prof-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px; 
+        border-radius: 14px; /* Square with a little border radius */
+        background: var(--bg-surface);
+        border: 1px solid var(--bd-color); 
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
       }
-      .sb-footer-prof:hover { background: #EAEBEF; }
-
-      .sb-av-target, .sb-name-target, .sb-role-target {
-        position: relative;
+      .sb-prof-card:hover {
+        background: var(--bg-page);
+        border-color: #D1D1D6;
       }
-
-      /* Tooltip Base */
-      .glass-tt {
-        position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%) translateY(10px) scale(0.95);
-        background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 16px 32px rgba(0,0,0,0.12);
-        border-radius: 16px; padding: 12px;
-        opacity: 0; visibility: hidden; pointer-events: none; z-index: 100;
-        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        display: flex; flex-direction: column; align-items: center; text-align: center;
-        white-space: nowrap;
+      .sb-av {
+        width: 42px; height: 42px; border-radius: 10px; 
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 1.15rem; flex-shrink: 0;
       }
-      /* Triangle Pointer */
-      .glass-tt::after {
-        content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-        border-width: 8px; border-style: solid;
-        border-color: rgba(255,255,255,0.9) transparent transparent transparent;
+      .sb-info-stack {
+        display: flex; flex-direction: column; justify-content: center; gap: 3px;
+        overflow: hidden;
       }
-
-      /* Hover Triggers */
-      .sb-av-target:hover .glass-tt,
-      .sb-name-target:hover .glass-tt,
-      .sb-role-target:hover .glass-tt {
-        opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1);
+      .sb-name-full {
+        font-weight: 800; font-size: 0.95rem; color: var(--tx-main);
+        line-height: 1.1; letter-spacing: -0.01em;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .sb-small-upgrade {
+        background: linear-gradient(135deg, #FF9500, #E68600);
+        color: white; border: none; border-radius: 6px;
+        padding: 4px 8px; font-size: 0.7rem; font-weight: 800;
+        cursor: pointer; width: fit-content;
+        box-shadow: 0 2px 6px rgba(255,149,0,0.25);
+        transition: transform 0.2s; font-family: inherit;
+      }
+      .sb-small-upgrade:hover { transform: scale(1.05); }
+      .sb-role-text {
+        font-size: 0.75rem; color: var(--tx-muted); font-weight: 700;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
     }
     /* --- WORLD-CLASS MAGNETIC MORPH WIDGET --- */
@@ -934,54 +943,6 @@ let currentReviewNotificationId = null;
 let currentReviewWarehouseId = null;
 let currentReviewType = ''; 
 let pendingCreateData = null; 
-
-// --- MAGNETIC ATTRACT & MORPH ENGINE ---
-window.setupMagneticProfile = function() {
-    const wrap = document.getElementById('sb-magnetic-wrap');
-    const widget = document.getElementById('sb-main-widget');
-    const avWrap = document.getElementById('sb-av-wrap');
-
-    if (!wrap || !widget) return;
-
-    wrap.addEventListener('mousemove', (e) => {
-        // BUG FIX: Calculate from the STATIC wrapper, not the moving widget!
-        const rect = wrap.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        
-        const distX = e.clientX - centerX;
-        const distY = e.clientY - centerY;
-
-        const maxMove = 12;
-        // ATTRACT: Positive multiplier pulls the card toward the mouse
-        const attractX = Math.max(-maxMove, Math.min(maxMove, distX * 0.15));
-        const attractY = Math.max(-maxMove, Math.min(maxMove, distY * 0.15));
-        
-        widget.style.transition = 'none';
-        if(avWrap) avWrap.style.transition = 'none';
-
-        widget.style.transform = `translate(${attractX}px, ${attractY}px)`;
-        
-        // REPEL: Negative multiplier pushes the icon away, scaling it up for 3D depth
-        if(avWrap) {
-            const repelX = Math.max(-maxMove, Math.min(maxMove, -distX * 0.2));
-            const repelY = Math.max(-maxMove, Math.min(maxMove, -distY * 0.2));
-            avWrap.style.transform = `translate(${repelX}px, ${repelY}px) scale(1.12)`;
-        }
-    });
-
-    wrap.addEventListener('mouseleave', () => {
-        // Snap back using a bouncy spring curve
-        widget.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2)';
-        widget.style.transform = `translate(0px, 0px)`;
-        
-        if(avWrap) {
-            avWrap.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2)';
-            avWrap.style.transform = `translate(0px, 0px) scale(1)`;
-        }
-    });
-};
-// --- END MAGNETIC ENGINE ---
 
 // 4. Utility Functions
 window.avatarColor = function(name) {
@@ -2585,40 +2546,32 @@ function setupUI() {
                     const avColor = window.avatarColor(window.CU.name);
                     const avIni = window.getInitials(window.CU.name);
                     const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
-                    const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;">` : avIni;
+                    const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">` : avIni;
                     
                     const fullName = window.CU.name || 'User';
-                    const firstName = fullName.split(' ')[0]; // Gets only first name for resting state
                     
                     // Format role e.g. "Owner" or "Staff"
                     const roleStr = window.CU.role ? window.CU.role.charAt(0).toUpperCase() + window.CU.role.slice(1) : 'Staff';
-                    // Add designation if it exists e.g. " (Video Editor)"
+                    // Add designation if it exists e.g. "(Manager)" or "(Video Editor)"
                     const desigStr = window.CU.designation ? ` (${window.CU.designation})` : '';
                     const roleDisplay = `${roleStr}${desigStr}`;
                     
                     // If not premium, show upgrade button. If premium, show formatted designation text.
-                    const subTextHtml = !window.CU.isPremium 
+                    const subTextHtml = !ip 
                         ? `<button onclick="event.stopPropagation(); window.location.href='subscription.html'" class="sb-small-upgrade">👑 Upgrade Plan</button>` 
                         : `<div class="sb-role-text">${esc(roleDisplay)}</div>`;
                     
                     subCard.innerHTML = `
-                    <div class="magnetic-wrap" id="sb-magnetic-wrap">
-                        <div class="sb-prof-widget" id="sb-main-widget" onclick="window.openProfile()">
-                            <div class="sb-av-wrap" id="sb-av-wrap">
-                                <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
-                            </div>
-                            <div class="sb-info-stack">
-                                <div class="sb-name-resting">${esc(firstName)}</div>
-                                <div class="sb-hover-content">
-                                    <div class="sb-name-full">${esc(fullName)}</div>
-                                    ${subTextHtml}
-                                </div>
-                            </div>
+                    <div class="sb-prof-card" onclick="window.openProfile()">
+                        <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
+                        <div class="sb-info-stack">
+                            <div class="sb-name-full">${esc(fullName)}</div>
+                            ${subTextHtml}
                         </div>
                     </div>
                     `;
 
-                    setTimeout(() => window.setupMagneticProfile(), 100);
+                } else {
 
                 } else {
                     // Mobile Fallback Logic
