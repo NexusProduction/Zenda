@@ -342,6 +342,83 @@
     .custom-toast.error { background: var(--danger-light); color: var(--danger); border-color: rgba(255,59,48,0.2); }
     .custom-toast.info { background: var(--ac-light); color: var(--ac); border-color: rgba(0,102,204,0.2); }
     .custom-toast.out { animation: customToastOut 0.3s forwards !important; }
+    /* --- APPLE LIQUID GLASS PROFILE WIDGET (PC ONLY) --- */
+    @media (min-width: 769px) {
+      .sb-prof-widget {
+        position: relative;
+        border-radius: 20px;
+        padding: 14px;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        user-select: none;
+        z-index: 50;
+      }
+      .sb-prof-widget.upgrade-theme {
+        background: rgba(255, 149, 0, 0.08);
+        border: 1px solid rgba(255, 149, 0, 0.2);
+        box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3);
+      }
+      .sb-prof-widget.normal-theme {
+        background: var(--bg-surface);
+        border: 1px solid var(--bd-color);
+      }
+      .sb-prof-widget:hover {
+        transform: scale(1.02);
+      }
+
+      .sb-av-wrap { flex-shrink: 0; }
+      .sb-av {
+        width: 46px; height: 46px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 1.15rem; overflow: hidden;
+      }
+
+      .sb-info { flex: 1; min-width: 0; }
+      .sb-name { font-weight: 800; font-size: 0.95rem; color: var(--tx-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .sb-phone { font-size: 0.75rem; color: var(--tx-muted); font-weight: 600; margin-top: 2px; }
+      .sb-upgrade-badge { font-size: 0.7rem; font-weight: 800; padding: 3px 8px; border-radius: 8px; background: linear-gradient(135deg, #FF9500, #E68600); color: white; display: inline-block; margin-top: 6px; box-shadow: 0 4px 10px rgba(255, 149, 0, 0.25); }
+
+      /* Liquid Hover Popups */
+      .sb-hover-popup {
+        position: absolute; bottom: calc(100% + 16px); left: 0; width: 100%;
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,1);
+        border-radius: 20px; padding: 16px;
+        opacity: 0; visibility: hidden; pointer-events: none;
+        transform: translateY(12px) scale(0.96);
+        transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        z-index: 60;
+      }
+      .sb-hover-popup.active {
+        opacity: 1; visibility: visible; transform: translateY(0) scale(1);
+      }
+
+      /* Profile Click Modal (Liquid/Magnetic) */
+      .sb-profile-modal {
+        position: absolute; bottom: calc(100% + 16px); left: 0; width: 100%;
+        background: rgba(250, 250, 252, 0.85);
+        backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: 28px;
+        box-shadow: 0 32px 64px rgba(0,0,0,0.12), inset 0 1px 1px rgba(255,255,255,1);
+        padding: 24px;
+        opacity: 0; visibility: hidden; pointer-events: none;
+        transform: translateY(24px) scale(0.92);
+        transform-origin: bottom center;
+        transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        z-index: 100;
+      }
+      .sb-profile-modal.open {
+        opacity: 1; visibility: visible; pointer-events: auto;
+        transform: translateY(0) scale(1);
+      }
+      .liquid-divider { height: 1px; background: rgba(0,0,0,0.06); margin: 20px 0; border-radius: 1px; }
+    }
   </style>
 </head>
 <body>
@@ -364,15 +441,9 @@
     </div>
     
     <div class="topbar-right" style="display:flex;align-items:center;gap:20px;">
-      <button id="topbar-upgrade-btn" onclick="window.handleUpgradeClick()" class="hidden" style="display:none;align-items:center;gap:6px;padding:8px 16px;background:linear-gradient(135deg,#FF9500,#E68600);border:none;border-radius:10px;color:white;font-weight:800;font-size:0.85rem;cursor:pointer;box-shadow:0 4px 12px rgba(255,149,0,0.25);">
-        👑 Upgrade
-      </button>
       <button class="icon-btn" id="notif-btn" onclick="window.toggleNotifDropdown(event)" title="Notifications" style="background:none;border:none;cursor:pointer;position:relative;color:var(--tx-muted);transition:color 0.2s;margin-top: 6px;" onmouseover="this.style.color='var(--tx-main)'" onmouseout="this.style.color='var(--tx-muted)'">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="notif-badge hidden" id="notif-badge" style="position:absolute;top:-2px;right:-2px;background:var(--danger);color:white;font-size:10px;font-weight:800;padding:2px 6px;border-radius:8px;">0</span>
-      </button>
-      <button class="profile-btn" onclick="window.openProfile()" style="background:none;border:none;cursor:pointer;padding:0;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-        <div class="av" id="topbar-avatar" style="width:40px;height:40px;font-size:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"></div>
       </button>
     </div>
   </header>
@@ -760,8 +831,57 @@
   </div>
 
 <script type="module">
+window.showSbPopup = function(type) {
+        const isModalOpen = document.getElementById('sb-click-modal')?.classList.contains('open');
+// Warehouse specific variables
+    window.pendingWarehouses = window.pendingWarehouses || {};
+    let currentReviewNotificationId = null;
+    let currentReviewWarehouseId = null;
+    let currentReviewType = ''; 
+    let pendingCreateData = null; 
 
-// 1. Core Firebase Imports
+    // --- PASTE THE HOVER JS HERE ---
+    window.showSbPopup = function(type) {
+        const isModalOpen = document.getElementById('sb-click-modal')?.classList.contains('open');
+        if (isModalOpen) return; 
+        const p = document.getElementById(type === 'av' ? 'sb-av-popup' : 'sb-name-popup');
+        if (p) p.classList.add('active');
+    };
+
+    window.hideSbPopup = function(type) {
+        const p = document.getElementById(type === 'av' ? 'sb-av-popup' : 'sb-name-popup');
+        if (p) p.classList.remove('active');
+    };
+
+    window.toggleSbModal = function(e) {
+        e.stopPropagation();
+        const modal = document.getElementById('sb-click-modal');
+        if (!modal) return;
+        const isOpen = modal.classList.contains('open');
+        if (isOpen) {
+            modal.classList.remove('open');
+        } else {
+            window.hideSbPopup('av');
+            window.hideSbPopup('name');
+            modal.classList.add('open');
+        }
+    };
+
+    document.addEventListener('click', (e) => {
+        const modal = document.getElementById('sb-click-modal');
+        const widget = document.getElementById('sb-main-widget');
+        if (modal && modal.classList.contains('open') && !modal.contains(e.target) && !widget.contains(e.target)) {
+            modal.classList.remove('open');
+        }
+    });
+    // --- END HOVER JS ---
+
+    // 4. Utility Functions
+    window.avatarColor = function(name) {
+        if (modal && modal.classList.contains('open') && !modal.contains(e.target) && !widget.contains(e.target)) {
+            modal.classList.remove('open');
+        }
+    });
 import { auth, db } from './firebase-config.js';
 import { requireAuth, logout, getCurrentUser } from './auth.js';
 import { copyToClipboard, saveSession } from './utils.js';
@@ -2428,7 +2548,67 @@ window.taskTab = 'pending';
             const topUpgradeBtn = document.getElementById('topbar-upgrade-btn');
             if (topUpgradeBtn) { if (ip) { topUpgradeBtn.classList.add('hidden'); topUpgradeBtn.style.display = 'none'; } else { topUpgradeBtn.classList.remove('hidden'); topUpgradeBtn.style.display = 'flex'; topUpgradeBtn.textContent = role === 'owner' ? '👑 Upgrade' : '👑 Request Upgrade'; } }
             const subCard = document.getElementById('sidebar-footer');
-            if (subCard) { if (ip) { const expDate = cd.subscriptionExpiry ? new Date(cd.subscriptionExpiry).toLocaleDateString() : 'Lifetime'; subCard.innerHTML = `<div style="background:var(--bg-surface);border-radius:12px;padding:20px 16px;color:var(--tx-main);box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"><div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FF9500;letter-spacing:-0.02em;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${window.CU.subscriptionTier}</div><div style="font-size:0.8rem;color:#86868B;font-weight:500;">Valid till ${expDate}</div></div>`; } else { subCard.innerHTML = `<div style="background:linear-gradient(135deg,#FF9500,#E68600);border-radius:12px;padding:16px;color:white;cursor:pointer;box-shadow:var(--shadow-md);transition:transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'"><div style="font-weight:800;font-size:1rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;letter-spacing:-0.02em;">👑 Upgrade Plan</div><div style="font-size:0.8rem;opacity:0.9;font-weight:600;">Unlock all features</div></div>`; } }
+            if (subCard) { 
+                const isDesktop = window.innerWidth >= 769;
+                if (isDesktop) {
+                    const themeClass = ip ? 'normal-theme' : 'upgrade-theme';
+                    const tagHtml = ip ? '' : `<div class="sb-upgrade-badge">👑 Upgrade Plan</div>`;
+                    
+                    const avColor = window.avatarColor(window.CU.name);
+                    const avIni = window.getInitials(window.CU.name);
+                    const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
+                    const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;">` : avIni;
+                    
+                    const phoneStr = window.CU.phone || 'Add Phone Number';
+                    const roleStr = window.CU.designation || window.CU.role || 'Staff';
+                    
+                    subCard.innerHTML = `
+                    <div style="position:relative;">
+                        <div id="sb-click-modal" class="sb-profile-modal">
+                            <div style="text-align:center;">
+                                <div style="width:72px;height:72px;border-radius:20px;background:${avColor};color:white;font-size:1.8rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;box-shadow:0 8px 24px rgba(0,0,0,0.12);overflow:hidden;">${avHtml}</div>
+                                <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--tx-main);letter-spacing:-0.02em;">${esc(window.CU.name)}</h3>
+                                <div style="font-size:0.8rem;color:var(--ac);font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">${esc(roleStr)}</div>
+                            </div>
+                            <div class="liquid-divider"></div>
+                            <div style="display:flex;flex-direction:column;gap:12px;text-align:left;">
+                                <div><div style="font-size:0.7rem;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:0.5px;">Email</div><div style="font-size:0.9rem;color:var(--tx-main);font-weight:600;word-break:break-all;">${esc(window.CU.email)}</div></div>
+                                <div><div style="font-size:0.7rem;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:0.5px;">Phone</div><div style="font-size:0.9rem;color:var(--tx-main);font-weight:600;">${esc(phoneStr)}</div></div>
+                            </div>
+                            ${!ip ? `<button onclick="window.location.href='subscription.html'" style="margin-top:20px;width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#FF9500,#E68600);color:white;border:none;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(255,149,0,0.25);transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">Upgrade Now</button>` : `<button onclick="window.openProfile()" style="margin-top:20px;width:100%;padding:12px;border-radius:12px;background:var(--bg-page);color:var(--tx-main);border:1.5px solid var(--bd-color);font-weight:800;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">Edit Profile</button>`}
+                        </div>
+
+                        <div id="sb-name-popup" class="sb-hover-popup">
+                            <div style="font-size:0.75rem;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:0.5px;">${esc(roleStr)}</div>
+                            <div style="font-size:0.9rem;color:var(--tx-main);font-weight:700;margin-top:2px;">${esc(window.CU.email)}</div>
+                        </div>
+                        
+                        <div id="sb-av-popup" class="sb-hover-popup" style="padding:10px;">
+                            <div style="width:100%;aspect-ratio:1;border-radius:16px;background:${avColor};color:white;font-size:3rem;font-weight:800;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:inset 0 2px 6px rgba(0,0,0,0.1);">${avHtml}</div>
+                        </div>
+
+                        <div class="sb-prof-widget ${themeClass}" id="sb-main-widget" onclick="window.toggleSbModal(event)">
+                            <div class="sb-av-wrap" onmouseenter="window.showSbPopup('av')" onmouseleave="window.hideSbPopup('av')">
+                                <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
+                            </div>
+                            <div class="sb-info" onmouseenter="window.showSbPopup('name')" onmouseleave="window.hideSbPopup('name')">
+                                <div class="sb-name">${esc(window.CU.name)}</div>
+                                <div class="sb-phone">${esc(phoneStr)}</div>
+                                ${tagHtml}
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                } else {
+                    // Mobile Fallback Logic
+                    if (ip) { 
+                        const expDate = cd.subscriptionExpiry ? new Date(cd.subscriptionExpiry).toLocaleDateString() : 'Lifetime'; 
+                        subCard.innerHTML = `<div style="background:var(--bg-surface);border-radius:12px;padding:20px 16px;color:var(--tx-main);box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"><div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FF9500;letter-spacing:-0.02em;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${window.CU.subscriptionTier}</div><div style="font-size:0.8rem;color:#86868B;font-weight:500;">Valid till ${expDate}</div></div>`; 
+                    } else { 
+                        subCard.innerHTML = `<div style="background:linear-gradient(135deg,#FF9500,#E68600);border-radius:12px;padding:16px;color:white;cursor:pointer;box-shadow:var(--shadow-md);transition:transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'"><div style="font-weight:800;font-size:1rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;letter-spacing:-0.02em;">👑 Upgrade Plan</div><div style="font-size:0.8rem;opacity:0.9;font-weight:600;">Unlock all features</div></div>`; 
+                    }
+                }
+            }
             
             if (typeof window.buildProfile === 'function') window.buildProfile();
           }
