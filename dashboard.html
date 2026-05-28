@@ -342,7 +342,7 @@
     .custom-toast.error { background: var(--danger-light); color: var(--danger); border-color: rgba(255,59,48,0.2); }
     .custom-toast.info { background: var(--ac-light); color: var(--ac); border-color: rgba(0,102,204,0.2); }
     .custom-toast.out { animation: customToastOut 0.3s forwards !important; }
-    /* --- WORLD-CLASS MAGNETIC PARALLAX WIDGET --- */
+    /* --- MAGNETIC REPEL WIDGET --- */
     @media (min-width: 769px) {
       .magnetic-wrap {
         position: relative;
@@ -353,68 +353,82 @@
         z-index: 50;
       }
 
-      /* 1. Small Resting Widget (Matches Screenshot 3) */
+      /* Short Resting Card */
       .sb-prof-widget {
-        display: inline-flex;
+        display: flex;
         align-items: center;
         gap: 12px;
-        padding: 6px 20px 6px 6px; /* Tight on the left to hug the icon */
-        border-radius: 40px; /* Perfect pill shape */
+        padding: 8px 16px 8px 8px; /* Room for content, snug on icon */
+        border-radius: 20px; 
         background: var(--bg-surface);
-        border: 2px solid #E5E5EA; /* Bold distinct stroke */
+        border: 2px solid #E5E5EA; 
         cursor: pointer;
         user-select: none;
-        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15), box-shadow 0.3s, border-color 0.3s, opacity 0.3s;
+        transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.15), box-shadow 0.3s, border-color 0.3s;
         will-change: transform;
+        width: 100%; 
+        max-width: 250px;
       }
       .sb-prof-widget:hover {
         border-color: #D1D1D6;
         box-shadow: 0 8px 24px rgba(0,0,0,0.06);
       }
 
-      /* Parallax Avatar Wrapper */
+      /* Parallax Avatar */
       .sb-av-wrap {
         transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.15);
         will-change: transform;
       }
       .sb-av {
-        width: 44px; height: 44px; border-radius: 14px; /* Squircle */
+        width: 42px; height: 42px; border-radius: 12px;
         display: flex; align-items: center; justify-content: center;
-        font-weight: 800; font-size: 1.15rem; flex-shrink: 0;
-        box-shadow: 0 4px 10px rgba(0,102,204,0.15); /* Soft glow */
+        font-weight: 800; font-size: 1.2rem; flex-shrink: 0;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
+      }
+      
+      /* Info Stack (Name + Subtext) */
+      .sb-info-stack {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
       }
       .sb-name {
-        font-weight: 800; font-size: 1.05rem; color: var(--tx-main);
+        font-weight: 800; font-size: 0.95rem; color: var(--tx-main);
         letter-spacing: -0.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
-
-      /* 2. Expanded Big Card (Matches Screenshot 2) */
-      .sb-expanded-modal {
-        position: absolute;
-        bottom: 0; left: 0; width: calc(100% + 10px);
-        background: var(--bg-surface);
-        border: 1px solid #E5E5EA;
-        border-radius: 28px;
-        box-shadow: 0 24px 64px rgba(0,0,0,0.1), 0 4px 16px rgba(0,0,0,0.04);
-        padding: 32px 24px 24px;
-        opacity: 0; visibility: hidden; pointer-events: none;
-        transform: scale(0.85) translateY(20px);
-        transform-origin: bottom left; /* Swells out from the corner */
-        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        z-index: 100;
+      
+      .sb-small-upgrade {
+        background: linear-gradient(135deg, #FF9500, #E68600);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 3px 8px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        cursor: pointer;
+        margin-top: 3px;
+        width: fit-content;
+        box-shadow: 0 2px 6px rgba(255,149,0,0.25);
+        transition: transform 0.2s;
+        font-family: inherit;
       }
-      .sb-expanded-modal.open {
-        opacity: 1; visibility: visible; pointer-events: auto;
-        transform: scale(1) translateY(0);
-      }
-
-      /* Hides the small pill completely when the big card is open */
-      .magnetic-wrap.modal-open .sb-prof-widget {
-        opacity: 0;
-        pointer-events: none;
-        transform: scale(0.5) !important; /* Shrinks to nothing */
+      .sb-small-upgrade:hover { transform: scale(1.05); }
+      
+      .sb-role-text {
+        font-size: 0.75rem;
+        color: var(--tx-muted);
+        font-weight: 700;
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
+    
   </style>
 </head>
 <body>
@@ -873,20 +887,15 @@ let currentReviewNotificationId = null;
 let currentReviewWarehouseId = null;
 let currentReviewType = ''; 
 let pendingCreateData = null; 
-
-// --- CLAMPED PARALLAX MAGNETIC ENGINE ---
+// --- MAGNETIC REPEL ENGINE ---
 window.setupMagneticProfile = function() {
     const wrap = document.getElementById('sb-magnetic-wrap');
     const widget = document.getElementById('sb-main-widget');
     const avWrap = document.getElementById('sb-av-wrap');
-    const modal = document.getElementById('sb-click-modal');
 
-    if (!wrap || !widget || !modal) return;
+    if (!wrap || !widget) return;
 
-    // 1. Clamped Parallax Hover
     wrap.addEventListener('mousemove', (e) => {
-        if (wrap.classList.contains('modal-open')) return;
-        
         const rect = widget.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
@@ -894,56 +903,37 @@ window.setupMagneticProfile = function() {
         const distX = e.clientX - centerX;
         const distY = e.clientY - centerY;
 
-        // Clamp the distance so it "doesn't go far"
+        // REPEL LOGIC: Negative multiplier pushes it away from the cursor
         const maxMove = 12;
-        const moveX = Math.max(-maxMove, Math.min(maxMove, distX * 0.15));
-        const moveY = Math.max(-maxMove, Math.min(maxMove, distY * 0.15));
+        const repelX = Math.max(-maxMove, Math.min(maxMove, -distX * 0.15));
+        const repelY = Math.max(-maxMove, Math.min(maxMove, -distY * 0.15));
         
         widget.style.transition = 'none';
         if(avWrap) avWrap.style.transition = 'none';
 
-        // Base widget repels slightly
-        widget.style.transform = `translate(${moveX}px, ${moveY}px) scale(1.02)`;
+        // Card dodges the mouse
+        widget.style.transform = `translate(${repelX}px, ${repelY}px)`;
         
-        // Icon moves further than the border, creating a 3D parallax "pop up" effect
+        // Icon pops up and repels even harder, creating the 3D magnet effect
         if(avWrap) {
-            const avX = Math.max(-maxMove, Math.min(maxMove, distX * 0.25));
-            const avY = Math.max(-maxMove, Math.min(maxMove, distY * 0.25));
-            avWrap.style.transform = `translate(${avX}px, ${avY}px) scale(1.06)`;
+            const avX = Math.max(-maxMove, Math.min(maxMove, -distX * 0.25));
+            const avY = Math.max(-maxMove, Math.min(maxMove, -distY * 0.25));
+            avWrap.style.transform = `translate(${avX}px, ${avY}px) scale(1.15)`;
         }
     });
 
-    // 2. Snap back (Spring)
     wrap.addEventListener('mouseleave', () => {
-        if (wrap.classList.contains('modal-open')) return;
+        // Snap back using a bouncy spring curve
         widget.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2), box-shadow 0.3s, border-color 0.3s';
-        widget.style.transform = `translate(0px, 0px) scale(1)`;
+        widget.style.transform = `translate(0px, 0px)`;
+        
         if(avWrap) {
             avWrap.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2)';
             avWrap.style.transform = `translate(0px, 0px) scale(1)`;
         }
     });
-
-    // 3. Morph to Big Card
-    widget.addEventListener('click', (e) => {
-        e.stopPropagation();
-        wrap.classList.add('modal-open');
-        modal.classList.add('open');
-        widget.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s';
-        widget.style.transform = `translate(0px, 0px) scale(0.5)`; 
-        if(avWrap) avWrap.style.transform = `translate(0px, 0px) scale(1)`;
-    });
-
-    // 4. Click outside to collapse
-    document.addEventListener('click', (e) => {
-        if (wrap.classList.contains('modal-open') && !modal.contains(e.target)) {
-            wrap.classList.remove('modal-open');
-            modal.classList.remove('open');
-            widget.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.15), opacity 0.3s';
-            widget.style.transform = `translate(0px, 0px) scale(1)`;
-        }
-    });
 };
+// --- END MAGNETIC ENGINE ---
 window.avatarColor = function(name) {
     const colors = ['#0066CC', '#34C759', '#FF9500', '#FF3B30', '#AF52DE'];
     let hash = 0;
@@ -2547,44 +2537,30 @@ function setupUI() {
                     const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
                     const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;">` : avIni;
                     
-                    const firstName = (window.CU.name || 'User').split(' ')[0]; 
-                    const fullName = window.CU.name;
-                    const phoneStr = window.CU.phone || 'Add Phone Number';
-                    const roleStr = window.CU.designation || window.CU.role || 'OWNER'; 
+                    const fullName = window.CU.name || 'User';
+                    
+                    // Format role e.g. "Owner" or "Staff"
+                    const roleStr = window.CU.role ? window.CU.role.charAt(0).toUpperCase() + window.CU.role.slice(1) : 'Staff';
+                    // Add designation if it exists e.g. " (Video Editor)"
+                    const desigStr = window.CU.designation ? ` (${window.CU.designation})` : '';
+                    const roleDisplay = `${roleStr}${desigStr}`;
+                    
+                    // If not premium, show upgrade button. If premium, show role text.
+                    const subTextHtml = !ip 
+                        ? `<button onclick="event.stopPropagation(); window.location.href='subscription.html'" class="sb-small-upgrade">👑 Upgrade Plan</button>` 
+                        : `<div class="sb-role-text">${esc(roleDisplay)}</div>`;
                     
                     subCard.innerHTML = `
                     <div class="magnetic-wrap" id="sb-magnetic-wrap">
                         
-                        <!-- THE BIG CARD (Screenshot 2) -->
-                        <div id="sb-click-modal" class="sb-expanded-modal">
-                            <div style="text-align:center;">
-                                <div style="width:72px;height:72px;border-radius:20px;background:${avColor};color:white;font-size:2rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 8px 24px rgba(0,102,204,0.25);overflow:hidden;">${avHtml}</div>
-                                <h3 style="margin:0;font-size:1.3rem;font-weight:800;color:var(--tx-main);letter-spacing:-0.02em;">${esc(fullName)}</h3>
-                                <div style="font-size:0.8rem;color:var(--ac);font-weight:800;margin-top:6px;text-transform:uppercase;letter-spacing:0.5px;">${esc(roleStr)}</div>
-                            </div>
-                            
-                            <div style="height:1px;background:#E5E5EA;margin:24px 0;"></div>
-                            
-                            <div style="display:flex;flex-direction:column;gap:16px;text-align:left;">
-                                <div>
-                                    <div style="font-size:0.75rem;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Email</div>
-                                    <div style="font-size:0.95rem;color:var(--tx-main);font-weight:600;word-break:break-all;">${esc(window.CU.email)}</div>
-                                </div>
-                                <div>
-                                    <div style="font-size:0.75rem;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Phone</div>
-                                    <div style="font-size:0.95rem;color:var(--tx-main);font-weight:600;">${esc(phoneStr)}</div>
-                                </div>
-                            </div>
-                            
-                            ${!ip ? `<button onclick="window.location.href='subscription.html'" style="margin-top:28px;width:100%;padding:14px;border-radius:14px;background:#F59E0B;color:white;border:none;font-weight:800;font-size:1.05rem;cursor:pointer;box-shadow:0 6px 16px rgba(245,158,11,0.3);transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">Upgrade Now</button>` : `<button onclick="window.openProfile()" style="margin-top:28px;width:100%;padding:14px;border-radius:14px;background:var(--bg-page);color:var(--tx-main);border:2px solid var(--bd-color);font-weight:800;font-size:1.05rem;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">Edit Profile</button>`}
-                        </div>
-
-                        <!-- THE SMALL WIDGET (Screenshot 3) -->
-                        <div class="sb-prof-widget" id="sb-main-widget">
+                        <div class="sb-prof-widget" id="sb-main-widget" onclick="window.openProfile()">
                             <div class="sb-av-wrap" id="sb-av-wrap">
                                 <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
                             </div>
-                            <div class="sb-name">${esc(firstName)}</div>
+                            <div class="sb-info-stack">
+                                <div class="sb-name">${esc(fullName)}</div>
+                                ${subTextHtml}
+                            </div>
                         </div>
 
                     </div>
