@@ -831,57 +831,7 @@
   </div>
 
 <script type="module">
-window.showSbPopup = function(type) {
-        const isModalOpen = document.getElementById('sb-click-modal')?.classList.contains('open');
-// Warehouse specific variables
-    window.pendingWarehouses = window.pendingWarehouses || {};
-    let currentReviewNotificationId = null;
-    let currentReviewWarehouseId = null;
-    let currentReviewType = ''; 
-    let pendingCreateData = null; 
-
-    // --- PASTE THE HOVER JS HERE ---
-    window.showSbPopup = function(type) {
-        const isModalOpen = document.getElementById('sb-click-modal')?.classList.contains('open');
-        if (isModalOpen) return; 
-        const p = document.getElementById(type === 'av' ? 'sb-av-popup' : 'sb-name-popup');
-        if (p) p.classList.add('active');
-    };
-
-    window.hideSbPopup = function(type) {
-        const p = document.getElementById(type === 'av' ? 'sb-av-popup' : 'sb-name-popup');
-        if (p) p.classList.remove('active');
-    };
-
-    window.toggleSbModal = function(e) {
-        e.stopPropagation();
-        const modal = document.getElementById('sb-click-modal');
-        if (!modal) return;
-        const isOpen = modal.classList.contains('open');
-        if (isOpen) {
-            modal.classList.remove('open');
-        } else {
-            window.hideSbPopup('av');
-            window.hideSbPopup('name');
-            modal.classList.add('open');
-        }
-    };
-
-    document.addEventListener('click', (e) => {
-        const modal = document.getElementById('sb-click-modal');
-        const widget = document.getElementById('sb-main-widget');
-        if (modal && modal.classList.contains('open') && !modal.contains(e.target) && !widget.contains(e.target)) {
-            modal.classList.remove('open');
-        }
-    });
-    // --- END HOVER JS ---
-
-    // 4. Utility Functions
-    window.avatarColor = function(name) {
-        if (modal && modal.classList.contains('open') && !modal.contains(e.target) && !widget.contains(e.target)) {
-            modal.classList.remove('open');
-        }
-    });
+// 1. Core Firebase Imports (MUST ALWAYS BE AT THE VERY TOP)
 import { auth, db } from './firebase-config.js';
 import { requireAuth, logout, getCurrentUser } from './auth.js';
 import { copyToClipboard, saveSession } from './utils.js';
@@ -891,79 +841,84 @@ import * as TasksModule from './tasks.js';
 import * as AppsModule from './apps.js';
 
 import {
-  doc,
-  getDoc,
-  deleteDoc,
-  updateDoc,
-  addDoc,
-  collection,
-  writeBatch,
-  query,
-  orderBy,
-  limit,
-  onSnapshot,
-  where,
-  getDocs,
-  setDoc
+  doc, getDoc, deleteDoc, updateDoc, addDoc, collection,
+  writeBatch, query, orderBy, limit, onSnapshot, where, getDocs, setDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import {
-  updateProfile,
-  updateEmail,
-  getAuth
+  updateProfile, updateEmail, getAuth
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const {
-  listenCompanyStaff,
-  getAssignableStaff,
-  createStaff,
-  deleteStaffMember
-} = StaffModule;
-
-const {
-  listenMyTasks,
-  listenAssignedByMe
-} = TasksModule;
-
-const {
-  listenInstalledApps
-} = AppsModule;
+const { listenCompanyStaff, getAssignableStaff, createStaff, deleteStaffMember } = StaffModule;
+const { listenMyTasks, listenAssignedByMe } = TasksModule;
+const { listenInstalledApps } = AppsModule;
 
 // 3. Global Variables
 window.CU = null;
-  console.log("CU DEFAULT", window.CU);
 console.log("Dashboard loaded");
-setInterval(() => {
-    console.log("CU =", window.CU);
-    console.log("Tasks =", window.myTasks);
-}, 3000);
 window.myTasks = [];
 window.assignedByMeTasks = [];
 window.taskTab = 'pending';
-    let allStaff = [];
-    let _profileBuilt = false;
-    let deleteTargetUid = null, deleteConfirmStr = '', deleteTargetEmail = '', deleteTargetPwd = '';
-    let pendingDeclineId = null, deleteTaskTargetId = null;
-    let mainAreaChart = null;
-    let unsubs = [];
-    window.tempStaffData = {};
-    window.tempStaffOTP = '';
-    
-    // Warehouse specific variables
-    window.pendingWarehouses = window.pendingWarehouses || {};
-    let currentReviewNotificationId = null;
-    let currentReviewWarehouseId = null;
-    let currentReviewType = ''; 
-    let pendingCreateData = null; 
+let allStaff = [];
+let _profileBuilt = false;
+let deleteTargetUid = null, deleteConfirmStr = '', deleteTargetEmail = '', deleteTargetPwd = '';
+let pendingDeclineId = null, deleteTaskTargetId = null;
+let mainAreaChart = null;
+let unsubs = [];
+window.tempStaffData = {};
+window.tempStaffOTP = '';
 
-    // 4. Utility Functions
-    window.avatarColor = function(name) {
-        const colors = ['#0066CC', '#34C759', '#FF9500', '#FF3B30', '#AF52DE'];
-        let hash = 0;
-        for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        return colors[Math.abs(hash) % colors.length];
-    };
-    window.getInitials = function(name) {
+// Warehouse specific variables
+window.pendingWarehouses = window.pendingWarehouses || {};
+let currentReviewNotificationId = null;
+let currentReviewWarehouseId = null;
+let currentReviewType = ''; 
+let pendingCreateData = null; 
+
+// --- APPLE LIQUID GLASS HOVER JS ---
+window.showSbPopup = function(type) {
+    const isModalOpen = document.getElementById('sb-click-modal')?.classList.contains('open');
+    if (isModalOpen) return; 
+    const p = document.getElementById(type === 'av' ? 'sb-av-popup' : 'sb-name-popup');
+    if (p) p.classList.add('active');
+};
+
+window.hideSbPopup = function(type) {
+    const p = document.getElementById(type === 'av' ? 'sb-av-popup' : 'sb-name-popup');
+    if (p) p.classList.remove('active');
+};
+
+window.toggleSbModal = function(e) {
+    e.stopPropagation();
+    const modal = document.getElementById('sb-click-modal');
+    if (!modal) return;
+    const isOpen = modal.classList.contains('open');
+    if (isOpen) {
+        modal.classList.remove('open');
+    } else {
+        window.hideSbPopup('av');
+        window.hideSbPopup('name');
+        modal.classList.add('open');
+    }
+};
+
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('sb-click-modal');
+    const widget = document.getElementById('sb-main-widget');
+    if (modal && modal.classList.contains('open') && !modal.contains(e.target) && widget && !widget.contains(e.target)) {
+        modal.classList.remove('open');
+    }
+});
+
+// 4. Utility Functions
+window.avatarColor = function(name) {
+    const colors = ['#0066CC', '#34C759', '#FF9500', '#FF3B30', '#AF52DE'];
+    let hash = 0;
+    for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+};
+
+window.getInitials = function(name) {
         return (name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
     window.setAv = function(id, ini, col, size, src) {
