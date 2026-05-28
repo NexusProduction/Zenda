@@ -382,6 +382,100 @@
         opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0) scale(1);
       }
     }
+    /* --- WORLD-CLASS MAGNETIC MORPH WIDGET --- */
+    @media (min-width: 769px) {
+      .magnetic-wrap {
+        position: relative;
+        width: 100%;
+        display: flex;
+        justify-content: flex-start;
+        perspective: 1000px;
+        z-index: 50;
+        padding: 10px; /* Padding provides a safe zone for the magnet math */
+        margin-left: -10px;
+      }
+
+      /* Resting Pill -> Hover Card Morph */
+      .sb-prof-widget {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 6px 16px 6px 6px; 
+        border-radius: 40px; /* Starts as a pill */
+        background: var(--bg-surface);
+        border: 2px solid #E5E5EA; 
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+        transform-origin: center left;
+        will-change: transform, border-radius, padding, border-color;
+      }
+      
+      .sb-prof-widget:hover {
+        padding: 10px 20px 10px 10px;
+        border-radius: 20px; /* Morphs into short card */
+        border-color: #D1D1D6;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+      }
+
+      /* Parallax Avatar Wrapper */
+      .sb-av-wrap {
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+        will-change: transform;
+      }
+      .sb-av {
+        width: 42px; height: 42px; border-radius: 14px; 
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 1.15rem; flex-shrink: 0;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
+      }
+
+      /* Smooth Text Morphing via Grid Stack */
+      .sb-info-stack {
+        display: grid;
+        align-items: center;
+        min-height: 42px;
+      }
+      .sb-name-resting, .sb-hover-content {
+        grid-area: 1 / 1;
+        transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .sb-name-resting {
+        font-weight: 800; font-size: 1.05rem; color: var(--tx-main);
+        letter-spacing: -0.01em;
+        opacity: 1; pointer-events: auto; transform: translateX(0);
+      }
+      .sb-hover-content {
+        display: flex; flex-direction: column; gap: 4px;
+        opacity: 0; pointer-events: none; transform: translateX(10px);
+        white-space: nowrap;
+      }
+
+      /* Hover Triggers for text swap */
+      .sb-prof-widget:hover .sb-name-resting {
+        opacity: 0; pointer-events: none; transform: translateX(-10px);
+      }
+      .sb-prof-widget:hover .sb-hover-content {
+        opacity: 1; pointer-events: auto; transform: translateX(0);
+      }
+
+      .sb-name-full {
+        font-weight: 800; font-size: 1.05rem; color: var(--tx-main);
+        line-height: 1.1; letter-spacing: -0.01em;
+      }
+      .sb-small-upgrade {
+        background: linear-gradient(135deg, #FF9500, #E68600);
+        color: white; border: none; border-radius: 6px;
+        padding: 4px 10px; font-size: 0.75rem; font-weight: 800;
+        cursor: pointer; width: fit-content;
+        box-shadow: 0 2px 6px rgba(255,149,0,0.25);
+        transition: transform 0.2s; font-family: inherit;
+      }
+      .sb-small-upgrade:hover { transform: scale(1.05); box-shadow: 0 4px 10px rgba(255,149,0,0.3); }
+      .sb-role-text {
+        font-size: 0.75rem; color: var(--tx-muted); font-weight: 700;
+      }
+    }
   </style>
 </head>
 <body>
@@ -850,25 +944,25 @@ window.setupMagneticProfile = function() {
     if (!wrap || !widget) return;
 
     wrap.addEventListener('mousemove', (e) => {
-        const rect = widget.getBoundingClientRect();
+        // BUG FIX: Calculate from the STATIC wrapper, not the moving widget!
+        const rect = wrap.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         
         const distX = e.clientX - centerX;
         const distY = e.clientY - centerY;
 
-        // ATTRACT LOGIC: Positive multiplier pulls the card toward the cursor
         const maxMove = 12;
+        // ATTRACT: Positive multiplier pulls the card toward the mouse
         const attractX = Math.max(-maxMove, Math.min(maxMove, distX * 0.15));
         const attractY = Math.max(-maxMove, Math.min(maxMove, distY * 0.15));
         
         widget.style.transition = 'none';
         if(avWrap) avWrap.style.transition = 'none';
 
-        // Card follows the mouse smoothly
         widget.style.transform = `translate(${attractX}px, ${attractY}px)`;
         
-        // Icon repels (moves opposite to the card's movement) and scales up, creating a 3D dual-magnet effect
+        // REPEL: Negative multiplier pushes the icon away, scaling it up for 3D depth
         if(avWrap) {
             const repelX = Math.max(-maxMove, Math.min(maxMove, -distX * 0.2));
             const repelY = Math.max(-maxMove, Math.min(maxMove, -distY * 0.2));
@@ -878,11 +972,11 @@ window.setupMagneticProfile = function() {
 
     wrap.addEventListener('mouseleave', () => {
         // Snap back using a bouncy spring curve
-        widget.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2), border-radius 0.4s, padding 0.4s, box-shadow 0.4s';
+        widget.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2)';
         widget.style.transform = `translate(0px, 0px)`;
         
         if(avWrap) {
-            avWrap.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2)';
+            avWrap.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2)';
             avWrap.style.transform = `translate(0px, 0px) scale(1)`;
         }
     });
@@ -2503,7 +2597,7 @@ function setupUI() {
                     const roleDisplay = `${roleStr}${desigStr}`;
                     
                     // If not premium, show upgrade button. If premium, show formatted designation text.
-                    const subTextHtml = !ip 
+                    const subTextHtml = !window.CU.isPremium 
                         ? `<button onclick="event.stopPropagation(); window.location.href='subscription.html'" class="sb-small-upgrade">👑 Upgrade Plan</button>` 
                         : `<div class="sb-role-text">${esc(roleDisplay)}</div>`;
                     
@@ -2524,13 +2618,13 @@ function setupUI() {
                     </div>
                     `;
 
-                    setTimeout(() => window.setupMagneticProfile(), 50);
+                    setTimeout(() => window.setupMagneticProfile(), 100);
 
                 } else {
                     // Mobile Fallback Logic
-                    if (ip) { 
-                        const expDate = cd.subscriptionExpiry ? new Date(cd.subscriptionExpiry).toLocaleDateString() : 'Lifetime'; 
-                        subCard.innerHTML = `<div style="background:var(--bg-surface);border-radius:12px;padding:20px 16px;color:var(--tx-main);box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"><div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FF9500;letter-spacing:-0.02em;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${window.CU.subscriptionTier}</div><div style="font-size:0.8rem;color:#86868B;font-weight:500;">Valid till ${expDate}</div></div>`; 
+                    if (window.CU.isPremium) { 
+                        const expDate = window.CU.subscriptionExpiry ? new Date(window.CU.subscriptionExpiry).toLocaleDateString() : 'Lifetime'; 
+                        subCard.innerHTML = `<div style="background:var(--bg-surface);border-radius:12px;padding:20px 16px;color:var(--tx-main);box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"><div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FF9500;letter-spacing:-0.02em;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${window.CU.subscriptionTier || 'Premium'}</div><div style="font-size:0.8rem;color:#86868B;font-weight:500;">Valid till ${expDate}</div></div>`; 
                     } else { 
                         subCard.innerHTML = `<div style="background:linear-gradient(135deg,#FF9500,#E68600);border-radius:12px;padding:16px;color:white;cursor:pointer;box-shadow:var(--shadow-md);transition:transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'"><div style="font-weight:800;font-size:1rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;letter-spacing:-0.02em;">👑 Upgrade Plan</div><div style="font-size:0.8rem;opacity:0.9;font-weight:600;">Unlock all features</div></div>`; 
                     }
