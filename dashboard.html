@@ -298,8 +298,8 @@
     @media (min-width: 769px) {
       /* The Main Box */
       .sb-prof-card {
-        display: flex; align-items: center; gap: 18px; /* <-- 2. INCREASED GAP TO MOVE TEXT MORE TO THE RIGHT */
-        padding: 10px 14px; 
+        display: flex; align-items: center; gap: 14px; 
+        padding: 10px 14px 10px 24px; /* The 24px left padding pushes logo & text to the right */
         border-radius: 16px; background: transparent; cursor: pointer; position: relative; width: 100%; transition: background 0.2s;
       }
       .sb-prof-card:hover { background: rgba(0,0,0,0.04); }
@@ -2644,71 +2644,63 @@ window.renderSidebarCard = function() {
     const desigStr = window.CU.designation ? window.CU.designation : roleStr;
 
     if (isDesktop) {
-        const singleDetailTooltip = `
-            <div class="glass-tt">
-                <div class="tt-name-wrap">
-                    <div class="tt-title">${esc(fullName)}</div>
-                    <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
-                </div>
-            </div>`;
+            let rightSideHtml = '';
+            if (window.CU.isPremium) {
+                rightSideHtml = `
+                    <div class="sb-info-target" style="width: max-content; position: relative;">
+                        <div class="sb-name-full">${esc(fullName)}</div>
+                        <div class="sb-role-text">${esc(desigStr)}</div>
+                        <div class="glass-tt">
+                            <div class="tt-title">${esc(fullName)}</div>
+                            <div class="tt-role-pill">${esc(desigStr)}</div>
+                            <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                rightSideHtml = `
+                    <div class="sb-info-box">
+                        <div class="sb-name-target" style="width: max-content; position: relative;">
+                            <div class="sb-name-full">${esc(fullName)}</div>
+                            <div class="glass-tt">
+                                <div class="tt-name-wrap">
+                                    <div class="tt-title">${esc(fullName)}</div>
+                                    <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sb-upgrade-target" onclick="event.stopPropagation(); window.location.href='subscription.html'" style="width: max-content; position: relative; margin-top: 4px;">
+                            <button class="sb-small-upgrade" style="pointer-events: none;">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2L15 9l7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg> Upgrade
+                            </button>
+                            <div class="glass-tt">
+                                <div class="tt-upg-wrap">
+                                    <div class="tt-feat-list">
+                                        <div class="tt-feat">Smart Analytics</div>
+                                        <div class="tt-feat">Multi-Warehouse</div>
+                                        <div class="tt-feat">24/7 Priority Help</div>
+                                        <div class="tt-feat">Auto Export</div>
+                                    </div>
+                                    <div class="tt-more-link">Explore premium &rarr;</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
 
-        let rightSideHtml = '';
-        if (window.CU.isPremium) {
-            rightSideHtml = `
-                <div class="sb-info-target" onclick="window.openProfileModal()">
-                    <div class="sb-name-full">${esc(fullName)}</div>
-                    <div class="sb-role-text">${esc(desigStr)}</div>
+            subCard.innerHTML = `
+            <div class="sb-prof-card" onclick="window.openProfileModal()">
+                <div class="sb-av-target" style="width: max-content; position: relative;">
+                    <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
                     <div class="glass-tt">
-                        <div class="tt-title">${esc(fullName)}</div>
-                        <div class="tt-role-pill">${esc(desigStr)}</div>
-                        <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
+                        <div class="tt-logo" style="background:${avColor};">${avHtml}</div>
                     </div>
                 </div>
+                ${rightSideHtml}
+            </div>
             `;
         } else {
-            rightSideHtml = `
-                <div class="sb-info-box">
-                    <div class="sb-name-target" onclick="window.openProfileModal()">
-                        <div class="sb-name-full">${esc(fullName)}</div>
-                        <div class="glass-tt">
-                            <div class="tt-name-wrap">
-                                <div class="tt-title">${esc(fullName)}</div>
-                                <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="sb-upgrade-target">
-                        <button onclick="event.stopPropagation(); window.location.href='subscription.html'" class="sb-small-upgrade">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2L15 9l7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg> Upgrade
-                        </button>
-                        <div class="glass-tt">
-                            <div class="tt-upg-wrap">
-                                <div class="tt-feat-list">
-                                    <div class="tt-feat">Smart Analytics</div>
-                                    <div class="tt-feat">Multi-Warehouse</div>
-                                    <div class="tt-feat">24/7 Priority Help</div>
-                                    <div class="tt-feat">Auto Export</div>
-                                </div>
-                                <div class="tt-more-link" onclick="event.stopPropagation(); window.location.href='subscription.html'">Explore premium &rarr;</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        subCard.innerHTML = `
-        <div class="sb-prof-card">
-            <div class="sb-av-target" onclick="window.openProfileModal()">
-                <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
-                <div class="glass-tt">
-                    <div class="tt-logo" style="background:${avColor};">${avHtml}</div>
-                </div>
-            </div>
-            ${rightSideHtml}
-        </div>
-        `;
-    } else {
         if (window.CU.isPremium) {
             const expDate = window.CU.subscriptionExpiry ? new Date(window.CU.subscriptionExpiry).toLocaleDateString() : 'Lifetime'; 
             subCard.innerHTML = `<div onclick="window.openProfileModal()" style="background:var(--bg-surface);border-radius:12px;padding:20px 16px;color:var(--tx-main);box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"><div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FF9500;letter-spacing:-0.02em;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${window.CU.subscriptionTier || 'Premium'}</div><div style="font-size:0.8rem;color:#86868B;font-weight:500;">Valid till ${expDate}</div></div>`; 
