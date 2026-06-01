@@ -383,6 +383,30 @@
       .tt-more-link { font-size: 0.8rem; font-weight: 700; color: var(--ac); cursor: pointer; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.06); width: 100%; text-align: center; transition: color 0.2s; }
       .tt-more-link:hover { color: var(--ac-hover); }
     }
+    /* --- NEW PREMIUM SWIPE-DOWN PROFILE MODAL --- */
+      .premium-prof-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 99999; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+      .premium-prof-overlay.open { opacity: 1; visibility: visible; }
+      
+      .premium-prof-modal {
+        position: fixed; top: -100%; left: 50%; transform: translateX(-50%);
+        width: 90%; max-width: 420px; background: rgba(255, 255, 255, 0.95);
+        border-radius: 24px; box-shadow: 0 40px 80px rgba(0,0,0,0.2);
+        border: 1px solid rgba(0,0,0,0.08); padding: 32px 24px; z-index: 100000;
+        transition: top 0.5s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; align-items: center;
+      }
+      .premium-prof-overlay.open .premium-prof-modal { top: 10vh; }
+      
+      .ppm-av { width: 88px; height: 88px; border-radius: 24px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 2.5rem; background: var(--ac); color: white; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(0,102,204,0.25); }
+      
+      .ppm-field { width: 100%; position: relative; margin-bottom: 16px; background: var(--bg-page); border-radius: 14px; border: 2px solid transparent; transition: all 0.2s; }
+      .ppm-field.editing { border-color: var(--ac); background: white; box-shadow: 0 4px 12px rgba(0,102,204,0.1); }
+      .ppm-input { width: 100%; background: transparent; border: none; padding: 18px 48px 18px 18px; font-family: inherit; font-size: 1rem; font-weight: 800; color: var(--tx-main); outline: none; transition: color 0.2s;}
+      .ppm-input:disabled { color: var(--tx-muted); opacity: 0.8;}
+      
+      .ppm-pencil { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--ac); cursor: pointer; padding: 8px; border-radius: 10px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.05);}
+      .ppm-pencil:hover { background: var(--ac-light); transform: translateY(-50%) scale(1.05); }
+      
+      #ppm-save-btn { margin-top: 12px; width: 100%; padding: 16px; border-radius: 14px; font-size: 1.05rem; display: none; }
   </style>
 </head>
 <body>
@@ -541,20 +565,26 @@
     </div>
   </nav>
 
-  <div class="profile-side-panel" id="profile-side-panel">
-    <div class="sp-hdr">
-      <div class="sp-ttl">My Profile</div>
-      <button class="modal-close" onclick="window.closeAllPanels()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-    </div>
-    <div class="sp-body" id="profile-body-desktop"></div>
-  </div>
+  <div class="premium-prof-overlay" id="premium-prof-overlay" onclick="if(event.target===this) window.closeProfileModal()">
+    <div class="premium-prof-modal" id="premium-prof-modal">
+      <div class="ppm-av" id="ppm-av">Z</div>
+      
+      <div class="ppm-field" id="ppm-name-field">
+        <input type="text" id="ppm-name" class="ppm-input" disabled oninput="window.validateProfileInputs()" maxlength="20">
+        <div class="ppm-pencil" onclick="window.enableProfileEdit('name')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+        </div>
+      </div>
 
-  <div class="fullpage" id="profile-page-mobile">
-    <div class="fp-hdr">
-      <button class="fp-back" onclick="window.closeAllPanels()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button>
-      <div class="fp-ttl">My Profile</div>
+      <div class="ppm-field" id="ppm-email-field">
+        <input type="text" id="ppm-email" class="ppm-input" disabled oninput="window.validateProfileInputs()" maxlength="60">
+        <div class="ppm-pencil" onclick="window.enableProfileEdit('email')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+        </div>
+      </div>
+      
+      <button class="btn btn-primary" id="ppm-save-btn" onclick="window.triggerProfileSave()">Save Changes</button>
     </div>
-    <div class="fp-body" id="profile-body-mobile" style="background:var(--bg-page);"></div>
   </div>
 
   <div class="modal-overlay" id="create-staff-modal" onclick="if(event.target === this) window.closeModal('create-staff-modal')">
@@ -2036,74 +2066,173 @@ window.processWhReview = async function(action) {
 };
 
 // 11. Profile Edit, Verification, Delete and Assign logic
-window.enableProfileEdit = function(suffix) {
-    const nameEl = document.getElementById('prof-name-' + suffix); 
-    const emailEl = document.getElementById('prof-email-' + suffix); 
-    const btn = document.getElementById('btn-save-prof-' + suffix);
-    nameEl.readOnly = false; emailEl.readOnly = false; 
-    nameEl.classList.remove('prof-input-readonly'); emailEl.classList.remove('prof-input-readonly');
-    nameEl.style.border = "1px solid var(--ac)"; emailEl.style.border = "1px solid var(--ac)";
-    nameEl.focus(); btn.style.display = 'flex';
+window.openProfileModal = function() {
+    window.closeAllPanels();
+    const avColor = window.avatarColor(window.CU.name);
+    const avIni = window.getInitials(window.CU.name);
+    document.getElementById('ppm-av').style.background = avColor;
+    document.getElementById('ppm-av').innerHTML = avIni;
+    
+    document.getElementById('ppm-name').value = window.CU.name;
+    document.getElementById('ppm-email').value = window.CU.email;
+    
+    document.getElementById('ppm-name').disabled = true;
+    document.getElementById('ppm-email').disabled = true;
+    document.getElementById('ppm-name-field').classList.remove('editing');
+    document.getElementById('ppm-email-field').classList.remove('editing');
+    document.getElementById('ppm-save-btn').style.display = 'none';
+    
+    document.getElementById('premium-prof-overlay').classList.add('open');
 };
 
-window.checkProfileNameLength = function(input, suffix) {
-    const btn = document.getElementById('btn-save-prof-' + suffix); const lbl = document.getElementById('lbl-prof-name-' + suffix);
-    if (input.value.length >= 35) { input.style.borderColor = 'var(--danger)'; input.style.color = 'var(--danger)'; if (lbl) lbl.style.color = 'var(--danger)'; if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; } }
-    else { input.style.borderColor = 'var(--ac)'; input.style.color = 'var(--tx-main)'; if (lbl) lbl.style.color = 'var(--tx-muted)'; if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; } }
+window.closeProfileModal = function() {
+    document.getElementById('premium-prof-overlay').classList.remove('open');
 };
 
-window.saveProfileData = async function(suffix) {
-    const newName = document.getElementById('prof-name-' + suffix).value.trim();
-    const newEmail = document.getElementById('prof-email-' + suffix).value.trim();
-    const btn = document.getElementById('btn-save-prof-' + suffix);
-    if(!newName || !newEmail) { window.showToast('Fields cannot be empty', 'error'); return; }
-    if (!newEmail.includes('@') || !newEmail.includes('.')) { window.showToast("Please enter a valid email address.", 'error'); return; }
+window.enableProfileEdit = function(type) {
+    const input = document.getElementById('ppm-' + type);
+    const field = document.getElementById('ppm-' + type + '-field');
+    input.disabled = false;
+    field.classList.add('editing');
+    input.focus();
+    document.getElementById('ppm-save-btn').style.display = 'flex';
+    window.validateProfileInputs();
+};
+
+window.validateProfileInputs = function() {
+    const name = document.getElementById('ppm-name').value.trim();
+    const email = document.getElementById('ppm-email').value.trim();
+    const btn = document.getElementById('ppm-save-btn');
+    
+    let isValid = true;
+    if(name.length < 4 || name.length > 20) isValid = false;
+    if(!email.includes('@')) isValid = false;
+    
+    btn.disabled = !isValid;
+    btn.style.opacity = isValid ? '1' : '0.5';
+};
+
+window.triggerProfileSave = async function() {
+    const name = document.getElementById('ppm-name').value.trim();
+    const email = document.getElementById('ppm-email').value.trim();
+    
+    if(name === window.CU.name && email === window.CU.email) {
+        window.showToast("No changes made.", "info");
+        window.closeProfileModal();
+        return;
+    }
+
+    const emailChanged = (email !== window.CU.email);
+    
+    window.profileState = { 
+        newName: name, 
+        newEmail: email, 
+        step: emailChanged ? 1 : 3 
+    };
+    
+    window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    const btn = document.getElementById('ppm-save-btn');
     loadBtn(btn, true);
-    let emailChanged = (newEmail !== window.CU.email), nameChanged = (newName !== window.CU.name);
-    if (!emailChanged && !nameChanged) { window.showToast('No changes made', 'info'); loadBtn(btn, false, 'Save Changes'); window.buildProfile(); return; }
+
     try {
-        if (nameChanged && !emailChanged) {
-            await updateDoc(doc(db, 'users', window.CU.uid), { name: newName });
-            if(auth.currentUser) await updateProfile(auth.currentUser, { displayName: newName });
-            window.CU.name = newName; window.showToast('Profile updated!', 'success'); window.buildProfile(); setupUI();
-        } else if (emailChanged) {
-            window.pendingProfileUpdate = { name: newName, newEmail: newEmail, suffix: suffix };
-            window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
-            window.emailChangeStep = 1;
-            try { if(typeof emailjs !== 'undefined') { await emailjs.send("service_dc7ge9b", "template_4turj9r", { to_email: window.CU.email, to_name: window.CU.name, otp_code: window.tempEmailOTP, company_name: window.CU.companyName || 'Zenda' }, "dg8t6B0d-DhPa3Tl6"); } } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
-            document.getElementById('email-otp-step').textContent = 'Step 1: Verify Current Email';
-            document.getElementById('email-otp-target').textContent = window.CU.email;
-            document.getElementById('email-otp-input').value = '';
-            window.openModal('email-otp-modal');
+        if(typeof emailjs !== 'undefined') {
+            await emailjs.send("service_dc7ge9b", "template_4turj9r", { 
+                to_email: window.CU.email, 
+                to_name: window.CU.name, 
+                otp_code: window.tempEmailOTP, 
+                company_name: window.CU.companyName || 'Zenda' 
+            }, "dg8t6B0d-DhPa3Tl6");
         }
-    } catch(e) { window.showToast('Error: ' + e.message, 'error'); }
-    finally { loadBtn(btn, false, 'Save Changes'); }
+        
+        document.getElementById('email-otp-step').textContent = emailChanged ? 'Step 1: Verify Current Email' : 'Verify Identity';
+        document.getElementById('email-otp-target').textContent = window.CU.email;
+        document.getElementById('email-otp-input').value = '';
+        
+        window.closeProfileModal();
+        window.openModal('email-otp-modal');
+    } catch(e) {
+        console.warn("EmailJS failed, OTP:", window.tempEmailOTP);
+        alert(`TEST MODE ACTIVE: Check the console, or use OTP: ${window.tempEmailOTP}`);
+        
+        document.getElementById('email-otp-step').textContent = emailChanged ? 'Step 1: Verify Current Email' : 'Verify Identity';
+        document.getElementById('email-otp-target').textContent = window.CU.email;
+        document.getElementById('email-otp-input').value = '';
+        
+        window.closeProfileModal();
+        window.openModal('email-otp-modal');
+    } finally {
+        loadBtn(btn, false, 'Save Changes');
+    }
 };
 
 window.verifyEmailChangeOTP = async function() {
     const input = document.getElementById('email-otp-input').value.trim();
     const btn = document.getElementById('btn-verify-email-otp');
-    if (input !== window.tempEmailOTP) { window.showToast('Invalid code. Try again.', 'error'); return; }
+    
+    if (input !== window.tempEmailOTP) { 
+        window.showToast('Invalid code. Try again.', 'error'); 
+        return; 
+    }
+    
     loadBtn(btn, true);
-    if (window.emailChangeStep === 1) {
-        window.emailChangeStep = 2; window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
-        const pending = window.pendingProfileUpdate;
-        try { if(typeof emailjs !== 'undefined') { await emailjs.send("service_dc7ge9b", "template_4turj9r", { to_email: pending.newEmail, to_name: pending.name, otp_code: window.tempEmailOTP, company_name: window.CU.companyName || 'Zenda' }, "dg8t6B0d-DhPa3Tl6"); } } catch(e) { console.warn("EmailJS failed", window.tempEmailOTP); }
+
+    if (window.profileState.step === 1) {
+        window.profileState.step = 2;
+        window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        try { 
+            if(typeof emailjs !== 'undefined') { 
+                await emailjs.send("service_dc7ge9b", "template_4turj9r", { 
+                    to_email: window.profileState.newEmail, 
+                    to_name: window.profileState.newName, 
+                    otp_code: window.tempEmailOTP, 
+                    company_name: window.CU.companyName || 'Zenda' 
+                }, "dg8t6B0d-DhPa3Tl6"); 
+            } 
+        } catch(e) { 
+            console.warn("EmailJS failed, OTP:", window.tempEmailOTP); 
+            alert(`TEST MODE ACTIVE: Check the console, or use OTP: ${window.tempEmailOTP}`);
+        }
+        
         document.getElementById('email-otp-step').textContent = 'Step 2: Verify New Email';
-        document.getElementById('email-otp-target').textContent = pending.newEmail;
+        document.getElementById('email-otp-target').textContent = window.profileState.newEmail;
         document.getElementById('email-otp-input').value = '';
-        loadBtn(btn, false, 'Verify Code'); window.showToast('Code sent to new email address!', 'info');
-    } else if (window.emailChangeStep === 2) {
-        const pending = window.pendingProfileUpdate;
+        loadBtn(btn, false, 'Verify Code'); 
+        window.showToast('Code sent to new email address!', 'info');
+
+    } else if (window.profileState.step === 2 || window.profileState.step === 3) {
+        const pending = window.profileState;
         try {
-            if (auth.currentUser) { await updateProfile(auth.currentUser, { displayName: pending.name }); try { await updateEmail(auth.currentUser, pending.newEmail); } catch(authErr) { console.warn("Bypassed Firebase auth rule."); } }
-            await updateDoc(doc(db, 'users', window.CU.uid), { name: pending.name, email: pending.newEmail });
-            const owner = allStaff.find(s => s.role === 'owner');
-            if (owner && owner.uid !== window.CU.uid) { try { await addDoc(collection(db, 'users', owner.uid, 'notifications'), { type: 'general', message: `${window.CU.name} updated their email address to: ${pending.newEmail}`, createdAt: Date.now(), read: false, status: 'unread' }); } catch(err) { console.warn("Could not notify owner", err); } }
-            window.CU.name = pending.name; window.CU.email = pending.newEmail;
-            window.closeModal('email-otp-modal'); window.showToast('Profile and Email successfully updated!', 'success'); window.buildProfile(); setupUI();
-        } catch(e) { console.error(e); if(e.message && e.message.includes('requires-recent-login')) { window.showToast('Please sign out and sign back in to change your email.', 'error'); window.closeModal('email-otp-modal'); } else { window.showToast('Failed to update profile: ' + e.message, 'error'); } }
-        finally { loadBtn(btn, false, 'Verify Code'); }
+            if (auth.currentUser) { 
+                await updateProfile(auth.currentUser, { displayName: pending.newName }); 
+                if(pending.step === 2) {
+                    try { await updateEmail(auth.currentUser, pending.newEmail); } 
+                    catch(authErr) { console.warn("Bypassed Firebase auth rule."); } 
+                }
+            }
+            
+            await updateDoc(doc(db, 'users', window.CU.uid), { name: pending.newName, email: pending.newEmail });
+            
+            window.CU.name = pending.newName; 
+            window.CU.email = pending.newEmail;
+            
+            window.closeModal('email-otp-modal'); 
+            window.showToast('Profile successfully updated!', 'success'); 
+            
+            if (window.renderSidebarCard) window.renderSidebarCard();
+            
+        } catch(e) { 
+            console.error(e); 
+            if(e.message && e.message.includes('requires-recent-login')) { 
+                window.showToast('Please sign out and sign back in to change your email.', 'error'); 
+                window.closeModal('email-otp-modal'); 
+            } else { 
+                window.showToast('Failed to update profile: ' + e.message, 'error'); 
+            } 
+        } finally { 
+            loadBtn(btn, false, 'Verify Code'); 
+        }
     }
 };
 
@@ -2314,109 +2443,95 @@ function buildAppsGrid(ids) {
 window.openApp = function(id) { const m = {calendar: 'calendar.html', inventory: 'inventory.html', expenses: 'expenses.html'}; const f = m[id]; if (f) location.href = f + (window.CU?.uid ? '?uid=' + window.CU.uid : ''); else window.showToast('App not found!', 'error'); };
 window.openAppLib = function() { window.location.href = 'app-library.html'; };
 
-function buildTaskCard(task, showActions) {
-    const isDone = task.status === 'done';
-    const isDeclined = task.status === 'declined';
-    const dStr = task.dueDate
-        ? new Date(task.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        : '';
-    const overdue = !isDone && !isDeclined && window.isOverdue && window.isOverdue(task.dueDate);
-    const pMap = {
-        High:   { bg: 'var(--danger-light)', c: 'var(--danger)' },
-        Medium: { bg: '#FFFBEB',             c: 'var(--warning)' },
-        Low:    { bg: 'var(--success-light)', c: 'var(--success)' }
-    };
-    const p = pMap[task.priority] || pMap.Medium;
-    let actions = '';
-    if (showActions && !isDone && !isDeclined) {
-        if (task.assignedTo === window.CU?.uid) {
-            actions += `<button class="btn btn-primary" style="padding:7px 14px;font-size:0.82rem;" onclick="event.stopPropagation();window.doMarkDone('${task.id}')">Mark Done</button>`;
-            actions += `<button class="btn btn-secondary" style="padding:7px 14px;font-size:0.82rem;" onclick="event.stopPropagation();window.openDeclineModal('${task.id}','${esc(task.title||'')}')">Decline</button>`;
-        }
-        if (task.assignedBy === window.CU?.uid) {
-            actions += `<button class="task-delete-inline" onclick="event.stopPropagation();window.openDeleteTaskModal('${task.id}','${esc(task.title||'')}')">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete</button>`;
-        }
-    }
-    return `<div class="premium-task-card${task.priority === 'High' ? ' priority-high' : task.priority === 'Medium' ? ' priority-medium' : ''}" id="task-${task.id}">
-        <div style="display:flex;align-items:flex-start;gap:12px;width:100%;">
-            <div class="card-checkbox${isDone ? ' done' : ''}">
-                ${isDone ? '<svg stroke-dasharray="24" stroke-dashoffset="0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-            </div>
-            <div class="card-content-wrap">
-                <div class="card-title${isDone ? ' done' : ''}">${esc(task.title || 'Untitled')}</div>
-                <div class="card-meta-strip">
-                    ${dStr ? `<div class="card-time-block"${overdue ? ' style="color:var(--danger);"' : ''}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        ${overdue ? '<span>Overdue · </span>' : ''}${dStr}</div>` : ''}
-                    ${task.priority ? `<span class="priority-tag" style="background:${p.bg};color:${p.c};">${task.priority}</span>` : ''}
-                    ${isDone ? `<span class="done-badge-solid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Done</span>` : ''}
-                    ${isDeclined ? `<span class="priority-tag" style="background:var(--danger-light);color:var(--danger);">Declined</span>` : ''}
+window.renderSidebarCard = function() {
+    const subCard = document.getElementById('sidebar-footer');
+    if (!subCard || !window.CU) return;
+
+    const isDesktop = window.innerWidth >= 769;
+    const avColor = window.avatarColor(window.CU.name);
+    const avIni = window.getInitials(window.CU.name);
+    const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
+    const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">` : avIni;
+    
+    const fullName = window.CU.name || 'User';
+    const roleStr = window.CU.role ? window.CU.role.charAt(0).toUpperCase() + window.CU.role.slice(1) : 'Staff';
+    const desigStr = window.CU.designation ? window.CU.designation : roleStr;
+
+    if (isDesktop) {
+        const singleDetailTooltip = `
+            <div class="glass-tt">
+                <div class="tt-name-wrap">
+                    <div class="tt-title">${esc(fullName)}</div>
+                    <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
                 </div>
-                ${task.description ? `<div style="font-size:0.82rem;color:var(--tx-muted);margin-top:4px;">${esc(task.description)}</div>` : ''}
-                ${isDeclined && task.reason ? `<div style="font-size:0.82rem;color:var(--tx-muted);margin-top:4px;">Reason: ${esc(task.reason)}</div>` : ''}
-                ${showActions && actions ? `<div style="margin-top:10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;">${actions}</div>` : ''}
+            </div>`;
+
+        let rightSideHtml = '';
+        if (window.CU.isPremium) {
+            rightSideHtml = `
+                <div class="sb-info-target" onclick="window.openProfileModal()">
+                    <div class="sb-name-full">${esc(fullName)}</div>
+                    <div class="sb-role-text">${esc(desigStr)}</div>
+                    <div class="glass-tt">
+                        <div class="tt-title">${esc(fullName)}</div>
+                        <div class="tt-role-pill">${esc(desigStr)}</div>
+                        <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            rightSideHtml = `
+                <div class="sb-info-box">
+                    <div class="sb-name-target" onclick="window.openProfileModal()">
+                        <div class="sb-name-full">${esc(fullName)}</div>
+                        <div class="glass-tt">
+                            <div class="tt-name-wrap">
+                                <div class="tt-title">${esc(fullName)}</div>
+                                <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sb-upgrade-target">
+                        <button onclick="event.stopPropagation(); window.location.href='subscription.html'" class="sb-small-upgrade">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2L15 9l7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg> Upgrade
+                        </button>
+                        <div class="glass-tt">
+                            <div class="tt-upg-wrap">
+                                <div class="tt-feat-list">
+                                    <div class="tt-feat">Smart Analytics</div>
+                                    <div class="tt-feat">Multi-Warehouse</div>
+                                    <div class="tt-feat">24/7 Priority Help</div>
+                                    <div class="tt-feat">Auto Export</div>
+                                </div>
+                                <div class="tt-more-link" onclick="event.stopPropagation(); window.location.href='subscription.html'">Explore premium &rarr;</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        subCard.innerHTML = `
+        <div class="sb-prof-card">
+            <div class="sb-av-target" onclick="window.openProfileModal()">
+                <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
+                <div class="glass-tt">
+                    <div class="tt-logo" style="background:${avColor};">${avHtml}</div>
+                </div>
             </div>
+            ${rightSideHtml}
         </div>
-    </div>`;
-}
-
-window.renderRecentTasks = function() {
-    const el = document.getElementById('recent-tasks');
-    if (!el) return;
-    const role = window.CU?.role;
-    let tasks = [];
-    if (role === 'owner' || role === 'manager') {
-        tasks = [...(window.assignedByMeTasks || [])].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 5);
+        `;
     } else {
-        tasks = [...(window.myTasks || [])].filter(t => t.status === 'pending').sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 5);
+        if (window.CU.isPremium) {
+            const expDate = window.CU.subscriptionExpiry ? new Date(window.CU.subscriptionExpiry).toLocaleDateString() : 'Lifetime'; 
+            subCard.innerHTML = `<div onclick="window.openProfileModal()" style="background:var(--bg-surface);border-radius:12px;padding:20px 16px;color:var(--tx-main);box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"><div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FF9500;letter-spacing:-0.02em;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${window.CU.subscriptionTier || 'Premium'}</div><div style="font-size:0.8rem;color:#86868B;font-weight:500;">Valid till ${expDate}</div></div>`; 
+        } else { 
+            subCard.innerHTML = `<div onclick="window.location.href='subscription.html'" style="background:linear-gradient(135deg,#FF9500,#E68600);border-radius:12px;padding:16px;color:white;cursor:pointer;box-shadow:var(--shadow-md);transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'"><div style="font-weight:800;font-size:1rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;letter-spacing:-0.02em;">👑 Upgrade Plan</div><div style="font-size:0.8rem;opacity:0.9;font-weight:600;">Unlock all features</div></div>`; 
+        }
     }
-    if (!tasks.length) {
-        el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--tx-muted);">
-            <div style="font-size:2rem;margin-bottom:8px">📋</div>
-            <div style="font-weight:700;">No tasks yet</div>
-            <div style="font-size:0.9rem;margin-top:4px;">Tasks assigned to you will appear here.</div>
-        </div>`;
-        return;
-    }
-    el.innerHTML = tasks.map(t => buildTaskCard(t, false)).join('');
 };
 
-window.renderTasksList = function() {
-    const el = document.getElementById('tasks-list');
-    if (!el) return;
-    const tab = window.taskTab || 'assigned-to-me';
-    const myT = window.myTasks || [];
-    const byMeT = window.assignedByMeTasks || [];
-    let tasks = [];
-    const dedup = (arr) => { const seen = new Set(); return arr.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; }); };
-    if (tab === 'assigned-to-me')  { tasks = myT.filter(t => t.status === 'pending'); }
-    else if (tab === 'assigned-by-me') { tasks = byMeT; }
-    else if (tab === 'done')      { tasks = dedup([...myT, ...byMeT]).filter(t => t.status === 'done'); }
-    else if (tab === 'declined')  { tasks = dedup([...myT, ...byMeT]).filter(t => t.status === 'declined'); }
-    if (!tasks.length) {
-        el.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--tx-muted);">
-            <div style="font-size:2rem;margin-bottom:8px">✅</div>
-            <div style="font-weight:700;">No tasks here</div>
-        </div>`;
-        return;
-    }
-    el.innerHTML = tasks.map(t => buildTaskCard(t, true)).join('');
-};
-
-window.setTaskTab = function(tab, btn) {
-    window.taskTab = tab;
-    document.querySelectorAll('#task-tab-row .ftab').forEach(b => b.classList.remove('on'));
-    if (btn) {
-        btn.classList.add('on');
-    } else {
-        const b = document.querySelector(`[data-tab="${tab}"]`);
-        if (b) b.classList.add('on');
-    }
-    if (window.renderTasksList) window.renderTasksList();
-};
-
-// 13. UI Setup & Boot
 function setupUI() {
   const { name, role } = window.CU;
   
@@ -2425,6 +2540,8 @@ function setupUI() {
   window.setAv('topbar-avatar', ini, col, 38, src); 
   window.setAv('bn-avatar', ini, col, 28, src);
   
+  window.renderSidebarCard();
+
   if (window.CU.companyId) {
     getDoc(doc(db, 'companies', window.CU.companyId)).then(s => {
       if (s.exists()) {
@@ -2433,105 +2550,22 @@ function setupUI() {
         let ip = cd.isPremium === true;
         if (ip && cd.subscriptionExpiry && new Date() > new Date(cd.subscriptionExpiry)) ip = false;
         window.CU.isPremium = ip; window.CU.subscriptionExpiry = cd.subscriptionExpiry; window.CU.subscriptionTier = cd.subscriptionTier || 'Premium Plan';
+        
         const topUpgradeBtn = document.getElementById('topbar-upgrade-btn');
         if (topUpgradeBtn) { if (ip) { topUpgradeBtn.classList.add('hidden'); topUpgradeBtn.style.display = 'none'; } else { topUpgradeBtn.classList.remove('hidden'); topUpgradeBtn.style.display = 'flex'; topUpgradeBtn.textContent = role === 'owner' ? '👑 Upgrade' : '👑 Request Upgrade'; } }
         
-        const subCard = document.getElementById('sidebar-footer');
-            if (subCard) { 
-                const isDesktop = window.innerWidth >= 769;
-                if (isDesktop) {
-                    const avColor = window.avatarColor(window.CU.name);
-                    const avIni = window.getInitials(window.CU.name);
-                    const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
-                    const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">` : avIni;
-                    
-                    const fullName = window.CU.name || 'User';
-
-// Format role e.g. "Owner" or "Staff"
-                    const roleStr = window.CU.role ? window.CU.role.charAt(0).toUpperCase() + window.CU.role.slice(1) : 'Staff';
-                    const desigStr = window.CU.designation ? window.CU.designation : roleStr;
-                    
-                    let rightSideHtml = '';
-                    
-                    if (window.CU.isPremium) {
-                        // UPGRADED USERS: Unified block with Name + Designation (One single smooth hover zone)
-                        rightSideHtml = `
-                            <div class="sb-info-target" onclick="window.openProfile()">
-                                <div class="sb-name-full">${esc(fullName)}</div>
-                                <div class="sb-role-text">${esc(desigStr)}</div>
-                                <div class="glass-tt">
-                                    <div class="tt-title">${esc(fullName)}</div>
-                                    <div class="tt-role-pill">${esc(desigStr)}</div>
-                                    <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        // FREE USERS: Separated interactive blocks for Name and Upgrade features
-                        rightSideHtml = `
-                            <div class="sb-info-box">
-                                <div class="sb-name-target" onclick="window.openProfile()">
-                                    <div class="sb-name-full">${esc(fullName)}</div>
-                                    <div class="glass-tt">
-                                        <div class="tt-name-wrap">
-                                            <div class="tt-title">${esc(fullName)}</div>
-                                            <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="sb-upgrade-target">
-                                    <button onclick="event.stopPropagation(); window.location.href='subscription.html'" class="sb-small-upgrade">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2L15 9l7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg> Upgrade
-                                    </button>
-                                    <div class="glass-tt">
-                                        <div class="tt-upg-wrap">
-                                            <div class="tt-feat-list">
-                                                <div class="tt-feat">Smart Analytics Hub</div>
-                                                <div class="tt-feat">Multi-Warehouse</div>
-                                                <div class="tt-feat">Priority 24/7 Support</div>
-                                                <div class="tt-feat">Auto Data Export</div>
-                                            </div>
-                                            <div class="tt-more-link" onclick="event.stopPropagation(); window.location.href='subscription.html'">View all features &rarr;</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }
-
-                    subCard.innerHTML = `
-                    <div class="sb-prof-card">
-                        <div class="sb-av-target" onclick="window.openProfile()">
-                            <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
-                            <div class="glass-tt">
-                                <div class="tt-logo" style="background:${avColor};">${avHtml}</div>
-                            </div>
-                        </div>
-                        ${rightSideHtml}
-                    </div>
-                    `;
-
-                } else {
-                    // Mobile Fallback Logic
-                    if (window.CU.isPremium) {
-                        const expDate = window.CU.subscriptionExpiry ? new Date(window.CU.subscriptionExpiry).toLocaleDateString() : 'Lifetime'; 
-                        subCard.innerHTML = `<div style="background:var(--bg-surface);border-radius:12px;padding:20px 16px;color:var(--tx-main);box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"><div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FF9500;letter-spacing:-0.02em;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${window.CU.subscriptionTier || 'Premium'}</div><div style="font-size:0.8rem;color:#86868B;font-weight:500;">Valid till ${expDate}</div></div>`; 
-                    } else { 
-                        subCard.innerHTML = `<div style="background:linear-gradient(135deg,#FF9500,#E68600);border-radius:12px;padding:16px;color:white;cursor:pointer;box-shadow:var(--shadow-md);transition:transform 0.2s;" onclick="window.location.href='subscription.html'" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'"><div style="font-weight:800;font-size:1rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;letter-spacing:-0.02em;">👑 Upgrade Plan</div><div style="font-size:0.8rem;opacity:0.9;font-weight:600;">Unlock all features</div></div>`; 
-                    }
-                }
-            }
-        
-        if (typeof window.buildProfile === 'function') window.buildProfile();
+        window.renderSidebarCard();
       }
     }).catch(console.error);
   }
+
   const h = new Date().getHours(), fn = (name || 'User').split(' ')[0], greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   const greetEl = document.getElementById('home-greeting'); if (greetEl) greetEl.innerHTML = `${greet}, <span class="greeting-name">${esc(fn)}</span>`;
   const subEl = document.getElementById('home-sub'); if (subEl) subEl.textContent = { owner: 'Overview of your company and team', manager: 'Your team tasks and activity', staff: 'Your assignments and progress' }[role] || '';
   const isOwner = role === 'owner';
   const assignTopBtn = document.getElementById('assign-top-btn'); const assignTasksBtnFull = document.getElementById('assign-tasks-btn-full');
   if (assignTopBtn) assignTopBtn.style.display = 'flex'; if (assignTasksBtnFull) assignTasksBtnFull.style.display = 'flex';
+  
   const tr = document.getElementById('task-tab-row');
   if (tr) {
     if (isOwner) { tr.innerHTML = `<button class="btn-ghost ftab on" data-tab="assigned-by-me" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn-ghost ftab" data-tab="done" onclick="window.setTaskTab('done',this)">Done</button><button class="btn-ghost ftab" data-tab="declined" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-by-me'; }
