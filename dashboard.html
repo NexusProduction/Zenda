@@ -2165,14 +2165,43 @@ window.triggerAvatarUpload = function() {
 window.handleAvatarSelected = function(e) {
     const file = e.target.files[0];
     if (!file) { window.cancelProfileEdit(); return; }
+    
     const reader = new FileReader();
     reader.onload = function(evt) {
-        document.getElementById('ppm-av').innerHTML = `<img src="${evt.target.result}">`;
-        window.pendingAvatarFile = evt.target.result;
-        window.currentEditField = 'avatar';
-        document.getElementById('ppm-actions').classList.add('visible');
-        document.getElementById('ppm-next-btn').disabled = false;
-        document.getElementById('ppm-next-btn').style.opacity = '1';
+        const img = new Image();
+        img.onload = function() {
+            // 1. Find the shortest side to make it a perfect square
+            const size = Math.min(img.width, img.height);
+            
+            // 2. Calculate coordinates to center the crop
+            const startX = (img.width - size) / 2;
+            const startY = (img.height - size) / 2;
+            
+            // 3. Set a reasonable max size so local storage doesn't get overloaded
+            const MAX_SIZE = 400; 
+            const finalSize = Math.min(size, MAX_SIZE);
+
+            // 4. Create an invisible canvas to crop the image
+            const canvas = document.createElement('canvas');
+            canvas.width = finalSize;
+            canvas.height = finalSize;
+            const ctx = canvas.getContext('2d');
+            
+            // 5. Draw the centered square crop onto the canvas
+            ctx.drawImage(img, startX, startY, size, size, 0, 0, finalSize, finalSize);
+            
+            // 6. Convert it back to a Data URL (maintain transparency if PNG, else JPEG)
+            const squareImage = canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9);
+            
+            // 7. Update the UI
+            document.getElementById('ppm-av').innerHTML = `<img src="${squareImage}" style="width:100%;height:100%;object-fit:cover;">`;
+            window.pendingAvatarFile = squareImage;
+            window.currentEditField = 'avatar';
+            document.getElementById('ppm-actions').classList.add('visible');
+            document.getElementById('ppm-next-btn').disabled = false;
+            document.getElementById('ppm-next-btn').style.opacity = '1';
+        };
+        img.src = evt.target.result;
     };
     reader.readAsDataURL(file);
 };
