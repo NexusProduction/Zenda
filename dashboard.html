@@ -2141,294 +2141,67 @@ window.renderSidebarCard = function() {
     `;
 };
 
-// --- PROFILE EDITOR MODAL LOGIC ---
-window.currentEditField = null;
-window.pendingAvatarFile = null;
-window.profileState = { newEmail: '', step: 0 };
-
-window.openProfileModal = function() {
-    window.closeAllPanels();
-    const avColor = window.avatarColor(window.CU.name);
-    const avIni = window.getInitials(window.CU.name);
-    const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
-    
-    document.getElementById('ppm-av').style.background = avColor;
-    document.getElementById('ppm-av').innerHTML = src ? `<img src="${src}">` : avIni;
-    document.getElementById('ppm-name').value = window.CU.name;
-    document.getElementById('ppm-email').value = window.CU.email;
-    
-    window.cancelProfileEdit(); // Reset state
-    document.getElementById('premium-prof-overlay').classList.add('open');
-};
-
-window.closeProfileModal = function() {
-    document.getElementById('premium-prof-overlay').classList.remove('open');
-    setTimeout(() => { window.cancelProfileEdit(); }, 400);
-};
-
-window.triggerAvatarUpload = function() {
-    document.getElementById('ppm-av-input').click();
-};
-
-window.handleAvatarSelected = function(e) {
-    const file = e.target.files[0];
-    if (!file) { window.cancelProfileEdit(); return; }
-    
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        const img = new Image();
-        img.onload = function() {
-            const size = Math.min(img.width, img.height);
-            const startX = (img.width - size) / 2;
-            const startY = (img.height - size) / 2;
-            const finalSize = Math.min(size, 400);
-
-            const canvas = document.createElement('canvas');
-            canvas.width = finalSize; canvas.height = finalSize;
-            const ctx = canvas.getContext('2d');
-            
-            ctx.drawImage(img, startX, startY, size, size, 0, 0, finalSize, finalSize);
-            const squareImage = canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9);
-            
-            document.getElementById('ppm-av').innerHTML = `<img src="${squareImage}" style="width:100%;height:100%;object-fit:cover;">`;
-            window.pendingAvatarFile = squareImage;
-            
-            window.enableProfileEdit('avatar');
-        };
-        img.src = evt.target.result;
-    };
-    reader.readAsDataURL(file);
-};
-
-function setBtnLoading(btnId, isLoading, text) {
-    const btn = document.getElementById(btnId);
-    if (!btn) return;
-    if (isLoading) {
-        btn.disabled = true;
-        btn.innerHTML = '<div class="loader-spinner"></div>';
-    } else {
-        btn.disabled = false;
-        btn.innerHTML = text;
-    }
-}
-
-window.enableProfileEdit = function(field) {
-    window.currentEditField = field;
-    
-    // Hide ALL pencils (avatar + inputs)
-    document.querySelectorAll('.pen-trigger').forEach(p => p.style.display = 'none');
-    
-    if (field !== 'avatar') {
-        const input = document.getElementById('ppm-' + field);
-        document.getElementById('field-' + field).classList.add('editing');
-        input.disabled = false;
-        input.focus();
-    }
-    
-    const btn = document.getElementById('ppm-next-btn');
-    btn.textContent = (field === 'name' || field === 'avatar') ? 'Save' : 'Next';
-    
-    document.getElementById('ppm-slider-wrap').style.height = '310px';
-    document.getElementById('ppm-actions').classList.add('visible');
-    window.validateProfileInputs();
-};
-
-window.cancelProfileEdit = function() {
-    window.currentEditField = null;
-    window.pendingAvatarFile = null;
-    window.profileState = { newEmail: '', step: 0 };
-    
-    // Show all pencils again
-    document.querySelectorAll('.pen-trigger').forEach(p => p.style.display = 'flex');
-    document.getElementById('ppm-actions').classList.remove('visible');
-    
-    // Slide back to view 1
-    document.getElementById('ppm-view-edit').classList.remove('slide-out');
-    document.getElementById('ppm-view-otp').classList.remove('slide-in');
-    document.getElementById('ppm-slider-wrap').style.height = '260px'; 
-    
-    ['name', 'email'].forEach(f => {
-        const input = document.getElementById('ppm-' + f);
-        input.value = window.CU[f] || '';
-        input.disabled = true;
-        document.getElementById('field-' + f).classList.remove('editing');
-    });
-    
-    const avColor = window.avatarColor(window.CU.name);
-    const avIni = window.getInitials(window.CU.name);
-    const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
-    document.getElementById('ppm-av').innerHTML = src ? `<img src="${src}">` : avIni;
-    
-    setBtnLoading('ppm-next-btn', false, 'Next');
-    setBtnLoading('ppm-verify-btn', false, 'Verify Code');
-};
-
-window.validateProfileInputs = function() {
-    if(!window.currentEditField) return;
-    const btn = document.getElementById('ppm-next-btn');
-    if (window.currentEditField === 'avatar') { btn.disabled = false; return; }
-    
-    const val = document.getElementById('ppm-' + window.currentEditField).value.trim();
-    let isValid = true;
-    if (window.currentEditField === 'name' && (val.length < 4 || val.length > 20)) isValid = false;
-    if (window.currentEditField === 'email' && !val.includes('@')) isValid = false;
-    btn.disabled = !isValid;
-};
-
-// Optimistic UI Success
-window.triggerOptimisticSuccess = function() {
-    const btn = document.getElementById('ppm-next-btn');
-    btn.style.background = '#34C759';
-    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-    if (window.renderSidebarCard) window.renderSidebarCard();
-    setupUI();
-    setTimeout(() => {
-        btn.style.background = '';
-        window.closeProfileModal();
-    }, 600);
-};
-
-// Render 6 OTP boxes and handle auto-focus
-function initOtpBoxes() {
-    const container = document.getElementById('otp-inputs-container');
-    container.innerHTML = '';
-    for (let i = 0; i < 6; i++) {
-        const input = document.createElement('input');
-        input.type = 'text'; input.maxLength = 1;
-        input.className = 'otp-box anim-in'; input.style.animationDelay = `${i * 0.05}s`;
-        
-        input.addEventListener('input', (e) => {
-            if (e.target.value.length === 1 && i < 5) container.children[i + 1].focus();
-            const val = Array.from(container.children).map(inp => inp.value).join('');
-            if (val.length === 6) window.verifyProfileOTP();
-        });
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Backspace' && e.target.value === '' && i > 0) {
-                container.children[i - 1].focus();
-                container.children[i - 1].value = '';
+if (isDesktop) {
+            let rightSideHtml = '';
+            if (window.CU.isPremium) {
+                rightSideHtml = `
+                    <div class="sb-info-target" style="width: max-content; position: relative;">
+                        <div class="sb-name-full">${esc(fullName)}</div>
+                        <div class="sb-role-text">${esc(desigStr)}</div>
+                        <div class="glass-tt">
+                            <div class="tt-title">${esc(fullName)}</div>
+                            <div class="tt-role-pill">${esc(desigStr)}</div>
+                            <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                rightSideHtml = `
+                    <div class="sb-info-box">
+                        <div class="sb-name-target" style="width: max-content; position: relative;">
+                            <div class="sb-name-full">${esc(fullName)}</div>
+                            <div class="glass-tt">
+                                <div class="tt-name-wrap">
+                                    <div class="tt-title">${esc(fullName)}</div>
+                                    <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sb-upgrade-target" onclick="event.stopPropagation(); window.location.href='subscription.html'" style="width: max-content; position: relative; margin-top: 4px;">
+                            <button class="sb-small-upgrade" style="pointer-events: none;">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2L15 9l7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg> Upgrade
+                            </button>
+                            <div class="glass-tt">
+                                <div class="tt-upg-wrap">
+                                    <div class="tt-feat-list">
+                                        <div class="tt-feat">Smart Analytics</div>
+                                        <div class="tt-feat">Multi-Warehouse</div>
+                                        <div class="tt-feat">24/7 Priority Help</div>
+                                        <div class="tt-feat">Auto Export</div>
+                                    </div>
+                                    <div class="tt-more-link">Explore premium &rarr;</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
-        });
-        container.appendChild(input);
-    }
-    setTimeout(() => container.children[0].focus(), 400); 
-}
 
-window.handleProfileNext = async function() {
-    const btnId = 'ppm-next-btn';
-    setBtnLoading(btnId, true);
-
-    if (window.currentEditField === 'avatar') {
-        try {
-            await updateDoc(doc(db, 'users', window.CU.uid), { avatarData: window.pendingAvatarFile });
-            localStorage.setItem('zenda_logo_' + window.CU.uid, window.pendingAvatarFile);
-            window.CU.avatarData = window.pendingAvatarFile;
-            window.triggerOptimisticSuccess();
-        } catch(e) { window.showToast("Failed to save picture", "error"); setBtnLoading(btnId, false, 'Save'); }
-        return;
-    }
-
-    if (window.currentEditField === 'name') {
-        const newName = document.getElementById('ppm-name').value.trim();
-        if (newName === window.CU.name) { window.cancelProfileEdit(); return; }
-        try {
-            await updateDoc(doc(db, 'users', window.CU.uid), { name: newName });
-            if(auth.currentUser) await updateProfile(auth.currentUser, { displayName: newName });
-            window.CU.name = newName;
-            window.triggerOptimisticSuccess();
-        } catch(e) { window.showToast("Failed to save name", "error"); setBtnLoading(btnId, false, 'Save'); }
-        return;
-    }
-
-    if (window.currentEditField === 'email') {
-        const newEmail = document.getElementById('ppm-email').value.trim();
-        if (newEmail === window.CU.email) { window.cancelProfileEdit(); return; }
-        
-        window.profileState = { newEmail: newEmail, step: 1 };
-        window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        try {
-            if(typeof emailjs !== 'undefined') {
-                await emailjs.send("service_dc7ge9b", "template_4turj9r", { 
-                    to_email: window.CU.email, to_name: window.CU.name, 
-                    otp_code: window.tempEmailOTP, company_name: window.CU.companyName || 'Zenda' 
-                }, "dg8t6B0d-DhPa3Tl6");
-            }
-        } catch(e) {}
-
-        document.getElementById('ppm-otp-msg').innerHTML = `Enter the 6-digit code sent to your current email<br><b style="color:#1C1C1E;">${window.CU.email}</b>`;
-        initOtpBoxes();
-        
-        // Absolute transition fixes the glitch
-        document.getElementById('ppm-slider-wrap').style.height = '230px';
-        document.getElementById('ppm-view-edit').classList.add('slide-out');
-        document.getElementById('ppm-view-otp').classList.add('slide-in');
-        
-        setBtnLoading(btnId, false, 'Next');
-    }
-};
-
-window.verifyProfileOTP = async function() {
-    const container = document.getElementById('otp-inputs-container');
-    const input = Array.from(container.children).map(inp => inp.value).join('');
-    
-    if (input !== window.tempEmailOTP && input.length === 6) { 
-        window.showToast('Invalid code. Try again.', 'error'); 
-        Array.from(container.children).forEach(inp => inp.value = '');
-        container.children[0].focus();
-        return; 
-    }
-    if (input.length < 6) return;
-    
-    setBtnLoading('ppm-verify-btn', true);
-
-    if (window.profileState.step === 1) {
-        window.profileState.step = 2;
-        window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        try { 
-            if(typeof emailjs !== 'undefined') { 
-                await emailjs.send("service_dc7ge9b", "template_4turj9r", { 
-                    to_email: window.profileState.newEmail, to_name: window.CU.name, 
-                    otp_code: window.tempEmailOTP, company_name: window.CU.companyName || 'Zenda' 
-                }, "dg8t6B0d-DhPa3Tl6"); 
-            } 
-        } catch(e) {}
-        
-        document.getElementById('ppm-view-otp').style.opacity = '0';
-        
-        setTimeout(() => {
-            document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your NEW email address<br><b style="color:#1C1C1E;">${window.profileState.newEmail}</b>`;
-            initOtpBoxes();
-            document.getElementById('ppm-view-otp').style.opacity = '1';
-            setBtnLoading('ppm-verify-btn', false, 'Verify Code');
-            window.showToast('Code sent to new email address!', 'info');
-        }, 300);
-
-    } else {
-        try {
-            if (auth.currentUser) { 
-                try { await updateEmail(auth.currentUser, window.profileState.newEmail); } 
-                catch(authErr) {} 
-            }
-            await updateDoc(doc(db, 'users', window.CU.uid), { email: window.profileState.newEmail });
-            
-            window.CU.email = window.profileState.newEmail;
-            
-            // Turn verify button green for success
-            const btn = document.getElementById('ppm-verify-btn');
-            btn.style.background = '#34C759';
-            btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-            if (window.renderSidebarCard) window.renderSidebarCard();
-            setupUI();
-            setTimeout(() => {
-                btn.style.background = '';
-                window.closeProfileModal();
-            }, 600);
-            
-        } catch(e) { window.showToast('Failed to update email', 'error'); } 
-        finally { setBtnLoading('ppm-verify-btn', false, 'Verify Code'); }
-    }
-};
+            subCard.innerHTML = `
+            <div class="sb-prof-card" onclick="window.openProfileModal()">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="sb-av-target" style="width: max-content; position: relative;">
+                        <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
+                        <div class="glass-tt">
+                            <div class="tt-logo" style="background:${avColor};">${avHtml}</div>
+                        </div>
+                    </div>
+                    ${rightSideHtml}
+                </div>
+                <svg class="sb-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+            `;
+        }
 
 window.openDeleteTaskModal = function(id, title) { 
     deleteTaskTargetId = id; 
