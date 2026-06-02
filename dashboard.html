@@ -535,35 +535,54 @@
 }
 .ppm-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 22px; }
 
-/* Tactile Input Fields */
+/* Clean Input Fields with Split Colors */
 .ppm-field { 
     width: 100%; position: relative; margin-bottom: 16px !important; 
-    background: #FAFAFA !important; 
-    border: 1.5px solid #E5E7EB !important; /* Explicit Input Stroke */
+    background: #FFFFFF !important; 
+    border: 1.5px solid #E5E7EB !important;
     border-radius: 14px !important; height: 56px !important; 
     transition: all 0.2s ease !important; display: flex; align-items: center; 
+    overflow: hidden; 
 }
 .ppm-field.editing, .ppm-field:focus-within { 
-    background: #FFFFFF !important; 
     border-color: #0066FF !important; 
     box-shadow: 0 4px 12px rgba(0, 102, 255, 0.1) !important; transform: translateY(-1px);
 }
 
-.ppm-input { 
-    width: 100%; height: 100%; background: transparent; border: none; 
-    padding: 0 48px 0 16px !important; font-size: 1rem !important; font-weight: 600 !important; color: #111827 !important; outline: none; 
+/* Left Icon Area - Always White */
+.ppm-input-icon {
+    display: flex; align-items: center; justify-content: center;
+    width: 52px; height: 100%;
+    background: #FFFFFF !important; color: #6B7280;
+    flex-shrink: 0; z-index: 2;
 }
-.ppm-input:disabled { color: #6B7280 !important; -webkit-text-fill-color: #6B7280 !important; opacity: 1; }
-#ppm-name { text-transform: capitalize; }
+
+/* Text Input Area - Light Blue */
+.ppm-input { 
+    flex: 1; height: 100% !important; 
+    background: #EEF2FF !important; border: none !important; 
+    padding: 0 48px 0 12px !important; 
+    font-size: 1rem !important; font-weight: 600 !important; color: #111827 !important; outline: none; 
+}
+.ppm-field.editing .ppm-input, .ppm-field:focus-within .ppm-input {
+    background: #FFFFFF !important; /* Turns white when typing */
+}
+
+/* Pencil Icon - Rounded Box */
 .ppm-field .ppm-pencil { 
-    position: absolute; right: 12px !important; top: 50%; transform: translateY(-50%); 
-    width: 32px !important; height: 32px !important; border-radius: 8px !important;
+    position: absolute; right: 8px !important; top: 50%; transform: translateY(-50%); 
+    width: 36px !important; height: 36px !important; border-radius: 10px !important;
     background: #FFFFFF !important; border: 1.5px solid #E5E7EB !important;
     color: #6B7280 !important; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; 
+    z-index: 10;
 }
-.ppm-field .ppm-pencil:hover { color: #0066FF !important; border-color: #0066FF !important; background: #EFF6FF !important; }
 
-/* --- REDUCED MODAL PADDING --- */
+/* Hovering over ANY part of the field makes the pencil turn blue */
+.ppm-field:hover .ppm-pencil { 
+    color: #0066FF !important; 
+    border-color: #0066FF !important; 
+    background: #EFF6FF !important; 
+}
 .premium-prof-modal { 
     position: fixed; top: 50%; left: 50%; width: 90%; max-width: 420px; 
     background: #FFFFFF !important; 
@@ -902,11 +921,11 @@
 
         <div class="ppm-view hidden-right" id="ppm-view-otp">
           <div class="otp-header">Security Check</div>
-          <div class="otp-sub" id="ppm-otp-msg" style="margin-bottom: 16px;">Enter the 6-digit code sent to your email.</div>
-          <div class="otp-inputs-wrap" id="otp-inputs-container" style="margin-bottom: 24px;"></div>
-          <div style="display:flex; gap:12px;">
-            <button class="ppm-btn ppm-btn-secondary" onclick="window.cancelProfileEdit()">Cancel</button>
-            <button class="ppm-btn ppm-btn-primary" id="ppm-verify-btn" onclick="window.verifyProfileOTP()">Verify Code</button>
+          <div class="otp-sub" id="ppm-otp-msg" style="margin-bottom: 24px; line-height: 1.5;"></div>
+          <div class="otp-inputs-wrap" id="otp-inputs-container" style="margin-bottom: 32px;"></div>
+          <div style="display:flex; gap:12px; margin-bottom: 8px;">
+            <button class="ppm-btn ppm-btn-secondary" style="flex:1;" onclick="window.cancelProfileEdit()">Cancel</button>
+            <button class="ppm-btn ppm-btn-primary" style="flex:1;" id="ppm-verify-btn" onclick="window.verifyProfileOTP()">Verify Code</button>
           </div>
         </div>
       </div>
@@ -2731,12 +2750,9 @@ window.handleProfileNext = async function() {
             }
         } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
 
-        // ... (inside the email block in handleProfileNext)
-        // Progressive Disclosure Slide
-        document.getElementById('ppm-otp-msg').innerHTML = `Enter the 6-digit code sent to your current email<br><b style="color:#1C1C1E;">${window.CU.email}</b>`;
+        document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your current email address<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.CU.email}</b>`;
         initOtpBoxes();
         
-        // This removes the extra padding immediately by switching the relative/absolute states!
         document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
         document.getElementById('ppm-view-otp').className = 'ppm-view active-view';
         
@@ -2773,16 +2789,21 @@ window.verifyProfileOTP = async function() {
             } 
         } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
         
-        // Clean fade out and update view
-        document.getElementById('ppm-view-otp').style.opacity = '0';
+        // Smooth transition logic that prevents getting stuck
+        const otpView = document.getElementById('ppm-view-otp');
+        otpView.style.transition = 'opacity 0.2s ease';
+        otpView.style.opacity = '0';
         
         setTimeout(() => {
-            document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your NEW email address<br><b style="color:#1C1C1E;">${window.profileState.newEmail}</b>`;
+            document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your NEW email address<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.profileState.newEmail}</b>`;
             initOtpBoxes();
-            document.getElementById('ppm-view-otp').style.opacity = '1';
-            setBtnLoading('ppm-verify-btn', false, 'Verify Code');
-            window.showToast('Code sent to new email address!', 'info');
-        }, 300);
+            
+            requestAnimationFrame(() => {
+                otpView.style.opacity = '1';
+                setBtnLoading('ppm-verify-btn', false, 'Verify Code');
+                window.showToast('Code sent to new email address!', 'info');
+            });
+        }, 250);
 
     } else {
         try {
