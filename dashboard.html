@@ -609,7 +609,7 @@
     .loader-spinner { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #FFFFFF; border-radius: 50%; animation: spin 0.8s linear infinite; }
     
     /* Success Overlay */
-    .ppm-success-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.95); border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; opacity: 0; visibility: hidden; transition: 0.3s; }
+    .ppm-success-overlay { position: absolute; inset: 0; background: transparent; border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; opacity: 0; visibility: hidden; transition: 0.3s; }
     .ppm-success-overlay.active { opacity: 1; visibility: visible; }
     .apple-tick { width: 72px; height: 72px; border-radius: 50%; background: #34C759; display: flex; align-items: center; justify-content: center; transform: scale(0); transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1); box-shadow: 0 8px 24px rgba(52, 199, 89, 0.3); }
     .ppm-success-overlay.active .apple-tick { transform: scale(1); }
@@ -2619,12 +2619,17 @@ window.validateProfileInputs = function() {
 };
 
 window.showProfileSuccess = function() {
+    document.getElementById('ppm-slider-track').style.opacity = '0'; // Hides the form inputs behind it
     document.getElementById('ppm-success-tick').classList.add('active');
+    
     if (window.renderSidebarCard) window.renderSidebarCard();
     setupUI();
+    
     setTimeout(() => {
         document.getElementById('ppm-success-tick').classList.remove('active');
         window.closeProfileModal();
+        // Restore opacity for the next time the modal is opened
+        setTimeout(() => { document.getElementById('ppm-slider-track').style.opacity = '1'; }, 300);
     }, 1500);
 };
 
@@ -2676,35 +2681,20 @@ window.handleProfileNext = async function() {
       const newName = document.getElementById('ppm-name').value.trim();
       if (newName === window.CU.name) { window.cancelProfileEdit(); return; }
       
-      const btn = document.getElementById('ppm-next-btn');
-      btn.disabled = true;
-      btn.innerHTML = '<div class="loader-spinner" style="border-top-color: #FFF; width: 18px; height: 18px;"></div>';
+      setBtnLoading(btnId, true);
 
-      // 0.5s Loading state
-      setTimeout(async () => {
-          // Success State (Green + Checkmark)
-          btn.style.background = '#34C759';
-          btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      try {
+          await updateDoc(doc(db, 'users', window.CU.uid), { name: newName });
+          if(auth.currentUser) await updateProfile(auth.currentUser, { displayName: newName });
+          window.CU.name = newName;
           
-          setTimeout(async () => {
-              try {
-                  await updateDoc(doc(db, 'users', window.CU.uid), { name: newName });
-                  if(auth.currentUser) await updateProfile(auth.currentUser, { displayName: newName });
-                  window.CU.name = newName;
-                  
-                  // Reset and Close
-                  btn.style.background = '';
-                  window.closeProfileModal();
-                  if (window.renderSidebarCard) window.renderSidebarCard();
-              } catch(e) {
-                  window.showToast("Failed to save name", "error");
-                  setBtnLoading(btnId, false, 'Next');
-                  btn.style.background = '';
-              }
-          }, 500); // Wait 0.5s showing the checkmark before closing
-      }, 500); // 0.5s spinner
+          window.showProfileSuccess();
+      } catch(e) {
+          window.showToast("Failed to save name", "error");
+          setBtnLoading(btnId, false, 'Next');
+      }
       return;
-  }
+    }
 
     if (window.currentEditField === 'email') {
         const newEmail = document.getElementById('ppm-email').value.trim();
