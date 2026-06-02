@@ -317,22 +317,23 @@
 .sb-av-wrap { position: relative; flex-shrink: 0; }
 .sb-info-wrap { display: flex; flex-direction: column; justify-content: center; flex: 1; min-width: 0; margin-left: 2px; }
 
-/* Bigger, bolder name text */
+/* Bigger name text, tighter gap */
 .sb-name-text {
-    font-size: 1.1rem; /* Enlarged Text */
+    font-size: 1.15rem; 
     font-weight: 800; 
     color: #111827;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    line-height: 1.1; margin-bottom: 6px;
+    line-height: 1.1; 
+    margin-bottom: 2px; /* Decreased gap */
     letter-spacing: -0.01em;
 }
 
 /* Sleek Badge System (Square with Border Radius) */
 .sb-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 10px; 
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 8px; 
     border-radius: 8px; /* SQUARE with rounded corners, NOT capsule */
-    font-size: 0.75rem; /* Normal text size */
+    font-size: 0.75rem; 
     font-weight: 800; text-transform: uppercase;
     letter-spacing: 0.04em; width: fit-content; transition: all 0.2s ease;
 }
@@ -345,37 +346,41 @@
     color: #FFFFFF; 
     border: none; 
     box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 .sb-badge-upgrade:hover { transform: scale(1.04); box-shadow: 0 6px 16px rgba(234, 88, 12, 0.45); }
 
+/* Chevron animation */
+.sb-prof-card:hover .sb-chevron { transform: translateX(2px); stroke: #0066FF; }
 
-/* Filling the empty right side with a Settings Gear */
-.sb-action-wrap {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: #F3F4F6; display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: all 0.2s ease; border: 1px solid transparent;
+/* Push Tooltips Higher so they don't collide */
+.glass-tt {
+    position: absolute; 
+    bottom: calc(100% + 20px); /* Pushed up higher */
+    left: 50%; width: max-content; min-width: 200px; box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.96); backdrop-filter: saturate(180%) blur(24px); -webkit-backdrop-filter: saturate(180%) blur(24px);
+    border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 16px 40px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.02);
+    border-radius: 20px; opacity: 0; visibility: hidden; pointer-events: none; z-index: 100;
+    transform-origin: bottom center; 
+    transform: translateX(-50%) translateY(10px) scale(0.96); 
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; align-items: center; text-align: center; padding: 20px;
 }
-.sb-prof-card:hover .sb-action-wrap {
-    background: #FFFFFF; border-color: #E5E7EB;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06); transform: scale(1.05);
-}
-.sb-prof-card:hover .sb-action-wrap svg { stroke: #0066FF; }
+.glass-tt::before { content: ''; position: absolute; top: 100%; left: -20px; right: -20px; height: 32px; background: transparent; }
+.glass-tt::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border-width: 8px; border-style: solid; border-color: rgba(255,255,255,0.96) transparent transparent transparent; }
 
-/* Polished Logo Pop-up with Double-Border Effect */
+/* Logo Pop-up with Thin Outer Border & White Gap */
 .tt-logo { 
     width: 140px; height: 140px; 
     border-radius: 18px; 
-    box-shadow: 0 12px 32px rgba(0,0,0,0.12); 
-    border: 1px solid #E5E5EA; /* Thin 1px outer border */
-    padding: 4px; /* Creates the white gap (inner border) */
+    box-shadow: 0 16px 40px rgba(0,0,0,0.15); 
+    border: 1px solid #D1D5DB; /* Thin 1px outer border */
+    padding: 4px; /* White inner gap */
     background: #FFFFFF;
 }
 .tt-logo img { 
-    border-radius: 14px; /* Inner radius */
+    border-radius: 14px; 
     width: 100%; height: 100%; object-fit: cover; 
+    border: 1px solid #F3F4F6; /* Optional: tiny border directly on image */
 }
-
 /* --- EDIT MODAL REFINEMENTS (Matching References) --- */
 .ppm-header { font-size: 1.25rem !important; font-weight: 800 !important; color: #111827 !important; margin-bottom: 24px !important; }
 .ppm-field { 
@@ -2818,21 +2823,18 @@ window.renderSidebarCard = function() {
     const isOwner = window.CU.role === 'owner';
     const desigStr = window.CU.designation ? window.CU.designation : (window.CU.role ? window.CU.role.charAt(0).toUpperCase() + window.CU.role.slice(1) : 'Staff');
     
-    let rightSideHtml = '';
-    
-    // The new Settings Gear icon to fill the empty space
-    const actionIcon = `
-        <div class="sb-action-wrap" title="Profile Settings">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: stroke 0.2s;">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-        </div>
+    // Restored Chevron for the far right
+    const chevronIcon = `
+        <svg class="sb-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; transition: all 0.2s; margin-left: auto;">
+            <path d="M9 18l6-6-6-6"/>
+        </svg>
     `;
+
+    let rightSideHtml = '';
 
     if (window.CU.isPremium || (!isOwner)) {
         // --- UPGRADED / STAFF VIEW ---
-        // Hovering over the wrapper triggers Name + Email + Designation
+        // Single hover zone for Name & Designation merging
         let badgeHtml = window.CU.isPremium ? `<div class="sb-badge sb-badge-premium">👑 Premium</div>` : `<div class="sb-badge sb-badge-standard">${esc(desigStr)}</div>`;
         
         rightSideHtml = `
@@ -2847,11 +2849,11 @@ window.renderSidebarCard = function() {
                     </div>
                 </div>
             </div>
-            ${actionIcon}
+            ${chevronIcon}
         `;
     } else {
         // --- FREE OWNER VIEW ---
-        // Separate targets: Name triggers Name+Email. Upgrade triggers Features.
+        // Separated hover zones: Name triggers Email, Upgrade triggers Features
         rightSideHtml = `
             <div class="sb-info-wrap">
                 <div class="sb-name-target" style="width: max-content; position: relative;">
@@ -2863,9 +2865,10 @@ window.renderSidebarCard = function() {
                         </div>
                     </div>
                 </div>
+                
                 <div class="sb-upgrade-target" onclick="event.stopPropagation(); window.location.href='subscription.html'" style="width: max-content; position: relative; margin-top: 2px;">
-                    <div class="sb-badge sb-badge-upgrade">👑 Upgrade</div>
-                    <div class="glass-tt">
+                    <div class="sb-badge sb-badge-upgrade">👑 UPGRADE</div>
+                    <div class="glass-tt" style="bottom: calc(100% + 22px);">
                         <div class="tt-upg-wrap">
                             <div class="tt-feat-list">
                                 <div class="tt-feat">Smart Analytics</div>
@@ -2877,15 +2880,17 @@ window.renderSidebarCard = function() {
                     </div>
                 </div>
             </div>
-            ${actionIcon}
+            ${chevronIcon}
         `;
     }
 
     subCard.innerHTML = `
     <div class="sb-prof-card" onclick="window.openProfileModal()">
-        <div class="sb-av-target">
-            <div class="sb-av" style="background:${avColor};color:white;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;border-radius:12px;">${avHtml}</div>
-            <div class="glass-tt">
+        <div class="sb-av-target" style="position: relative;">
+            <div class="sb-av" style="background:${avColor};color:white;width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;border-radius:14px;">${avHtml}</div>
+            
+            <!-- Avatar completely isolated popup -->
+            <div class="glass-tt" style="left: -12px; transform: translateY(10px) scale(0.96);">
                 <div class="tt-logo" style="background:${avColor};">${avHtml}</div>
             </div>
         </div>
