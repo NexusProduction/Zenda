@@ -301,14 +301,14 @@
 
 .sb-prof-card {
     display: flex; align-items: center; gap: 12px;
-    padding: 10px 12px; /* Tighter padding */
+    padding: 10px 12px;
     border-radius: 12px;
     background: #FFFFFF; 
     border: 1px solid #E5E5EA;
     cursor: pointer; 
     position: relative; 
     width: 100%;
-    height: auto !important; /* REMOVED fixed height to fix the spacing bug */
+    height: auto !important; /* Forces the box to wrap tightly */
     box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     transition: all 0.2s ease;
 }
@@ -324,7 +324,7 @@
     line-height: 1.2; margin-bottom: 4px;
 }
 
-/* Sleek Badge System (Replaces the bulky button) */
+/* Sleek Badge System */
 .sb-badge {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 3px 8px; border-radius: 6px;
@@ -2241,45 +2241,6 @@ window.processWhReview = async function(action) {
     }
 };
 
-window.renderSidebarCard = function() {
-    const subCard = document.getElementById('sidebar-footer');
-    if (!subCard || !window.CU) return;
-
-    const avColor = window.avatarColor(window.CU.name);
-    const avIni = window.getInitials(window.CU.name);
-    const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
-    const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">` : avIni;
-
-    const fullName = window.CU.name || 'User';
-    const isOwner = window.CU.role === 'owner';
-    
-    // Determine the correct pill badge
-    let badgeHtml = '';
-    if (window.CU.isPremium) {
-        badgeHtml = `<div class="sb-badge sb-badge-premium">👑 Premium</div>`;
-    } else if (isOwner) {
-        // Subtle, clickable upgrade pill
-        badgeHtml = `<div class="sb-badge sb-badge-upgrade" onclick="event.stopPropagation(); window.location.href='subscription.html'">✨ Upgrade</div>`;
-    } else {
-        const desigStr = window.CU.designation ? window.CU.designation : 'Staff';
-        badgeHtml = `<div class="sb-badge sb-badge-standard">${esc(desigStr)}</div>`;
-    }
-
-    // Clean, grid-aligned card injection
-    subCard.innerHTML = `
-    <div class="sb-prof-card" onclick="window.openProfileModal()">
-        <div class="sb-av-wrap">
-            <div class="sb-av" style="background:${avColor};color:white;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;">${avHtml}</div>
-        </div>
-        <div class="sb-info-wrap">
-            <div class="sb-name-text">${esc(fullName)}</div>
-            ${badgeHtml}
-        </div>
-        <svg class="sb-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; transition: all 0.2s;"><path d="M9 18l6-6-6-6"/></svg>
-    </div>
-    `;
-};
-
 // --- PROFILE EDITOR MODAL LOGIC ---
 window.currentEditField = null;
 window.pendingAvatarFile = null;
@@ -2808,81 +2769,39 @@ window.renderSidebarCard = function() {
     const subCard = document.getElementById('sidebar-footer');
     if (!subCard || !window.CU) return;
 
-    const isDesktop = window.innerWidth >= 769;
     const avColor = window.avatarColor(window.CU.name);
     const avIni = window.getInitials(window.CU.name);
     const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
-    const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">` : avIni;
-    
+    const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">` : avIni;
+
     const fullName = window.CU.name || 'User';
-    const roleStr = window.CU.role ? window.CU.role.charAt(0).toUpperCase() + window.CU.role.slice(1) : 'Staff';
-    const desigStr = window.CU.designation ? window.CU.designation : roleStr;
-
-    if (isDesktop) {
-            let rightSideHtml = '';
-            if (window.CU.isPremium) {
-                rightSideHtml = `
-                    <div class="sb-info-target" style="width: max-content; position: relative;">
-                        <div class="sb-name-full">${esc(fullName)}</div>
-                        <div class="sb-role-text">${esc(desigStr)}</div>
-                        <div class="glass-tt">
-                            <div class="tt-title">${esc(fullName)}</div>
-                            <div class="tt-role-pill">${esc(desigStr)}</div>
-                            <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                rightSideHtml = `
-                    <div class="sb-info-box">
-                        <div class="sb-name-target" style="width: max-content; position: relative;">
-                            <div class="sb-name-full">${esc(fullName)}</div>
-                            <div class="glass-tt">
-                                <div class="tt-name-wrap">
-                                    <div class="tt-title">${esc(fullName)}</div>
-                                    <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="sb-upgrade-target" onclick="event.stopPropagation(); window.location.href='subscription.html'" style="width: max-content; position: relative; margin-top: 4px;">
-                            <button class="sb-small-upgrade" style="pointer-events: none;">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2L15 9l7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg> Upgrade
-                            </button>
-                            <div class="glass-tt">
-                                <div class="tt-upg-wrap">
-                                    <div class="tt-feat-list">
-                                        <div class="tt-feat">Smart Analytics</div>
-                                        <div class="tt-feat">Multi-Warehouse</div>
-                                        <div class="tt-feat">24/7 Priority Help</div>
-                                        <div class="tt-feat">Auto Export</div>
-                                    </div>
-                                    <div class="tt-more-link">Explore premium &rarr;</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            subCard.innerHTML = `
-            <div class="sb-prof-card" onclick="window.openProfileModal()">
-                <div class="sb-av-target" style="width: max-content; position: relative;">
-                    <div class="sb-av" style="background:${avColor};color:white;">${avHtml}</div>
-                    <div class="glass-tt">
-                        <div class="tt-logo" style="background:${avColor};">${avHtml}</div>
-                    </div>
-                </div>
-                ${rightSideHtml}
-            </div>
-            `;
-        } else {
-        if (window.CU.isPremium) {
-            const expDate = window.CU.subscriptionExpiry ? new Date(window.CU.subscriptionExpiry).toLocaleDateString() : 'Lifetime'; 
-            subCard.innerHTML = `<div onclick="window.openProfileModal()" style="background:var(--bg-surface);border-radius:12px;padding:20px 16px;color:var(--tx-main);box-shadow:var(--shadow-sm);border:1px solid var(--bd-color);"><div style="font-weight:800;font-size:0.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;color:#FF9500;letter-spacing:-0.02em;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>${window.CU.subscriptionTier || 'Premium'}</div><div style="font-size:0.8rem;color:#86868B;font-weight:500;">Valid till ${expDate}</div></div>`; 
-        } else { 
-            subCard.innerHTML = `<div onclick="window.location.href='subscription.html'" style="background:linear-gradient(135deg,#FF9500,#E68600);border-radius:12px;padding:16px;color:white;cursor:pointer;box-shadow:var(--shadow-md);transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'"><div style="font-weight:800;font-size:1rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;letter-spacing:-0.02em;">👑 Upgrade Plan</div><div style="font-size:0.8rem;opacity:0.9;font-weight:600;">Unlock all features</div></div>`; 
-        }
+    const isOwner = window.CU.role === 'owner';
+    
+    // Determine the correct pill badge
+    let badgeHtml = '';
+    if (window.CU.isPremium) {
+        badgeHtml = `<div class="sb-badge sb-badge-premium">👑 Premium</div>`;
+    } else if (isOwner) {
+        // Subtle, clickable upgrade pill
+        badgeHtml = `<div class="sb-badge sb-badge-upgrade" onclick="event.stopPropagation(); window.location.href='subscription.html'">✨ Upgrade</div>`;
+    } else {
+        const desigStr = window.CU.designation ? window.CU.designation : 'Staff';
+        badgeHtml = `<div class="sb-badge sb-badge-standard">${esc(desigStr)}</div>`;
     }
+
+    // Clean, grid-aligned card injection
+    subCard.innerHTML = `
+    <div class="sb-prof-card" onclick="window.openProfileModal()">
+        <div class="sb-av-wrap">
+            <div class="sb-av" style="background:${avColor};color:white;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;">${avHtml}</div>
+        </div>
+        <div class="sb-info-wrap">
+            <div class="sb-name-text">${esc(fullName)}</div>
+            ${badgeHtml}
+        </div>
+        <svg class="sb-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; transition: all 0.2s;"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    `;
 };
 
 function setupUI() {
