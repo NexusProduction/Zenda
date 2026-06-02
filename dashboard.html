@@ -391,49 +391,54 @@
 }
 /* --- EDIT MODAL REFINEMENTS (Matching References) --- */
 .ppm-header { font-size: 1.25rem !important; font-weight: 800 !important; color: #111827 !important; margin-bottom: 24px !important; }
+/* Clean Input Fields with Split Colors (Matched to Image) */
 .ppm-field { 
     width: 100%; position: relative; margin-bottom: 16px !important; 
-    background: #FAFAFA !important; 
-    border: 1.5px solid #E5E7EB !important;
-    border-radius: 14px !important; height: 56px !important; 
+    background: #F4F7FF !important; /* Light blue background for the right side */
+    border: 1px solid #E5E7EB !important;
+    border-radius: 12px !important; height: 54px !important; 
     transition: all 0.2s ease !important; display: flex; align-items: center; 
+    overflow: hidden; 
 }
 .ppm-field.editing, .ppm-field:focus-within { 
-    background: #FFFFFF !important; 
+    background: #FFFFFF !important; /* Entire field turns white when typing */
     border-color: #0066FF !important; 
-    box-shadow: 0 4px 12px rgba(0, 102, 255, 0.1) !important; transform: translateY(-1px);
+    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1) !important; transform: translateY(-1px);
 }
 
-/* Add the Gap to the left icons */
+/* Left Icon Area - Always White */
 .ppm-input-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-left: 18px;  /* Pushes icon away from left wall */
-    padding-right: 12px;
-    color: #6B7280;
+    display: flex; align-items: center; justify-content: center;
+    width: 56px; height: 100%;
+    background: #FFFFFF !important; color: #6B7280;
+    flex-shrink: 0; z-index: 2;
 }
 
-/* Adjust Input Padding so text doesn't overlap icon */
+/* Text Input Area */
 .ppm-input { 
-    width: 100%; height: 100%; background: transparent; border: none; 
-    padding: 0 48px 0 0 !important; 
-    font-size: 1rem !important; font-weight: 600 !important; color: #111827 !important; outline: none; text-transform: capitalize;
+    flex: 1; height: 100% !important; 
+    background: transparent !important; border: none !important; 
+    padding: 0 54px 0 16px !important; 
+    font-size: 0.95rem !important; font-weight: 600 !important; color: #374151 !important; outline: none; 
 }
 .ppm-input:disabled { color: #6B7280 !important; -webkit-text-fill-color: #6B7280 !important; opacity: 1; }
 
+#ppm-name { text-transform: capitalize; }
+#ppm-email { text-transform: none; }
+
+/* Pencil Icon - Rounded Box */
 .ppm-field .ppm-pencil { 
-    position: absolute; right: 12px !important; top: 50%; transform: translateY(-50%); 
+    position: absolute; right: 10px !important; top: 50%; transform: translateY(-50%); 
     width: 32px !important; height: 32px !important; border-radius: 8px !important;
-    background: #FFFFFF !important; border: 1.5px solid #E5E7EB !important;
+    background: #FFFFFF !important; border: 1px solid #D1D5DB !important;
     color: #6B7280 !important; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; 
+    z-index: 10;
 }
 
 /* Hovering over ANY part of the field makes the pencil turn blue */
 .ppm-field:hover .ppm-pencil { 
     color: #0066FF !important; 
     border-color: #0066FF !important; 
-    background: #EFF6FF !important; 
 }
 .glass-tt::before { 
     content: ''; position: absolute; 
@@ -2774,6 +2779,7 @@ window.verifyProfileOTP = async function() {
     
     setBtnLoading('ppm-verify-btn', true);
 
+    // STEP 1: Old Email Verified -> Send OTP to New Email
     if (window.profileState.step === 1) {
         window.profileState.step = 2;
         window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
@@ -2789,23 +2795,28 @@ window.verifyProfileOTP = async function() {
             } 
         } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
         
-        // Smooth transition logic that prevents getting stuck
+        // Smooth transition logic
         const otpView = document.getElementById('ppm-view-otp');
         otpView.style.transition = 'opacity 0.2s ease';
         otpView.style.opacity = '0';
         
         setTimeout(() => {
             document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your NEW email address<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.profileState.newEmail}</b>`;
-            initOtpBoxes();
+            
+            // CLEAR THE OTP BOXES FOR STEP 2
+            Array.from(container.children).forEach(inp => inp.value = '');
             
             requestAnimationFrame(() => {
                 otpView.style.opacity = '1';
                 setBtnLoading('ppm-verify-btn', false, 'Verify Code');
                 window.showToast('Code sent to new email address!', 'info');
+                // Focus the first box again
+                setTimeout(() => { container.children[0].focus(); }, 100);
             });
         }, 250);
 
-    } else {
+    // STEP 2: New Email Verified -> Update Database
+    } else if (window.profileState.step === 2) {
         try {
             if (auth.currentUser) { 
                 try { await updateEmail(auth.currentUser, window.profileState.newEmail); } 
@@ -2813,20 +2824,25 @@ window.verifyProfileOTP = async function() {
             }
             await updateDoc(doc(db, 'users', window.CU.uid), { email: window.profileState.newEmail });
             
-            const owner = allStaff.find(s => s.role === 'owner');
-            if (owner && owner.uid !== window.CU.uid) { 
-                try { await addDoc(collection(db, 'users', owner.uid, 'notifications'), { type: 'general', message: `${window.CU.name} updated their email address to: ${window.profileState.newEmail}`, createdAt: Date.now(), read: false, status: 'unread' }); } catch(err) {} 
-            }
-            
+            // Update Local Data immediately
             window.CU.email = window.profileState.newEmail;
+            
+            // Trigger Success Screen
             window.showProfileSuccess();
+            
+            // Visually update the email in the input box so the user sees the change
+            const emailInput = document.getElementById('ppm-email');
+            if(emailInput) emailInput.value = window.profileState.newEmail;
+            
         } catch(e) { 
             if(e.message && e.message.includes('requires-recent-login')) { 
                 window.showToast('Please sign out and sign back in to change your email.', 'error'); 
             } else { 
                 window.showToast('Failed to update email: ' + e.message, 'error'); 
             } 
-        } finally { setBtnLoading('ppm-verify-btn', false, 'Verify Code'); }
+        } finally { 
+            setBtnLoading('ppm-verify-btn', false, 'Verify Code'); 
+        }
     }
 };
 window.openDeleteTaskModal = function(id, title) { 
