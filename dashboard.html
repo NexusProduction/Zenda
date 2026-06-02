@@ -301,7 +301,7 @@
 
 .sb-prof-card {
     display: flex; align-items: center; gap: 12px;
-    padding: 12px 16px; /* Slightly more breathing room */
+    padding: 12px 16px; 
     border-radius: 16px;
     background: #FFFFFF; 
     border: 1px solid #E5E5EA;
@@ -319,7 +319,7 @@
 
 /* Bigger, bolder name text */
 .sb-name-text {
-    font-size: 1.15rem; 
+    font-size: 1.1rem; /* Enlarged Text */
     font-weight: 800; 
     color: #111827;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -327,16 +327,19 @@
     letter-spacing: -0.01em;
 }
 
-/* Sleek Badge System */
+/* Sleek Badge System (Square with Border Radius) */
 .sb-badge {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 5px 12px; border-radius: 20px;
-    font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
+    padding: 4px 10px; 
+    border-radius: 8px; /* SQUARE with rounded corners, NOT capsule */
+    font-size: 0.75rem; /* Normal text size */
+    font-weight: 800; text-transform: uppercase;
     letter-spacing: 0.04em; width: fit-content; transition: all 0.2s ease;
 }
 .sb-badge-premium { background: #EEF2FF; color: #4F46E5; }
+.sb-badge-standard { background: #F3F4F6; color: #4B5563; }
 
-/* The Vibrant Upgrade Button from the screenshot */
+/* The Vibrant Upgrade Button */
 .sb-badge-upgrade { 
     background: linear-gradient(135deg, #F59E0B, #EA580C); 
     color: #FFFFFF; 
@@ -345,9 +348,9 @@
     text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 .sb-badge-upgrade:hover { transform: scale(1.04); box-shadow: 0 6px 16px rgba(234, 88, 12, 0.45); }
-.sb-badge-standard { background: #F3F4F6; color: #4B5563; }
 
-/* Filling the empty right side with a circular action button */
+
+/* Filling the empty right side with a Settings Gear */
 .sb-action-wrap {
     width: 36px; height: 36px; border-radius: 50%;
     background: #F3F4F6; display: flex; align-items: center; justify-content: center;
@@ -359,14 +362,19 @@
 }
 .sb-prof-card:hover .sb-action-wrap svg { stroke: #0066FF; }
 
-/* Polished Logo Pop-up */
+/* Polished Logo Pop-up with Double-Border Effect */
 .tt-logo { 
-    width: 140px; height: 140px; /* Slightly smaller for elegance */
-    border-radius: 24px; 
-    box-shadow: 0 12px 32px rgba(0,0,0,0.12); /* Deeper, softer shadow */
-    border: 4px solid #FFFFFF; /* White photo-border effect */
+    width: 140px; height: 140px; 
+    border-radius: 18px; 
+    box-shadow: 0 12px 32px rgba(0,0,0,0.12); 
+    border: 1px solid #E5E5EA; /* Thin 1px outer border */
+    padding: 4px; /* Creates the white gap (inner border) */
+    background: #FFFFFF;
 }
-.tt-logo img { border-radius: 20px; } /* Match inner image to outer border */
+.tt-logo img { 
+    border-radius: 14px; /* Inner radius */
+    width: 100%; height: 100%; object-fit: cover; 
+}
 
 /* --- EDIT MODAL REFINEMENTS (Matching References) --- */
 .ppm-header { font-size: 1.25rem !important; font-weight: 800 !important; color: #111827 !important; margin-bottom: 24px !important; }
@@ -2804,45 +2812,84 @@ window.renderSidebarCard = function() {
     const avColor = window.avatarColor(window.CU.name);
     const avIni = window.getInitials(window.CU.name);
     const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
-    const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">` : avIni;
+    const avHtml = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">` : avIni;
 
     const fullName = window.CU.name || 'User';
     const isOwner = window.CU.role === 'owner';
+    const desigStr = window.CU.designation ? window.CU.designation : (window.CU.role ? window.CU.role.charAt(0).toUpperCase() + window.CU.role.slice(1) : 'Staff');
     
-    // Determine the correct pill badge
-    let badgeHtml = '';
-    if (window.CU.isPremium) {
-        badgeHtml = `<div class="sb-badge sb-badge-premium">👑 Premium</div>`;
-    } else if (isOwner) {
-        // Vibrant, glowing upgrade pill matching your screenshot
-        badgeHtml = `<div class="sb-badge sb-badge-upgrade" onclick="event.stopPropagation(); window.location.href='subscription.html'">👑 Upgrade</div>`;
+    let rightSideHtml = '';
+    
+    // The new Settings Gear icon to fill the empty space
+    const actionIcon = `
+        <div class="sb-action-wrap" title="Profile Settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: stroke 0.2s;">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </div>
+    `;
+
+    if (window.CU.isPremium || (!isOwner)) {
+        // --- UPGRADED / STAFF VIEW ---
+        // Hovering over the wrapper triggers Name + Email + Designation
+        let badgeHtml = window.CU.isPremium ? `<div class="sb-badge sb-badge-premium">👑 Premium</div>` : `<div class="sb-badge sb-badge-standard">${esc(desigStr)}</div>`;
+        
+        rightSideHtml = `
+            <div class="sb-info-wrap">
+                <div class="sb-info-target" style="width: max-content; position: relative;">
+                    <div class="sb-name-text">${esc(fullName)}</div>
+                    ${badgeHtml}
+                    <div class="glass-tt">
+                        <div class="tt-title">${esc(fullName)}</div>
+                        <div class="tt-role-pill">${esc(desigStr)}</div>
+                        <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
+                    </div>
+                </div>
+            </div>
+            ${actionIcon}
+        `;
     } else {
-        const desigStr = window.CU.designation ? window.CU.designation : 'Staff';
-        badgeHtml = `<div class="sb-badge sb-badge-standard">${esc(desigStr)}</div>`;
+        // --- FREE OWNER VIEW ---
+        // Separate targets: Name triggers Name+Email. Upgrade triggers Features.
+        rightSideHtml = `
+            <div class="sb-info-wrap">
+                <div class="sb-name-target" style="width: max-content; position: relative;">
+                    <div class="sb-name-text">${esc(fullName)}</div>
+                    <div class="glass-tt">
+                        <div class="tt-name-wrap">
+                            <div class="tt-title">${esc(fullName)}</div>
+                            <div class="tt-sub">${esc(window.CU.email || 'No email')}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="sb-upgrade-target" onclick="event.stopPropagation(); window.location.href='subscription.html'" style="width: max-content; position: relative; margin-top: 2px;">
+                    <div class="sb-badge sb-badge-upgrade">👑 Upgrade</div>
+                    <div class="glass-tt">
+                        <div class="tt-upg-wrap">
+                            <div class="tt-feat-list">
+                                <div class="tt-feat">Smart Analytics</div>
+                                <div class="tt-feat">Multi-Warehouse</div>
+                                <div class="tt-feat">24/7 Priority Help</div>
+                                <div class="tt-feat">Auto Export</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            ${actionIcon}
+        `;
     }
 
-    // Clean, grid-aligned card injection with the new right-side action button
     subCard.innerHTML = `
     <div class="sb-prof-card" onclick="window.openProfileModal()">
         <div class="sb-av-target">
-            <div class="sb-av" style="background:${avColor};color:white;width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;border-radius:14px;">${avHtml}</div>
+            <div class="sb-av" style="background:${avColor};color:white;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;border-radius:12px;">${avHtml}</div>
             <div class="glass-tt">
                 <div class="tt-logo" style="background:${avColor};">${avHtml}</div>
             </div>
         </div>
-        
-        <div class="sb-info-wrap">
-            <div class="sb-name-text">${esc(fullName)}</div>
-            ${badgeHtml}
-        </div>
-        
-        <!-- The new circular edit button fills the empty right side perfectly -->
-        <div class="sb-action-wrap" title="Edit Profile">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: stroke 0.2s;">
-                <path d="M12 20h9"></path>
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-            </svg>
-        </div>
+        ${rightSideHtml}
     </div>
     `;
 };
