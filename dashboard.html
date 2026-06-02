@@ -637,21 +637,38 @@
 }
 
 /* --- SWIPE GLITCH FIX (Absolute Positioning) --- */
+/* --- DYNAMIC MODAL HEIGHT & SWIPE FIX --- */
 .ppm-slider-track {
-    position: relative; 
-    width: 100%; 
-    height: 420px; /* THE FIX: Increased from 240px to fit the new layout */ 
-    overflow: hidden; 
-    display: block; 
-    transform: none !important; 
-    transition: none !important;
+    position: relative; width: 100%; overflow: hidden; display: block;
+    transition: height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
 .ppm-view {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    width: 100%; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
 }
-#ppm-view-edit { transform: translateX(0); }
-#ppm-view-otp { transform: translateX(100%); }
+
+/* By making the active view 'relative', the modal naturally shrinks/grows to fit it! */
+.ppm-view.active-view {
+    position: relative; transform: translateX(0); opacity: 1; pointer-events: auto;
+}
+.ppm-view.hidden-right {
+    position: absolute; top: 0; left: 0; transform: translateX(100%); opacity: 0; pointer-events: none;
+}
+.ppm-view.hidden-left {
+    position: absolute; top: 0; left: 0; transform: translateX(-100%); opacity: 0; pointer-events: none;
+}
+
+/* --- EXPANDING ACTIONS (Hidden until edit) --- */
+.ppm-actions { 
+    display: flex !important; width: 100%; gap: 12px !important; 
+    height: 0; opacity: 0; visibility: hidden; margin-top: 0 !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ppm-actions.visible {
+    height: 52px; /* Grows to exact button height */
+    opacity: 1; visibility: visible;
+    margin-top: 24px !important; /* Pushes the modal taller automatically */
+}
 
 /* --- MOBILE BOTTOM NAV FIX --- */
 @media (max-width: 768px) {
@@ -827,10 +844,15 @@
         <div class="ppm-view" id="ppm-view-edit">
           <div class="ppm-header">Edit Profile</div>
           <div class="ppm-av-wrap" id="ppm-av-wrap">
-            <div class="ppm-av" id="ppm-av">Z</div>
-            <div class="ppm-pencil pen-trigger" onclick="window.triggerAvatarUpload()" style="bottom: 0; right: 0; top: auto; transform: none; background: #FFFFFF; border: 1px solid #E5E5EA; border-radius: 50%; padding: 6px; box-shadow: 0 4px 8px rgba(0,0,0,0.05);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1C1E" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></div>
-            <input type="file" id="ppm-av-input" hidden accept="image/*" onchange="window.handleAvatarSelected(event)">
-          </div>
+  <div style="position: relative; display: inline-block;">
+    <div class="ppm-av" id="ppm-av">Z</div>
+    <!-- Precisely positioned avatar edit button -->
+    <div class="pen-trigger" onclick="window.triggerAvatarUpload()" style="position: absolute; bottom: -4px; right: -4px; width: 32px; height: 32px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid #E5E7EB; box-shadow: 0 4px 12px rgba(0,0,0,0.08); color: #6B7280; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#0066FF'; this.style.borderColor='#0066FF'; this.style.background='#EFF6FF';" onmouseout="this.style.color='#6B7280'; this.style.borderColor='#E5E7EB'; this.style.background='#FFFFFF';">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+    </div>
+  </div>
+  <input type="file" id="ppm-av-input" hidden accept="image/*" onchange="window.handleAvatarSelected(event)">
+</div>
           
           <div class="ppm-field" id="field-name">
   <input type="text" id="ppm-name" class="ppm-input" disabled oninput="window.validateProfileInputs()" maxlength="10">
@@ -2358,16 +2380,23 @@ window.openProfileModal = function() {
     document.getElementById('ppm-name').value = window.CU.name;
     document.getElementById('ppm-email').value = window.CU.email;
     
-    // Reset views
-    document.getElementById('ppm-view-edit').style.transform = 'translateX(0)';
-    document.getElementById('ppm-view-otp').style.transform = 'translateX(100%)';
+    // Set dynamic sizing classes
+    document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
+    // ... (inside step === 1 of verifyProfileOTP)
+        // Slide out and back in
+        document.getElementById('ppm-view-otp').className = 'ppm-view hidden-right';
+        
+        setTimeout(() => {
+            document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your NEW email address<br><b style="color:#1C1C1E;">${window.profileState.newEmail}</b>`;
+            initOtpBoxes();
+            document.getElementById('ppm-view-otp').className = 'ppm-view active-view';
+            setBtnLoading('ppm-verify-btn', false, 'Verify Code');
+            window.showToast('Code sent to new email address!', 'info');
+        }, 400);
+    document.getElementById('ppm-actions').classList.remove('visible'); // Hide buttons
     
-    // THE FIX: Set "Next" text to "Save" and disable it initially
     const nextBtn = document.getElementById('ppm-next-btn');
-    if (nextBtn) {
-        nextBtn.textContent = 'Save Changes';
-        nextBtn.disabled = true;
-    }
+    if (nextBtn) { nextBtn.textContent = 'Save Changes'; nextBtn.disabled = true; }
     
     document.getElementById('premium-prof-overlay').classList.add('open');
 };
@@ -2476,30 +2505,35 @@ window.enableProfileEdit = function(field) {
 };
 
 window.cancelProfileEdit = function() {
+    if (!window.currentEditField && !window.pendingAvatarFile) {
+        window.closeProfileModal();
+        return;
+    }
+
     window.currentEditField = null;
     window.pendingAvatarFile = null;
     window.profileState = { newEmail: '', step: 0 };
     
     document.querySelectorAll('.pen-trigger').forEach(p => p.style.display = 'flex');
-    document.getElementById('ppm-actions').classList.remove('visible');
     
-    // Slide back to view 1
-    document.getElementById('ppm-slider-track').style.transform = 'translateX(0)';
+    // Slide back and shrink height
+    document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
+    document.getElementById('ppm-view-otp').className = 'ppm-view hidden-right';
+    document.getElementById('ppm-actions').classList.remove('visible'); // Hide buttons
     
     ['name', 'email'].forEach(f => {
         const input = document.getElementById('ppm-' + f);
-        input.value = window.CU[f] || '';
-        input.disabled = true;
+        if(input) { input.value = window.CU[f] || ''; input.disabled = true; }
         document.getElementById('field-' + f).classList.remove('editing');
     });
     
     const avColor = window.avatarColor(window.CU.name);
     const avIni = window.getInitials(window.CU.name);
     const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
-    document.getElementById('ppm-av').innerHTML = src ? `<img src="${src}">` : avIni;
+    document.getElementById('ppm-av').innerHTML = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:22px;">` : avIni;
     
-    setBtnLoading('ppm-next-btn', false, 'Next');
-    setBtnLoading('ppm-verify-btn', false, 'Verify Code');
+    const nextBtn = document.getElementById('ppm-next-btn');
+    if (nextBtn) { setBtnLoading('ppm-next-btn', false, 'Save Changes'); nextBtn.disabled = true; }
 };
 
 window.validateProfileInputs = function() {
@@ -2623,11 +2657,14 @@ window.handleProfileNext = async function() {
             }
         } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
 
+        // ... (inside the email block in handleProfileNext)
         // Progressive Disclosure Slide
         document.getElementById('ppm-otp-msg').innerHTML = `Enter the 6-digit code sent to your current email<br><b style="color:#1C1C1E;">${window.CU.email}</b>`;
         initOtpBoxes();
-        document.getElementById('ppm-view-edit').style.transform = 'translateX(-100%)';
-  document.getElementById('ppm-view-otp').style.transform = 'translateX(0)';
+        
+        // This removes the extra padding immediately by switching the relative/absolute states!
+        document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
+        document.getElementById('ppm-view-otp').className = 'ppm-view active-view';
         
         setBtnLoading(btnId, false, 'Next');
     }
