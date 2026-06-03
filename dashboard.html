@@ -2684,21 +2684,29 @@ window.enableProfileEdit = function(field) {
 };
 
 window.cancelProfileEdit = function() {
+    // Smart Cancel: If they aren't editing anything, close the modal entirely!
     if (!window.currentEditField && !window.pendingAvatarFile) {
         window.closeProfileModal();
         return;
     }
 
+    // Otherwise, abort the current edit and reset the fields
     window.currentEditField = null;
     window.pendingAvatarFile = null;
     window.profileState = { newEmail: '', step: 0 };
     
     document.querySelectorAll('.pen-trigger').forEach(p => p.style.display = 'flex');
     
-    // Slide back and instantly shrink the button height back to 0
+    // THE FIX: Reset all views back to initial positions cleanly
     document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
     document.getElementById('ppm-view-otp').className = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right'; // Push pwd view away
     document.getElementById('ppm-actions').classList.remove('visible'); 
+    
+    // Clear password fields and validation UI
+    const npwd = document.getElementById('ppm-new-pwd'); if(npwd) npwd.value = '';
+    const cpwd = document.getElementById('ppm-confirm-pwd'); if(cpwd) cpwd.value = '';
+    if(window.validatePasswordStrength) window.validatePasswordStrength();
     
     ['name', 'email'].forEach(f => {
         const input = document.getElementById('ppm-' + f);
@@ -2711,8 +2719,12 @@ window.cancelProfileEdit = function() {
     const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
     document.getElementById('ppm-av').innerHTML = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:22px;">` : avIni;
     
+    // Re-disable the save button
     const nextBtn = document.getElementById('ppm-next-btn');
-    if (nextBtn) { setBtnLoading('ppm-next-btn', false, 'Save Changes'); nextBtn.disabled = true; }
+    if (nextBtn) {
+        setBtnLoading('ppm-next-btn', false, 'Save Changes');
+        nextBtn.disabled = true;
+    }
 };
 
 window.validateProfileInputs = function() {
