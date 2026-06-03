@@ -1102,8 +1102,8 @@
         <div id="otp-error-msg" style="color: #DC2626; font-size: 0.85rem; font-weight: 700; text-align: center; min-height: 20px; margin-bottom: 16px; opacity: 0; transition: opacity 0.2s ease;"></div>
         
         <div style="display:flex; gap:12px;">
-          <button class="ppm-btn" style="flex:1; background: #FFFFFF; border: 1.5px solid #E5E7EB; color: #4B5563; font-weight: 700; border-radius: 12px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#F9FAFB';" onmouseout="this.style.background='#FFFFFF';" onclick="window.cancelProfileEdit()">Cancel</button>
-          <button class="ppm-btn" style="flex:1; background: #0066FF; border: none; color: #FFFFFF; font-weight: 700; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2);" id="ppm-verify-btn" onclick="window.verifyProfileOTP()">Verify Code</button>
+          <button type="button" class="ppm-btn" style="flex:1; background: #FFFFFF; border: 1.5px solid #E5E7EB; color: #4B5563; font-weight: 700; border-radius: 12px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#F9FAFB';" onmouseout="this.style.background='#FFFFFF';" onclick="window.backToEditFromOTP()">Cancel</button>
+          <button type="button" class="ppm-btn" style="flex:1; background: #0066FF; border: none; color: #FFFFFF; font-weight: 700; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2);" id="ppm-verify-btn" onclick="window.verifyProfileOTP()">Verify Code</button>
         </div>
       </div>
 
@@ -1141,6 +1141,43 @@
           <button type="button" class="ppm-btn ppm-btn-primary" id="ppm-save-pwd-btn" onclick="window.saveNewPassword()" disabled>Save Password</button>
         </div>
       </div>
+      window.backToEditFromOTP = function() {
+    // 1. Force ALL duplicated views to slide back safely
+    document.querySelectorAll('#ppm-view-otp').forEach(el => el.className = 'ppm-view hidden-right');
+    document.querySelectorAll('#ppm-view-edit').forEach(el => el.className = 'ppm-view active-view');
+    
+    // 2. Clear ALL OTP boxes & disable ALL verify buttons
+    document.querySelectorAll('#otp-inputs-container').forEach(container => {
+        Array.from(container.children).forEach(inp => inp.value = '');
+    });
+    document.querySelectorAll('#ppm-verify-btn').forEach(btn => {
+        btn.disabled = true;
+        btn.textContent = 'Verify Code';
+        btn.style.background = '#0066FF';
+    });
+    
+    // 3. Clear any error messages
+    document.querySelectorAll('#otp-error-msg').forEach(msg => msg.style.opacity = '0');
+    
+    // 4. Bring ALL Change Password buttons back with a pop
+    document.querySelectorAll('#change-pwd-container').forEach(container => container.classList.remove('hidden-pop'));
+    
+    // 5. Reset the inputs and hide actions safely
+    ['name', 'email'].forEach(f => {
+        document.querySelectorAll('#ppm-' + f).forEach(input => {
+            if(window.CU && window.CU[f]) input.value = window.CU[f]; 
+            input.disabled = true;
+        });
+        document.querySelectorAll('#field-' + f).forEach(fieldEl => fieldEl.classList.remove('editing'));
+    });
+    
+    document.querySelectorAll('#ppm-actions').forEach(el => el.classList.remove('visible')); 
+    document.querySelectorAll('#ppm-next-btn').forEach(btn => btn.disabled = true);
+    
+    // 6. Reset state variables
+    window.currentEditField = null;
+    window.profileState = { newEmail: '', step: 0 };
+};
       <!-- VIEW 4: CONTACT SUPPORT (Slides from Left) -->
       <div class="ppm-view hidden-left" id="ppm-view-contact">
         <div style="text-align: center; margin-bottom: 24px; padding-top: 10px;">
