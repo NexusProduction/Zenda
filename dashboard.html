@@ -1102,7 +1102,7 @@
         <div id="otp-error-msg" style="color: #DC2626; font-size: 0.85rem; font-weight: 700; text-align: center; min-height: 20px; margin-bottom: 16px; opacity: 0; transition: opacity 0.2s ease;"></div>
         
         <div style="display:flex; gap:12px;">
-          <button class="ppm-btn" style="flex:1; background: #FFFFFF; border: 1.5px solid #E5E7EB; color: #4B5563; font-weight: 700; border-radius: 12px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#F9FAFB';" onmouseout="this.style.background='#FFFFFF';" onclick="window.cancelProfileEdit()">Cancel</button>
+          <button class="ppm-btn" style="flex:1; background: #FFFFFF; border: 1.5px solid #E5E7EB; color: #4B5563; font-weight: 700; border-radius: 12px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#F9FAFB';" onmouseout="this.style.background='#FFFFFF';" onclick="window.cancelOtpView()">Cancel</button>
           <button class="ppm-btn" style="flex:1; background: #0066FF; border: none; color: #FFFFFF; font-weight: 700; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2);" id="ppm-verify-btn" onclick="window.verifyProfileOTP()">Verify Code</button>
         </div>
       </div>
@@ -3229,6 +3229,35 @@ window.backToEditFromPassword = function() {
     
     const pwdContainer = document.getElementById('change-pwd-container');
     if(pwdContainer) pwdContainer.classList.remove('hidden-pop');
+};
+window.cancelOtpView = function() {
+    // Kill the pending OTP / password-change operation entirely
+    window.tempEmailOTP = '';
+    window.profileState  = { newEmail: '', step: 0 };
+
+    // Wipe all OTP input boxes
+    const container = document.getElementById('otp-inputs-container');
+    if (container) Array.from(container.children).forEach(inp => inp.value = '');
+
+    // Clear the inline error message
+    const errorMsg = document.getElementById('otp-error-msg');
+    if (errorMsg) { errorMsg.textContent = ''; errorMsg.style.opacity = '0'; }
+
+    // If this was triggered from an email-change OTP, also reset the email field
+    if (window.currentEditField === 'email') {
+        const emailInput = document.getElementById('ppm-email');
+        if (emailInput) { emailInput.value = window.CU.email || ''; emailInput.disabled = true; }
+        const fieldEl = document.getElementById('field-email');
+        if (fieldEl) fieldEl.classList.remove('editing');
+        window.currentEditField = null;
+        document.querySelectorAll('.pen-trigger').forEach(p => p.style.display = 'flex');
+        const actionsEl = document.getElementById('ppm-actions');
+        if (actionsEl) actionsEl.classList.remove('visible');
+    }
+
+    // Slide smoothly back to Edit Profile — do NOT close the modal
+    document.getElementById('ppm-view-otp').className  = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
 };
 window.validatePasswordStrength = function() {
     const pwd1 = document.getElementById('ppm-new-pwd').value;
