@@ -552,16 +552,23 @@
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease !important;
 }
 
-/* Change Password Pop Animation */
+/* --- PREMIUM ACTION BAR ROW --- */
 .cpwd-wrap {
-    display: flex; justify-content: flex-end; 
-    height: 34px; margin-bottom: 20px; 
-    opacity: 1; transform: scale(1); 
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    transform-origin: right center;
+    display: flex; 
+    height: 38px; 
+    margin-bottom: 16px; 
+    opacity: 1; 
+    transform: scale(1); 
+    transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+    transform-origin: center center;
+    width: 100%;
 }
 .cpwd-wrap.hidden-pop {
-    height: 0; margin-bottom: 0; opacity: 0; transform: scale(0.8); pointer-events: none;
+    height: 0 !important; 
+    margin-bottom: 0 !important; 
+    opacity: 0 !important; 
+    transform: scale(0.9) !important; 
+    pointer-events: none !important;
 }
 
 /* Clean Pill Button */
@@ -1067,15 +1074,12 @@
             <div class="ppm-pencil pen-trigger" id="pen-email" onclick="window.enableProfileEdit('email')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></div>
           </div>
           
-          <!-- Clean Change Password Pill with Pop Animation Wrapper -->
           <div id="change-pwd-container" class="cpwd-wrap" style="justify-content: space-between; align-items: center;">
-              <!-- Left: Contact Us Button -->
-              <button type="button" onclick="window.openContactView()" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; color: #4B5563; font-weight: 800; cursor: pointer; transition: all 0.2s ease; padding: 8px 16px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;" onmouseover="this.style.background='#EEF2FF'; this.style.borderColor='#CBD5E1'; this.style.color='#0066FF';" onmouseout="this.style.background='#F8FAFC'; this.style.borderColor='#E2E8F0'; this.style.color='#4B5563';">
+              <button type="button" onclick="window.openContactView()" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; color: #0066FF; font-weight: 800; cursor: pointer; transition: all 0.2s ease; padding: 8px 16px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;" onmouseover="this.style.background='#EEF2FF'; this.style.borderColor='#CBD5E1';" onmouseout="this.style.background='#F8FAFC'; this.style.borderColor='#E2E8F0';">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                   Contact Us
               </button>
 
-              <!-- Right: Change Password Button -->
               <button type="button" id="change-pwd-link" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; color: #0066FF; font-weight: 800; cursor: pointer; transition: all 0.2s ease; padding: 8px 16px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;" onmouseover="this.style.background='#EEF2FF'; this.style.borderColor='#CBD5E1';" onmouseout="this.style.background='#F8FAFC'; this.style.borderColor='#E2E8F0';" onclick="window.initiatePasswordChange(this)">
                   Change Password?
               </button>
@@ -1132,10 +1136,9 @@
             <div class="pwd-req-item" id="req-match"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Passwords match</div>
         </div>
         
-        <!-- Standardized Actions -->
         <div class="ppm-actions visible">
-          <button class="ppm-btn ppm-btn-secondary" onclick="window.cancelProfileEdit()">Cancel</button>
-          <button class="ppm-btn ppm-btn-primary" id="ppm-save-pwd-btn" onclick="window.saveNewPassword()" disabled>Save Password</button>
+          <button type="button" class="ppm-btn ppm-btn-secondary" onclick="window.backToEditFromPassword()">Cancel</button>
+          <button type="button" class="ppm-btn ppm-btn-primary" id="ppm-save-pwd-btn" onclick="window.saveNewPassword()" disabled>Save Password</button>
         </div>
       </div>
       <!-- VIEW 4: CONTACT SUPPORT (Slides from Left) -->
@@ -3190,6 +3193,19 @@ window.openContactView = function() {
 window.closeContactView = function() {
     document.getElementById('ppm-view-contact').className = 'ppm-view hidden-left';
     document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
+};
+
+window.backToEditFromPassword = function() {
+    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
+    
+    // Clear temporary inputs safely
+    const npwd = document.getElementById('ppm-new-pwd'); if(npwd) npwd.value = '';
+    const cpwd = document.getElementById('ppm-confirm-pwd'); if(cpwd) cpwd.value = '';
+    if(window.validatePasswordStrength) window.validatePasswordStrength();
+    
+    const pwdContainer = document.getElementById('change-pwd-container');
+    if(pwdContainer) pwdContainer.classList.remove('hidden-pop');
 };
 window.validatePasswordStrength = function() {
     const pwd1 = document.getElementById('ppm-new-pwd').value;
