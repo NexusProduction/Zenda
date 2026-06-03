@@ -312,7 +312,7 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-      /* --- PASSWORD VALIDATION TEXT --- */
+/* --- PASSWORD VALIDATION TEXT --- */
 .pwd-req-list {
     margin-top: 12px; margin-bottom: 24px; padding: 0 8px;
     display: flex; flex-direction: column; gap: 6px; text-align: left;
@@ -2860,28 +2860,20 @@ window.handleProfileNext = async function() {
         setBtnLoading(btnId, false, 'Next');
     }
 };
-window.initiatePasswordChange = async function() {
+window.initiatePasswordChange = function() {
     window.profileState = { step: 3 }; 
-    window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
     
-    try {
-        if(typeof emailjs !== 'undefined') {
-            await emailjs.send("service_dc7ge9b", "template_4turj9r", { 
-                to_email: window.CU.email, 
-                to_name: window.CU.name, 
-                otp_code: window.tempEmailOTP, 
-                company_name: window.CU.companyName || 'Zenda' 
-            }, "dg8t6B0d-DhPa3Tl6");
-        }
-    } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
+    // Force inputs to wipe completely clean to prevent browser autofill UI bugs
+    const newPwdInput = document.getElementById('ppm-new-pwd');
+    const confPwdInput = document.getElementById('ppm-confirm-pwd');
+    if (newPwdInput) newPwdInput.value = '';
+    if (confPwdInput) confPwdInput.value = '';
+    if (window.validatePasswordStrength) window.validatePasswordStrength();
 
-    document.getElementById('ppm-otp-msg').innerHTML = `Enter the 6-digit code sent to your current email<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.CU.email}</b>`;
-    initOtpBoxes();
-    
-    // THE FIX: Instant Slide animation
+    // Instant Slide animation - skips OTP completely
     document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
-    document.getElementById('ppm-view-otp').className = 'ppm-view active-view';
-    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-otp').className = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-password').className = 'ppm-view active-view';
 };
 window.validatePasswordStrength = function() {
     const pwd1 = document.getElementById('ppm-new-pwd').value;
@@ -2901,17 +2893,23 @@ window.validatePasswordStrength = function() {
     const errorIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
 
     // Update UI visually
-    if(isLength) { elLength.className = 'pwd-req-item valid'; elLength.innerHTML = successIcon + ' 8 to 20 characters'; } 
-    else { elLength.className = 'pwd-req-item'; elLength.innerHTML = errorIcon + ' 8 to 20 characters'; }
+    if(elLength) {
+        if(isLength) { elLength.className = 'pwd-req-item valid'; elLength.innerHTML = successIcon + ' 8 to 20 characters'; } 
+        else { elLength.className = 'pwd-req-item'; elLength.innerHTML = errorIcon + ' 8 to 20 characters'; }
+    }
 
-    if(isComplex) { elComplex.className = 'pwd-req-item valid'; elComplex.innerHTML = successIcon + ' Letters, numbers, and symbols'; } 
-    else { elComplex.className = 'pwd-req-item'; elComplex.innerHTML = errorIcon + ' Letters, numbers, and symbols'; }
+    if(elComplex) {
+        if(isComplex) { elComplex.className = 'pwd-req-item valid'; elComplex.innerHTML = successIcon + ' Letters, numbers, and symbols'; } 
+        else { elComplex.className = 'pwd-req-item'; elComplex.innerHTML = errorIcon + ' Letters, numbers, and symbols'; }
+    }
 
-    if(isMatch) { elMatch.className = 'pwd-req-item valid'; elMatch.innerHTML = successIcon + ' Passwords match'; } 
-    else { elMatch.className = 'pwd-req-item'; elMatch.innerHTML = errorIcon + ' Passwords match'; }
+    if(elMatch) {
+        if(isMatch) { elMatch.className = 'pwd-req-item valid'; elMatch.innerHTML = successIcon + ' Passwords match'; } 
+        else { elMatch.className = 'pwd-req-item'; elMatch.innerHTML = errorIcon + ' Passwords match'; }
+    }
 
     // Activate Button ONLY if all pass
-    btn.disabled = !(isLength && isComplex && isMatch);
+    if (btn) btn.disabled = !(isLength && isComplex && isMatch);
 };
 window.saveNewPassword = async function() {
     const newPwd = document.getElementById('ppm-new-pwd').value.trim();
