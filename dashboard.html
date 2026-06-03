@@ -743,19 +743,42 @@
 
     .loader-spinner { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #FFFFFF; border-radius: 50%; animation: spin 0.8s linear infinite; }
     
-    /* Success Overlay - Turns Green */
-.ppm-success-overlay { position: absolute; inset: 0; background: #FFFFFF; border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; opacity: 0; visibility: hidden; transition: opacity 0.3s, background 0.4s ease 0.2s; }
-.ppm-success-overlay.active { opacity: 1; visibility: visible; background: #34C759; /* Smoothly transitions to Green */ }
-
-/* The white tick inside */
-.apple-tick { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; transform: scale(0); transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s; }
-.ppm-success-overlay.active .apple-tick { transform: scale(1); }
-.apple-tick svg { stroke-dasharray: 50; stroke-dashoffset: 50; stroke: #FFFFFF; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; fill: none; transition: stroke-dashoffset 0.4s ease 0.4s; }
-.ppm-success-overlay.active .apple-tick svg { stroke-dashoffset: 0; }
-
-/* Success text turning white */
-.ppm-success-text { margin-top:16px; font-weight:800; font-size:1.35rem; color:#1C1C1E; letter-spacing:-0.02em; transition: color 0.4s ease 0.2s; }
-.ppm-success-overlay.active .ppm-success-text { color: #FFFFFF; }
+/* --- SUCCESS OVERLAY (Apple Pay Style) --- */
+    .ppm-success-overlay { 
+      position: absolute; inset: 0; 
+      background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px);
+      border-radius: 24px; display: flex; flex-direction: column; 
+      align-items: center; justify-content: center; 
+      z-index: 1000; /* Forces it to sit above everything */
+      opacity: 0; visibility: hidden; 
+      transition: opacity 0.3s ease; 
+    }
+    .ppm-success-overlay.active { opacity: 1; visibility: visible; }
+    
+    /* Green Circle Pop */
+    .apple-tick { 
+      width: 76px; height: 76px; border-radius: 50%; background: #34C759; 
+      display: flex; align-items: center; justify-content: center; 
+      transform: scale(0); transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s; 
+      box-shadow: 0 8px 24px rgba(52, 199, 89, 0.35);
+    }
+    .ppm-success-overlay.active .apple-tick { transform: scale(1); }
+    
+    /* Checkmark Draw */
+    .apple-tick svg { 
+      stroke-dasharray: 50; stroke-dashoffset: 50; stroke: #FFFFFF; 
+      stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; fill: none; 
+      transition: stroke-dashoffset 0.4s ease 0.4s; 
+    }
+    .ppm-success-overlay.active .apple-tick svg { stroke-dashoffset: 0; }
+    
+    /* Text Slide Up */
+    .ppm-success-text {
+      margin-top: 20px; font-weight: 800; font-size: 1.3rem; color: #111827; 
+      letter-spacing: -0.02em; opacity: 0; transform: translateY(10px);
+      transition: all 0.4s ease 0.3s;
+    }
+    .ppm-success-overlay.active .ppm-success-text { opacity: 1; transform: translateY(0); }
     /* --- TACTILE UI & SQUIRCLES --- */
 .sb-av { border-radius: 10px !important; border: 1px solid #E5E5EA; }
 .ppm-av { border-radius: 14px !important; width: 64px !important; height: 64px !important; border: 1px solid #E5E5EA; background: #FFFFFF !important; }
@@ -1098,8 +1121,11 @@
         </div>
       </div>
 
+      <!-- SUCCESS TICK OVERLAY -->
       <div class="ppm-success-overlay" id="ppm-success-tick">
-        <div class="apple-tick"><svg width="40" height="40" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+        <div class="apple-tick">
+          <svg width="34" height="34" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
         <div class="ppm-success-text">Updated Successfully</div>
       </div>
     </div>
@@ -2812,18 +2838,35 @@ window.validateProfileInputs = function() {
 };
 
 window.showProfileSuccess = function() {
-    document.getElementById('ppm-slider-track').style.opacity = '0'; // Hides the form inputs behind it
-    document.getElementById('ppm-success-tick').classList.add('active');
+    // Smoothly fade out the form elements underneath
+    const slider = document.getElementById('ppm-slider-track');
+    if (slider) {
+        slider.style.transition = 'all 0.3s ease';
+        slider.style.opacity = '0';
+        slider.style.transform = 'scale(0.95)';
+    }
+
+    // Show the tick overlay
+    const overlay = document.getElementById('ppm-success-tick');
+    if (overlay) overlay.classList.add('active');
     
     if (window.renderSidebarCard) window.renderSidebarCard();
     setupUI();
     
+    // Give the animation 2 seconds to play, then close
     setTimeout(() => {
-        document.getElementById('ppm-success-tick').classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
         window.closeProfileModal();
-        // Restore opacity for the next time the modal is opened
-        setTimeout(() => { document.getElementById('ppm-slider-track').style.opacity = '1'; }, 300);
-    }, 1500);
+        
+        // Reset everything silently in the background AFTER the modal is gone
+        setTimeout(() => { 
+            if (slider) {
+                slider.style.opacity = '1'; 
+                slider.style.transform = 'scale(1)'; 
+            }
+            window.cancelProfileEdit(); 
+        }, 400);
+    }, 2000); 
 };
 
 // Render 6 OTP boxes and handle auto-focus
