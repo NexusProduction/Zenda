@@ -546,11 +546,33 @@
     border: 1px solid #E5E7EB !important;
     border-radius: 24px !important; 
     box-shadow: 0px 24px 48px rgba(0,0,0,0.1) !important; 
-    padding: 24px 24px 32px 24px !important; /* DECREASED TOP PADDING, BALANCED BOTTOM */
+    padding: 24px !important; /* DECREASED PADDING ON ALL SIDES */
     z-index: 100000; overflow: hidden;
     transform: translate(-50%, -50%) scale(0.96) !important;
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease !important;
 }
+
+/* Change Password Pop Animation */
+.cpwd-wrap {
+    display: flex; justify-content: flex-end; 
+    height: 34px; margin-bottom: 20px; 
+    opacity: 1; transform: scale(1); 
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: right center;
+}
+.cpwd-wrap.hidden-pop {
+    height: 0; margin-bottom: 0; opacity: 0; transform: scale(0.8); pointer-events: none;
+}
+
+/* Clean Pill Button */
+#change-pwd-link {
+    display: inline-flex; align-items: center; justify-content: center; 
+    font-size: 0.8rem; color: #0066FF; font-weight: 800; 
+    padding: 6px 14px; background: #FFFFFF; 
+    border: 1.5px solid #E5E7EB; border-radius: 8px; 
+    cursor: pointer; transition: all 0.2s ease;
+}
+#change-pwd-link:hover { background: #F9FAFB; border-color: #D1D5DB; }
 
 .ppm-top-bar {
     display: flex; justify-content: center; align-items: center;
@@ -1006,13 +1028,12 @@
             <div class="ppm-pencil pen-trigger" id="pen-email" onclick="window.enableProfileEdit('email')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></div>
           </div>
           
-          <div style="text-align: right; margin-bottom: 24px; display: flex; justify-content: flex-end;">
-              <span id="change-pwd-link" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; color: #0066FF; font-weight: 800; cursor: pointer; transition: all 0.2s ease; padding: 8px 16px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;" onmouseover="this.style.background='#EEF2FF'; this.style.borderColor='#CBD5E1';" onmouseout="this.style.background='#F8FAFC'; this.style.borderColor='#E2E8F0';" onclick="window.initiatePasswordChange(this)">
+          <div id="change-pwd-container" class="cpwd-wrap">
+              <button type="button" id="change-pwd-link" onclick="window.initiatePasswordChange(this)">
                   Change Password?
-              </span>
+              </button>
           </div>
 
-        <!-- Always Visible Actions -->
         <div class="ppm-actions visible" id="ppm-actions">
           <button class="ppm-btn ppm-btn-secondary" onclick="window.cancelProfileEdit()">Cancel</button>
           <button class="ppm-btn ppm-btn-primary" id="ppm-next-btn" onclick="window.handleProfileNext()" disabled>Save Changes</button>
@@ -2716,31 +2737,34 @@ window.enableProfileEdit = function(field) {
     input.disabled = false;
     input.focus();
     
+    const pwdContainer = document.getElementById('change-pwd-container');
+    if(pwdContainer) pwdContainer.classList.remove('hidden-pop');
+    
     document.getElementById('ppm-actions').classList.add('visible');
     window.validateProfileInputs();
 };
 
 window.cancelProfileEdit = function() {
-    // Smart Cancel: If they aren't editing anything, close the modal entirely!
+    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
     if (!window.currentEditField && !window.pendingAvatarFile) {
         window.closeProfileModal();
         return;
     }
 
-    // Otherwise, abort the current edit and reset the fields
     window.currentEditField = null;
     window.pendingAvatarFile = null;
     window.profileState = { newEmail: '', step: 0 };
     
     document.querySelectorAll('.pen-trigger').forEach(p => p.style.display = 'flex');
     
-    // THE FIX: Reset all views back to initial positions cleanly
+    // BRING THE CHANGE PASSWORD BUTTON BACK WITH A POP
+    const pwdContainer = document.getElementById('change-pwd-container');
+    if(pwdContainer) pwdContainer.classList.remove('hidden-pop');
+    
     document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
     document.getElementById('ppm-view-otp').className = 'ppm-view hidden-right';
-    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right'; // Push pwd view away
     document.getElementById('ppm-actions').classList.remove('visible'); 
     
-    // Clear password fields and validation UI
     const npwd = document.getElementById('ppm-new-pwd'); if(npwd) npwd.value = '';
     const cpwd = document.getElementById('ppm-confirm-pwd'); if(cpwd) cpwd.value = '';
     if(window.validatePasswordStrength) window.validatePasswordStrength();
@@ -2756,7 +2780,6 @@ window.cancelProfileEdit = function() {
     const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
     document.getElementById('ppm-av').innerHTML = src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:22px;">` : avIni;
     
-    // Re-disable the save button
     const nextBtn = document.getElementById('ppm-next-btn');
     if (nextBtn) {
         setBtnLoading('ppm-next-btn', false, 'Save Changes');
@@ -2894,7 +2917,7 @@ window.initiatePasswordChange = async function(btn) {
     if(btn) {
         btn._origText = btn.innerHTML;
         // Inject smooth inline spinner directly into the pill
-        btn.innerHTML = `<span style="width:14px;height:14px;border:2px solid rgba(0,102,255,0.2);border-top-color:#0066FF;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle;"></span><span style="margin-left:6px;">Sending...</span>`;
+        btn.innerHTML = `<span style="width:14px;height:14px;border:2px solid rgba(0,102,255,0.2);border-top-color:#0066FF;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Sending...`;
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.8';
     }
