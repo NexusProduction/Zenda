@@ -546,7 +546,7 @@
     border: 1px solid #E5E7EB !important;
     border-radius: 24px !important; 
     box-shadow: 0px 24px 48px rgba(0,0,0,0.1) !important; 
-    padding: 24px !important; /* DECREASED PADDING ON ALL SIDES */
+    padding: 24px 24px 16px 24px !important; /* DECREASED BOTTOM PADDING */
     z-index: 100000; overflow: hidden;
     transform: translate(-50%, -50%) scale(0.96) !important;
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease !important;
@@ -743,13 +743,19 @@
 
     .loader-spinner { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #FFFFFF; border-radius: 50%; animation: spin 0.8s linear infinite; }
     
-    /* Success Overlay - Solid White Background Covers Everything Smoothly */
-    .ppm-success-overlay { position: absolute; inset: 0; background: #FFFFFF; border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; opacity: 0; visibility: hidden; transition: 0.3s; }
-    .ppm-success-overlay.active { opacity: 1; visibility: visible; }
-    .apple-tick { width: 72px; height: 72px; border-radius: 50%; background: #34C759; display: flex; align-items: center; justify-content: center; transform: scale(0); transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1); box-shadow: 0 8px 24px rgba(52, 199, 89, 0.3); }
-    .ppm-success-overlay.active .apple-tick { transform: scale(1); }
-    .apple-tick svg { stroke-dasharray: 50; stroke-dashoffset: 50; stroke: white; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; fill: none; transition: stroke-dashoffset 0.4s ease 0.3s; }
-    .ppm-success-overlay.active .apple-tick svg { stroke-dashoffset: 0; }
+    /* Success Overlay - Turns Green */
+.ppm-success-overlay { position: absolute; inset: 0; background: #FFFFFF; border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; opacity: 0; visibility: hidden; transition: opacity 0.3s, background 0.4s ease 0.2s; }
+.ppm-success-overlay.active { opacity: 1; visibility: visible; background: #34C759; /* Smoothly transitions to Green */ }
+
+/* The white tick inside */
+.apple-tick { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; transform: scale(0); transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s; }
+.ppm-success-overlay.active .apple-tick { transform: scale(1); }
+.apple-tick svg { stroke-dasharray: 50; stroke-dashoffset: 50; stroke: #FFFFFF; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; fill: none; transition: stroke-dashoffset 0.4s ease 0.4s; }
+.ppm-success-overlay.active .apple-tick svg { stroke-dashoffset: 0; }
+
+/* Success text turning white */
+.ppm-success-text { margin-top:16px; font-weight:800; font-size:1.35rem; color:#1C1C1E; letter-spacing:-0.02em; transition: color 0.4s ease 0.2s; }
+.ppm-success-overlay.active .ppm-success-text { color: #FFFFFF; }
     /* --- TACTILE UI & SQUIRCLES --- */
 .sb-av { border-radius: 10px !important; border: 1px solid #E5E5EA; }
 .ppm-av { border-radius: 14px !important; width: 64px !important; height: 64px !important; border: 1px solid #E5E5EA; background: #FFFFFF !important; }
@@ -1040,14 +1046,15 @@
         </div>
       </div>
 
-      <!-- VIEW 2: SECURITY OTP -->
       <div class="ppm-view hidden-right" id="ppm-view-otp">
         <div style="text-align: center; margin-bottom: 24px;">
             <h3 style="font-size: 1.25rem; font-weight: 800; color: #111827; margin-bottom: 8px;">Security Check</h3>
             <p id="ppm-otp-msg" style="font-size: 0.9rem; color: #6B7280; line-height: 1.5; padding: 0 16px;"></p>
         </div>
         
-        <div class="otp-inputs-wrap" id="otp-inputs-container" style="margin-bottom: 32px;"></div>
+        <div class="otp-inputs-wrap" id="otp-inputs-container" style="margin-bottom: 12px;"></div>
+        
+        <div id="otp-error-msg" style="color: #DC2626; font-size: 0.85rem; font-weight: 700; text-align: center; min-height: 20px; margin-bottom: 16px; opacity: 0; transition: opacity 0.2s ease;"></div>
         
         <div style="display:flex; gap:12px;">
           <button class="ppm-btn" style="flex:1; background: #FFFFFF; border: 1.5px solid #E5E7EB; color: #4B5563; font-weight: 700; border-radius: 12px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#F9FAFB';" onmouseout="this.style.background='#FFFFFF';" onclick="window.cancelProfileEdit()">Cancel</button>
@@ -1092,8 +1099,8 @@
       </div>
 
       <div class="ppm-success-overlay" id="ppm-success-tick">
-        <div class="apple-tick"><svg width="34" height="34" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-        <div style="margin-top:20px; font-weight:800; font-size:1.25rem; color:#1C1C1E; letter-spacing:-0.02em;">Updated Successfully</div>
+        <div class="apple-tick"><svg width="40" height="40" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+        <div class="ppm-success-text">Updated Successfully</div>
       </div>
     </div>
   </div>
@@ -3026,9 +3033,31 @@ window.saveNewPassword = async function() {
 window.verifyProfileOTP = async function() {
     const container = document.getElementById('otp-inputs-container');
     const input = Array.from(container.children).map(inp => inp.value).join('');
+    const verifyBtn = document.getElementById('ppm-verify-btn');
+    const errorMsg = document.getElementById('otp-error-msg');
+    
+    // Clear previous errors
+    errorMsg.style.opacity = '0';
+    verifyBtn.style.background = '#0066FF';
     
     if (input !== window.tempEmailOTP && input.length === 6) { 
-        window.showToast('Invalid code. Try again.', 'error'); 
+        // Show inline error instead of toast
+        errorMsg.textContent = 'Invalid code. Please try again.';
+        errorMsg.style.opacity = '1';
+        
+        // Temporarily change button to red "Invalid Code"
+        verifyBtn.textContent = 'Invalid Code';
+        verifyBtn.style.background = '#DC2626';
+        verifyBtn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.2)';
+        
+        // Reset after 4 seconds
+        setTimeout(() => {
+            errorMsg.style.opacity = '0';
+            verifyBtn.textContent = 'Verify Code';
+            verifyBtn.style.background = '#0066FF';
+            verifyBtn.style.boxShadow = '0 4px 12px rgba(0, 102, 255, 0.2)';
+        }, 4000);
+
         Array.from(container.children).forEach(inp => inp.value = '');
         container.children[0].focus();
         return; 
@@ -3039,14 +3068,12 @@ window.verifyProfileOTP = async function() {
 
     // --- STEP 3: OTP Verified for Password Change ---
     if (window.profileState.step === 3) {
-        // Force inputs to wipe completely clean to prevent browser autofill UI bugs
         const newPwdInput = document.getElementById('ppm-new-pwd');
         const confPwdInput = document.getElementById('ppm-confirm-pwd');
         if (newPwdInput) newPwdInput.value = '';
         if (confPwdInput) confPwdInput.value = '';
         if (window.validatePasswordStrength) window.validatePasswordStrength();
 
-        // Slide the clean view in
         document.getElementById('ppm-view-otp').className = 'ppm-view hidden-left';
         document.getElementById('ppm-view-password').className = 'ppm-view active-view';
         setBtnLoading('ppm-verify-btn', false, 'Verify Code');
@@ -3080,7 +3107,6 @@ window.verifyProfileOTP = async function() {
             requestAnimationFrame(() => {
                 otpView.style.opacity = '1';
                 setBtnLoading('ppm-verify-btn', false, 'Verify Code');
-                window.showToast('Code sent to new email address!', 'info');
                 setTimeout(() => { container.children[0].focus(); }, 100);
             });
         }, 250);
