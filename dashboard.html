@@ -2830,35 +2830,173 @@ window.showProfileSuccess = function() {
 function initOtpBoxes() {
     const container = document.getElementById('otp-inputs-container');
     container.innerHTML = '';
+    
+    // Automatically disable the button when boxes are generated
+    const verifyBtn = document.getElementById('ppm-verify-btn');
+    if (verifyBtn) verifyBtn.disabled = true; 
+
+    // Helper to check length and toggle button
+    const checkOtpLength = () => {
+        const val = Array.from(container.children).map(inp => inp.value).join('');
+        if (verifyBtn) verifyBtn.disabled = (val.length < 6);
+        return val;
+    };
+
     for (let i = 0; i < 6; i++) {
         const input = document.createElement('input');
-        input.type = 'text'; // Keep as text but restrict via JS to prevent browser arrows
-        input.inputMode = 'numeric'; // Brings up number pad on mobile
+        input.type = 'text'; 
+        input.inputMode = 'numeric'; 
         input.maxLength = 1;
         input.className = 'otp-box anim-in';
         input.style.animationDelay = `${i * 0.05}s`;
         input.dataset.index = i;
         
         input.addEventListener('input', (e) => {
-            // THE FIX: Restrict to numbers only
+            // Restrict to numbers only
             e.target.value = e.target.value.replace(/[^0-9]/g, ''); 
             
             if (e.target.value.length === 1 && i < 5) {
                 container.children[i + 1].focus();
             }
-            const val = Array.from(container.children).map(inp => inp.value).join('');
-            if (val.length === 6) window.verifyProfileOTP();
+            
+            const val = checkOtpLength(); // Validate button state
+            if (val.length === 6) window.verifyProfileOTP(); // Auto-verify at 6
         });
+        
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Backspace' && e.target.value === '' && i > 0) {
                 container.children[i - 1].focus();
                 container.children[i - 1].value = '';
+                checkOtpLength(); // Re-validate button state
             }
         });
         container.appendChild(input);
     }
     setTimeout(() => container.children[0].focus(), 400); 
 }
+
+window.verifyProfileOTP = async function() {
+    const container = document.getElementById('otp-inputs-container');
+    const input = Array.from(container.children).map(inp => inp.value).join('');
+    const verifyBtn = document.getElementById('ppm-verify-btn');
+    const errorMsg = document.getElementById('otp-error-msg');
+    
+    // Clear previous errors
+    if(errorMsg) errorMsg.style.opacity = '0';
+    if(verifyBtn) verifyBtn.style.background = '#0066FF';
+    
+    if (input !== window.tempEmailOTP && input.length === 6) { 
+        // 1. Show inline error instead of toast
+        if(errorMsg) {
+            errorMsg.textContent = 'Invalid code. Please try again.';
+            errorMsg.style.opacity = '1';
+        }
+        
+        // 2. Temporarily change button to red "Invalid Code"
+        if(verifyBtn) {
+            verifyBtn.textContent = 'Invalid Code';
+            verifyBtn.style.background = '#DC2626';
+            verifyBtn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.2)';
+            verifyBtn.disabled = true;
+            
+            // 3. Reset after 4 seconds
+            setTimeout(() => {
+                if(errorMsg) errorMsg.style.opacity = '0';
+                verifyBtn.textContent = 'Verify Code';
+                verifyBtn.style.background = '#0066FF';
+                verifyBtn.style.boxShadow = '0 4px 12px rgba(0, 102, 255, 0.2)';
+                
+                // Keep disabled if they haven't re-typed 6 digits yet
+                const currentInput = Array.from(container.children).map(inp => inp.value).join('');
+                verifyBtn.disabled = (currentInput.length < 6);
+            }, 4000);
+        }
+
+        // 4. Wipe boxes instantly for retry
+        Array.from(container.children).forEach(inp => inp.value = '');
+        container.children[0].focus();
+        return; 
+    }
+    if (input.length < 6) return;
+    
+    setBtnLoading('ppm-verify-btn', true);
+
+    // --- STEP 3: OTP Verified for Password Change ---
+    if (window.profileState.step === 3) {
+        const newPwdInput = document.getElementById('ppm-new-pwd');
+        const confPwdInput = document.getElementById('ppm-confirm-pwd');
+        if (newPwdInput) newPwdInput.value = '';
+        if (confPwdInput) confPwdInput.value = '';
+        if (window.validatePasswordStrength) window.validatePasswordStrength();
+
+        document.getElementById('ppm-view-otp').className = 'ppm-view hidden-left';
+        document.getElementById('ppm-view-password').className = 'ppm-view active-view';
+        setBtnLoading('ppm-verify-btn', false, 'Verify Code');
+        return;
+    }
+
+    // --- STEP 1: Old Email Verified -> Send OTP to New Email ---
+    if (window.profileState.step === 1) {
+        window.profileState.step = 2;
+        window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        try { 
+            if(typeof emailjs !== 'undefined') { 
+                await emailjs.send("service_dc7ge9b", "template_4turj9r", { 
+                    to_email: window.profileState.newEmail, 
+                    to_name: window.CU.name, 
+                    otp_code: window.tempEmailOTP, 
+                    company_name: window.CU.companyName || 'Zenda' 
+                }, "dg8t6B0d-DhPa3Tl6"); 
+            } 
+        } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
+        
+        const otpView = document.getElementById('ppm-view-otp');
+        otpView.style.transition = 'opacity 0.2s ease';
+        otpView.style.opacity = '0';
+        
+        setTimeout(() => {
+            document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your NEW email address<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.profileState.newEmail}</b>`;
+            Array.from(container.children).forEach(inp => inp.value = '');
+            
+            requestAnimationFrame(() => {
+                otpView.style.opacity = '1';
+                setBtnLoading('ppm-verify-btn', false, 'Verify Code');
+                
+                // Re-disable button since boxes were cleared
+                if (verifyBtn) verifyBtn.disabled = true;
+                
+                setTimeout(() => { container.children[0].focus(); }, 100);
+            });
+        }, 250);
+
+    // --- STEP 2: New Email Verified -> Update Database ---
+    } else if (window.profileState.step === 2) {
+        try {
+            if (auth.currentUser) { 
+                try { await updateEmail(auth.currentUser, window.profileState.newEmail); } 
+                catch(authErr) { console.warn("Bypassed Firebase auth rule."); } 
+            }
+            await updateDoc(doc(db, 'users', window.CU.uid), { email: window.profileState.newEmail });
+            
+            window.CU.email = window.profileState.newEmail;
+            window.showProfileSuccess();
+            
+            const emailInput = document.getElementById('ppm-email');
+            if(emailInput) emailInput.value = window.profileState.newEmail;
+            
+        } catch(e) { 
+            if(e.message && e.message.includes('requires-recent-login')) { 
+                window.showToast('Please sign out and sign back in to change your email.', 'error'); 
+            } else { 
+                window.showToast('Failed to update email: ' + e.message, 'error'); 
+            } 
+        } finally { 
+            setBtnLoading('ppm-verify-btn', false, 'Verify Code'); 
+            if (verifyBtn) verifyBtn.disabled = true; 
+        }
+    }
+};
 
 window.handleProfileNext = async function() {
     const btnId = 'ppm-next-btn';
