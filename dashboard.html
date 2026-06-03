@@ -312,6 +312,22 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
+      /* --- PASSWORD VALIDATION TEXT --- */
+.pwd-req-list {
+    margin-top: 12px; margin-bottom: 24px; padding: 0 8px;
+    display: flex; flex-direction: column; gap: 6px; text-align: left;
+}
+.pwd-req-item {
+    font-size: 0.8rem; font-weight: 700; color: var(--danger);
+    display: flex; align-items: center; gap: 6px; transition: color 0.3s;
+}
+.pwd-req-item.valid { color: var(--success); }
+.pwd-req-item svg { width: 14px; height: 14px; stroke-width: 3; }
+
+/* Ensure modal transitions are snappy, not lagging */
+.ppm-view {
+    width: 100%; transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s;
+}
 .sb-prof-card:hover { background: #F9FAFB; border-color: #D1D5DB; transform: translateY(-1px); box-shadow: 0 8px 16px rgba(0,0,0,0.04); }
 
 .sb-av-wrap { position: relative; flex-shrink: 0; }
@@ -993,20 +1009,32 @@
         </div>
       </div>
 
-      <!-- NEW VIEW 3: SET NEW PASSWORD -->
-      <div class="ppm-view hidden-right" id="ppm-view-password">
+     <div class="ppm-view hidden-right" id="ppm-view-password">
         <div class="ppm-header">Set New Password</div>
         
-        <div class="ppm-field">
+        <div class="ppm-field" style="margin-bottom: 12px !important;">
           <div class="ppm-input-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </div>
-          <input type="password" id="ppm-new-pwd" class="ppm-input" placeholder="Enter new password" maxlength="30" style="padding-right: 16px !important;">
+          <input type="password" id="ppm-new-pwd" class="ppm-input" placeholder="Enter new password" maxlength="20" style="padding-right: 16px !important;" oninput="window.validatePasswordStrength()">
+        </div>
+
+        <div class="ppm-field" style="margin-bottom: 8px !important;">
+          <div class="ppm-input-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <input type="password" id="ppm-confirm-pwd" class="ppm-input" placeholder="Confirm new password" maxlength="20" style="padding-right: 16px !important;" oninput="window.validatePasswordStrength()">
         </div>
         
-        <div style="display:flex; gap:12px; margin-top: 24px; margin-bottom: 8px;">
+        <div class="pwd-req-list" id="pwd-reqs">
+            <div class="pwd-req-item" id="req-length"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> 8 to 20 characters</div>
+            <div class="pwd-req-item" id="req-complex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Letters, numbers, and symbols</div>
+            <div class="pwd-req-item" id="req-match"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Passwords match</div>
+        </div>
+        
+        <div style="display:flex; gap:12px; margin-bottom: 8px;">
           <button class="ppm-btn ppm-btn-secondary" style="flex:1;" onclick="window.cancelProfileEdit()">Cancel</button>
-          <button class="ppm-btn ppm-btn-primary" style="flex:1;" id="ppm-save-pwd-btn" onclick="window.saveNewPassword()">Save Password</button>
+          <button class="ppm-btn ppm-btn-primary" style="flex:1;" id="ppm-save-pwd-btn" onclick="window.saveNewPassword()" disabled>Save Password</button>
         </div>
       </div>
 
@@ -2725,13 +2753,17 @@ function initOtpBoxes() {
     container.innerHTML = '';
     for (let i = 0; i < 6; i++) {
         const input = document.createElement('input');
-        input.type = 'text';
+        input.type = 'text'; // Keep as text but restrict via JS to prevent browser arrows
+        input.inputMode = 'numeric'; // Brings up number pad on mobile
         input.maxLength = 1;
         input.className = 'otp-box anim-in';
         input.style.animationDelay = `${i * 0.05}s`;
         input.dataset.index = i;
         
         input.addEventListener('input', (e) => {
+            // THE FIX: Restrict to numbers only
+            e.target.value = e.target.value.replace(/[^0-9]/g, ''); 
+            
             if (e.target.value.length === 1 && i < 5) {
                 container.children[i + 1].focus();
             }
@@ -2746,7 +2778,7 @@ function initOtpBoxes() {
         });
         container.appendChild(input);
     }
-    setTimeout(() => container.children[0].focus(), 400); // Focus first box after slide
+    setTimeout(() => container.children[0].focus(), 400); 
 }
 
 window.handleProfileNext = async function() {
@@ -2810,7 +2842,7 @@ window.handleProfileNext = async function() {
     }
 };
 window.initiatePasswordChange = async function() {
-    window.profileState = { step: 3 }; // Step 3 indicates Password Change flow
+    window.profileState = { step: 3 }; 
     window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
     
     try {
@@ -2827,12 +2859,41 @@ window.initiatePasswordChange = async function() {
     document.getElementById('ppm-otp-msg').innerHTML = `Enter the 6-digit code sent to your current email<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.CU.email}</b>`;
     initOtpBoxes();
     
-    // Slide animation
+    // THE FIX: Instant Slide animation
     document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
     document.getElementById('ppm-view-otp').className = 'ppm-view active-view';
     document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
 };
+window.validatePasswordStrength = function() {
+    const pwd1 = document.getElementById('ppm-new-pwd').value;
+    const pwd2 = document.getElementById('ppm-confirm-pwd').value;
+    const btn = document.getElementById('ppm-save-pwd-btn');
+    
+    // Requirements
+    const isLength = pwd1.length >= 8 && pwd1.length <= 20;
+    const isComplex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(pwd1);
+    const isMatch = (pwd1 === pwd2) && pwd1.length > 0;
 
+    // DOM Elements
+    const elLength = document.getElementById('req-length');
+    const elComplex = document.getElementById('req-complex');
+    const elMatch = document.getElementById('req-match');
+    const successIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    const errorIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+
+    // Update UI visually
+    if(isLength) { elLength.className = 'pwd-req-item valid'; elLength.innerHTML = successIcon + ' 8 to 20 characters'; } 
+    else { elLength.className = 'pwd-req-item'; elLength.innerHTML = errorIcon + ' 8 to 20 characters'; }
+
+    if(isComplex) { elComplex.className = 'pwd-req-item valid'; elComplex.innerHTML = successIcon + ' Letters, numbers, and symbols'; } 
+    else { elComplex.className = 'pwd-req-item'; elComplex.innerHTML = errorIcon + ' Letters, numbers, and symbols'; }
+
+    if(isMatch) { elMatch.className = 'pwd-req-item valid'; elMatch.innerHTML = successIcon + ' Passwords match'; } 
+    else { elMatch.className = 'pwd-req-item'; elMatch.innerHTML = errorIcon + ' Passwords match'; }
+
+    // Activate Button ONLY if all pass
+    btn.disabled = !(isLength && isComplex && isMatch);
+};
 window.saveNewPassword = async function() {
     const newPwd = document.getElementById('ppm-new-pwd').value.trim();
     if(newPwd.length < 6) {
