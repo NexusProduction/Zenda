@@ -2716,30 +2716,52 @@ window.openProfileModal = function() {
 };
 
 window.cancelProfileEdit = function() {
-    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
-    document.getElementById('ppm-view-contact').className = 'ppm-view hidden-left'; 
-document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
-    if (!window.currentEditField && !window.pendingAvatarFile) {
+    // Check if we are inside a sub-view (OTP or Password)
+    const isSubViewActive = 
+        document.getElementById('ppm-view-otp').classList.contains('active-view') || 
+        document.getElementById('ppm-view-password').classList.contains('active-view');
+
+    // Smart Cancel: If on the main screen and not editing anything, close the modal completely!
+    if (!isSubViewActive && !window.currentEditField && !window.pendingAvatarFile) {
         window.closeProfileModal();
         return;
     }
 
-    // Otherwise, abort the current edit and reset the fields
+    // Otherwise, abort current action and slide smoothly back to the main edit view
     window.currentEditField = null;
     window.pendingAvatarFile = null;
     window.profileState = { newEmail: '', step: 0 };
     
     document.querySelectorAll('.pen-trigger').forEach(p => p.style.display = 'flex');
     
-    document.getElementById('ppm-view-edit').style.transform = 'translateX(0)';
-    document.getElementById('ppm-view-otp').style.transform = 'translateX(100%)';
+    // BRING THE CHANGE PASSWORD BUTTON BACK WITH A POP
+    const pwdContainer = document.getElementById('change-pwd-container');
+    if(pwdContainer) pwdContainer.classList.remove('hidden-pop');
     
+    // Slide Views Back
+    document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
+    document.getElementById('ppm-view-otp').className = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
+    
+    const contactView = document.getElementById('ppm-view-contact');
+    if (contactView) contactView.className = 'ppm-view hidden-left';
+    
+    document.getElementById('ppm-actions').classList.remove('visible'); 
+    
+    // Clear password fields and validation UI
+    const npwd = document.getElementById('ppm-new-pwd'); if(npwd) npwd.value = '';
+    const cpwd = document.getElementById('ppm-confirm-pwd'); if(cpwd) cpwd.value = '';
+    if(window.validatePasswordStrength) window.validatePasswordStrength();
+    
+    // Reset Name and Email inputs
     ['name', 'email'].forEach(f => {
         const input = document.getElementById('ppm-' + f);
         if(input) { input.value = window.CU[f] || ''; input.disabled = true; }
-        document.getElementById('field-' + f).classList.remove('editing');
+        const fieldEl = document.getElementById('field-' + f);
+        if(fieldEl) fieldEl.classList.remove('editing');
     });
     
+    // Reset Avatar
     const avColor = window.avatarColor(window.CU.name);
     const avIni = window.getInitials(window.CU.name);
     const src = localStorage.getItem('zenda_logo_' + window.CU.uid) || window.CU.avatarData || null;
