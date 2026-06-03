@@ -699,8 +699,8 @@
 
     .loader-spinner { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #FFFFFF; border-radius: 50%; animation: spin 0.8s linear infinite; }
     
-    /* Success Overlay */
-    .ppm-success-overlay { position: absolute; inset: 0; background: transparent; border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; opacity: 0; visibility: hidden; transition: 0.3s; }
+    /* Success Overlay - Solid White Background Covers Everything Smoothly */
+    .ppm-success-overlay { position: absolute; inset: 0; background: #FFFFFF; border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; opacity: 0; visibility: hidden; transition: 0.3s; }
     .ppm-success-overlay.active { opacity: 1; visibility: visible; }
     .apple-tick { width: 72px; height: 72px; border-radius: 50%; background: #34C759; display: flex; align-items: center; justify-content: center; transform: scale(0); transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1); box-shadow: 0 8px 24px rgba(52, 199, 89, 0.3); }
     .ppm-success-overlay.active .apple-tick { transform: scale(1); }
@@ -986,9 +986,8 @@
           <div class="ppm-pencil pen-trigger" id="pen-email" onclick="window.enableProfileEdit('email')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></div>
         </div>
         
-        <!-- NEW: Change Password Link -->
         <div style="text-align: right; margin-bottom: 16px;">
-            <span style="font-size: 0.8rem; color: #0066FF; font-weight: 800; cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7';" onmouseout="this.style.opacity='1';" onclick="window.initiatePasswordChange()">Change Password?</span>
+            <span id="change-pwd-link" style="font-size: 0.8rem; color: #0066FF; font-weight: 800; cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7';" onmouseout="this.style.opacity='1';" onclick="window.initiatePasswordChange(this)">Change Password?</span>
         </div>
 
         <!-- Always Visible Actions -->
@@ -2560,6 +2559,11 @@ window.openProfileModal = function() {
     // Reset to the edit view cleanly
     document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
     document.getElementById('ppm-view-otp').className  = 'ppm-view hidden-right';
+    
+    // THIS FIXES THE PASSWORD BOX APPEARING AT THE BOTTOM ON REOPEN
+    const pwdView = document.getElementById('ppm-view-password');
+    if (pwdView) pwdView.className = 'ppm-view hidden-right'; 
+    
     document.getElementById('ppm-actions').classList.remove('visible');
 
     // Reset field editing states
@@ -2860,20 +2864,41 @@ window.handleProfileNext = async function() {
         setBtnLoading(btnId, false, 'Next');
     }
 };
-window.initiatePasswordChange = function() {
-    window.profileState = { step: 3 }; 
+window.initiatePasswordChange = async function(btn) {
+    if(btn) {
+        btn._origText = btn.textContent;
+        btn.textContent = 'Sending Email...';
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.5';
+    }
     
-    // Force inputs to wipe completely clean to prevent browser autofill UI bugs
-    const newPwdInput = document.getElementById('ppm-new-pwd');
-    const confPwdInput = document.getElementById('ppm-confirm-pwd');
-    if (newPwdInput) newPwdInput.value = '';
-    if (confPwdInput) confPwdInput.value = '';
-    if (window.validatePasswordStrength) window.validatePasswordStrength();
+    window.profileState = { step: 3 }; // Step 3 triggers the Password OTP check
+    window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    try { 
+        if(typeof emailjs !== 'undefined') { 
+            await emailjs.send("service_dc7ge9b", "template_4turj9r", { 
+                to_email: window.CU.email, 
+                to_name: window.CU.name, 
+                otp_code: window.tempEmailOTP, 
+                company_name: window.CU.companyName || 'Zenda' 
+            }, "dg8t6B0d-DhPa3Tl6"); 
+        } 
+    } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
 
-    // Instant Slide animation - skips OTP completely
+    document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your email address<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.CU.email}</b>`;
+    initOtpBoxes();
+    
+    // Slide to the OTP view (Not directly to password!)
     document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
-    document.getElementById('ppm-view-otp').className = 'ppm-view hidden-right';
-    document.getElementById('ppm-view-password').className = 'ppm-view active-view';
+    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-otp').className = 'ppm-view active-view';
+    
+    if(btn) {
+        btn.textContent = btn._origText;
+        btn.style.pointerEvents = 'auto';
+        btn.style.opacity = '1';
+    }
 };
 window.validatePasswordStrength = function() {
     const pwd1 = document.getElementById('ppm-new-pwd').value;
