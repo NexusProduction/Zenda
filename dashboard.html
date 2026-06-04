@@ -59,6 +59,15 @@
       --rad-btn: 10px;
       --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'DM Mono', monospace;
+
+      /* NEW: Tactile Backgrounds & Icon States */
+      --bottom-bar-bg: rgba(255, 255, 255, 0.95);
+      --bottom-bar-border: #E5E5EA;
+      --icon-inactive: #8E8E93;
+      --icon-active: #0066FF;
+      --indicator-bg: #1C1C1E;
+      --spring-curve: cubic-bezier(0.25, 1.05, 0.5, 1);
+      --fade-curve: cubic-bezier(0.33, 1, 0.68, 1);
     }
 
     body { font-family: var(--font-main); background: var(--bg-surface); color: var(--tx-main); overflow: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; height: 100vh; }
@@ -859,63 +868,95 @@
     margin-top: 24px !important; /* Pushes the modal taller automatically */
 }
 
-/* --- MOBILE BOTTOM NAV FIX --- */
+/* --- MOBILE BOTTOM NAV MASTER ENGINE --- */
+    .bottom-nav { display: none; }
+    
     @media (max-width: 768px) {
       .bottom-nav {
-        display: flex !important;
-        position: fixed; 
-        bottom: 24px; 
+        display: block !important;
+        position: fixed;
+        bottom: 24px;
         left: 50%;
         transform: translateX(-50%);
         width: calc(100% - 32px);
         max-width: 400px;
-        height: 70px; 
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid #E5E5EA; 
-        border-radius: 35px; /* Creates the capsule shape */
+        height: 72px; 
+        background: var(--bottom-bar-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--bottom-bar-border);
+        border-radius: 36px;
         box-shadow: 0 10px 32px rgba(0, 0, 0, 0.1);
         z-index: 1000;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
       }
-      
-      .bn-items {
+    }
+
+    .bn-items-container {
         display: flex;
-        width: 100%;
-        height: 100%;
-        justify-content: space-evenly;
+        justify-content: space-around;
         align-items: center;
-      }
-      
-      .bn-item {
+        height: 72px;
+        position: relative;
+        padding: 0 16px;
+    }
+
+    .sliding-indicator {
+        position: absolute;
+        height: 48px;
+        width: 64px;
+        background: var(--indicator-bg);
+        border-radius: 24px;
+        top: 50%;
+        transform: translateY(-50%);
+        left: 0;
+        z-index: 1;
+        transition: left 0.4s var(--spring-curve), width 0.4s var(--spring-curve);
+        box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .bn-item {
+        position: relative;
+        z-index: 2;
+        background: transparent;
+        border: none;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
-        background: transparent;
-        border: none;
-        color: var(--tx-muted);
-        flex: 1;
         height: 100%;
+        width: 72px;
         cursor: pointer;
-        padding: 0;
-        font-family: inherit;
-      }
-      
-      .bn-item.active {
-        color: var(--ac);
-      }
-      
-      .bn-item svg {
-        width: 24px;
-        height: 24px;
-      }
-      
-      .bn-item span {
-        font-size: 0.7rem;
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bn-icon-wrap {
+        color: var(--icon-inactive);
+        transition: color 0.4s var(--fade-curve), transform 0.4s var(--spring-curve);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 4px;
+    }
+
+    .bn-label {
+        font-family: var(--font-main);
+        font-size: 11px;
         font-weight: 700;
-      }
+        color: var(--icon-inactive);
+        transition: opacity 0.3s var(--fade-curve), transform 0.3s var(--fade-curve);
+    }
+
+    .bn-item.active .bn-icon-wrap {
+        color: var(--icon-active);
+        transform: translateY(8px) scale(1.15);
+    }
+
+    .bn-item.active .bn-label {
+        opacity: 0;
+        transform: translateY(10px);
+        pointer-events: none;
     }
 /* --- Force OTP Verify Button to look disabled --- */
     #ppm-verify-btn:disabled {
@@ -1066,22 +1107,51 @@
   
   <div class="mobile-fade-bg"></div>
   <nav class="bottom-nav" id="bottom-nav">
-    <div class="bn-items">
-      <button class="bn-item active" id="bn-home" onclick="window.showView('home')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><polyline points="9 21 9 12 15 12 15 21"/></svg><span>Home</span>
-      </button>
-      <button class="bn-item" id="bn-tasks" onclick="window.showView('tasks')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        <span class="bn-dot hidden" id="bn-task-dot"></span><span>Tasks</span>
-      </button>
-      <button class="bn-item hidden" id="bn-staff-btn" onclick="window.showView('staff')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Team</span>
-      </button>
-      <button class="bn-item" id="bn-profile" onclick="window.openProfile()">
-        <div class="av" id="bn-avatar" style="width:28px;height:28px;font-size:12px;border-radius:50%;"></div><span>Me</span>
-      </button>
-    </div>
-  </nav>
+  <div class="bn-items-container">
+    
+    <div class="sliding-indicator" id="sliding-indicator"></div>
+
+    <button class="bn-item active" onclick="handleNavClick(this, 'home')" id="bn-home">
+      <div class="bn-icon-wrap">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+          <polyline points="9 21 9 12 15 12 15 21"/>
+        </svg>
+      </div>
+      <span class="bn-label">Home</span>
+    </button>
+
+    <button class="bn-item" onclick="handleNavClick(this, 'tasks')" id="bn-tasks">
+      <div class="bn-icon-wrap">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 11 12 14 22 4"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+      </div>
+      <span class="bn-label">Tasks</span>
+    </button>
+
+    <button class="bn-item" onclick="handleNavClick(this, 'staff')" id="bn-staff-btn">
+      <div class="bn-icon-wrap">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <span class="bn-label">Team</span>
+    </button>
+
+    <button class="bn-item" onclick="handleNavClick(this, 'profile')" id="bn-profile">
+      <div class="bn-icon-wrap">
+        <div class="av" id="bn-avatar" style="width:24px;height:24px;font-size:11px;border-radius:50%;display:flex;align-items:center;justify-content:center;"></div>
+      </div>
+      <span class="bn-label">Me</span>
+    </button>
+
+  </div>
+</nav>
 
   <div class="premium-prof-overlay" id="premium-prof-overlay" onclick="if(event.target===this) window.closeProfileModal()">
     <div class="premium-prof-modal" id="premium-prof-modal">
@@ -3857,6 +3927,54 @@ async function init() {
 
 init();
 
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const indicator = document.getElementById('sliding-indicator');
+    const navItems = document.querySelectorAll('.bn-item');
+    
+    function moveIndicator(activeElement) {
+        if (!indicator || !activeElement) return;
+        const elementRect = activeElement.getBoundingClientRect();
+        const containerRect = activeElement.parentElement.getBoundingClientRect();
+        const relativeLeft = elementRect.left - containerRect.left;
+        const pillWidth = 64; 
+        const centerOffset = relativeLeft + (elementRect.width / 2) - (pillWidth / 2);
+
+        indicator.style.width = `${pillWidth}px`;
+        indicator.style.left = `${centerOffset}px`;
+    }
+
+    // Set initial position
+    setTimeout(() => {
+        const defaultActive = document.querySelector('.bn-item.active');
+        if (defaultActive) moveIndicator(defaultActive);
+    }, 100);
+
+    // Update on click
+    navItems.forEach(item => {
+        item.addEventListener('click', function() {
+            navItems.forEach(nav => nav.classList.remove('active'));
+            this.classList.add('active');
+            moveIndicator(this);
+        });
+    });
+    
+    // Update on resize
+    window.addEventListener('resize', () => {
+        const currentActive = document.querySelector('.bn-item.active');
+        if (currentActive) moveIndicator(currentActive);
+    });
+});
+
+// Bridge to your existing router
+window.handleNavClick = function(buttonElement, viewName) {
+    if (viewName === 'profile') {
+        window.openProfileModal();
+    } else if (typeof window.showView === 'function') {
+        window.showView(viewName);
+    }
+};
 </script>
 </body>
 </html>
