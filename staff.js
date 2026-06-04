@@ -55,7 +55,19 @@ export async function createStaff({ name, email, password, role, companyId, comp
     const compRef = doc(db, 'companies', companyId);
     const compSnap = await getDoc(compRef);
     if (compSnap.exists()) {
-      await updateDoc(compRef, { staffCount: (compSnap.data().staffCount || 0) + 1 });
+      const compData = compSnap.data();
+      const currentCards = compData.staffCards || 0;
+      
+      // Prevent creation if 0 staff cards remaining
+      if (currentCards <= 0) {
+        throw new Error("FIELD:cs-form:Insufficient Staff Cards. Please buy more from the Subscription page.");
+      }
+      
+      // Deduct 1 staff card on successful creation
+      await updateDoc(compRef, { 
+        staffCount: (compData.staffCount || 0) + 1,
+        staffCards: currentCards - 1 
+      });
     }
 
     await setDoc(doc(db, 'installedApps', uid), { apps: ['calculator'] });
@@ -114,5 +126,26 @@ export async function getAssignableStaff(companyId, currentUserId) {
 }
 
 export async function updateUserProfile(uid, updates) {
-  await updateDoc(doc(db, 'users', uid), updates);
+  const userRef = doc(db, 'users', uid);
+  const userSnap = await getDoc(userRef);
+  
+  if (userSnap.exists()) {
+    const userData = userSnap.data();
+    
+    // If the user's email is being updated to a new value, deduct 1 staff point
+    if (updates.email && updates.email !== userData.email) {
+      const compRef = doc(db, 'companies', userData.companyId);
+      const compSnap = await getDoc(compRef);
+      
+      if (compSnap.exists()) {
+        const currentCards = compSnap.data().staffCards || 0;
+        if (currentCards <= 0) {
+          throw new Error("Insufficient Staff Cards to change email. Please buy more from Subscription.");
+        }
+        await updateDoc(compRef, { staffCards: currentCards - 1 });
+      }
+    }
+  }
+  
+  await updateDoc(userRef, updates);
 }
