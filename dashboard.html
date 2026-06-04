@@ -2897,6 +2897,21 @@ window.closeProfileModal = function() {
     
     overlay.classList.remove('open');
     setTimeout(() => { window.cancelProfileEdit(); }, 400);
+
+    // --- NEW: REVERT BOTTOM NAV INDICATOR ON MOBILE ---
+    if (window.innerWidth <= 768 && window.lastActiveNavId) {
+        const lastActiveTab = document.getElementById(window.lastActiveNavId);
+        if (lastActiveTab) {
+            // Remove active from all tabs
+            document.querySelectorAll('.bn-item').forEach(nav => nav.classList.remove('active'));
+            // Reactivate the previous tab
+            lastActiveTab.classList.add('active');
+            // Animate the pill back to its origin
+            if (typeof window.moveIndicator === 'function') {
+                window.moveIndicator(lastActiveTab);
+            }
+        }
+    }
 };
 
 window.triggerAvatarUpload = function() {
@@ -3928,7 +3943,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const indicator = document.getElementById('sliding-indicator');
     const navItems = document.querySelectorAll('.bn-item');
     
-    function moveIndicator(activeElement) {
+    // Make moveIndicator global so the close modal function can use it
+    window.moveIndicator = function(activeElement) {
         if (!indicator || !activeElement) return;
         const elementRect = activeElement.getBoundingClientRect();
         const containerRect = activeElement.parentElement.getBoundingClientRect();
@@ -3938,27 +3954,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
         indicator.style.width = `${pillWidth}px`;
         indicator.style.left = `${centerOffset}px`;
-    }
+    };
 
-    // Set initial position
+    // Set initial position & initialize the memory tracker
     setTimeout(() => {
         const defaultActive = document.querySelector('.bn-item.active');
-        if (defaultActive) moveIndicator(defaultActive);
+        if (defaultActive) {
+            window.lastActiveNavId = defaultActive.id; // Store default
+            window.moveIndicator(defaultActive);
+        }
     }, 100);
 
     // Update on click
     navItems.forEach(item => {
         item.addEventListener('click', function() {
+            // Memory Logic: Only save the ID if it is NOT the profile overlay
+            if (this.id !== 'bn-profile') {
+                window.lastActiveNavId = this.id;
+            }
+
             navItems.forEach(nav => nav.classList.remove('active'));
             this.classList.add('active');
-            moveIndicator(this);
+            window.moveIndicator(this);
         });
     });
     
-    // Update on resize
+    // Update on resize to keep the pill perfectly centered
     window.addEventListener('resize', () => {
         const currentActive = document.querySelector('.bn-item.active');
-        if (currentActive) moveIndicator(currentActive);
+        if (currentActive) window.moveIndicator(currentActive);
     });
 });
 
