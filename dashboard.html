@@ -1232,9 +1232,13 @@
       
       <div class="ppm-slider-track" id="ppm-slider-track">
         <div class="ppm-view active-view" id="ppm-view-edit">
-          <!-- STRUCTURED TACTILE HEADER -->
-<div class="ppm-top-bar">
-  <h3 class="ppm-title">Edit Profile</h3>
+          <div class="ppm-top-bar" style="position: relative; width: 100%; display: flex; justify-content: center; align-items: center;">
+  <h3 class="ppm-title" style="margin: 0;">Edit Profile</h3>
+  
+  <button id="logout-btn" onclick="window.handleLogout()" style="position: absolute; right: 0; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #DC2626; font-weight: 800; font-size: 0.75rem; padding: 6px 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;" onmouseover="this.style.background='#DC2626'; this.style.color='#FFFFFF';">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+    Log Out
+  </button>
 </div>
 
           <!-- Avatar Container (Tightened margin) -->
@@ -1818,12 +1822,43 @@ window.closeModal = function(id) {
   document.getElementById('panel-overlay')?.classList.remove('visible');
 };
 
-// 6. Logout and Upgrades
 window.handleLogout = async function() {
+    const btn = document.getElementById('logout-btn');
+    if (btn) {
+        btn.innerHTML = 'Logging out...';
+        btn.style.opacity = '0.5';
+        btn.style.pointerEvents = 'none';
+    }
+
     try {
+        // 1. Call your existing auth.js logout function
         if (typeof logout === 'function') await logout();
-    } catch (e) { console.error(e); }
-    window.location.href = 'login.html';
+    } catch (e) { 
+        console.error("Logout execution error:", e); 
+    }
+
+    // 2. THE MASTERCLASS CACHE WIPE
+    // Obliterate local and session storage 
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // 3. ANNIHILATE FIREBASE PERSISTENCE
+    // Firebase hides persistent auth tokens inside IndexedDB. 
+    // By forcing a delete on 'firebaseLocalStorageDb', Firebase develops amnesia.
+    // The user will absolutely be forced to request a new OTP on the next login.
+    try {
+        if (window.indexedDB) {
+            window.indexedDB.deleteDatabase('firebaseLocalStorageDb');
+        }
+    } catch(e) {
+        console.warn("IndexedDB wipe skipped.");
+    }
+
+    // 4. Hard Redirect
+    // We use .replace() instead of .href so the user cannot use the browser's "Back" button to return to the dashboard.
+    setTimeout(() => {
+        window.location.replace('login.html'); 
+    }, 400);
 };
 
 window.handleUpgradeClick = async function() {
