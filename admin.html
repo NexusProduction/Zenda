@@ -232,14 +232,17 @@ async function loadRequests() {
       list.appendChild(div);
     });
 
-    // ✅ Attach click handlers AFTER rendering — safe for any company name
+    // REPLACE EVENT LISTENER ATTACHMENT WITH:
     document.querySelectorAll('.approve-btn').forEach(btn => {
       btn.addEventListener('click', function() {
         const reqId      = this.dataset.reqId;
         const companyId  = this.dataset.companyId;
         const plan       = this.dataset.plan;
+        const type       = this.dataset.type;
+        const count      = parseInt(this.dataset.count, 10);
+        const price      = parseFloat(this.dataset.price);
         const companyName = this.dataset.companyName;
-        approveRequest(reqId, companyId, plan, companyName);
+        approveRequest(reqId, companyId, plan, type, count, price, companyName);
       });
     });
 
@@ -250,6 +253,9 @@ async function loadRequests() {
 
 // --- LOAD ALL COMPANIES DIRECTORY ---
 async function loadCompanies() {
+  // Find `let expiryHtml = '';` and right below it add:
+      let staffCardsHtml = `<span class="tag tag-free" style="margin-right: 8px;">Cards: ${comp.staffCards || 0}</span>`;
+      
   const list = document.getElementById('companyList');
   list.innerHTML = '<div class="empty">Fetching all companies...</div>';
   try {
@@ -301,7 +307,7 @@ async function loadCompanies() {
         <div class="card card-col">
           <div style="display:flex; justify-content:space-between; width:100%; border-bottom:1px solid #E2E3E9; padding-bottom:12px; margin-bottom:12px;">
             <div style="font-family:'Plus Jakarta Sans', sans-serif; font-weight:800; font-size:18px;">${comp.name}</div>
-            <div style="text-align:right;"><span class="tag ${planClass}">${planText}</span>${expiryHtml}</div>
+            <div style="text-align:right;">${staffCardsHtml}<span class="tag ${planClass}">${planText}</span>${expiryHtml}</div>
           </div>
           <div style="width:100%;">
             <button class="staff-toggle" onclick="toggleStaff('${compId}')">
@@ -318,37 +324,45 @@ async function loadCompanies() {
   } catch(e) { list.innerHTML = '<div class="empty" style="color:red;">Error loading companies.</div>'; }
 }
 
-// --- APPROVE LOGIC ---
-async function approveRequest(reqId, companyId, plan, companyName) {
-  if (!confirm(`Are you sure you want to upgrade "${companyName}" to the ${plan} plan?`)) return;
+// REPLACE approveRequest WITH:
+async function approveRequest(reqId, companyId, plan, type, count, price, companyName) {
+  if (!confirm(`Are you sure you want to approve "${plan}" for "${companyName}"?`)) return;
   try {
-    let expiry = new Date();
-    if (plan === 'Monthly') expiry.setMonth(expiry.getMonth() + 1);
-    else if (plan === 'Annual') expiry.setFullYear(expiry.getFullYear() + 1);
     
-    // 1. Upgrade the company
-    await updateDoc(doc(db, 'companies', companyId), {
-      isPremium: true,
-      planType: plan,
-      subscriptionExpiry: expiry.toISOString()
-    });
+    // 1. Differentiate between Staff Card purchase and full Subscription Upgrade
+    if (type === 'staff_card') {
+      const compRef = doc(db, 'companies', companyId);
+      const compSnap = await getDoc(compRef);
+      const currentCards = compSnap.exists() ? (compSnap.data().staffCards || 0) : 0;
+      
+      await updateDoc(compRef, { staffCards: currentCards + count });
+    } else {
+      let expiry = new Date();
+      if (plan === 'Monthly') expiry.setMonth(expiry.getMonth() + 1);
+      else if (plan === 'Annual') expiry.setFullYear(expiry.getFullYear() + 1);
+      
+      await updateDoc(doc(db, 'companies', companyId), {
+        isPremium: true,
+        planType: plan,
+        subscriptionExpiry: expiry.toISOString()
+      });
+    }
 
     // 2. Mark request as approved
     await updateDoc(doc(db, 'upgradeRequests', reqId), { status: 'approved' });
 
-    // 3. Add income to Wallet
-    let paymentAmount = plan === 'Monthly' ? 39 : 399;
-    currentBalance += paymentAmount;
+    // 3. Add income to Wallet (using exact dynamic price)
+    currentBalance += price;
     txHistory.push({
       type: 'income',
-      amount: paymentAmount,
-      desc: `${plan} Plan Upgrade — ${companyName}`,
+      amount: price,
+      desc: `${plan} Approved — ${companyName}`,
       date: new Date().toISOString()
     });
     
     await setDoc(walletRef, { balance: currentBalance, transactions: txHistory }, { merge: true });
 
-    alert(`✅ "${companyName}" upgraded to ${plan}! ₹${paymentAmount} added to your wallet.`);
+    alert(`✅ "${companyName}" request approved! ₹${price} added to your wallet.`);
     loadRequests(); 
     renderWallet();
   } catch(e) {
