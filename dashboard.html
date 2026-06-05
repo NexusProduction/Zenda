@@ -1166,10 +1166,13 @@
       <div id="view-staff" class="hidden fade-in-section">
         <div class="page-hdr" style="border-bottom:1px solid var(--bd-color);padding-bottom:24px;margin-bottom:32px;">
           <div style="flex:1;min-width:0; text-align: left;">
-            <h1 class="page-ttl">My Team</h1>
+            <h1 class="page-ttl" style="display:flex; align-items:center; gap:12px;">
+              My Team 
+              <span id="staff-credit-badge" style="background:#FEF3C7; color:#D97706; font-size:14px; padding:4px 10px; border-radius:8px; font-weight:700;">Cards Left: 0</span>
+            </h1>
             <p class="page-sub" id="staff-count-sub"></p>
           </div>
-          <button class="btn btn-primary" id="add-staff-btn" onclick="window.openCreateStaffPage()" style="display:none;padding:12px 24px;">
+          <button class="btn btn-primary" id="add-staff-btn" onclick="document.getElementById('create-staff-modal').classList.add('open')" style="display:none;padding:12px 24px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Staff
           </button>
         </div>
@@ -4074,5 +4077,25 @@ window.handleNavClick = function(buttonElement, viewName) {
     }
 };
 </script>
-</body>
-</html>
+<script type="module">
+    import { auth, db } from './firebase-config.js';
+    import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        onSnapshot(doc(db, 'users', user.uid), (userSnap) => {
+          if (userSnap.exists() && userSnap.data().companyId) {
+            onSnapshot(doc(db, 'companies', userSnap.data().companyId), (compSnap) => {
+              if (compSnap.exists()) {
+                const badge = document.getElementById('staff-credit-badge');
+                if (badge) {
+                  badge.textContent = `Cards Left: ${compSnap.data().staffCards || 0}`;
+                }
+              }
+            });
+          }
+        });
+      }
+    });
+  </script>
