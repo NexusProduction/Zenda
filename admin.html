@@ -210,11 +210,13 @@ async function loadRequests() {
       const div = document.createElement('div');
       div.className = 'card';
 
-      // ✅ FIX: Use data-* attributes instead of injecting values into onclick strings.
-      // This prevents crashes when companyName contains apostrophes or quotes (e.g. "Ali's Store").
+      let badgeHtml = data.type === 'staff_card' 
+        ? `<span class="tag" style="background:#FEF3C7; color:#D97706;">+${data.staffCardCount} Staff Cards</span>`
+        : `<span class="tag tag-premium">${data.plan} Plan</span>`;
+
       div.innerHTML = `
         <div class="details">
-          <div><span class="tag tag-premium">${data.plan} Plan</span></div>
+          <div>${badgeHtml}</div>
           <div style="font-weight:600; font-size:16px;">${data.companyName}</div>
           <div style="color:#6C6F80; font-size:14px;">Requested by: ${data.ownerName}</div>
           <div style="color:#4F46E5; font-size:14px; font-family:monospace; font-weight:700; margin-top:4px;">UTR: ${data.utr}</div>
@@ -224,15 +226,17 @@ async function loadRequests() {
           data-req-id="${docSnap.id}"
           data-company-id="${data.companyId}"
           data-plan="${data.plan}"
+          data-type="${data.type || 'plan'}"
+          data-count="${data.staffCardCount || 0}"
+          data-price="${data.price || 0}"
           data-company-name="${(data.companyName || '').replace(/"/g, '&quot;')}"
         >
-          Approve & Upgrade
+          Approve Request
         </button>
       `;
       list.appendChild(div);
     });
 
-    // REPLACE EVENT LISTENER ATTACHMENT WITH:
     document.querySelectorAll('.approve-btn').forEach(btn => {
       btn.addEventListener('click', function() {
         const reqId      = this.dataset.reqId;
@@ -253,9 +257,6 @@ async function loadRequests() {
 
 // --- LOAD ALL COMPANIES DIRECTORY ---
 async function loadCompanies() {
-  // Find `let expiryHtml = '';` and right below it add:
-      let staffCardsHtml = `<span class="tag tag-free" style="margin-right: 8px;">Cards: ${comp.staffCards || 0}</span>`;
-      
   const list = document.getElementById('companyList');
   list.innerHTML = '<div class="empty">Fetching all companies...</div>';
   try {
@@ -281,6 +282,7 @@ async function loadCompanies() {
       const compId = doc.id;
       const staff = usersMap[compId] || [];
       
+      let staffCardsHtml = `<span class="tag tag-free" style="margin-right: 8px;">Cards: ${comp.staffCards || 0}</span>`;
       let planText = 'Basic Free';
       let planClass = 'tag-free';
       let expiryHtml = '';
@@ -324,7 +326,7 @@ async function loadCompanies() {
   } catch(e) { list.innerHTML = '<div class="empty" style="color:red;">Error loading companies.</div>'; }
 }
 
-// REPLACE approveRequest WITH:
+// --- APPROVE LOGIC ---
 async function approveRequest(reqId, companyId, plan, type, count, price, companyName) {
   if (!confirm(`Are you sure you want to approve "${plan}" for "${companyName}"?`)) return;
   try {
