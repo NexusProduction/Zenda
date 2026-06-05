@@ -23,7 +23,6 @@ async function getSecondaryAuth() {
   }
   const secAuth = getAuth(_secondaryApp);
   
-  // FIX: Isolate this session completely so it doesn't log the Owner out!
   await setPersistence(secAuth, inMemoryPersistence);
   
   return secAuth;
@@ -44,7 +43,6 @@ export async function createStaff({ name, email, password, role, companyId, comp
     const cred = await createUserWithEmailAndPassword(secAuth, email.trim(), password.trim());
     const uid = cred.user.uid;
 
-    // Write to the database FIRST while we guarantee the Owner token is 100% active
     await setDoc(doc(db, 'users', uid), {
       name: name.trim(), email: email.trim(), role, companyId, uniqueId,
       designation: designation.trim(), createdBy,
@@ -60,7 +58,7 @@ export async function createStaff({ name, email, password, role, companyId, comp
       
       // Prevent creation if 0 staff cards remaining
       if (currentCards <= 0) {
-        throw new Error("FIELD:cs-form:Insufficient Staff Cards. Please buy more from the Subscription page.");
+        throw new Error("Insufficient Staff Cards. Please buy more from the Subscription page.");
       }
       
       // Deduct 1 staff card on successful creation
@@ -72,13 +70,13 @@ export async function createStaff({ name, email, password, role, companyId, comp
 
     await setDoc(doc(db, 'installedApps', uid), { apps: ['calculator'] });
 
-    // Now it is safe to log the secondary app out
     await secAuth.signOut();
 
     return { uid, name: name.trim(), email: email.trim(), role, uniqueId, companyId, companyName, designation: designation.trim() };
 
   } catch (err) {
     if (err.message && err.message.startsWith('FIELD:')) throw err;
+    if (err.message === "Insufficient Staff Cards. Please buy more from the Subscription page.") throw err;
     if (err.code === 'auth/email-already-in-use') throw new Error("this email I'd is already used tyr different one");
     if (err.code === 'auth/weak-password')        throw new Error('FIELD:cs-password:Password must be at least 6 characters.');
     if (err.code === 'auth/invalid-email')        throw new Error('FIELD:cs-email:Invalid email address.');
@@ -88,13 +86,11 @@ export async function createStaff({ name, email, password, role, companyId, comp
 
 // ── Delete staff — removes Firestore data AND Firebase Auth account ──
 export async function deleteStaffMember(uid, staffEmail, staffPassword) {
-  // 1. Delete Firestore docs
-  try { await deleteDoc(doc(db, 'users', uid)); } catch(e) { throw new Error('Permission denied. Make sure you applied the latest Firestore rules.'); }
+  try { await deleteDoc(doc(db, 'users', uid)); } catch(e) { throw new Error('Permission denied.'); }
   try { await deleteDoc(doc(db, 'installedApps', uid)); } catch(e) {}
   try { await deleteDoc(doc(db, 'appData', uid, 'apps', 'calculator')); } catch(e) {}
   try { await deleteDoc(doc(db, 'appData', uid, 'apps', 'calendar')); } catch(e) {}
 
-  // 2. Delete Firebase Auth account using secondary app
   if (staffEmail && staffPassword) {
     try {
       const secAuth = await getSecondaryAuth();
