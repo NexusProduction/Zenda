@@ -1726,14 +1726,25 @@ function last7() {
     } 
     return o; 
 }
-// 5. Core Application Functions
 window.closeAllPanels = function(skipDropdown = false) {
-  document.querySelectorAll('.side-panel, .profile-side-panel, .fullpage, .modal-overlay').forEach(p => p.classList.remove('open'));
+  // Forcefully hide all overlays
+  document.querySelectorAll('.side-panel, .profile-side-panel, .fullpage, .modal-overlay').forEach(p => {
+      p.classList.remove('open');
+      p.style.opacity = '0';
+      p.style.visibility = 'hidden';
+  });
+  
   if (!skipDropdown) { 
       const notif = document.getElementById('notificationDropdown'); 
       if (notif) notif.classList.remove('open'); 
   }
-  document.getElementById('panel-overlay')?.classList.remove('visible');
+  
+  const po = document.getElementById('panel-overlay');
+  if (po) {
+      po.classList.remove('visible');
+      po.style.zIndex = '998'; // Reset z-index
+  }
+  
   document.querySelectorAll('.deny-container').forEach(el => el.classList.add('hidden'));
   document.querySelectorAll('.notif-actions').forEach(el => el.classList.remove('hidden'));
   document.querySelectorAll('.deny-input').forEach(el => el.value = '');
@@ -1809,15 +1820,36 @@ window.openProfile = function() {
 window.openModal = function(id) {
   window.closeAllPanels();
   const el = document.getElementById(id);
-  if (id === 'assign-modal') document.getElementById('assign-error').style.display = 'none';
-  if (id === 'create-staff-modal') document.getElementById('staff-error').style.display = 'none';
-  if (el) el.classList.add('open');
-  document.getElementById('panel-overlay')?.classList.add('visible');
+  
+  // Safely clear previous errors
+  const err1 = document.getElementById('assign-error');
+  if (id === 'assign-modal' && err1) err1.style.display = 'none';
+  const err2 = document.getElementById('staff-error');
+  if (id === 'create-staff-modal' && err2) err2.style.display = 'none';
+  
+  if (el) {
+      el.classList.add('open');
+      // FIX: Force visibility and push to absolute front of the screen
+      el.style.opacity = '1';
+      el.style.visibility = 'visible';
+      el.style.zIndex = '999999';
+  }
+  
+  const po = document.getElementById('panel-overlay');
+  if (po) {
+      po.classList.add('visible');
+      // Ensure the dark background stays strictly behind the modal
+      po.style.zIndex = '999998'; 
+  }
 };
 
 window.closeModal = function(id) {
   const el = document.getElementById(id);
-  if (el) el.classList.remove('open');
+  if (el) {
+      el.classList.remove('open');
+      el.style.opacity = '0';
+      el.style.visibility = 'hidden';
+  }
   document.getElementById('panel-overlay')?.classList.remove('visible');
 };
 
