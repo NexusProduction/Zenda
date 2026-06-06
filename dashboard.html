@@ -1819,37 +1819,41 @@ window.openProfile = function() {
 
 window.openModal = function(id) {
   window.closeAllPanels();
-  const el = document.getElementById(id);
-  
+
   // Safely clear previous errors
   const err1 = document.getElementById('assign-error');
   if (id === 'assign-modal' && err1) err1.style.display = 'none';
   const err2 = document.getElementById('staff-error');
   if (id === 'create-staff-modal' && err2) err2.style.display = 'none';
-  
-  if (el) {
-      el.classList.add('open');
-      // FIX: Force visibility and push to absolute front of the screen
-      el.style.opacity = '1';
-      el.style.visibility = 'visible';
-      el.style.zIndex = '999999';
-  }
-  
+
+  // BUG FIX: Detect duplicate modals in the HTML, remove extras, and force the real one to the front
+  const els = document.querySelectorAll(`[id="${id}"]`);
+  els.forEach((el, index) => {
+      if (index === els.length - 1) { // Target the top-most modal
+          el.classList.add('open');
+          el.style.opacity = '1';
+          el.style.visibility = 'visible';
+          el.style.zIndex = '999999';
+          el.style.display = 'flex';
+      } else {
+          el.remove(); // Cleanly delete broken duplicate HTML
+      }
+  });
+
   const po = document.getElementById('panel-overlay');
   if (po) {
       po.classList.add('visible');
-      // Ensure the dark background stays strictly behind the modal
       po.style.zIndex = '999998'; 
   }
 };
 
 window.closeModal = function(id) {
-  const el = document.getElementById(id);
-  if (el) {
+  document.querySelectorAll(`[id="${id}"]`).forEach(el => {
       el.classList.remove('open');
       el.style.opacity = '0';
       el.style.visibility = 'hidden';
-  }
+      el.style.zIndex = '-1';
+  });
   document.getElementById('panel-overlay')?.classList.remove('visible');
 };
 
