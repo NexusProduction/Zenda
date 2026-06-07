@@ -469,7 +469,7 @@ window.blastItem = function(e, wrapId) {
 <script type="module">
 import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { collection, query, where, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { sendOTP, verifyUserOTP } from './otp.js';
 import { saveSession, isValidEmail } from './utils.js';
 import { login } from './auth.js'; 
@@ -587,9 +587,10 @@ window.verifyOTP = async () => {
     // Clear sensitive data from memory
     window.tempPwd = null;
     
-    const snap = await getDocs(query(collection(db,'users'),where('email','==',loginEmail)));
-    if(!snap.empty) {
-        saveSession({uid:snap.docs[0].id, ...snap.docs[0].data()});
+    // FIX: Safely fetch the specific user document directly to bypass security restrictions
+    const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    if (userDoc.exists()) {
+        saveSession({ uid: userDoc.id, ...userDoc.data() });
     }
     
     btn.classList.add('btn-success');
