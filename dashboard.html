@@ -4472,17 +4472,6 @@ window.handleNavClick = function(buttonElement, viewName) {
         window.showView(viewName);
     }
 };
-</script>
-<script type="module">
-  
-    import { auth, db } from './firebase-config.js';
-    import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-// Bind external Firebase functions to window so the modal can use them
-window.deleteStaffMember = deleteStaffMember;
-window.addDoc = addDoc;
-window.collection = collection;
 
 window.prepDeleteStaff = function(uid, name, email) {
     window.deleteTargetUid = uid;
@@ -4500,12 +4489,12 @@ window.prepDeleteStaff = function(uid, name, email) {
 
     const isOwner = window.CU.role === 'owner';
     
-    // THE FIX: Grab ALL duplicate modal divs so we inject the content into every single one
+    // THE MAGIC FIX: This injects the HTML into ALL duplicate modals so it never fails.
     const contentDivs = document.querySelectorAll('#del-modal-dynamic-content');
 
-    let htmlInjection = '';
+    let htmlContent = '';
     if (isOwner) {
-        htmlInjection = `
+        htmlContent = `
             <p style="font-size:1.05rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;line-height:1.5;">Permanently delete <strong style="color:var(--tx-main);">${esc(name)}</strong> and revoke their access.</p>
             <label style="display:flex; align-items:flex-start; gap:12px; background:var(--danger-light); padding:16px; border-radius:12px; cursor:pointer; margin-bottom: 24px; border: 1px solid rgba(255,59,48,0.2);">
                 <input type="checkbox" id="del-owner-check" onchange="window.toggleOwnerDelBtn()" style="width:20px; height:20px; margin-top:2px; accent-color: var(--danger);">
@@ -4517,7 +4506,7 @@ window.prepDeleteStaff = function(uid, name, email) {
             </div>
         `;
     } else {
-        htmlInjection = `
+        htmlContent = `
             <p style="font-size:1.05rem;color:var(--tx-muted);margin-bottom:20px;font-weight:500;line-height:1.5;">Submit a request to the owner to remove <strong style="color:var(--tx-main);">${esc(name)}</strong>.</p>
             <div style="margin-bottom:24px;">
                 <label class="form-label">Reason for removal <span style="color:var(--tx-muted);font-weight:500;">(10-50 words)</span></label>
@@ -4531,15 +4520,86 @@ window.prepDeleteStaff = function(uid, name, email) {
         `;
     }
 
-    // Inject into all duplicates so it never opens an empty box
-    contentDivs.forEach(div => {
-        div.innerHTML = htmlInjection;
-    });
-    
+    // Inject into all duplicates
+    contentDivs.forEach(div => { div.innerHTML = htmlContent; });
     window.openModal('delete-modal');
 };
 
-// THE FIX: Saturated Red Button and Duplicate handling
+// 2. SATURATED RED BUTTON LOGIC
+window.toggleOwnerDelBtn = function() {
+    const btns = document.querySelectorAll('#del-confirm-btn');
+    const checks = document.querySelectorAll('#del-owner-check');
+    
+    // Check if the box is ticked
+    const isChecked = checks.length > 0 ? checks[0].checked : false;
+
+    btns.forEach(btn => {
+        if (isChecked) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.background = '#DC2626'; // Pure Saturated Red
+            btn.style.color = '#FFFFFF';
+            btn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.4)';
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.4';
+            btn.style.background = 'var(--danger-light)';
+            btn.style.color = 'var(--danger)';
+            btn.style.boxShadow = 'none';
+        }
+    });
+};
+
+// 3. EXECUTE DELETE FIX
+window.confirmDelete = async function() {
+    const uid = window.deleteTargetUid;
+    const btns = document.querySelectorAll('#del-confirm-btn');
+    btns.forEach(b => window.loadBtn(b, true));
+
+    // Optimistic UI: Hide card immediately
+    const cards = document.querySelectorAll(`.team-card[data-uid="${uid}"]`);
+    cards.forEach(c => c.style.display = 'none');
+
+    window.closeModal('delete-modal');
+    window.showToast("Deleting staff permanently...", "info");
+
+    try {
+        await window.deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);
+        window.showToast("Staff deleted from system.", "success");
+    } catch (e) {
+        cards.forEach(c => c.style.display = 'flex'); // Revert UI on failure
+        window.showToast("Failed to delete.", "error");
+        console.error(e);
+    }
+};
+
+// 4. FORCE "CARDS LEFT" MATH TO ALWAYS BE CORRECT
+// This safely overrides any ghost listeners setting it to 0
+setInterval(() => {
+    const badge = document.getElementById('staff-credit-badge');
+    if (badge && typeof allStaff !== 'undefined') {
+        const nonOwnerCount = allStaff.filter(s => s.role !== 'owner').length;
+        if (window.CU && window.CU.isPremium) {
+            badge.textContent = 'Cards Left: ∞';
+        } else {
+            let left = 5 - nonOwnerCount;
+            if (left < 0) left = 0;
+            badge.textContent = `Cards Left: ${left}`;
+        }
+    }
+}, 1000);
+</script>
+<script type="module">
+  
+    import { auth, db } from './firebase-config.js';
+    import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// Bind external Firebase functions to window so the modal can use them
+window.deleteStaffMember = deleteStaffMember;
+window.addDoc = addDoc;
+window.collection = collection;
+
 window.toggleOwnerDelBtn = function() {
     const btns = document.querySelectorAll('#del-confirm-btn');
     const checks = document.querySelectorAll('#del-owner-check');
