@@ -4407,13 +4407,62 @@ async function init() {
 
       setupUI();
       subscribeAll();
+      listenForAccountDeletion();
       window.showView('home');
 
   } catch(err) {
       console.error("INIT CRASH", err);
   }
 }
+function listenForAccountDeletion() {
+  if (!window.CU || !window.CU.uid) return;
 
+  // Listen to the current user's document in Firestore
+  const userDocRef = doc(db, 'users', window.CU.uid);
+  
+  onSnapshot(userDocRef, async (docSnap) => {
+    // If the document does not exist, the account was deleted
+    if (!docSnap.exists()) {
+      // Find the owner's name from the allStaff array if available
+      let ownerName = 'Owner';
+      if (window._allStaff) {
+          const owner = window._allStaff.find(s => s.role === 'owner');
+          if (owner && owner.name) {
+              ownerName = owner.name;
+          }
+      }
+
+      // Show the overlay
+      const overlay = document.getElementById('deleted-account-overlay');
+      document.getElementById('deleted-owner-name').textContent = ownerName;
+      overlay.style.display = 'flex';
+
+      // Start the 10-second countdown
+      let secondsLeft = 10;
+      const countdownSpan = document.getElementById('deleted-countdown');
+      
+      const timer = setInterval(async () => {
+        secondsLeft--;
+        countdownSpan.textContent = secondsLeft;
+        
+        if (secondsLeft <= 0) {
+          clearInterval(timer);
+          
+          // Completely log the user out and clear cache
+          try {
+            await auth.signOut();
+            localStorage.clear(); // Clear all local storage
+            sessionStorage.clear(); // Clear all session storage
+            window.location.replace('login.html'); // Redirect to login
+          } catch (error) {
+            console.error("Error signing out:", error);
+            window.location.replace('login.html');
+          }
+        }
+      }, 1000);
+    }
+  });
+}
 init();
 
 </script>
@@ -4725,5 +4774,16 @@ setInterval(() => {
     };
 </script>
   </div>
+  <div id="deleted-account-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); z-index: 1000000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+  <div style="background: white; padding: 40px; border-radius: 16px; border: 4px solid #1D1D1F; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    <h2 style="color: #DC2626; font-size: 1.5rem; font-weight: 800; margin-bottom: 16px;">Account Deleted</h2>
+    <p style="font-size: 1rem; color: #374151; margin-bottom: 24px; font-weight: 600; line-height: 1.5;">
+      Your account has been deleted by the owner (<span id="deleted-owner-name">Owner</span>).
+    </p>
+    <p style="font-size: 1rem; color: #6B7280; font-weight: 700;">
+      You will be logged out in <span id="deleted-countdown" style="font-size: 1.5rem; color: #1D1D1F; font-weight: 900;">10</span> seconds.
+    </p>
+  </div>
+</div>
 </body>
 </html>
