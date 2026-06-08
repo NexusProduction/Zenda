@@ -4023,9 +4023,23 @@ function subscribeAll() {
           window.updateAllStats(); 
           if(window.renderStaffCards) window.renderStaffCards(staff); 
           buildAssignSelect(staff); 
+          
           const n = staff.filter(s => s.role !== 'owner'); 
           const sc = document.getElementById('staff-count-sub'); 
           if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`; 
+          
+          // --- THE FIX: Dynamic Cards Left Logic ---
+          const badge = document.getElementById('staff-credit-badge');
+          if (badge) {
+              if (window.CU && window.CU.isPremium) {
+                  badge.textContent = 'Cards Left: ∞';
+              } else {
+                  // Math: 5 max free staff minus current staff count
+                  let left = 5 - n.length;
+                  if (left < 0) left = 0;
+                  badge.textContent = `Cards Left: ${left}`;
+              }
+          }
       })); 
   }
   
@@ -4465,24 +4479,6 @@ window.handleNavClick = function(buttonElement, viewName) {
     import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        onSnapshot(doc(db, 'users', user.uid), (userSnap) => {
-          if (userSnap.exists() && userSnap.data().companyId) {
-            onSnapshot(doc(db, 'companies', userSnap.data().companyId), (compSnap) => {
-              if (compSnap.exists()) {
-                const badge = document.getElementById('staff-credit-badge');
-                if (badge) {
-                  badge.textContent = `Cards Left: ${compSnap.data().staffCards || 0}`;
-                }
-              }
-            });
-          }
-        });
-      }
-    });
-  // --- DELETION LOGIC (OWNER vs STAFF) ---
-
 // Bind external Firebase functions to window so the modal can use them
 window.deleteStaffMember = deleteStaffMember;
 window.addDoc = addDoc;
@@ -4493,7 +4489,6 @@ window.prepDeleteStaff = function(uid, name, email) {
     window.deleteTargetName = name;
     window.deleteTargetEmail = email;
 
-    // Get the password hint to fully delete the Auth account if Owner approves
     const targetStaff = allStaff.find(s => s.uid === uid);
     window.deleteTargetPwd = targetStaff ? targetStaff.passwordHint : '';
     
@@ -4504,10 +4499,13 @@ window.prepDeleteStaff = function(uid, name, email) {
     window.deleteTargetJoined = joined;
 
     const isOwner = window.CU.role === 'owner';
-    const contentDiv = document.getElementById('del-modal-dynamic-content');
+    
+    // THE FIX: Grab ALL duplicate modal divs so we inject the content into every single one
+    const contentDivs = document.querySelectorAll('#del-modal-dynamic-content');
 
+    let htmlInjection = '';
     if (isOwner) {
-        contentDiv.innerHTML = `
+        htmlInjection = `
             <p style="font-size:1.05rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;line-height:1.5;">Permanently delete <strong style="color:var(--tx-main);">${esc(name)}</strong> and revoke their access.</p>
             <label style="display:flex; align-items:flex-start; gap:12px; background:var(--danger-light); padding:16px; border-radius:12px; cursor:pointer; margin-bottom: 24px; border: 1px solid rgba(255,59,48,0.2);">
                 <input type="checkbox" id="del-owner-check" onchange="window.toggleOwnerDelBtn()" style="width:20px; height:20px; margin-top:2px; accent-color: var(--danger);">
@@ -4519,7 +4517,7 @@ window.prepDeleteStaff = function(uid, name, email) {
             </div>
         `;
     } else {
-        contentDiv.innerHTML = `
+        htmlInjection = `
             <p style="font-size:1.05rem;color:var(--tx-muted);margin-bottom:20px;font-weight:500;line-height:1.5;">Submit a request to the owner to remove <strong style="color:var(--tx-main);">${esc(name)}</strong>.</p>
             <div style="margin-bottom:24px;">
                 <label class="form-label">Reason for removal <span style="color:var(--tx-muted);font-weight:500;">(10-50 words)</span></label>
@@ -4532,22 +4530,38 @@ window.prepDeleteStaff = function(uid, name, email) {
             </div>
         `;
     }
+
+    // Inject into all duplicates so it never opens an empty box
+    contentDivs.forEach(div => {
+        div.innerHTML = htmlInjection;
+    });
+    
     window.openModal('delete-modal');
 };
 
-// Controls the Owner's Checkbox & Red Button
+// THE FIX: Saturated Red Button and Duplicate handling
 window.toggleOwnerDelBtn = function() {
-    const btn = document.getElementById('del-confirm-btn');
-    const check = document.getElementById('del-owner-check');
-    if (check.checked) {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.style.boxShadow = '0 4px 12px rgba(255,59,48,0.3)';
-    } else {
-        btn.disabled = true;
-        btn.style.opacity = '0.4';
-        btn.style.boxShadow = 'none';
-    }
+    const btns = document.querySelectorAll('#del-confirm-btn');
+    const checks = document.querySelectorAll('#del-owner-check');
+    
+    // Check the state of the first found checkbox
+    const isChecked = checks.length > 0 ? checks[0].checked : false;
+
+    btns.forEach(btn => {
+        if (isChecked) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.background = '#DC2626'; // Saturated Red
+            btn.style.color = '#FFFFFF';
+            btn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.4)';
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.4';
+            btn.style.background = 'var(--danger-light)';
+            btn.style.color = 'var(--danger)';
+            btn.style.boxShadow = 'none';
+        }
+    });
 };
 
 // Controls the Staff's Textarea & Word Count
