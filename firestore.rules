@@ -1,89 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ---- Helper functions ----
-    function isSignedIn() { return request.auth != null; }
-    function getUserData() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
-    function getUserRole() { return getUserData().role; }
-    function getCompanyId() { return getUserData().companyId; }
-
-    // ---- COMPANIES ----
-    match /companies/{companyId} {
-      allow read: if isSignedIn() && getCompanyId() == companyId;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (getUserRole() == 'owner' || resource.data.ownerId == request.auth.uid);
-      allow delete: if false;
-    }
-
-    // ---- USERS ----
-    match /users/{userId} {
-      allow read: if true; 
-      allow create: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'owner');
-      allow update: if isSignedIn() && (
-        request.auth.uid == userId ||
-        (getUserRole() == 'owner' && getCompanyId() == resource.data.companyId)
-      );
-      allow delete: if isSignedIn() && getUserRole() == 'owner';
-
-      // ---- NOTIFICATIONS ----
-      match /notifications/{notifId} {
-        allow read, update, delete: if isSignedIn() && request.auth.uid == userId;
-        allow create: if isSignedIn();
-      }
-    }
-
-    // ---- TASKS ----
-    match /tasks/{taskId} {
-      allow read: if isSignedIn() && (
-        request.auth.uid == resource.data.assignedTo ||
-        request.auth.uid == resource.data.assignedBy ||
-        getCompanyId() == resource.data.companyId
-      );
-      allow create: if isSignedIn() && getCompanyId() == request.resource.data.companyId;
-      allow update: if isSignedIn() && (
-        request.auth.uid == resource.data.assignedTo ||
-        request.auth.uid == resource.data.assignedBy
-      );
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.assignedBy;
-    }
-    
-    // ---- EXPENSES ----
-    match /expenses/{expenseId} {
-      // Anyone in the company can read the company's expenses
-      allow read: if isSignedIn() && getCompanyId() == resource.data.companyId;
-      
-      // Anyone in the company can create an expense for their company
-      allow create: if isSignedIn() && getCompanyId() == request.resource.data.companyId;
-      
-      // Only the creator, or the company owner/manager can update or delete
-      allow update, delete: if isSignedIn() 
-        && getCompanyId() == resource.data.companyId 
-        && (
-          request.auth.uid == resource.data.createdBy || 
-          getUserRole() == 'owner' || 
-          getUserRole() == 'manager'
-        );
-    }
-    
-    // ---- OTPs ----
-    match /otps/{emailKey} {
+    match /{document=**} {
+      // WARNING: This allows anyone to read/write. Use only for testing.
       allow read, write: if true;
-    }
-
-    // ---- INSTALLED APPS ----
-    match /installedApps/{userId} {
-      allow read, write: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'owner');
-    }
-
-    // ---- APP DATA ----
-    match /appData/{userId}/apps/{appId} {
-      allow read, write: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'owner');
-    }
-
-    // ---- CALENDAR ----
-    match /calendar/{docId} {
-      allow read, write: if isSignedIn();
     }
   }
 }
