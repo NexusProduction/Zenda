@@ -3883,6 +3883,45 @@ window.viewStaffDetails = function(uid) {
     document.getElementById('sd-joined').textContent = s.createdAt ? new Date(s.createdAt).toLocaleDateString() : 'Unknown';
     window.openModal('staff-detail-modal');
 };
+window.renderStaffCards = function(staffList) {
+  const container = document.getElementById('staff-cards-list');
+  if (!container) return;
+  if (!staffList || staffList.length === 0) {
+    container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--tx-muted); font-weight: 500;">No staff members found.</div>`;
+    return;
+  }
+  container.innerHTML = staffList.map(s => {
+    const isOwner = s.role === 'owner';
+    const roleClass = isOwner ? 'background:#F5F3FF; color:#7C3AED;' : 'background:var(--ac-light); color:var(--ac);';
+    const roleName = s.designation || (s.role ? s.role.charAt(0).toUpperCase() + s.role.slice(1) : 'Staff');
+    const color = window.avatarColor ? window.avatarColor(s.name) : '#0066CC';
+    const initial = s.name ? s.name.charAt(0).toUpperCase() : 'U';
+    const avatarHtml = s.avatarData ? `<img src="${s.avatarData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : initial;
+    let delBtn = (window.CU && window.CU.role === 'owner' && !isOwner) ? 
+        `<button class="btn-icon-danger-absolute" onclick="window.openDeleteModal('${s.uid}', '${esc(s.name)}', '${esc(s.email)}', '${s.password||''}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>` : '';
+    return `<div class="team-card">${delBtn}<div class="team-card-top"><div class="team-av" style="background:${color};color:white;">${avatarHtml}</div><div class="team-text-block"><div class="team-name">${esc(s.name)}</div><div class="team-role" style="${roleClass}">${esc(roleName)}</div></div></div><div class="team-card-actions"><button class="btn btn-secondary w-full" onclick="window.viewStaffDetails('${s.uid}')">View Details</button></div></div>`;
+  }).join('');
+};
+
+window.viewStaffDetails = function(uid) {
+    const s = allStaff.find(x => x.uid === uid);
+    if (!s) return;
+    const initial = s.name ? s.name.charAt(0).toUpperCase() : 'U';
+    const color = window.avatarColor ? window.avatarColor(s.name) : '#0066CC';
+    const avatarHtml = s.avatarData ? `<img src="${s.avatarData}" style="width:100%;height:100%;object-fit:cover;border-radius:24px;">` : initial;
+    const avEl = document.getElementById('sd-avatar');
+    if(avEl) { avEl.innerHTML = avatarHtml; avEl.style.color = s.avatarData ? 'transparent' : 'white'; avEl.style.backgroundColor = s.avatarData ? 'transparent' : color; }
+    document.getElementById('sd-name').textContent = s.name;
+    document.getElementById('sd-role').textContent = s.designation || s.role;
+    document.getElementById('sd-email').textContent = s.email;
+    const pwdRow = document.getElementById('sd-password-row');
+    if (pwdRow) {
+        if (window.CU && (window.CU.role === 'owner' || window.CU.uid === s.uid)) { pwdRow.style.display = 'flex'; document.getElementById('sd-password').textContent = s.password || '••••••'; } 
+        else { pwdRow.style.display = 'none'; }
+    }
+    document.getElementById('sd-joined').textContent = s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : 'Unknown';
+    window.openModal('staff-detail-modal');
+};
 window.updateAllStats = function() {
     const combined = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])];
     const uniqueMap = new Map();
