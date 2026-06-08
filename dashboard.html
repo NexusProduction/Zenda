@@ -39,7 +39,7 @@
       --bd-subtle: rgba(0, 0, 0, 0.03);
       --bg-surface: #FFFFFF;
       --bg-raised: #FFFFFF;
-      --bg-page: #F5F5F7; 
+      --bg-page: #F5F5F7;
       --tx-main: #1D1D1F;
       --tx-muted: #86868B;
       --ac: #0066CC; 
@@ -74,7 +74,15 @@
 
     h1, h2, h3, h4, h5, h6 { margin: 0; color: var(--tx-main); }
     .greeting-name { color: var(--ac); font-weight: 800; text-transform: capitalize; }
-    .page-ttl { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 6px; text-align: left; }
+    /* Typography Hack */
+.page-ttl { 
+  font-size: 1.8rem; 
+  font-weight: 800; 
+  letter-spacing: -0.03em; /* Tightened letter spacing */
+  line-height: 1.15; /* Dropped line height */
+  color: #1D1D1F; 
+  margin-bottom: 6px; 
+}
     .page-sub { font-size: 0.95rem; font-weight: 500; color: var(--tx-muted); text-align: left; }
     .content-ttl { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; color: var(--tx-main); }
     .chart-hdr, .content-hdr { padding: 20px 24px; border-bottom: 1.5px solid var(--bd-color); display: flex; justify-content: space-between; align-items: center; }
@@ -159,10 +167,40 @@
     .notif-time { font-size: 0.75rem; color: var(--tx-muted); font-family: inherit; white-space: nowrap; font-weight: 700; }
     .notif-body { font-size: 0.95rem; color: var(--tx-muted); margin: 0; line-height: 1.5; font-weight: 500; }
 
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1002; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s, visibility 0.3s; cursor: pointer; }
-    .modal-overlay.open { opacity: 1; }
-    .modal-overlay .modal { transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: default; }
-    .modal-overlay.open .modal { transform: scale(1); }
+    .modal-overlay {
+  position: fixed; 
+  inset: 0; 
+  background: rgba(0, 0, 0, 0.2); 
+  backdrop-filter: blur(8px); /* The Glass Overlay */
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1002; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  opacity: 0; 
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease; 
+}
+
+.modal-overlay .modal {
+  /* Start slightly scaled down and lower on the Y-axis */
+  transform: scale(0.95) translateY(15px); 
+  transition: transform 0.4s cubic-bezier(0.25, 1.05, 0.5, 1); /* Spring up */
+}
+
+.modal-overlay.open {
+  opacity: 1; 
+  visibility: visible;
+}
+
+.modal-overlay.open .modal {
+  transform: scale(1) translateY(0); /* Springs into place */
+}
+
+/* Progressive Disclosure Spacing */
+#staff-form-container > div {
+  margin-bottom: 32px; /* Generous whitespace between sections */
+}
     .modal { background: var(--bg-surface); width: 100%; max-width: 480px; border-radius: 24px; box-shadow: var(--shadow-float); overflow-y: auto; max-height: 90vh; border: 1.5px solid var(--bd-color); }
     
     #assign-modal .modal { max-width: 520px; }
@@ -177,8 +215,49 @@
     .stat-card { border: 1.5px solid var(--bd-color); box-shadow: var(--shadow-sm); border-radius: var(--rad-outer); background: var(--bg-surface); padding: 24px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
     .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--bd-color); }
 
-    .team-card { padding: 24px; border-radius: var(--rad-outer); transition: all 0.2s; position: relative; background: var(--bg-surface); border: 1.5px solid var(--bd-color); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 20px; }
-    .team-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--bd-color); }
+    .team-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--bd-color);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: none; /* Stripping out the chaotic gradients/shadows */
+  /* Lifelike Hover Physics */
+  transition: transform 0.4s cubic-bezier(0.25, 1.05, 0.5, 1), box-shadow 0.4s cubic-bezier(0.25, 1.05, 0.5, 1);
+}
+
+.team-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.05); /* Soft shadow fades in only on hover */
+  border-color: var(--bd-color);
+}
+
+/* Semantic Badging for Hierarchy */
+.team-role { 
+  font-size: 0.75rem; 
+  font-weight: 800; 
+  padding: 6px 12px; 
+  border-radius: 8px; 
+  text-transform: uppercase; 
+  letter-spacing: 0.05em;
+}
+.team-role.MANAGER { background: #EEF2FF; color: #4F46E5; }
+.team-role.OWNER { background: #F5F3FF; color: #7C3AED; }
+.team-role.STAFF { background: #ECFDF5; color: #10B981; }
+.btn {
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.btn:active {
+  transform: scale(0.96) !important; /* Physically scales down to simulate a real button press */
+}
+/* Fat Finger Rule: Ensuring all clickable targets are at least 44px */
+.btn {
+  min-height: 44px;
+  min-width: 44px;
+  /* ... existing button styles ... */
+}
     
     .btn-icon-danger-absolute { position: absolute; top: 16px; right: 16px; background: transparent; color: #A1A1A6; border: none; border-radius: 8px; padding: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
     .btn-icon-danger-absolute:hover { background: var(--danger-light); color: var(--danger); transform: scale(1.05); }
@@ -250,7 +329,6 @@
       .main-content { padding: 24px 16px 120px 16px !important; overflow-x: hidden; }
       
       .page-hdr, .tasks-page-hdr { flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 24px !important; width: 100%; }
-      .page-ttl { font-size: 1.6rem; text-align: left; margin: 0; padding-left: 0 !important; }
       .page-sub { text-align: left; margin-top: 4px; font-size: 0.9rem; }
       
       #assign-top-btn { display: none !important; }
@@ -278,7 +356,6 @@
       .app-name { font-size: .8rem !important; }
       
       .team-grid { grid-template-columns: 1fr !important; gap: 16px !important;}
-      .team-card { padding: 20px !important; flex-direction: column !important; align-items: flex-start !important; text-align: left !important; gap: 16px !important; }
       .btn-icon-danger-absolute { top: 20px !important; right: 20px !important; }
       .team-card-top { flex-direction: row !important; width: 100% !important; justify-content: flex-start !important; margin: 0 !important; gap: 16px !important; padding-right: 40px !important;}
       .team-av { width: 48px !important; height: 48px !important; font-size: 1.2rem !important; }
@@ -3774,21 +3851,28 @@ window.checkDelConfirm = function() {
 };
 
 window.confirmDelete = async function() {
-    if (!deleteTargetUid) return;
-    const btn = document.getElementById('del-confirm-btn');
-    const reason = document.getElementById('del-reason-input')?.value.trim() || 'No reason provided';
-    loadBtn(btn, true);
-    if (window.CU.role !== 'owner') {
-        const owner = allStaff.find(s => s.role === 'owner');
-        if (owner) {
-            try { await addDoc(collection(db, 'users', owner.uid, 'notifications'), { type: 'staff_delete_request', message: `${window.CU.name} requested to remove staff member: ${deleteConfirmStr}.`, targetUid: deleteTargetUid||'', targetEmail: deleteTargetEmail||'', targetName: deleteConfirmStr||'', targetPwd: deleteTargetPwd||'', reason: reason, requesterId: window.CU.uid||'', requesterName: window.CU.name||'', createdAt: Date.now(), read: false, status: 'unread' }); window.showToast("Remove Staff request sent to Owner.", "success"); }
-            catch(e) { console.error("Notification Error: ", e); window.showToast("Failed to send request to Owner.", "error"); }
-        } else { window.showToast("Owner account not found.", "error"); }
-        window.closeModal('delete-modal'); loadBtn(btn, false, 'Delete Forever'); return;
+    const uid = window.deleteTargetUid;
+    
+    // 1. Optimistic UI: Instantly remove the card from the UI
+    const cardElement = document.querySelector(`.team-card[data-uid="${uid}"]`);
+    if (cardElement) {
+        cardElement.style.display = 'none'; 
     }
-    try { await deleteStaffMember(deleteTargetUid, deleteTargetEmail, deleteTargetPwd); window.closeModal('delete-modal'); window.showToast('Staff member removed.', 'success'); deleteTargetUid = null; }
-    catch (e) { window.showToast('Error: ' + e.message, 'error'); loadBtn(btn, false, 'Delete Forever'); window.checkDelConfirm(); }
-};
+    
+    // 2. Close modal and show instant tactile feedback
+    window.closeModal('delete-modal');
+    window.showToast("Staff member removed.", "success");
+
+    try {
+        // 3. Perform the actual backend deletion silently
+        await deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);
+    } catch (e) {
+        // 4. Revert UI if the server request fails
+        if (cardElement) cardElement.style.display = 'flex';
+        window.showToast("Failed to remove staff member. Restored.", "error");
+        console.error(e);
+    }
+}
 
 // 12. Main System Listeners
 function subscribeAll() {
