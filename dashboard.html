@@ -4019,8 +4019,9 @@ function subscribeAll() {
   
   if (companyId && listenCompanyStaff) { 
       unsubs.push(listenCompanyStaff(companyId, staff => { 
-          allStaff = staff; 
-          window.updateAllStats(); 
+    allStaff = staff;
+    window._allStaff = staff; // expose to non-module scripts
+    window.updateAllStats();
           if(window.renderStaffCards) window.renderStaffCards(staff); 
           buildAssignSelect(staff); 
           
@@ -4420,51 +4421,41 @@ init();
 document.addEventListener("DOMContentLoaded", () => {
     const indicator = document.getElementById('sliding-indicator');
     const navItems = document.querySelectorAll('.bn-item');
-    
-    // Make moveIndicator global so the close modal function can use it
+
     window.moveIndicator = function(activeElement) {
         if (!indicator || !activeElement) return;
         const elementRect = activeElement.getBoundingClientRect();
         const containerRect = activeElement.parentElement.getBoundingClientRect();
         const relativeLeft = elementRect.left - containerRect.left;
-        const pillWidth = 64; 
+        const pillWidth = 64;
         const centerOffset = relativeLeft + (elementRect.width / 2) - (pillWidth / 2);
-
         indicator.style.width = `${pillWidth}px`;
         indicator.style.left = `${centerOffset}px`;
     };
 
-    // Set initial position & initialize the memory tracker
     setTimeout(() => {
         const defaultActive = document.querySelector('.bn-item.active');
         if (defaultActive) {
-            window.lastActiveNavId = defaultActive.id; // Store default
+            window.lastActiveNavId = defaultActive.id;
             window.moveIndicator(defaultActive);
         }
     }, 100);
 
-    // Update on click
     navItems.forEach(item => {
         item.addEventListener('click', function() {
-            // Memory Logic: Only save the ID if it is NOT the profile overlay
-            if (this.id !== 'bn-profile') {
-                window.lastActiveNavId = this.id;
-            }
-
+            if (this.id !== 'bn-profile') window.lastActiveNavId = this.id;
             navItems.forEach(nav => nav.classList.remove('active'));
             this.classList.add('active');
             window.moveIndicator(this);
         });
     });
-    
-    // Update on resize
+
     window.addEventListener('resize', () => {
         const currentActive = document.querySelector('.bn-item.active');
         if (currentActive) window.moveIndicator(currentActive);
     });
 });
 
-// Bridge to your existing router
 window.handleNavClick = function(buttonElement, viewName) {
     if (viewName === 'profile') {
         window.openProfileModal();
@@ -4473,282 +4464,266 @@ window.handleNavClick = function(buttonElement, viewName) {
     }
 };
 
+/* ── Global HTML-escape helper (accessible outside modules) ── */
+window.escHtml = function(s) {
+    return String(s || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
+/* ══════════════════════════════════════════════════════════════
+   STAFF DELETE SYSTEM
+   Owner  → sees confirmation checkbox  → deletes permanently
+   Staff  → sees reason textarea (10-50 chars) → sends request to owner
+══════════════════════════════════════════════════════════════ */
 window.prepDeleteStaff = function(uid, name, email) {
-    window.deleteTargetUid = uid;
-    window.deleteTargetName = name;
+    window.deleteTargetUid   = uid;
+    window.deleteTargetName  = name;
     window.deleteTargetEmail = email;
 
-    const targetStaff = allStaff.find(s => s.uid === uid);
-    window.deleteTargetPwd = targetStaff ? targetStaff.passwordHint : '';
-    
-    let joined = 'Unknown';
-    if (targetStaff && targetStaff.createdAt) {
-       joined = new Date(targetStaff.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    }
-    window.deleteTargetJoined = joined;
+    const found = (window._allStaff || []).find(s => s.uid === uid);
+    window.deleteTargetPwd    = found ? (found.password || found.passwordHint || '') : '';
+    window.deleteTargetJoined = found && found.createdAt
+        ? new Date(found.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        : 'Unknown';
 
-    const isOwner = window.CU.role === 'owner';
-    
-    // Inject into ALL duplicates so it never fails
-    const contentDivs = document.querySelectorAll('#del-modal-dynamic-content');
+    const isOwner  = window.CU && window.CU.role === 'owner';
+    const content  = document.getElementById('del-modal-dynamic-content');
+    if (!content) return;
 
-    let htmlContent = '';
     if (isOwner) {
-        htmlContent = `
-            <p style="font-size:1.05rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;line-height:1.5;">Permanently delete <strong style="color:var(--tx-main);">${esc(name)}</strong> and revoke their access.</p>
-            <label style="display:flex; align-items:flex-start; gap:12px; background:var(--danger-light); padding:16px; border-radius:12px; cursor:pointer; margin-bottom: 24px; border: 1px solid rgba(255,59,48,0.2);">
-                <input type="checkbox" id="del-owner-check" onchange="window.toggleOwnerDelBtn()" style="width:20px; height:20px; margin-top:2px; accent-color: var(--danger);">
-                <span style="font-size:0.9rem; color:var(--danger); font-weight:700; line-height:1.4;">I understand that this user will lose all access to Zenda and cannot log back in.</span>
-            </label>
-            <div style="display:flex;gap:16px;">
-                <button class="btn btn-ghost w-full" style="padding:14px;border-radius:12px;" onclick="window.closeModal('delete-modal')">Cancel</button>
-                <button class="btn btn-danger w-full" style="padding:14px;border-radius:12px; opacity:0.4; transition: all 0.2s;" id="del-confirm-btn" disabled onclick="window.confirmDelete()">Delete Forever</button>
+        /* ── OWNER: direct deletion with acknowledgment checkbox ── */
+        content.innerHTML = `
+          <div style="text-align:center;margin-bottom:24px;">
+            <div style="width:64px;height:64px;background:#FEF2F2;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 4px 14px rgba(220,38,38,0.12);">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
             </div>
-        `;
+            <h3 style="font-size:1.15rem;font-weight:800;color:#0F172A;margin-bottom:8px;letter-spacing:-0.01em;">
+              Remove ${window.escHtml(name)}?
+            </h3>
+            <p style="font-size:0.875rem;color:#64748B;line-height:1.6;max-width:280px;margin:0 auto;">
+              This will permanently revoke their access to Zenda. This action cannot be undone.
+            </p>
+          </div>
+
+          <label style="display:flex;align-items:flex-start;gap:12px;background:#FEF2F2;border:1.5px solid rgba(220,38,38,0.25);border-radius:12px;padding:16px;cursor:pointer;margin-bottom:24px;transition:background 0.2s;"
+                 onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+            <input type="checkbox" id="del-owner-check" onchange="window.toggleOwnerDelBtn()"
+                   style="width:18px;height:18px;margin-top:1px;accent-color:#DC2626;flex-shrink:0;cursor:pointer;">
+            <span style="font-size:0.875rem;color:#991B1B;font-weight:600;line-height:1.5;">
+              I confirm that <strong>${window.escHtml(name)}</strong> will permanently lose all
+              access to Zenda immediately.
+            </span>
+          </label>
+
+          <div style="display:flex;gap:12px;">
+            <button onclick="window.closeModal('delete-modal')"
+                    style="flex:1;padding:13px;background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;font-weight:700;font-size:0.875rem;cursor:pointer;font-family:inherit;color:#374151;transition:background 0.2s;"
+                    onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='#fff'">
+              Cancel
+            </button>
+            <button id="del-confirm-btn" onclick="window.confirmDelete()" disabled
+                    style="flex:1;padding:13px;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:0.875rem;cursor:not-allowed;font-family:inherit;opacity:0.4;transition:all 0.25s;box-shadow:0 4px 12px rgba(220,38,38,0.2);">
+              Delete Forever
+            </button>
+          </div>`;
+
     } else {
-        htmlContent = `
-            <p style="font-size:1.05rem;color:var(--tx-muted);margin-bottom:20px;font-weight:500;line-height:1.5;">Submit a request to the owner to remove <strong style="color:var(--tx-main);">${esc(name)}</strong>.</p>
-            <div style="margin-bottom:24px;">
-                <label class="form-label">Reason for removal <span style="color:var(--tx-muted);font-weight:500;">(10-50 words)</span></label>
-                <textarea class="form-input" id="del-reason-input" placeholder="Explain why this staff member should be removed..." style="min-height:90px; resize:none;" oninput="window.checkDelRequestBtn()"></textarea>
-                <div id="del-word-count" style="font-size:0.75rem; color:var(--tx-muted); text-align:right; margin-top:6px; font-weight:600;">0 words</div>
+        /* ── STAFF / MANAGER: send removal request to owner ── */
+        content.innerHTML = `
+          <div style="text-align:center;margin-bottom:24px;">
+            <div style="width:64px;height:64px;background:#EEF2FF;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 4px 14px rgba(79,70,229,0.12);">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linecap="round">
+                <line x1="22" y1="2" x2="11" y2="13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
+              </svg>
             </div>
-            <div style="display:flex;gap:16px;">
-                <button class="btn btn-ghost w-full" style="padding:14px;border-radius:12px;" onclick="window.closeModal('delete-modal')">Cancel</button>
-                <button class="btn btn-primary w-full" style="padding:14px;border-radius:12px; opacity:0.4; transition: all 0.2s;" id="del-request-btn" disabled onclick="window.sendDeleteRequest()">Send Request</button>
+            <h3 style="font-size:1.15rem;font-weight:800;color:#0F172A;margin-bottom:8px;letter-spacing:-0.01em;">
+              Request Removal
+            </h3>
+            <p style="font-size:0.875rem;color:#64748B;line-height:1.6;max-width:280px;margin:0 auto;">
+              Submit a request to remove <strong style="color:#0F172A;">${window.escHtml(name)}</strong>.
+              The owner will review it and decide.
+            </p>
+          </div>
+
+          <div style="margin-bottom:8px;">
+            <label style="display:block;font-size:0.72rem;font-weight:800;color:#64748B;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;">
+              Reason for Removal *
+            </label>
+            <textarea id="del-reason-input"
+              placeholder="Provide a clear reason for removing this staff member… (10–50 characters)"
+              style="width:100%;min-height:100px;padding:13px;border:1.5px solid #E2E8F0;border-radius:12px;font-family:inherit;font-size:0.875rem;color:#0F172A;resize:none;outline:none;transition:all 0.2s;background:#F8FAFC;box-sizing:border-box;line-height:1.6;"
+              maxlength="50"
+              onfocus="this.style.borderColor='#4F46E5';this.style.background='#fff';this.style.boxShadow='0 0 0 3px rgba(79,70,229,0.1)'"
+              onblur="this.style.borderColor='#E2E8F0';this.style.background='#F8FAFC';this.style.boxShadow='none'"
+              oninput="window.checkDelRequestBtn(this)"></textarea>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px;">
+              <span id="del-char-hint" style="font-size:0.72rem;color:#94A3B8;font-weight:600;transition:color 0.2s;">
+                Minimum 10 characters
+              </span>
+              <span id="del-char-count" style="font-size:0.72rem;font-weight:700;color:#94A3B8;font-family:'DM Mono',monospace;transition:color 0.2s;">
+                0 / 50
+              </span>
             </div>
-        `;
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:20px;">
+            <button onclick="window.closeModal('delete-modal')"
+                    style="flex:1;padding:13px;background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;font-weight:700;font-size:0.875rem;cursor:pointer;font-family:inherit;color:#374151;transition:background 0.2s;"
+                    onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='#fff'">
+              Cancel
+            </button>
+            <button id="del-request-btn" onclick="window.sendDeleteRequest()" disabled
+                    style="flex:1;padding:13px;background:#4F46E5;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:0.875rem;cursor:not-allowed;font-family:inherit;opacity:0.4;transition:all 0.25s;box-shadow:0 4px 12px rgba(79,70,229,0.2);">
+              Send to Owner
+            </button>
+          </div>`;
     }
 
-    contentDivs.forEach(div => { div.innerHTML = htmlContent; });
     window.openModal('delete-modal');
 };
 
+/* ── Checkbox toggle (owner confirmation) ── */
 window.toggleOwnerDelBtn = function() {
-    const btns = document.querySelectorAll('#del-confirm-btn');
-    const checks = document.querySelectorAll('#del-owner-check');
-    const isChecked = checks.length > 0 ? checks[0].checked : false;
-
-    btns.forEach(btn => {
-        if (isChecked) {
-            btn.disabled = false;
-            btn.style.opacity = '1';
-            btn.style.background = '#DC2626';
-            btn.style.color = '#FFFFFF';
-            btn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.4)';
-        } else {
-            btn.disabled = true;
-            btn.style.opacity = '0.4';
-            btn.style.background = 'var(--danger-light)';
-            btn.style.color = 'var(--danger)';
-            btn.style.boxShadow = 'none';
-        }
-    });
+    const check = document.getElementById('del-owner-check');
+    const btn   = document.getElementById('del-confirm-btn');
+    if (!check || !btn) return;
+    const ok = check.checked;
+    btn.disabled     = !ok;
+    btn.style.opacity = ok ? '1' : '0.4';
+    btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
 };
 
-window.checkDelRequestBtn = function() {
-    const text = document.getElementById('del-reason-input').value.trim();
-    const words = text.length > 0 ? text.split(/\s+/).length : 0;
-    const btns = document.querySelectorAll('#del-request-btn');
-    const counters = document.querySelectorAll('#del-word-count');
-    
-    counters.forEach(c => c.textContent = words + " words");
+/* ── Live character counter & validator (staff request) ── */
+window.checkDelRequestBtn = function(textarea) {
+    const len     = textarea.value.trim().length;
+    const ok      = len >= 10;
+    const btn     = document.getElementById('del-request-btn');
+    const countEl = document.getElementById('del-char-count');
+    const hintEl  = document.getElementById('del-char-hint');
 
-    btns.forEach(btn => {
-        if (words >= 10 && words <= 50) {
-            btn.disabled = false;
-            btn.style.opacity = '1';
+    if (countEl) {
+        countEl.textContent = len + ' / 50';
+        countEl.style.color = ok ? '#10B981' : (len > 0 ? '#F59E0B' : '#94A3B8');
+    }
+    if (hintEl) {
+        if (ok) {
+            hintEl.textContent  = '✓ Reason looks good';
+            hintEl.style.color  = '#10B981';
+        } else if (len > 0) {
+            const need = 10 - len;
+            hintEl.textContent  = need + ' more character' + (need !== 1 ? 's' : '') + ' needed';
+            hintEl.style.color  = '#F59E0B';
         } else {
-            btn.disabled = true;
-            btn.style.opacity = '0.4';
+            hintEl.textContent  = 'Minimum 10 characters';
+            hintEl.style.color  = '#94A3B8';
         }
-    });
-};
-
-window.confirmDelete = async function() {
-    const uid = window.deleteTargetUid;
-    const btns = document.querySelectorAll('#del-confirm-btn');
-    btns.forEach(b => window.loadBtn(b, true));
-
-    const cards = document.querySelectorAll(`.team-card[data-uid="${uid}"]`);
-    cards.forEach(c => c.style.display = 'none');
-
-    window.closeModal('delete-modal');
-    window.showToast("Deleting staff permanently...", "info");
-
-    try {
-        await window.deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);
-        window.showToast("Staff deleted from system.", "success");
-    } catch (e) {
-        cards.forEach(c => c.style.display = 'flex'); 
-        window.showToast("Failed to delete.", "error");
-        console.error(e);
+    }
+    if (btn) {
+        btn.disabled      = !ok;
+        btn.style.opacity = ok ? '1' : '0.4';
+        btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
     }
 };
 
-window.sendDeleteRequest = async function() {
-    const uid = window.deleteTargetUid;
-    const reason = document.getElementById('del-reason-input').value.trim();
-    const btns = document.querySelectorAll('#del-request-btn');
-    btns.forEach(b => window.loadBtn(b, true));
-
-    try {
-        const owner = allStaff.find(s => s.role === 'owner');
-        if (!owner) throw new Error("Owner not found.");
-
-        await window.addDoc(window.collection(db, 'users', owner.uid, 'notifications'), {
-            type: 'staff_delete_request',
-            message: `${window.CU.name} wants to delete staff (${window.deleteTargetName})`,
-            targetUid: uid,
-            targetName: window.deleteTargetName,
-            targetEmail: window.deleteTargetEmail,
-            targetPwd: window.deleteTargetPwd, 
-            targetJoined: window.deleteTargetJoined,
-            reason: reason,
-            requesterId: window.CU.uid,
-            requesterName: window.CU.name,
-            createdAt: Date.now(),
-            read: false,
-            status: 'unread'
-        });
-
-        window.closeModal('delete-modal');
-        window.showToast("Deletion request sent to owner.", "success");
-    } catch (e) {
-        window.showToast("Failed to send request.", "error");
-    } finally {
-        btns.forEach(b => window.loadBtn(b, false, 'Send Request'));
-    }
-};
-
-// Force Cards Left logic to always calculate properly
+/* ── Cards Left badge (uses window._allStaff, no module scope needed) ── */
 setInterval(() => {
     const badge = document.getElementById('staff-credit-badge');
-    if (badge && typeof allStaff !== 'undefined') {
-        const nonOwnerCount = allStaff.filter(s => s.role !== 'owner').length;
-        if (window.CU && window.CU.isPremium) {
-            badge.textContent = 'Cards Left: ∞';
-        } else {
-            let left = 5 - nonOwnerCount;
-            if (left < 0) left = 0;
-            badge.textContent = `Cards Left: ${left}`;
-        }
-    }
+    const staff = window._allStaff;
+    if (!badge || !staff) return;
+    const nonOwners = staff.filter(s => s.role !== 'owner').length;
+    badge.textContent = window.CU && window.CU.isPremium
+        ? 'Cards Left: ∞'
+        : 'Cards Left: ' + Math.max(0, 5 - nonOwners);
 }, 1000);
 </script>
 <script type="module">
-  
-    import { auth, db } from './firebase-config.js';
-    import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { auth, db }                        from './firebase-config.js';
+    import { addDoc, collection }              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { deleteStaffMember }               from './staff.js';
 
-// Bind external Firebase functions to window so the modal can use them
-window.deleteStaffMember = deleteStaffMember;
-window.addDoc = addDoc;
-window.collection = collection;
+    /* ── OWNER: execute permanent staff deletion ── */
+    window.confirmDelete = async function() {
+        const uid = window.deleteTargetUid;
+        if (!uid) return;
 
-window.toggleOwnerDelBtn = function() {
-    const btns = document.querySelectorAll('#del-confirm-btn');
-    const checks = document.querySelectorAll('#del-owner-check');
-    
-    // Check the state of the first found checkbox
-    const isChecked = checks.length > 0 ? checks[0].checked : false;
+        const btn = document.getElementById('del-confirm-btn');
+        if (btn) { btn.textContent = 'Removing…'; btn.disabled = true; }
 
-    btns.forEach(btn => {
-        if (isChecked) {
-            btn.disabled = false;
-            btn.style.opacity = '1';
-            btn.style.background = '#DC2626'; // Saturated Red
-            btn.style.color = '#FFFFFF';
-            btn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.4)';
-        } else {
-            btn.disabled = true;
-            btn.style.opacity = '0.4';
-            btn.style.background = 'var(--danger-light)';
-            btn.style.color = 'var(--danger)';
-            btn.style.boxShadow = 'none';
-        }
-    });
-};
-
-// Controls the Staff's Textarea & Word Count
-window.checkDelRequestBtn = function() {
-    const text = document.getElementById('del-reason-input').value.trim();
-    const words = text.length > 0 ? text.split(/\s+/).length : 0;
-    const btn = document.getElementById('del-request-btn');
-    const counter = document.getElementById('del-word-count');
-    counter.textContent = words + " words";
-
-    if (words >= 10 && words <= 50) {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        counter.style.color = 'var(--success)';
-    } else {
-        btn.disabled = true;
-        btn.style.opacity = '0.4';
-        counter.style.color = 'var(--tx-muted)';
-    }
-};
-
-// Executes Owner Deletion (From root of Firebase)
-window.confirmDelete = async function() {
-    const uid = window.deleteTargetUid;
-    const btn = document.getElementById('del-confirm-btn');
-    window.loadBtn(btn, true);
-
-    // Optimistic UI: Hide card immediately
-    const card = document.querySelector(`.team-card[data-uid="${uid}"]`);
-    if (card) card.style.display = 'none';
-
-    window.closeModal('delete-modal');
-    window.showToast("Deleting staff permanently...", "info");
-
-    try {
-        await window.deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);[cite: 1]
-        window.showToast("Staff deleted from system.", "success");
-    } catch (e) {
-        if (card) card.style.display = 'flex'; // Revert UI on failure
-        window.showToast("Failed to delete.", "error");
-        console.error(e);
-    }
-};
-
-// Executes Staff Request[cite: 1]
-window.sendDeleteRequest = async function() {
-    const uid = window.deleteTargetUid;
-    const reason = document.getElementById('del-reason-input').value.trim();
-    const btn = document.getElementById('del-request-btn');
-    window.loadBtn(btn, true);
-
-    try {
-        const owner = allStaff.find(s => s.role === 'owner');
-        if (!owner) throw new Error("Owner not found.");
-
-        await window.addDoc(window.collection(db, 'users', owner.uid, 'notifications'), {
-            type: 'staff_delete_request',
-            message: `${window.CU.name} wants to delete staff (${window.deleteTargetName})`,[cite: 1]
-            targetUid: uid,
-            targetName: window.deleteTargetName,
-            targetEmail: window.deleteTargetEmail,
-            targetPwd: window.deleteTargetPwd, 
-            targetJoined: window.deleteTargetJoined,
-            reason: reason,
-            requesterId: window.CU.uid,
-            requesterName: window.CU.name,
-            createdAt: Date.now(),
-            read: false,
-            status: 'unread'
-        });
+        // Optimistically fade the card while the request is in flight
+        document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
+            .forEach(c => { c.style.opacity = '0.4'; c.style.pointerEvents = 'none'; });
 
         window.closeModal('delete-modal');
-        window.showToast("Deletion request sent to owner.", "success");
-    } catch (e) {
-        window.showToast("Failed to send request.", "error");
-    } finally {
-        window.loadBtn(btn, false, 'Send Request');
-    }
-};
-  </script>
+        window.showToast(window.deleteTargetName + ' has been removed.', 'success');
+
+        try {
+            await deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);
+        } catch(e) {
+            // Revert the optimistic UI on failure
+            document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
+                .forEach(c => { c.style.opacity = '1'; c.style.pointerEvents = 'auto'; });
+            window.showToast('Failed to remove: ' + (e.message || 'Unknown error'), 'error');
+            console.error('confirmDelete error:', e);
+        }
+    };
+
+    /* ── STAFF / MANAGER: send a deletion request to the owner ── */
+    window.sendDeleteRequest = async function() {
+        const uid      = window.deleteTargetUid;
+        const reasonEl = document.getElementById('del-reason-input');
+        const reason   = reasonEl ? reasonEl.value.trim() : '';
+
+        if (reason.length < 10) {
+            window.showToast('Please write at least 10 characters.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('del-request-btn');
+        if (btn) { btn.textContent = 'Sending…'; btn.disabled = true; }
+
+        try {
+            const allStaff = window._allStaff || [];
+            const owner    = allStaff.find(s => s.role === 'owner');
+            if (!owner) throw new Error('Owner account not found. Please try again.');
+
+            await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
+                type:          'staff_delete_request',
+                message:       `${window.CU.name} wants to remove "${window.deleteTargetName}" from the team.`,
+                targetUid:     uid,
+                targetName:    window.deleteTargetName,
+                targetEmail:   window.deleteTargetEmail,
+                targetPwd:     window.deleteTargetPwd     || '',
+                targetJoined:  window.deleteTargetJoined  || 'Unknown',
+                reason:        reason,
+                requesterId:   window.CU.uid,
+                requesterName: window.CU.name,
+                createdAt:     Date.now(),
+                read:          false,
+                status:        'unread'
+            });
+
+            window.closeModal('delete-modal');
+            window.showToast('Removal request sent to the owner for review!', 'success');
+
+        } catch(e) {
+            if (btn) {
+                btn.textContent   = 'Send to Owner';
+                btn.disabled      = false;
+                btn.style.opacity = '1';
+            }
+            window.showToast('Failed to send: ' + (e.message || 'Unknown error'), 'error');
+            console.error('sendDeleteRequest error:', e);
+        }
+    };
+
+    /* ── Fix: openStaffDetails alias (renderStaffCards calls this name) ── */
+    window.openStaffDetails = function(uid) {
+        if (typeof window.viewStaffDetails === 'function') window.viewStaffDetails(uid);
+    };
+</script>
   </div>
 </body>
 </html>
