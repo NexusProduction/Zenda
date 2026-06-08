@@ -259,7 +259,7 @@
 }
 .tc-name {
     font-weight: 800;
-    font-size: 1.1rem;
+    font-size: 1.25rem !important;
     color: var(--tx-main);
     letter-spacing: -0.01em;
     margin-bottom: 6px;
@@ -287,7 +287,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.85rem;
+    font-size: 0.95rem !important;
     color: var(--tx-muted);
     font-weight: 600;
 }
@@ -310,14 +310,14 @@
     gap: 4px;
 }
 .tc-lbl {
-    font-size: 0.7rem;
+   font-size: 0.75rem !important;
     color: #A1A1A6;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.02em;
 }
 .tc-val {
-    font-size: 0.85rem;
+    font-size: 1rem !important;
     color: var(--tx-main);
     font-weight: 700;
     white-space: nowrap;
@@ -4094,7 +4094,7 @@ window.renderStaffCards = function(staffList) {
 
     container.innerHTML = staffList.map(staff => {
         const isOwner = window.CU.role === 'owner';
-        const isSelf = staff.uid === window.CU.uid;
+        const isSelf = staff.uid === window.CU.uid; // Check if this card belongs to the logged-in user
         const canDelete = isOwner && !isSelf && staff.role !== 'owner';
 
         // Format the joined date safely
@@ -4110,6 +4110,17 @@ window.renderStaffCards = function(staffList) {
             : window.getInitials(staff.name);
         const avColor = staff.avatarData ? 'transparent' : window.avatarColor(staff.name);
 
+        // --- NEW LOGIC: Append "(You)" if this is the logged-in user's card ---
+        const displayName = isSelf 
+            ? `${esc(staff.name)} <span style="color: var(--tx-muted); font-size: 0.85em; font-weight: 600;">(You)</span>` 
+            : esc(staff.name);
+
+        // --- NEW LOGIC: Force "Owner" designation if they are the owner ---
+        let displayDesig = esc(staff.designation || 'Staff');
+        if (staff.role === 'owner') {
+            displayDesig = 'Owner';
+        }
+
         // ONLY generate the delete button if they have permission
         const deleteBtnHtml = canDelete ? `
             <button class="tc-del-btn" onclick="event.stopPropagation(); window.prepDeleteStaff('${staff.uid}', '${esc(staff.name)}', '${esc(staff.email)}')">
@@ -4123,8 +4134,7 @@ window.renderStaffCards = function(staffList) {
             
             <div class="tc-top">
                 <div class="tc-av" style="background:${avColor}">${avatarHtml}</div>
-                <!-- Margin-bottom removed to keep spacing perfectly balanced without the badge -->
-                <div class="tc-name" style="margin-bottom: 0;">${esc(staff.name)}</div>
+                <div class="tc-name" style="margin-bottom: 0;">${displayName}</div>
             </div>
             
             <div class="tc-contact">
@@ -4137,7 +4147,7 @@ window.renderStaffCards = function(staffList) {
             <div class="tc-bottom-grid">
                 <div class="tc-grid-col">
                     <span class="tc-lbl">Department</span>
-                    <span class="tc-val">${esc(staff.designation || 'Staff')}</span>
+                    <span class="tc-val">${displayDesig}</span>
                 </div>
                 <div class="tc-grid-col" style="text-align: right;">
                     <span class="tc-lbl">Date of Joining</span>
