@@ -28,62 +28,76 @@ async function getSecondaryAuth() {
   return secAuth;
 }
 
-// ── Create staff ──
 export async function createStaff({ name, email, password, role, companyId, companyName, createdBy, designation }) {
   if (!name?.trim())        throw new Error('FIELD:cs-name:Full name is required.');
   if (!email?.trim())       throw new Error('FIELD:cs-email:Email address is required.');
   if (!password?.trim())    throw new Error('FIELD:cs-password:Password is required.');
   if (password.length < 6)  throw new Error('FIELD:cs-password:Password must be at least 6 characters.');
   if (!designation?.trim()) throw new Error('FIELD:cs-designation:Designation is required.');
-
+  
   const uniqueId = generateStaffId(role);
-
+  let uid;
+  
   try {
     const secAuth = await getSecondaryAuth();
-    const cred = await createUserWithEmailAndPassword(secAuth, email.trim(), password.trim());
-    const uid = cred.user.uid;
+    
+    // Attempt to create the user
+    try {
+      const cred = await createUserWithEmailAndPassword(secAuth, email.trim(), password.trim());
+      uid = cred.user.uid;
+    } catch (err) {
+      if (err.code === 'auth/email-already-in-use') {
+        // RECYCLE LOGIC: Attempt to log into the orphaned account
+        try {
+          const cred = await signInWithEmailAndPassword(secAuth, email.trim(), password.trim());
+          uid = cred.user.uid; 
+        } catch (recycleErr) {
+          await secAuth.signOut();
+          throw new Error("This email is already registered and the password does not match. Please use a different email.");
+        }
+      } else {
+        await secAuth.signOut();
+        if (err.code === 'auth/weak-password') throw new Error('FIELD:cs-password:Password must be at least 6 characters.');
+        if (err.code === 'auth/invalid-email') throw new Error('FIELD:cs-email:Invalid email address.');
+        throw err;
+      }
+    }
 
-    await setDoc(doc(db, 'users', uid), {
-      name: name.trim(), email: email.trim(), role, companyId, uniqueId,
-      designation: designation.trim(), createdBy,
-      passwordHint: password.trim(),
-      createdAt: new Date().toISOString()
-    });
-
+    // Deduct Staff Card
     const compRef = doc(db, 'companies', companyId);
     const compSnap = await getDoc(compRef);
     if (compSnap.exists()) {
       const compData = compSnap.data();
       const currentCards = compData.staffCards || 0;
-      
-      // Prevent creation if 0 staff cards remaining
       if (currentCards <= 0) {
+        await secAuth.signOut();
         throw new Error("Insufficient Staff Cards. Please buy more from the Subscription page.");
       }
-      
-      // Deduct 1 staff card on successful creation
       await updateDoc(compRef, { 
         staffCount: (compData.staffCount || 0) + 1,
         staffCards: currentCards - 1 
       });
     }
 
+    // Create the Firestore Documents using the new or recycled UID
+    await setDoc(doc(db, 'users', uid), {
+      name: name.trim(), email: email.trim(), role, companyId, uniqueId,
+      designation: designation.trim(), createdBy,
+      passwordHint: password.trim(),
+      createdAt: new Date().toISOString()
+    });
+    
     await setDoc(doc(db, 'installedApps', uid), { apps: ['calculator'] });
-
     await secAuth.signOut();
-
+    
     return { uid, name: name.trim(), email: email.trim(), role, uniqueId, companyId, companyName, designation: designation.trim() };
-
+    
   } catch (err) {
     if (err.message && err.message.startsWith('FIELD:')) throw err;
     if (err.message === "Insufficient Staff Cards. Please buy more from the Subscription page.") throw err;
-    if (err.code === 'auth/email-already-in-use') throw new Error("this email I'd is already used tyr different one");
-    if (err.code === 'auth/weak-password')        throw new Error('FIELD:cs-password:Password must be at least 6 characters.');
-    if (err.code === 'auth/invalid-email')        throw new Error('FIELD:cs-email:Invalid email address.');
     throw err;
   }
 }
-
 // ── Delete staff — removes Firestore data AND Firebase Auth account ──
 export async function deleteStaffMember(uid, staffEmail, staffPassword) {
   try { await deleteDoc(doc(db, 'users', uid)); } catch(e) { throw new Error('Permission denied.'); }
