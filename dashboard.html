@@ -4489,7 +4489,7 @@ window.prepDeleteStaff = function(uid, name, email) {
 
     const isOwner = window.CU.role === 'owner';
     
-    // THE MAGIC FIX: This injects the HTML into ALL duplicate modals so it never fails.
+    // Inject into ALL duplicates so it never fails
     const contentDivs = document.querySelectorAll('#del-modal-dynamic-content');
 
     let htmlContent = '';
@@ -4520,24 +4520,20 @@ window.prepDeleteStaff = function(uid, name, email) {
         `;
     }
 
-    // Inject into all duplicates
     contentDivs.forEach(div => { div.innerHTML = htmlContent; });
     window.openModal('delete-modal');
 };
 
-// 2. SATURATED RED BUTTON LOGIC
 window.toggleOwnerDelBtn = function() {
     const btns = document.querySelectorAll('#del-confirm-btn');
     const checks = document.querySelectorAll('#del-owner-check');
-    
-    // Check if the box is ticked
     const isChecked = checks.length > 0 ? checks[0].checked : false;
 
     btns.forEach(btn => {
         if (isChecked) {
             btn.disabled = false;
             btn.style.opacity = '1';
-            btn.style.background = '#DC2626'; // Pure Saturated Red
+            btn.style.background = '#DC2626';
             btn.style.color = '#FFFFFF';
             btn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.4)';
         } else {
@@ -4550,13 +4546,30 @@ window.toggleOwnerDelBtn = function() {
     });
 };
 
-// 3. EXECUTE DELETE FIX
+window.checkDelRequestBtn = function() {
+    const text = document.getElementById('del-reason-input').value.trim();
+    const words = text.length > 0 ? text.split(/\s+/).length : 0;
+    const btns = document.querySelectorAll('#del-request-btn');
+    const counters = document.querySelectorAll('#del-word-count');
+    
+    counters.forEach(c => c.textContent = words + " words");
+
+    btns.forEach(btn => {
+        if (words >= 10 && words <= 50) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.4';
+        }
+    });
+};
+
 window.confirmDelete = async function() {
     const uid = window.deleteTargetUid;
     const btns = document.querySelectorAll('#del-confirm-btn');
     btns.forEach(b => window.loadBtn(b, true));
 
-    // Optimistic UI: Hide card immediately
     const cards = document.querySelectorAll(`.team-card[data-uid="${uid}"]`);
     cards.forEach(c => c.style.display = 'none');
 
@@ -4567,14 +4580,48 @@ window.confirmDelete = async function() {
         await window.deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);
         window.showToast("Staff deleted from system.", "success");
     } catch (e) {
-        cards.forEach(c => c.style.display = 'flex'); // Revert UI on failure
+        cards.forEach(c => c.style.display = 'flex'); 
         window.showToast("Failed to delete.", "error");
         console.error(e);
     }
 };
 
-// 4. FORCE "CARDS LEFT" MATH TO ALWAYS BE CORRECT
-// This safely overrides any ghost listeners setting it to 0
+window.sendDeleteRequest = async function() {
+    const uid = window.deleteTargetUid;
+    const reason = document.getElementById('del-reason-input').value.trim();
+    const btns = document.querySelectorAll('#del-request-btn');
+    btns.forEach(b => window.loadBtn(b, true));
+
+    try {
+        const owner = allStaff.find(s => s.role === 'owner');
+        if (!owner) throw new Error("Owner not found.");
+
+        await window.addDoc(window.collection(db, 'users', owner.uid, 'notifications'), {
+            type: 'staff_delete_request',
+            message: `${window.CU.name} wants to delete staff (${window.deleteTargetName})`,
+            targetUid: uid,
+            targetName: window.deleteTargetName,
+            targetEmail: window.deleteTargetEmail,
+            targetPwd: window.deleteTargetPwd, 
+            targetJoined: window.deleteTargetJoined,
+            reason: reason,
+            requesterId: window.CU.uid,
+            requesterName: window.CU.name,
+            createdAt: Date.now(),
+            read: false,
+            status: 'unread'
+        });
+
+        window.closeModal('delete-modal');
+        window.showToast("Deletion request sent to owner.", "success");
+    } catch (e) {
+        window.showToast("Failed to send request.", "error");
+    } finally {
+        btns.forEach(b => window.loadBtn(b, false, 'Send Request'));
+    }
+};
+
+// Force Cards Left logic to always calculate properly
 setInterval(() => {
     const badge = document.getElementById('staff-credit-badge');
     if (badge && typeof allStaff !== 'undefined') {
