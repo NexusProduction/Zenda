@@ -1699,28 +1699,21 @@
   </div>
 
   <div class="modal-overlay" id="delete-modal" onclick="if(event.target === this) window.closeModal('delete-modal')">
-    <div class="modal" style="max-width:460px;">
-      <div class="modal-hdr">
-        <div class="modal-ttl" style="color:var(--danger);display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Remove Staff</div>
-        <button class="modal-close" onclick="window.closeModal('delete-modal')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-hdr">
+      <div class="modal-ttl" style="color:var(--danger);display:flex;align-items:center;gap:10px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+        Remove Staff
       </div>
-      <div style="padding:32px;">
-        <p style="font-size:1rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;line-height:1.5;">Permanently delete <strong id="del-name-display" style="color:var(--tx-main);"></strong> and revoke access.<br>Type <strong id="del-confirm-hint" style="color:var(--danger);font-family:var(--font-mono);"></strong> to confirm.</p>
-        
-        <input class="form-input" id="del-confirm-input" type="text" placeholder="Type name to confirm…" oninput="window.checkDelConfirm()" style="margin-bottom:16px;padding:16px;" maxlength="40">
-        
-        <div id="del-reason-container" class="hidden" style="margin-bottom:32px;">
-          <label class="form-label" style="margin-bottom:8px;">Reason for removal <span style="color:var(--tx-muted);font-weight:500;">(Required, max 50 chars)</span></label>
-          <input class="form-input" id="del-reason-input" type="text" placeholder="e.g. Left the company..." maxlength="50" oninput="window.checkDelConfirm()" style="padding:16px;">
-        </div>
-
-        <div style="display:flex;gap:16px;margin-top:16px;">
-          <button class="btn btn-ghost w-full" style="padding:14px;border-radius:14px;" onclick="window.closeModal('delete-modal')">Cancel</button>
-          <button class="btn btn-danger w-full" style="padding:14px;border-radius:14px;" id="del-confirm-btn" disabled onclick="window.confirmDelete()">Delete Forever</button>
-        </div>
-      </div>
+      <button class="modal-close" onclick="window.closeModal('delete-modal')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding:32px;" id="del-modal-dynamic-content">
+      <!-- Content injected by JavaScript -->
     </div>
   </div>
+</div>
 
   <div class="modal-overlay" id="delete-task-modal" onclick="if(event.target === this) window.closeModal('delete-task-modal')">
     <div class="modal" style="max-width:440px;">
@@ -2212,8 +2205,8 @@ window.renderNotifs = function(items) {
         const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData || {}))));
         actionsHtml = `<button class="btn w-full" style="padding:10px 16px;font-size:0.9rem;background:#10B981;color:white;border:none;border-radius:10px;font-weight:800;box-shadow:0 4px 12px rgba(16,185,129,0.25);width:100%;justify-content:center;margin-top:6px;" data-type="add" data-id="${n.id}" data-pending="${safeData}" data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}" onclick="window.openStaffRequestModal(this)">Review Request →</button>`;
     } else if (n.type === 'staff_delete_request') {
-        actionsHtml = `<button class="btn w-full" style="padding:10px 16px;font-size:0.9rem;background:var(--danger);color:white;border:none;border-radius:10px;font-weight:800;box-shadow:0 4px 12px rgba(255,59,48,0.25);width:100%;justify-content:center;margin-top:6px;" data-type="delete" data-id="${n.id}" data-target-uid="${n.targetUid || ''}" data-target-email="${esc(n.targetEmail || '')}" data-target-name="${esc(n.targetName || 'Staff')}" data-target-pwd="${btoa(n.targetPwd || '')}" data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}" data-reason="${esc(n.reason || 'No reason provided')}" onclick="window.openStaffRequestModal(this)">Review Request →</button>`;
-    } else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') {
+    actionsHtml = `<button class="btn w-full" style="padding:10px 16px;font-size:0.9rem;background:var(--danger);color:white;border:none;border-radius:10px;font-weight:800;box-shadow:0 4px 12px rgba(255,59,48,0.25);width:100%;justify-content:center;margin-top:6px;" data-type="delete" data-id="${n.id}" data-target-uid="${n.targetUid || ''}" data-target-email="${esc(n.targetEmail || '')}" data-target-name="${esc(n.targetName || 'Staff')}" data-target-pwd="${btoa(n.targetPwd || '')}" data-target-joined="${esc(n.targetJoined || 'Unknown')}" data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}" data-reason="${esc(n.reason || 'No reason provided')}" onclick="window.openStaffRequestModal(this)">Review Request &rarr;</button>`;
+} else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') {
         actionsHtml = `
           <button class="btn btn-primary" style="padding:8px 16px;font-size:0.85rem; width: fit-content; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';" onclick="window.openCalendarApp(this, '${n.id}', '${n.eventDate || ''}')">Open in app</button>
           <button class="btn btn-secondary" style="padding:8px 16px;font-size:0.85rem; font-weight:700; border-radius: 8px; width: fit-content; border: 2px solid var(--bd-color); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='var(--tx-muted)'; this.style.backgroundColor='#E2E3E9';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--bd-color)'; this.style.backgroundColor='';" onclick="window.dismissAlert(this)">Dismiss</button>
@@ -2602,6 +2595,7 @@ window.openStaffRequestModal = function(btn) {
         const reason = btn.getAttribute('data-reason') || 'No reason provided';
         const tName = btn.getAttribute('data-target-name') || 'Unknown';
         const tEmail = btn.getAttribute('data-target-email') || 'Unknown';
+        const tJoined = btn.getAttribute('data-target-joined') || 'Unknown'; // <-- Fetches the Date
         
         document.getElementById('sr-dynamic-details').innerHTML = `
              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
@@ -2611,6 +2605,15 @@ window.openStaffRequestModal = function(btn) {
                 <span style="font-size:0.95rem; color:var(--tx-main); font-weight:800; text-align:right; word-break:break-word;">${esc(tName)}</span>
             </div>
             <div style="height:1px; background:var(--bd-color); width:100%;"></div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
+                <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Joined
+                </span>
+                <span style="font-size:0.95rem; color:var(--tx-main); font-weight:700; text-align:right; word-break:break-word;">${esc(tJoined)}</span>
+            </div>
+            <div style="height:1px; background:var(--bd-color); width:100%;"></div>
+            
             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
                 <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Email
@@ -4095,7 +4098,7 @@ window.renderStaffCards = function(staffList) {
     container.innerHTML = staffList.map(staff => {
         const isOwner = window.CU.role === 'owner';
         const isSelf = staff.uid === window.CU.uid; // Check if this card belongs to the logged-in user
-        const canDelete = isOwner && !isSelf && staff.role !== 'owner';
+        const canDelete = !isSelf && staff.role !== 'owner';
 
         // Format the joined date safely
         let joinedDate = 'N/A';
@@ -4457,6 +4460,7 @@ window.handleNavClick = function(buttonElement, viewName) {
 };
 </script>
 <script type="module">
+  
     import { auth, db } from './firebase-config.js';
     import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -4477,6 +4481,152 @@ window.handleNavClick = function(buttonElement, viewName) {
         });
       }
     });
+  // --- DELETION LOGIC (OWNER vs STAFF) ---
+
+// Bind external Firebase functions to window so the modal can use them
+window.deleteStaffMember = deleteStaffMember;
+window.addDoc = addDoc;
+window.collection = collection;
+
+window.prepDeleteStaff = function(uid, name, email) {
+    window.deleteTargetUid = uid;
+    window.deleteTargetName = name;
+    window.deleteTargetEmail = email;
+
+    // Get the password hint to fully delete the Auth account if Owner approves
+    const targetStaff = allStaff.find(s => s.uid === uid);
+    window.deleteTargetPwd = targetStaff ? targetStaff.passwordHint : '';
+    
+    let joined = 'Unknown';
+    if (targetStaff && targetStaff.createdAt) {
+       joined = new Date(targetStaff.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    window.deleteTargetJoined = joined;
+
+    const isOwner = window.CU.role === 'owner';
+    const contentDiv = document.getElementById('del-modal-dynamic-content');
+
+    if (isOwner) {
+        contentDiv.innerHTML = `
+            <p style="font-size:1.05rem;color:var(--tx-muted);margin-bottom:24px;font-weight:500;line-height:1.5;">Permanently delete <strong style="color:var(--tx-main);">${esc(name)}</strong> and revoke their access.</p>
+            <label style="display:flex; align-items:flex-start; gap:12px; background:var(--danger-light); padding:16px; border-radius:12px; cursor:pointer; margin-bottom: 24px; border: 1px solid rgba(255,59,48,0.2);">
+                <input type="checkbox" id="del-owner-check" onchange="window.toggleOwnerDelBtn()" style="width:20px; height:20px; margin-top:2px; accent-color: var(--danger);">
+                <span style="font-size:0.9rem; color:var(--danger); font-weight:700; line-height:1.4;">I understand that this user will lose all access to Zenda and cannot log back in.</span>
+            </label>
+            <div style="display:flex;gap:16px;">
+                <button class="btn btn-ghost w-full" style="padding:14px;border-radius:12px;" onclick="window.closeModal('delete-modal')">Cancel</button>
+                <button class="btn btn-danger w-full" style="padding:14px;border-radius:12px; opacity:0.4; transition: all 0.2s;" id="del-confirm-btn" disabled onclick="window.confirmDelete()">Delete Forever</button>
+            </div>
+        `;
+    } else {
+        contentDiv.innerHTML = `
+            <p style="font-size:1.05rem;color:var(--tx-muted);margin-bottom:20px;font-weight:500;line-height:1.5;">Submit a request to the owner to remove <strong style="color:var(--tx-main);">${esc(name)}</strong>.</p>
+            <div style="margin-bottom:24px;">
+                <label class="form-label">Reason for removal <span style="color:var(--tx-muted);font-weight:500;">(10-50 words)</span></label>
+                <textarea class="form-input" id="del-reason-input" placeholder="Explain why this staff member should be removed..." style="min-height:90px; resize:none;" oninput="window.checkDelRequestBtn()"></textarea>
+                <div id="del-word-count" style="font-size:0.75rem; color:var(--tx-muted); text-align:right; margin-top:6px; font-weight:600;">0 words</div>
+            </div>
+            <div style="display:flex;gap:16px;">
+                <button class="btn btn-ghost w-full" style="padding:14px;border-radius:12px;" onclick="window.closeModal('delete-modal')">Cancel</button>
+                <button class="btn btn-primary w-full" style="padding:14px;border-radius:12px; opacity:0.4; transition: all 0.2s;" id="del-request-btn" disabled onclick="window.sendDeleteRequest()">Send Request</button>
+            </div>
+        `;
+    }
+    window.openModal('delete-modal');
+};
+
+// Controls the Owner's Checkbox & Red Button
+window.toggleOwnerDelBtn = function() {
+    const btn = document.getElementById('del-confirm-btn');
+    const check = document.getElementById('del-owner-check');
+    if (check.checked) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.boxShadow = '0 4px 12px rgba(255,59,48,0.3)';
+    } else {
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+        btn.style.boxShadow = 'none';
+    }
+};
+
+// Controls the Staff's Textarea & Word Count
+window.checkDelRequestBtn = function() {
+    const text = document.getElementById('del-reason-input').value.trim();
+    const words = text.length > 0 ? text.split(/\s+/).length : 0;
+    const btn = document.getElementById('del-request-btn');
+    const counter = document.getElementById('del-word-count');
+    counter.textContent = words + " words";
+
+    if (words >= 10 && words <= 50) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        counter.style.color = 'var(--success)';
+    } else {
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+        counter.style.color = 'var(--tx-muted)';
+    }
+};
+
+// Executes Owner Deletion (From root of Firebase)
+window.confirmDelete = async function() {
+    const uid = window.deleteTargetUid;
+    const btn = document.getElementById('del-confirm-btn');
+    window.loadBtn(btn, true);
+
+    // Optimistic UI: Hide card immediately
+    const card = document.querySelector(`.team-card[data-uid="${uid}"]`);
+    if (card) card.style.display = 'none';
+
+    window.closeModal('delete-modal');
+    window.showToast("Deleting staff permanently...", "info");
+
+    try {
+        await window.deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);[cite: 1]
+        window.showToast("Staff deleted from system.", "success");
+    } catch (e) {
+        if (card) card.style.display = 'flex'; // Revert UI on failure
+        window.showToast("Failed to delete.", "error");
+        console.error(e);
+    }
+};
+
+// Executes Staff Request[cite: 1]
+window.sendDeleteRequest = async function() {
+    const uid = window.deleteTargetUid;
+    const reason = document.getElementById('del-reason-input').value.trim();
+    const btn = document.getElementById('del-request-btn');
+    window.loadBtn(btn, true);
+
+    try {
+        const owner = allStaff.find(s => s.role === 'owner');
+        if (!owner) throw new Error("Owner not found.");
+
+        await window.addDoc(window.collection(db, 'users', owner.uid, 'notifications'), {
+            type: 'staff_delete_request',
+            message: `${window.CU.name} wants to delete staff (${window.deleteTargetName})`,[cite: 1]
+            targetUid: uid,
+            targetName: window.deleteTargetName,
+            targetEmail: window.deleteTargetEmail,
+            targetPwd: window.deleteTargetPwd, 
+            targetJoined: window.deleteTargetJoined,
+            reason: reason,
+            requesterId: window.CU.uid,
+            requesterName: window.CU.name,
+            createdAt: Date.now(),
+            read: false,
+            status: 'unread'
+        });
+
+        window.closeModal('delete-modal');
+        window.showToast("Deletion request sent to owner.", "success");
+    } catch (e) {
+        window.showToast("Failed to send request.", "error");
+    } finally {
+        window.loadBtn(btn, false, 'Send Request');
+    }
+};
   </script>
   </div>
 </body>
