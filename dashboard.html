@@ -2678,21 +2678,16 @@ window.finalizeCreateStaff = async function() {
         let createError = '';
         
         try {
+            // Safely execute just once
             if (typeof createStaff === 'function') {
                 await createStaff(newStaffData);
-                success = true;
             } else {
-                throw new Error("createStaff missing");
-            }
-        } catch (err) {
-            console.warn("createStaff function failed, attempting fallback.", err);
-            try {
-                // FALLBACK: Directly push to 'users' collection so the UI succeeds and doesn't loop back!
                 await addDoc(collection(db, 'users'), newStaffData);
-                success = true;
-            } catch(fallbackErr) {
-                createError = fallbackErr.message || 'Unknown error';
             }
+            success = true;
+        } catch (err) {
+            console.warn("createStaff function failed.", err);
+            createError = err.message || 'Unknown error';
         }
         
         if (!success) {
@@ -2922,20 +2917,16 @@ window.executeStaffRequest = async function(action) {
                 };
                 
                 try {
+                    // Execute once, no duplicates
                     if (typeof createStaff === 'function') {
                         await createStaff(newStaffData);
                     } else {
-                        throw new Error("createStaff missing");
+                        await addDoc(collection(db, 'users'), newStaffData);
                     }
                 } catch(err) {
-                    console.warn("createStaff error, using fallback:", err);
-                    try {
-                        // FALLBACK: Push to DB so it definitely succeeds and prevents freezing
-                        await addDoc(collection(db, 'users'), newStaffData);
-                    } catch(fbErr) {
-                        staffCreatedSuccessfully = false;
-                        window.showToast("Creation error: " + fbErr.message, "error");
-                    }
+                    console.warn("createStaff error:", err);
+                    staffCreatedSuccessfully = false;
+                    window.showToast("Creation error: " + err.message, "error");
                 }
             } else if (req.type === 'delete') {
                 try { await deleteDoc(doc(db, 'users', req.targetUid)); } catch(err) { console.warn(err); }
