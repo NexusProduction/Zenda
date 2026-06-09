@@ -1882,7 +1882,14 @@ function loadBtn(btn, loading, restoreText) {
 
 // Universal tracking function for Cards Used
 window.getStrictCardsUsed = function(currentNonOwners) {
-    if (!window.CU || !window.CU.companyId) return currentNonOwners;
+    if (!window.CU || !window.CU.companyId) return currentNonOwners || 0;
+    
+    // Auto-calculate if not explicitly passed
+    if (currentNonOwners === undefined) {
+        const staff = window._allStaff || [];
+        currentNonOwners = staff.filter(s => s.role !== 'owner').length;
+    }
+
     const maxKey = 'max_staff_' + window.CU.companyId;
     let historic = parseInt(localStorage.getItem(maxKey) || '0');
     let dbUsed = window.CU.cardsUsed || 0;
@@ -2429,17 +2436,22 @@ window.initiateCreateStaff = async function() {
         return; 
     }
 
-    // --- CARDS LEFT LIMIT CHECK ---
-    const nonOwners = (window._allStaff || []).filter(s => s.role !== 'owner').length;
-    let maxStaffKey = 'max_staff_' + window.CU.companyId;
-    let historicMax = parseInt(localStorage.getItem(maxStaffKey) || "0");
-    let dbMax = window.CU.cardsUsed || 0;
-    let ultimateMax = Math.max(historicMax, dbMax, nonOwners);
-    
-    if (!window.CU.isPremium && ultimateMax >= 5) {
-        err.textContent = "You have used all 5 free staff cards. Please upgrade to add more.";
-        err.style.display = 'block';
-        return;
+    // --- CARDS LEFT LIMIT CHECK (STRICT EVALUATION) ---
+    if (!window.CU.isPremium) {
+        const nonOwners = (window._allStaff || []).filter(s => s.role !== 'owner').length;
+        let maxKey = 'max_staff_' + window.CU.companyId;
+        let historic = parseInt(localStorage.getItem(maxKey) || "0");
+        let dbUsed = window.CU.cardsUsed || 0;
+        
+        // Evaluate the absolute highest number of cards ever used
+        let highestEver = Math.max(historic, dbUsed, nonOwners);
+
+        // If they have used 5 or more, block creation IMMEDIATELY (no email sent)
+        if (highestEver >= 5) {
+            err.innerHTML = "Insufficient Staff Cards. Please buy more from the Subscription page.";
+            err.style.display = 'block';
+            return;
+        }
     }
 
     // --- LIVE CHECK: EXACT REQUESTED MESSAGE ---
@@ -2493,8 +2505,8 @@ window.initiateCreateStaff = async function() {
     document.getElementById('staff-otp-container').classList.remove('hidden');
     document.getElementById('otp-sent-email').textContent = email;
     
-    // Initialize the 6 individual boxes
-    window.initStaffOtpBoxes();
+    // Setup and Focus the 6 OTP boxes
+    if (typeof window.initStaffOtpBoxes === 'function') window.initStaffOtpBoxes();
     
     loadBtn(btn, false, 'Verify Email & Create Staff →');
 };
