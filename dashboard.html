@@ -1561,14 +1561,14 @@
           <div style="font-weight:800;color:var(--tx-main);margin-bottom:16px;font-size:1.1rem;">Personal Details</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
             <div><label class="form-label">Full Name *</label><input class="form-input" id="cs-name" type="text" placeholder="Jane Doe" minlength="6" maxlength="15"></div>
-            <div><label class="form-label">Email *</label><input class="form-input" id="cs-email" type="email" placeholder="jane@company.com" maxlength="60"></div>
+            <div><label class="form-label">Email *</label><input class="form-input" id="cs-email" type="email" placeholder="jane@company.com" maxlength="20"></div>
           </div>
-          <div style="margin-bottom:24px;"><label class="form-label">Designation *</label><input class="form-input" id="cs-designation" type="text" placeholder="e.g. Senior Developer" maxlength="40"></div>
+          <div style="margin-bottom:24px;"><label class="form-label">Designation *</label><input class="form-input" id="cs-designation" type="text" placeholder="e.g. Manager" maxlength="25"></div>
         </div>
         
         <div style="margin-bottom:32px;">
           <div style="font-weight:800;color:var(--tx-main);margin-bottom:16px;font-size:1.1rem;">Security</div>
-          <div><label class="form-label">Temporary Password *</label><input class="form-input" id="cs-password" type="text" placeholder="Set their login password" maxlength="30"></div>
+          <div><label class="form-label">Temporary Password *</label><input class="form-input" id="cs-password" type="text" placeholder="Set login password (8-16 chars)" minlength="8" maxlength="16"></div>
         </div>
         
         <div id="staff-error" style="color:var(--danger); font-size:0.9rem; font-weight:700; margin-bottom:12px; text-align:center; display:none;"></div>
@@ -2331,15 +2331,21 @@ window.initiateCreateStaff = async function() {
         err.style.display = 'block'; 
         return; 
     }
-    
-    // --- LIVE CHECK: Block if Email already exists in Company ---
+
+    // --- LIVE CHECK: Block if Email already exists in the current Company ---
     const emailExists = (window._allStaff || []).some(s => s.email && s.email.toLowerCase() === email.toLowerCase());
     if (emailExists) {
-        err.textContent = "This email is already used in this company.";
+        err.textContent = "This email is already used in this company. Try a new email ID.";
         err.style.display = 'block';
         return;
     }
-    
+
+    if (pwd.length < 8 || pwd.length > 16) {
+        err.textContent = "Password must be between 8 and 16 characters.";
+        err.style.display = 'block';
+        return;
+    }
+
     const pwdRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/;
     if (!pwdRegex.test(pwd)) { 
         err.textContent = "Password must contain at least one letter, one number, and one symbol (e.g., @, #, $)."; 
@@ -2705,8 +2711,15 @@ window.executeStaffRequest = async function(action) {
         window.showToast(e.message, 'error');
     } finally {
         loadBtn(actionBtn, false, action === 'approve' ? 'Approve' : 'Decline');
-        // ALWAYS close modal regardless of success or backend error
+        
+        // --- FORCE THE MODAL TO CLOSE ---
         window.closeModal('staff-request-modal');
+        const modalOverlay = document.getElementById('staff-request-modal');
+        if (modalOverlay) {
+            modalOverlay.classList.remove('open');
+            modalOverlay.style.opacity = '0';
+            modalOverlay.style.visibility = 'hidden';
+        }
     }
 };
 
@@ -4035,12 +4048,19 @@ function subscribeAll() {
           const sc = document.getElementById('staff-count-sub'); 
           if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`; 
           
+          // --- THE FIX: Prevent Cards From Refilling ---
           const badge = document.getElementById('staff-credit-badge');
           if (badge) {
               if (window.CU && window.CU.isPremium) {
                   badge.textContent = 'Cards Left: ∞';
               } else {
-                  let used = window.CU.cardsUsed || n.length;
+                  // Track the highest number of staff created this session to prevent refills
+                  if (window.maxStaffReached === undefined) window.maxStaffReached = n.length;
+                  if (n.length > window.maxStaffReached) window.maxStaffReached = n.length;
+                  
+                  let used = window.CU ? (window.CU.cardsUsed || window.maxStaffReached) : window.maxStaffReached;
+                  used = Math.max(used, window.maxStaffReached);
+                  
                   let left = 5 - used;
                   if (left < 0) left = 0;
                   badge.textContent = `Cards Left: ${left}`;
@@ -4695,6 +4715,8 @@ window.checkDelRequestBtn = function(textarea) {
 
 /* ── Cards Left badge (uses window._allStaff, no module scope needed) ── */
 setInterval(() => {
+    /* ── Cards Left badge (Prevent Refill Mathematics) ── */
+setInterval(() => {
     const badge = document.getElementById('staff-credit-badge');
     const staff = window._allStaff;
     if (!badge || !staff) return;
@@ -4702,8 +4724,13 @@ setInterval(() => {
     if (window.CU && window.CU.isPremium) {
         badge.textContent = 'Cards Left: ∞';
     } else {
-        // Uses DB tracked cardsUsed to prevent refilling when deleted, fallback to active
-        let used = window.CU ? (window.CU.cardsUsed || staff.filter(s => s.role !== 'owner').length) : 0;
+        const nonOwners = staff.filter(s => s.role !== 'owner').length;
+        if (window.maxStaffReached === undefined) window.maxStaffReached = nonOwners;
+        if (nonOwners > window.maxStaffReached) window.maxStaffReached = nonOwners;
+        
+        let used = window.CU ? (window.CU.cardsUsed || window.maxStaffReached) : window.maxStaffReached;
+        used = Math.max(used, window.maxStaffReached); // Locks the counter so it never drops
+        
         badge.textContent = 'Cards Left: ' + Math.max(0, 5 - used);
     }
 }, 1000);
