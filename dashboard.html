@@ -1731,10 +1731,10 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="staff-request-modal" style="background: rgba(0,0,0,0.7); z-index: 1005; backdrop-filter: blur(4px);">
-    <div class="modal" style="max-width: 400px; width: 95%; overflow: hidden; padding: 0; box-shadow: 0 32px 80px rgba(0,0,0,0.3);">
+  <div class="modal-overlay" id="staff-request-modal" onclick="if(event.target === this) window.closeModal('staff-request-modal')" style="background: rgba(0,0,0,0.7); z-index: 1005; backdrop-filter: blur(4px); pointer-events: auto !important;">
+    <div class="modal" style="max-width: 400px; width: 95%; overflow: hidden; padding: 0; box-shadow: 0 32px 80px rgba(0,0,0,0.3); pointer-events: auto !important;">
       
-      <button class="modal-close" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.2); color:white; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:10;" onclick="window.closeModal('staff-request-modal')">
+      <button class="modal-close" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.2); color:white; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:10; pointer-events: auto;" onclick="window.closeModal('staff-request-modal')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
 
@@ -2870,7 +2870,13 @@ window.openStaffRequestModal = function(btn) {
         window.currentStaffRequest.targetPwd = atob(btn.getAttribute('data-target-pwd'));
     }
     
-    // Explicitly grab the buttons by ID and force the text and click handlers
+    // Completely un-freeze the UI elements
+    const modalEl = document.getElementById('staff-request-modal');
+    if (modalEl) {
+        modalEl.style.display = 'flex';
+        modalEl.style.pointerEvents = 'auto';
+    }
+
     const approveBtn = document.getElementById('sr-btn-approve');
     const declineBtn = document.getElementById('sr-btn-decline');
     
@@ -2878,7 +2884,7 @@ window.openStaffRequestModal = function(btn) {
         approveBtn.textContent = 'Approve';
         approveBtn.disabled = false;
         approveBtn.style.opacity = '1';
-        approveBtn.style.pointerEvents = 'auto';
+        approveBtn.style.pointerEvents = 'auto'; // Force cursor functionality
         approveBtn.onclick = () => window.executeStaffRequest('approve');
     }
     
@@ -2886,11 +2892,25 @@ window.openStaffRequestModal = function(btn) {
         declineBtn.textContent = 'Decline';
         declineBtn.disabled = false;
         declineBtn.style.opacity = '1';
-        declineBtn.style.pointerEvents = 'auto';
+        declineBtn.style.pointerEvents = 'auto'; // Force cursor functionality
         declineBtn.onclick = () => window.executeStaffRequest('decline');
     }
     
     window.openModal('staff-request-modal');
+};
+
+// Universal completely silent background deleter 
+window.deleteUserFromAuth = async function(email, pwd) {
+    if (!email || !pwd) return;
+    try {
+        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+        const { getAuth, signInWithEmailAndPassword, deleteUser } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+        const tempApp = initializeApp(auth.app.options, "TempApp_" + Date.now());
+        const tempAuth = getAuth(tempApp);
+        const userCred = await signInWithEmailAndPassword(tempAuth, email, pwd);
+        await deleteUser(userCred.user);
+        console.log("Firebase Auth Wipe Successful.");
+    } catch (e) { console.warn("Silent wipe failed:", e); }
 };
 
 window.executeStaffRequest = async function(action) {
@@ -2919,7 +2939,6 @@ window.executeStaffRequest = async function(action) {
                     }
                 } catch(err) {
                     console.warn("createStaff error:", err);
-                    // Do not inject duplicates. Show failure if it really failed.
                     if (!err.message.includes('already')) {
                         staffCreatedSuccessfully = false;
                         window.showToast("Creation error: " + err.message, "error");
@@ -2927,6 +2946,10 @@ window.executeStaffRequest = async function(action) {
                 }
             } else if (req.type === 'delete') {
                 try { await deleteDoc(doc(db, 'users', req.targetUid)); } catch(err) { console.warn(err); }
+                
+                // COMPLETELY WIPE FROM FIREBASE AUTH
+                await window.deleteUserFromAuth(req.targetEmail, req.targetPwd);
+                
                 if (typeof deleteStaffMember === 'function') {
                     try { await deleteStaffMember(req.targetUid, req.targetEmail, req.targetPwd); } catch(err) { console.warn(err); }
                 }
@@ -4400,28 +4423,40 @@ window.checkDelConfirm = function() {
 };
 
 window.confirmDelete = async function() {
-    const uid = window.deleteTargetUid;
-    
-    // 1. Optimistic UI: Instantly remove the card from the UI
-    const cardElement = document.querySelector(`.team-card[data-uid="${uid}"]`);
-    if (cardElement) {
-        cardElement.style.display = 'none'; 
-    }
-    
-    // 2. Close modal and show instant tactile feedback
-    window.closeModal('delete-modal');
-    window.showToast("Staff member removed.", "success");
+        const uid = window.deleteTargetUid;
+        if (!uid) return;
 
-    try {
-        // 3. Perform the actual backend deletion silently
-        await deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);
-    } catch (e) {
-        // 4. Revert UI if the server request fails
-        if (cardElement) cardElement.style.display = 'flex';
-        window.showToast("Failed to remove staff member. Restored.", "error");
-        console.error(e);
-    }
-}
+        const btn = document.getElementById('del-confirm-btn');
+        if (btn) { btn.textContent = 'Removing…'; btn.disabled = true; }
+
+        // Optimistically fade the card
+        document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
+            .forEach(c => { c.style.opacity = '0.4'; c.style.pointerEvents = 'none'; });
+
+        window.closeModal('delete-modal');
+        window.showToast(window.deleteTargetName + ' has been removed.', 'success');
+
+        try {
+            // 1. Wipe DB User Document
+            try { await deleteDoc(doc(db, 'users', uid)); } catch(err) { console.warn(err); }
+            
+            // 2. WIPE FIREBASE AUTHENTICATION ACCOUNT (Releases the email permanently)
+            if (typeof window.deleteUserFromAuth === 'function') {
+                await window.deleteUserFromAuth(window.deleteTargetEmail, window.deleteTargetPwd);
+            }
+            
+            // 3. Fallback functions
+            if (typeof deleteStaffMember === 'function') {
+                await deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);
+            }
+        } catch(e) {
+            // Revert the optimistic UI on failure
+            document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
+                .forEach(c => { c.style.opacity = '1'; c.style.pointerEvents = 'auto'; });
+            window.showToast('Failed to remove: ' + (e.message || 'Unknown error'), 'error');
+            console.error('confirmDelete error:', e);
+        }
+    };
 function subscribeAll() {
   const { uid, companyId, role } = window.CU;
   const ca = role === 'owner' || role === 'manager';
