@@ -98,7 +98,7 @@
     .prof-input-readonly { background: var(--bg-page) !important; border: 1px solid var(--bd-color) !important; color: var(--tx-main) !important; font-weight: 700 !important; pointer-events: none; opacity: 0.8; }
 
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: var(--rad-btn); font-size: 0.9rem; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); font-family: inherit; }
-    .btn:active { transform: scale(0.96); }
+    .btn:active { transform: scale(0.97) !important; transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important; }
     .btn-primary { background: var(--ac); color: white; }
     .btn-primary:hover { background: var(--ac-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2); }
     .btn-secondary { background: var(--bg-page); color: var(--tx-main); border: 1.5px solid var(--bd-color); }
@@ -1588,15 +1588,20 @@
       </div>
 
       <div class="modal-body hidden" id="staff-otp-container" style="padding:24px 32px 40px; text-align:center; position: relative;">
+        
+        <!-- Clean, short Back Button at the top left -->
         <div style="text-align: left; margin-bottom: 24px;">
           <button class="btn-ghost" style="padding: 6px 14px; font-size: 0.85rem; border-radius: 8px; border: 1.5px solid var(--bd-color); background: transparent; color: var(--tx-muted); cursor: pointer;" onmouseover="this.style.background='var(--bg-page)'; this.style.color='var(--tx-main)';" onmouseout="this.style.background='transparent'; this.style.color='var(--tx-muted)';" onclick="window.cancelCreateStaff()">← Back to Edit</button>
         </div>
         
+        <!-- Redesigned Headers (Removed Logo) -->
         <h3 style="font-size:1.4rem;font-weight:800;color:var(--tx-main);margin-bottom:8px;">Verify Staff Email</h3>
         <p style="font-size:0.95rem;color:var(--tx-muted);margin-bottom:32px;font-weight:500;">Enter the 6-digit code sent to <br><b id="otp-sent-email" style="color:var(--tx-main);"></b></p>
         
+        <!-- Hidden input to securely hold value -->
         <input type="hidden" id="cs-otp-input">
         
+        <!-- The 6 Modern OTP Boxes -->
         <div class="otp-inputs-wrap" id="cs-otp-boxes" style="margin-bottom: 32px;"></div>
         
         <div style="max-width:320px;margin:0 auto;">
@@ -2054,11 +2059,32 @@ window.closeModal = function(id) {
       el.style.opacity = '0';
       el.style.visibility = 'hidden';
       el.style.zIndex = '-1';
-      // Force it to disappear and stop taking clicks after the fade animation
       setTimeout(() => { el.style.display = 'none'; }, 300);
   });
   document.getElementById('panel-overlay')?.classList.remove('visible');
   document.querySelector('.app-body')?.classList.remove('zoomed');
+
+  // --- NEW: Automatically wipe data if the "Add Staff" modal is closed ---
+  if (id === 'create-staff-modal') {
+      setTimeout(() => {
+          if (typeof window.resetAndCloseAddStaff === 'function') {
+              window.resetAndCloseAddStaff();
+          } else {
+              // Fallback manual wipe
+              const ids = ['cs-name', 'cs-email', 'cs-designation', 'cs-password', 'cs-otp-input'];
+              ids.forEach(i => { const el = document.getElementById(i); if (el) el.value = ''; });
+              const container = document.getElementById('cs-otp-boxes');
+              if (container) Array.from(container.children).forEach(inp => inp.value = '');
+              
+              document.getElementById('staff-error').style.display = 'none';
+              document.getElementById('staff-otp-container').classList.add('hidden');
+              document.getElementById('created-card-section').classList.add('hidden');
+              document.getElementById('staff-form-container').classList.remove('hidden');
+              window.tempStaffData = {};
+              window.tempStaffOTP = '';
+          }
+      }, 300); // Wait for fade out animation to finish before wiping
+  }
 };
 
 // 6. Logout and Upgrades
@@ -2472,10 +2498,63 @@ window.initiateCreateStaff = async function() {
     document.getElementById('staff-otp-container').classList.remove('hidden');
     document.getElementById('otp-sent-email').textContent = email;
     
-    // Setup and Focus the 6 OTP boxes
+    // Initialize the 6 individual boxes
     window.initStaffOtpBoxes();
     
     loadBtn(btn, false, 'Verify Email & Create Staff →');
+};
+
+// Generates the 6 specific box inputs dynamically for the Staff Modal
+window.initStaffOtpBoxes = function() {
+    const container = document.getElementById('cs-otp-boxes');
+    const hiddenInput = document.getElementById('cs-otp-input');
+    const verifyBtn = document.getElementById('verify-staff-btn');
+    
+    if (!container) return;
+    container.innerHTML = '';
+    if (hiddenInput) hiddenInput.value = '';
+    if (verifyBtn) verifyBtn.disabled = true;
+
+    const checkLength = () => {
+        const val = Array.from(container.children).map(inp => inp.value).join('');
+        if (hiddenInput) hiddenInput.value = val;
+        if (verifyBtn) verifyBtn.disabled = val.length < 6;
+        return val;
+    };
+
+    for (let i = 0; i < 6; i++) {
+        const input = document.createElement('input');
+        input.type = 'text'; 
+        input.inputMode = 'numeric'; 
+        input.maxLength = 1;
+        input.className = 'otp-box anim-in';
+        input.style.animationDelay = `${i * 0.05}s`;
+        
+        input.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^0-9]/g, ''); 
+            if (e.target.value.length === 1 && i < 5) {
+                container.children[i + 1].focus();
+            }
+            const val = checkLength();
+            // Auto-trigger completion if 6 digits are typed
+            if (val.length === 6) window.finalizeCreateStaff(); 
+        });
+        
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace') {
+                if (e.target.value === '' && i > 0) {
+                    container.children[i - 1].focus();
+                    container.children[i - 1].value = '';
+                } else {
+                    e.target.value = '';
+                }
+                setTimeout(checkLength, 10); 
+            }
+        });
+        container.appendChild(input);
+    }
+    // Delay focus slightly so the modal finishes sliding up
+    setTimeout(() => container.children[0].focus(), 400); 
 };
 
 // Generates the 6 specific box inputs dynamically for the Staff Modal
