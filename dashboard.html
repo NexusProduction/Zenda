@@ -2451,24 +2451,30 @@ window.initiateCreateStaff = async function() {
     }
 
     // --- 1. EMAIL ALREADY REGISTERED CHECK ---
-    const emailExists = (window._allStaff || []).some(s => s.email && s.email.toLowerCase() === email.toLowerCase());
+    const staffList = typeof allStaff !== 'undefined' ? allStaff : (window._allStaff || []);
+    const emailExists = staffList.some(s => s.email && s.email.toLowerCase() === email.toLowerCase());
     if (emailExists) {
-        err.textContent = "this email is already used in this company try new email I'd";
+        err.textContent = "This email is already used in this company. Please try a new email ID.";
         err.style.display = 'block';
         return;
     }
 
-    // --- 2. SUFFICIENT CARDS CHECK ---
-    if (!window.CU.isPremium) {
-        const cardsBadge = document.getElementById('staff-credit-badge');
-        let cardsLeft = 0;
-        if (cardsBadge) {
-            const match = cardsBadge.textContent.match(/\d+/);
-            if (match) cardsLeft = parseInt(match[0], 10);
+    // --- 2. SUFFICIENT CARDS CHECK (FIXED) ---
+    if (!window.CU || !window.CU.isPremium) {
+        let cardsLeft = 1; // Default fallback
+        
+        // Safely extract the EXACT number from your yellow badge text (e.g. "Cards Left: 1")
+        const pageText = document.body.innerText || "";
+        const match = pageText.match(/Cards\s*Left:\s*(\d+)/i);
+        
+        if (match) {
+            cardsLeft = parseInt(match[1], 10);
         } else {
-            const nonOwners = (window._allStaff || []).filter(s => s.role !== 'owner').length;
-            const allowed = window.CU.staffCards || 0;
-            cardsLeft = (3 + allowed) - nonOwners; 
+            // Math fallback just in case the UI changes
+            const nonOwners = staffList.filter(s => s.role !== 'owner').length;
+            const allowed = (window.CU && window.CU.staffCards) ? window.CU.staffCards : 0;
+            // Assumes 2 base cards total for free tier based on previous screenshots
+            cardsLeft = (2 + allowed) - nonOwners; 
         }
 
         if (cardsLeft <= 0) {
@@ -2493,7 +2499,7 @@ window.initiateCreateStaff = async function() {
     }
 
     // --- 3. SEND EMAIL OTP ---
-    loadBtn(btn, true);
+    if (typeof loadBtn === 'function') loadBtn(btn, true);
     window.tempStaffOTP = Math.floor(100000 + Math.random() * 900000).toString();
     window.tempStaffData = { name, email, desig, pwd };
 
@@ -2515,7 +2521,6 @@ window.initiateCreateStaff = async function() {
         }
     } catch(e) {
         console.warn("EmailJS failed, falling back to console OTP: ", window.tempStaffOTP);
-        alert(`TEST MODE ACTIVE: Check the console, or use OTP: ${window.tempStaffOTP}`);
     }
 
     document.getElementById('staff-form-container').classList.add('hidden');
@@ -2524,7 +2529,7 @@ window.initiateCreateStaff = async function() {
     
     if (typeof window.initStaffOtpBoxes === 'function') window.initStaffOtpBoxes();
     
-    loadBtn(btn, false, 'Verify Email & Create Staff →');
+    if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify Email & Create Staff →');
 };
 
 window.finalizeCreateStaff = async function() {
