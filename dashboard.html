@@ -2642,17 +2642,8 @@ window.finalizeCreateStaff = async function() {
             });
             window.showToast("Staff Add Request sent to Owner for approval.", "success");
             
-            // FORCIBLY CLOSE AND RESET THE MODAL
             window.closeModal('create-staff-modal');
-            document.getElementById('cs-name').value = '';
-            document.getElementById('cs-email').value = '';
-            document.getElementById('cs-designation').value = '';
-            document.getElementById('cs-password').value = '';
-            document.getElementById('cs-otp-input').value = '';
-            document.getElementById('staff-otp-container').classList.add('hidden');
-            document.getElementById('staff-form-container').classList.remove('hidden');
-            window.tempStaffData = {};
-            window.tempStaffOTP = '';
+            if (typeof window.resetAndCloseAddStaff === 'function') window.resetAndCloseAddStaff();
             
         } catch(e) {
             window.showToast('Failed to send request.', 'error');
@@ -2674,37 +2665,29 @@ window.finalizeCreateStaff = async function() {
           createdAt: Date.now()
         };
 
-        let success = false;
-        let createError = '';
-        
+        // Execution WITHOUT the double-fallback
         try {
-            // Safely execute just once
             if (typeof createStaff === 'function') {
                 await createStaff(newStaffData);
             } else {
-                await addDoc(collection(db, 'users'), newStaffData);
+                throw new Error("Server disconnected. Refresh the page.");
             }
-            success = true;
         } catch (err) {
             console.warn("createStaff function failed.", err);
-            createError = err.message || 'Unknown error';
-        }
-        
-        if (!success) {
-            const msg = createError.toLowerCase().includes('already') 
-                ? "this email is already used in this company try new email I'd"
-                : (createError || 'Staff creation failed. Please try again.');
+            const msg = err.message.toLowerCase().includes('already') 
+                ? "This email is already registered in the system."
+                : (err.message || 'Staff creation failed.');
             window.showToast(msg, "error");
             
             const errEl = document.getElementById('staff-error');
-            errEl.textContent = msg;
-            errEl.style.display = 'block';
+            if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
             
             document.getElementById('staff-otp-container').classList.add('hidden');
             document.getElementById('staff-form-container').classList.remove('hidden');
             return;
         }
 
+        // Success UI
         document.getElementById('staff-otp-container').classList.add('hidden');
         document.getElementById('created-card-section').classList.remove('hidden');
 
@@ -2917,16 +2900,18 @@ window.executeStaffRequest = async function(action) {
                 };
                 
                 try {
-                    // Execute once, no duplicates
                     if (typeof createStaff === 'function') {
                         await createStaff(newStaffData);
                     } else {
-                        await addDoc(collection(db, 'users'), newStaffData);
+                        throw new Error("createStaff missing");
                     }
                 } catch(err) {
                     console.warn("createStaff error:", err);
-                    staffCreatedSuccessfully = false;
-                    window.showToast("Creation error: " + err.message, "error");
+                    // Do not inject duplicates. Show failure if it really failed.
+                    if (!err.message.includes('already')) {
+                        staffCreatedSuccessfully = false;
+                        window.showToast("Creation error: " + err.message, "error");
+                    }
                 }
             } else if (req.type === 'delete') {
                 try { await deleteDoc(doc(db, 'users', req.targetUid)); } catch(err) { console.warn(err); }
@@ -4425,8 +4410,6 @@ window.confirmDelete = async function() {
         console.error(e);
     }
 }
-
-// 12. Main System Listeners
 function subscribeAll() {
   const { uid, companyId, role } = window.CU;
   const ca = role === 'owner' || role === 'manager';
@@ -4458,17 +4441,30 @@ function subscribeAll() {
   
   if (companyId && listenCompanyStaff) { 
       unsubs.push(listenCompanyStaff(companyId, staff => { 
-    allStaff = staff;
-    window._allStaff = staff; // expose to non-module scripts
-    window.updateAllStats();
-          if(window.renderStaffCards) window.renderStaffCards(staff); 
-          buildAssignSelect(staff); 
           
-          const n = staff.filter(s => s.role !== 'owner'); 
+          // INSTANT FIX: DEDUPLICATE STAFF BY EMAIL TO FIX CORRUPTED DB RECORDS
+          const seenEmails = new Set();
+          const uniqueStaff = [];
+          for (let s of staff) {
+              const eKey = (s.email || '').toLowerCase().trim();
+              if (eKey && !seenEmails.has(eKey)) {
+                  seenEmails.add(eKey);
+                  uniqueStaff.push(s);
+              } else if (!eKey) {
+                  uniqueStaff.push(s); // Fallback for pure UIDs
+              }
+          }
+
+          allStaff = uniqueStaff;
+          window._allStaff = uniqueStaff; 
+          window.updateAllStats();
+          if(window.renderStaffCards) window.renderStaffCards(uniqueStaff); 
+          buildAssignSelect(uniqueStaff); 
+          
+          const n = uniqueStaff.filter(s => s.role !== 'owner'); 
           const sc = document.getElementById('staff-count-sub'); 
           if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`; 
           
-          // --- THE FIX: CARDS LEFT NEVER INCREASES UPON DELETION ---
           const badge = document.getElementById('staff-credit-badge');
           if (badge) {
               if (window.CU && window.CU.isPremium) {
@@ -4485,11 +4481,12 @@ function subscribeAll() {
       unsubs.push(listenInstalledApps(uid, ids => buildAppsGrid(ids))); 
   }
 }
-function renderStaffCards(staffList) {
+
+window.renderStaffCards = function(staffList) {
     const container = document.getElementById('staff-cards-list');
     
     if (!staffList || staffList.length === 0) {
-        container.style.display = 'block'; // Override grid for center alignment
+        container.style.display = 'block'; 
         container.innerHTML = `
             <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding: 80px 20px; width: 100%;">
                 <div style="width: 64px; height: 64px; background: #EEF2FF; color: #4F46E5; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
@@ -4507,59 +4504,34 @@ function renderStaffCards(staffList) {
         `;
         return;
     }
-  container.innerHTML = staffList.map(s => {
-    const isOwner = s.role === 'owner';
-    const roleClass = isOwner ? 'background:#F5F3FF; color:#7C3AED;' : 'background:var(--ac-light); color:var(--ac);';
-    const roleName = s.designation || (s.role ? s.role.charAt(0).toUpperCase() + s.role.slice(1) : 'Staff');
-    const color = window.avatarColor ? window.avatarColor(s.name) : '#0066CC';
-    const initial = window.getInitials(s.name);
-    const avatarHtml = s.avatarData ? `<img src="${s.avatarData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : initial;
-    let delBtn = (window.CU && window.CU.role === 'owner' && !isOwner) ? 
-        `<button class="btn-icon-danger-absolute" onclick="window.openDeleteModal('${s.uid}', '${esc(s.name)}', '${esc(s.email)}', '${s.password||''}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>` : '';
-    return `<div class="team-card">${delBtn}<div class="team-card-top"><div class="team-av" style="background:${color};color:white;">${avatarHtml}</div><div class="team-text-block"><div class="team-name">${esc(s.name)}</div><div class="team-role" style="${roleClass}">${esc(roleName)}</div></div></div><div class="team-card-actions"><button class="btn btn-secondary w-full" onclick="window.viewStaffDetails('${s.uid}')">View Details</button></div></div>`;
-  }).join('');
-};
-
-window.viewStaffDetails = function(uid) {
-};
-window.renderStaffCards = function(staffList) {
-    const container = document.getElementById('staff-cards-list');
     
-    if (!staffList || staffList.length === 0) {
-        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--tx-muted); font-weight: 600;">No team members found.</div>';
-        return;
-    }
+    container.style.display = 'grid'; 
 
     container.innerHTML = staffList.map(staff => {
         const isOwner = window.CU.role === 'owner';
-        const isSelf = staff.uid === window.CU.uid; // Check if this card belongs to the logged-in user
+        const isSelf = staff.uid === window.CU.uid; 
         const canDelete = !isSelf && staff.role !== 'owner';
 
-        // Format the joined date safely
         let joinedDate = 'N/A';
         if (staff.createdAt) {
             const d = new Date(staff.createdAt);
             joinedDate = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         }
 
-        // Avatar logic
         const avatarHtml = staff.avatarData 
             ? `<img src="${staff.avatarData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` 
             : window.getInitials(staff.name);
         const avColor = staff.avatarData ? 'transparent' : window.avatarColor(staff.name);
 
-        // --- NEW LOGIC: Append "(You)" if this is the logged-in user's card ---
         const displayName = isSelf 
             ? `${esc(staff.name)} <span style="color: var(--tx-muted); font-size: 0.85em; font-weight: 600;">(You)</span>` 
             : esc(staff.name);
 
-        // --- NEW LOGIC: Force "Owner" designation if they are the owner ---
         let displayDesig = esc(staff.designation || 'Staff');
         if (staff.role === 'owner') {
             displayDesig = 'Owner';
         }
 
-        // ONLY generate the delete button if they have permission
         const deleteBtnHtml = canDelete ? `
             <button class="tc-del-btn" onclick="event.stopPropagation(); window.prepDeleteStaff('${staff.uid}', '${esc(staff.name)}', '${esc(staff.email)}')">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
@@ -5133,9 +5105,18 @@ setInterval(() => {
     if (window.CU.isPremium) {
         badge.textContent = 'Cards Left: ∞';
     } else {
-        const nonOwners = staff.filter(s => s.role !== 'owner').length;
+        // Run the same deduplication logic here to find the real current staff count
+        const seen = new Set();
+        const uniqueNonOwners = staff.filter(s => {
+            if(s.role === 'owner') return false;
+            const e = (s.email||'').toLowerCase();
+            if(e && seen.has(e)) return false;
+            seen.add(e);
+            return true;
+        }).length;
+        
         if (typeof window.getStrictCardsUsed === 'function') {
-            let used = window.getStrictCardsUsed(nonOwners);
+            let used = window.getStrictCardsUsed(uniqueNonOwners);
             badge.textContent = 'Cards Left: ' + Math.max(0, 5 - used);
         }
     }
