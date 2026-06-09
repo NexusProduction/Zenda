@@ -2200,6 +2200,20 @@ window.renderNotifs = function(items) {
                 </button>
             </div>
         `;
+    } else if (n.type === 'staff_add_approved') {
+        // OVERRIDE ICONS FOR THIS SPECIFIC SUCCESS NOTIFICATION
+        iconBgClass = ''; 
+        iconStyle = 'background: #F2FDF4; color: #34C759;';
+        iconType = `<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>`;
+        const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(n.pendingData || {}))));
+        actionsHtml = `
+            <div style="display: flex; gap: 10px; margin-top: 6px; width: 100%;">
+                <button class="btn btn-primary w-full" style="padding:10px 16px; font-size:0.85rem; border-radius:10px; font-weight:800; box-shadow:0 4px 12px rgba(0,102,255,0.25); justify-content:center;" onclick="window.downloadCardFromNotif(this, '${safeData}', '${n.id}')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download Card
+                </button>
+            </div>
+        `;
     } else if (n.type === 'staff_delete_request') {
     actionsHtml = `<button class="btn w-full" style="padding:10px 16px;font-size:0.9rem;background:var(--danger);color:white;border:none;border-radius:10px;font-weight:800;box-shadow:0 4px 12px rgba(255,59,48,0.25);width:100%;justify-content:center;margin-top:6px;" data-type="delete" data-id="${n.id}" data-target-uid="${n.targetUid || ''}" data-target-email="${esc(n.targetEmail || '')}" data-target-name="${esc(n.targetName || 'Staff')}" data-target-pwd="${btoa(n.targetPwd || '')}" data-target-joined="${esc(n.targetJoined || 'Unknown')}" data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}" data-reason="${esc(n.reason || 'No reason provided')}" onclick="window.openStaffRequestModal(this)">Review Request &rarr;</button>`;
 } else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') {
@@ -2696,10 +2710,9 @@ window.executeStaffRequest = async function(action) {
             }
         }
         
-        // Mark owner notification as read immediately
         await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', req.notifId), { read: true, status: 'read' });
         
-        // Send Notification to Staff
+        // --- SEND RESPONSE NOTIFICATION TO STAFF ---
         if (req.reqId && req.reqId.trim() !== '' && req.reqId !== 'undefined' && req.reqId !== 'null') {
             const actionText = action === 'approve' ? 'approved' : 'declined';
             const typeText = req.type === 'add' ? `add a new staff member` : `remove a staff member`;
@@ -2721,7 +2734,6 @@ window.executeStaffRequest = async function(action) {
         
         window.showToast(`Request ${action === 'approve' ? 'Approved' : 'Declined'}!`, action === 'approve' ? 'success' : 'info');
         
-        // Visually remove the notification card
         if (req.btn) {
             const card = req.btn.closest('.notif-card');
             if (card) {
@@ -2735,15 +2747,67 @@ window.executeStaffRequest = async function(action) {
     } finally {
         if (actionBtn) loadBtn(actionBtn, false, action === 'approve' ? 'Approve' : 'Decline');
         
-        // Force Close Modal instantly
+        // --- FORCEFULLY KILL MODAL (Overrides any sticky inline CSS) ---
         const modalEl = document.getElementById('staff-request-modal');
         if (modalEl) {
             modalEl.classList.remove('open');
             modalEl.style.opacity = '0';
             modalEl.style.visibility = 'hidden';
-            modalEl.style.zIndex = '-1';
+            modalEl.style.pointerEvents = 'none';
+            modalEl.style.display = 'none'; // Nuclear option to ensure it goes away
+            setTimeout(() => { modalEl.style.display = ''; }, 500); // Reset display for next time
         }
-        document.getElementById('panel-overlay')?.classList.remove('visible');
+    }
+};
+
+window.downloadCardFromNotif = async function(btn, b64Data, notifId) {
+    try {
+        const data = JSON.parse(decodeURIComponent(escape(atob(b64Data))));
+        window.showToast("Preparing ID Card...", "info");
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 400;
+        canvas.height = 280;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 400, 280);
+        ctx.fillStyle = '#34C759'; 
+        ctx.fillRect(0, 0, 400, 10);
+        ctx.fillStyle = '#1D1D1F';
+        ctx.font = 'bold 22px -apple-system, sans-serif';
+        ctx.fillText('Zenda Staff ID', 24, 50);
+        ctx.fillStyle = '#E5E5EA';
+        ctx.fillRect(24, 70, 352, 2);
+        ctx.fillStyle = '#1D1D1F';
+        ctx.font = 'bold 26px -apple-system, sans-serif';
+        ctx.fillText(data.name || 'Staff', 24, 115);
+        ctx.fillStyle = '#0066CC';
+        ctx.font = 'bold 16px -apple-system, sans-serif';
+        ctx.fillText(data.designation ? data.designation.toUpperCase() : 'STAFF', 24, 145);
+        ctx.fillStyle = '#86868B';
+        ctx.font = '16px -apple-system, sans-serif';
+        ctx.fillText(data.email || '', 24, 175);
+        ctx.fillStyle = '#F5F5F7';
+        ctx.beginPath();
+        ctx.roundRect(24, 205, 352, 45, 8);
+        ctx.fill();
+        ctx.fillStyle = '#1D1D1F';
+        ctx.font = 'bold 15px monospace';
+        ctx.fillText('Password: ' + (data.password || '***'), 40, 233);
+
+        setTimeout(() => {
+            const link = document.createElement('a');
+            link.download = `${(data.name || 'Staff').replace(/\s+/g, '_')}_ID_Card.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            
+            // Automatically dismiss the notification
+            window.dismissAlert(btn);
+        }, 300);
+    } catch(e) {
+        window.showToast("Error generating card.", "error");
+        console.error(e);
     }
 };
 
