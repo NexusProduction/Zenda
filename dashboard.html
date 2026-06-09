@@ -1879,32 +1879,28 @@ function loadBtn(btn, loading, restoreText) {
       else if (btn._origHTML) btn.innerHTML = btn._origHTML; 
   }
 }
-
 // Universal tracking function for Cards Used
 window.getStrictCardsUsed = function(currentNonOwners) {
     if (!window.CU || !window.CU.companyId) return currentNonOwners || 0;
     
-    // Auto-calculate if not explicitly passed
     if (currentNonOwners === undefined) {
         const staff = window._allStaff || [];
         currentNonOwners = staff.filter(s => s.role !== 'owner').length;
     }
 
-    const maxKey = 'max_staff_' + window.CU.companyId;
-    let historic = parseInt(localStorage.getItem(maxKey) || '0');
     let dbUsed = window.CU.cardsUsed || 0;
     
-    // The absolute highest number across history, database, or current live view
-    let highestEver = Math.max(historic, dbUsed, currentNonOwners);
-    
-    // Save it back to cement the record locally
-    localStorage.setItem(maxKey, highestEver);
-    
-    if (window.CU.role === 'owner' && highestEver > dbUsed) {
-        window.CU.cardsUsed = highestEver;
-        try { updateDoc(doc(db, 'companies', window.CU.companyId), { cardsUsed: highestEver }); } catch(e){}
+    // If the active staff count is somehow higher than the DB record, update the DB.
+    // Otherwise, ALWAYS trust the DB record (which never goes down).
+    if (currentNonOwners > dbUsed) {
+        dbUsed = currentNonOwners;
+        if (window.CU.role === 'owner') {
+            window.CU.cardsUsed = dbUsed;
+            try { updateDoc(doc(db, 'companies', window.CU.companyId), { cardsUsed: dbUsed }); } catch(e){}
+        }
     }
-    return highestEver;
+    
+    return dbUsed;
 };
 
 function esc(s = '') {
@@ -2061,7 +2057,10 @@ window.closeModal = function(id) {
       el.style.opacity = '0';
       el.style.visibility = 'hidden';
       el.style.zIndex = '-1';
-      setTimeout(() => { el.style.display = 'none'; }, 300);
+      setTimeout(() => { 
+          el.style.display = 'none'; 
+          el.style.pointerEvents = ''; // REMOVED THE BUGGY OVERRIDE
+      }, 300);
   });
   document.getElementById('panel-overlay')?.classList.remove('visible');
   document.querySelector('.app-body')?.classList.remove('zoomed');
@@ -2700,6 +2699,7 @@ window.finalizeCreateStaff = async function() {
         }
 
         // Success UI
+        // Success UI
         document.getElementById('staff-otp-container').classList.add('hidden');
         document.getElementById('created-card-section').classList.remove('hidden');
 
@@ -2708,7 +2708,22 @@ window.finalizeCreateStaff = async function() {
         document.getElementById('card-email').textContent = esc(window.tempStaffData.email);
         document.getElementById('card-pwd').textContent = esc(window.tempStaffData.pwd);
 
+        // INSTANTLY UPDATE CARDS USED TRACKER IN THE DATABASE
+        if (window.CU && window.CU.role === 'owner') {
+            let currentUsed = window.CU.cardsUsed || 0;
+            window.CU.cardsUsed = currentUsed + 1;
+            try { updateDoc(doc(db, 'companies', window.CU.companyId), { cardsUsed: window.CU.cardsUsed }); } catch(e){}
+        }
+
         window.showToast("Staff member verified and added!", "success");
+        
+        // WIPE THE FORM INPUTS SO THEY DON'T CAUSE ERRORS NEXT TIME
+        document.getElementById('cs-name').value = '';
+        document.getElementById('cs-email').value = '';
+        document.getElementById('cs-designation').value = '';
+        document.getElementById('cs-password').value = '';
+        document.getElementById('cs-otp-input').value = '';
+        
     } catch (e) {
         console.error(e);
         window.showToast("Failed to create staff: " + e.message, "error");
