@@ -2424,7 +2424,68 @@ window.submitDeny = async function(btn) {
     window.showToast("Task declined.", "success");
   } catch (e) { console.error(e); window.showToast("Error updating task.", "error"); btn.textContent = "Send"; }
 };
+window.initStaffOtpBoxes = function() {
+    const container = document.getElementById('cs-otp-boxes');
+    const hiddenInput = document.getElementById('cs-otp-input');
+    const verifyBtn = document.getElementById('verify-staff-btn');
 
+    if (!container) return;
+    
+    // Clear any existing boxes
+    container.innerHTML = '';
+    if (hiddenInput) hiddenInput.value = '';
+    if (verifyBtn) verifyBtn.disabled = true;
+
+    // Helper to check length and update hidden input for validation
+    const checkOtpLength = () => {
+        const val = Array.from(container.children).map(inp => inp.value).join('');
+        if (hiddenInput) hiddenInput.value = val;
+        if (verifyBtn) verifyBtn.disabled = (val.length < 6);
+        return val;
+    };
+
+    // Create 6 boxes
+    for (let i = 0; i < 6; i++) {
+        const input = document.createElement('input');
+        input.type = 'text'; 
+        input.inputMode = 'numeric'; 
+        input.maxLength = 1;
+        input.className = 'otp-box anim-in';
+        input.style.animationDelay = `${i * 0.05}s`;
+        input.dataset.index = i;
+        
+        input.addEventListener('input', (e) => {
+            // Restrict to numbers only
+            e.target.value = e.target.value.replace(/[^0-9]/g, ''); 
+            
+            // Auto-advance to next box
+            if (e.target.value.length === 1 && i < 5) {
+                container.children[i + 1].focus();
+            }
+            checkOtpLength(); 
+        });
+        
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace') {
+                if (e.target.value === '' && i > 0) {
+                    // Move back and clear previous
+                    container.children[i - 1].focus();
+                    container.children[i - 1].value = '';
+                } else {
+                    e.target.value = ''; // Clear current box
+                }
+                setTimeout(checkOtpLength, 10); 
+            }
+        });
+        
+        container.appendChild(input);
+    }
+    
+    // Auto-focus the first box after sliding in
+    setTimeout(() => {
+        if (container.children[0]) container.children[0].focus();
+    }, 400); 
+};
 window.initiateCreateStaff = async function() {
     const name = document.getElementById('cs-name').value.trim();
     const email = document.getElementById('cs-email').value.trim();
