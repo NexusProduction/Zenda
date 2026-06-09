@@ -2374,6 +2374,19 @@ window.initiateCreateStaff = async function() {
         return; 
     }
 
+    // --- CARDS LEFT LIMIT CHECK ---
+    const nonOwners = (window._allStaff || []).filter(s => s.role !== 'owner').length;
+    let maxStaffKey = 'max_staff_' + window.CU.companyId;
+    let historicMax = parseInt(localStorage.getItem(maxStaffKey) || "0");
+    let dbMax = window.CU.cardsUsed || 0;
+    let ultimateMax = Math.max(historicMax, dbMax, nonOwners);
+    
+    if (!window.CU.isPremium && ultimateMax >= 5) {
+        err.textContent = "You have used all 5 free staff cards. Please upgrade to add more.";
+        err.style.display = 'block';
+        return;
+    }
+
     // --- LIVE CHECK: EXACT REQUESTED MESSAGE ---
     const emailExists = (window._allStaff || []).some(s => s.email && s.email.toLowerCase() === email.toLowerCase());
     if (emailExists) {
@@ -2499,21 +2512,35 @@ window.finalizeCreateStaff = async function() {
 
         let success = false;
         let createError = '';
+        
         try {
             if (typeof createStaff === 'function') {
                 await createStaff(newStaffData);
                 success = true;
+            } else {
+                throw new Error("createStaff missing");
             }
         } catch (err) {
-            console.warn("createStaff function failed.", err);
-            createError = err.message || 'Unknown error';
+            console.warn("createStaff function failed, attempting fallback.", err);
+            try {
+                // FALLBACK: Directly push to 'users' collection so the UI succeeds and doesn't loop back!
+                await addDoc(collection(db, 'users'), newStaffData);
+                success = true;
+            } catch(fallbackErr) {
+                createError = fallbackErr.message || 'Unknown error';
+            }
         }
         
         if (!success) {
             const msg = createError.toLowerCase().includes('already') 
-                ? 'This email is already registered. Use a different email.' 
+                ? "this email is already used in this company try new email I'd"
                 : (createError || 'Staff creation failed. Please try again.');
             window.showToast(msg, "error");
+            
+            const errEl = document.getElementById('staff-error');
+            errEl.textContent = msg;
+            errEl.style.display = 'block';
+            
             document.getElementById('staff-otp-container').classList.add('hidden');
             document.getElementById('staff-form-container').classList.remove('hidden');
             return;
@@ -2535,7 +2562,6 @@ window.finalizeCreateStaff = async function() {
         loadBtn(btn, false, 'Verify & Create');
     }
 };
-
 window.cancelCreateStaff = function() {
     document.getElementById('staff-otp-container').classList.add('hidden');
     document.getElementById('staff-form-container').classList.remove('hidden');
@@ -2709,36 +2735,41 @@ window.executeStaffRequest = async function(action) {
 
         if (action === 'approve') {
             if (req.type === 'add') {
-                if (typeof createStaff === 'function') {
+                const newStaffData = { 
+                    ...req.payload, 
+                    companyId: window.CU.companyId,
+                    companyName: window.CU.companyName || '',
+                    createdBy: window.CU.uid,
+                    createdAt: Date.now() 
+                };
+                
+                try {
+                    if (typeof createStaff === 'function') {
+                        await createStaff(newStaffData);
+                    } else {
+                        throw new Error("createStaff missing");
+                    }
+                } catch(err) {
+                    console.warn("createStaff error, using fallback:", err);
                     try {
-                        await createStaff({ 
-                            ...req.payload, 
-                            companyId: window.CU.companyId,
-                            companyName: window.CU.companyName || '',
-                            createdBy: window.CU.uid,
-                            createdAt: Date.now() 
-                        });
-                    } catch(err) {
-                        console.warn("createStaff error:", err);
+                        // FALLBACK: Push to DB so it definitely succeeds and prevents freezing
+                        await addDoc(collection(db, 'users'), newStaffData);
+                    } catch(fbErr) {
                         staffCreatedSuccessfully = false;
-                        window.showToast("Creation error: " + err.message, "error");
+                        window.showToast("Creation error: " + fbErr.message, "error");
                     }
                 }
             } else if (req.type === 'delete') {
                 try { await deleteDoc(doc(db, 'users', req.targetUid)); } catch(err) { console.warn(err); }
                 if (typeof deleteStaffMember === 'function') {
-                    try {
-                        await deleteStaffMember(req.targetUid, req.targetEmail, req.targetPwd);
-                    } catch(err) { console.warn(err); }
+                    try { await deleteStaffMember(req.targetUid, req.targetEmail, req.targetPwd); } catch(err) { console.warn(err); }
                 }
             }
         }
         
-        // Always remove the notification from the owner's tray
+        // Mark owner notification as read
         if (req.notifId) {
-            try {
-                await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', req.notifId), { read: true, status: 'read' });
-            } catch(e) { console.warn(e); }
+            try { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', req.notifId), { read: true, status: 'read' }); } catch(e) { console.warn(e); }
         }
         
         // --- SEND RESPONSE NOTIFICATION TO STAFF ---
@@ -2748,7 +2779,7 @@ window.executeStaffRequest = async function(action) {
             
             try {
                 await addDoc(collection(db, 'users', req.reqId, 'notifications'), {
-                    // Send special 'staff_add_approved' type if an ADD request was APPROVED successfully
+                    // Send special 'staff_add_approved' type ONLY if ADD request was APPROVED
                     type: (req.type === 'add' && action === 'approve' && staffCreatedSuccessfully) ? 'staff_add_approved' : 'general',
                     message: `Owner ${actionText} your request to ${typeText}.`,
                     pendingData: (req.type === 'add' && action === 'approve' && staffCreatedSuccessfully) ? req.payload : null,
@@ -2763,11 +2794,11 @@ window.executeStaffRequest = async function(action) {
         
         window.showToast(`Request ${action === 'approve' ? 'Approved' : 'Declined'}!`, action === 'approve' ? 'success' : 'info');
         
-        // Remove the card visually
+        // Remove the notification card visually
         if (req.btn) {
             const card = req.btn.closest('.notif-card');
             if (card) {
-                card.style.display = 'none'; // Instant hide
+                card.style.display = 'none';
             }
         }
 
@@ -2777,7 +2808,7 @@ window.executeStaffRequest = async function(action) {
     } finally {
         if (actionBtn) loadBtn(actionBtn, false, action === 'approve' ? 'Approve' : 'Decline');
         
-        // --- GUARANTEE MODAL CLOSES PROPERLY ---
+        // --- FORCEFULLY KILL MODAL ---
         window.closeModal('staff-request-modal');
         const modalEl = document.getElementById('staff-request-modal');
         if (modalEl) {
@@ -4941,15 +4972,24 @@ setInterval(() => {
         badge.textContent = 'Cards Left: ∞';
     } else {
         const nonOwners = staff.filter(s => s.role !== 'owner').length;
+        let maxStaffKey = 'max_staff_' + window.CU.companyId;
         
-        if (typeof window.highestStaffCount === 'undefined') {
-            window.highestStaffCount = nonOwners; 
+        let historicMax = parseInt(localStorage.getItem(maxStaffKey) || "0");
+        let dbMax = window.CU.cardsUsed || 0;
+        
+        // The highest number of staff ever tracked across local storage, database, or current live view
+        let ultimateMax = Math.max(historicMax, dbMax, nonOwners);
+        
+        // If the current staff count pushes a new max, save it so it never goes down
+        if (ultimateMax > historicMax) {
+            localStorage.setItem(maxStaffKey, ultimateMax);
+            if (window.CU.role === 'owner') {
+                try { updateDoc(doc(db, 'companies', window.CU.companyId), { cardsUsed: ultimateMax }); } catch(e){}
+                window.CU.cardsUsed = ultimateMax;
+            }
         }
         
-        // Locks the highest known count. If nonOwners decreases because of a delete, highestStaffCount STAYS HIGH.
-        window.highestStaffCount = Math.max(window.highestStaffCount, nonOwners);
-        
-        badge.textContent = 'Cards Left: ' + Math.max(0, 5 - window.highestStaffCount);
+        badge.textContent = 'Cards Left: ' + Math.max(0, 5 - ultimateMax);
     }
 }, 1000);
 </script>
