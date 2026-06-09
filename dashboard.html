@@ -2331,6 +2331,15 @@ window.initiateCreateStaff = async function() {
         err.style.display = 'block'; 
         return; 
     }
+    
+    // --- LIVE CHECK: Block if Email already exists in Company ---
+    const emailExists = (window._allStaff || []).some(s => s.email && s.email.toLowerCase() === email.toLowerCase());
+    if (emailExists) {
+        err.textContent = "This email is already used in this company.";
+        err.style.display = 'block';
+        return;
+    }
+    
     const pwdRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/;
     if (!pwdRegex.test(pwd)) { 
         err.textContent = "Password must contain at least one letter, one number, and one symbol (e.g., @, #, $)."; 
@@ -2659,6 +2668,8 @@ window.executeStaffRequest = async function(action) {
                     });
                 }
             } else if (req.type === 'delete') {
+                // Permanently wipe the user document from DB to fully erase email and password
+                try { await deleteDoc(doc(db, 'users', req.targetUid)); } catch(err) { console.warn(err); }
                 await deleteStaffMember(req.targetUid, req.targetEmail, req.targetPwd);
             }
         }
@@ -2683,7 +2694,6 @@ window.executeStaffRequest = async function(action) {
         }
         
         window.showToast(`Request ${action === 'approve' ? 'Approved' : 'Declined'}!`, action === 'approve' ? 'success' : 'info');
-        document.getElementById('staff-request-modal').classList.remove('open');
         
         const card = req.btn.closest('.notif-card');
         if (card) {
@@ -2695,6 +2705,8 @@ window.executeStaffRequest = async function(action) {
         window.showToast(e.message, 'error');
     } finally {
         loadBtn(actionBtn, false, action === 'approve' ? 'Approve' : 'Decline');
+        // ALWAYS close modal regardless of success or backend error
+        window.closeModal('staff-request-modal');
     }
 };
 
@@ -4023,14 +4035,13 @@ function subscribeAll() {
           const sc = document.getElementById('staff-count-sub'); 
           if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`; 
           
-          // --- THE FIX: Dynamic Cards Left Logic ---
           const badge = document.getElementById('staff-credit-badge');
           if (badge) {
               if (window.CU && window.CU.isPremium) {
                   badge.textContent = 'Cards Left: ∞';
               } else {
-                  // Math: 5 max free staff minus current staff count
-                  let left = 5 - n.length;
+                  let used = window.CU.cardsUsed || n.length;
+                  let left = 5 - used;
                   if (left < 0) left = 0;
                   badge.textContent = `Cards Left: ${left}`;
               }
@@ -4315,6 +4326,9 @@ function setupUI() {
         let ip = cd.isPremium === true;
         if (ip && cd.subscriptionExpiry && new Date() > new Date(cd.subscriptionExpiry)) ip = false;
         window.CU.isPremium = ip; window.CU.subscriptionExpiry = cd.subscriptionExpiry; window.CU.subscriptionTier = cd.subscriptionTier || 'Premium Plan';
+        
+        // FETCH CARDS USED FROM BACKEND TO PREVENT INCREASING WHEN DELETED
+        window.CU.cardsUsed = cd.cardsUsed || 0;
         
         const topUpgradeBtn = document.getElementById('topbar-upgrade-btn');
         if (topUpgradeBtn) { if (ip) { topUpgradeBtn.classList.add('hidden'); topUpgradeBtn.style.display = 'none'; } else { topUpgradeBtn.classList.remove('hidden'); topUpgradeBtn.style.display = 'flex'; topUpgradeBtn.textContent = role === 'owner' ? '👑 Upgrade' : '👑 Request Upgrade'; } }
@@ -4684,10 +4698,14 @@ setInterval(() => {
     const badge = document.getElementById('staff-credit-badge');
     const staff = window._allStaff;
     if (!badge || !staff) return;
-    const nonOwners = staff.filter(s => s.role !== 'owner').length;
-    badge.textContent = window.CU && window.CU.isPremium
-        ? 'Cards Left: ∞'
-        : 'Cards Left: ' + Math.max(0, 5 - nonOwners);
+    
+    if (window.CU && window.CU.isPremium) {
+        badge.textContent = 'Cards Left: ∞';
+    } else {
+        // Uses DB tracked cardsUsed to prevent refilling when deleted, fallback to active
+        let used = window.CU ? (window.CU.cardsUsed || staff.filter(s => s.role !== 'owner').length) : 0;
+        badge.textContent = 'Cards Left: ' + Math.max(0, 5 - used);
+    }
 }, 1000);
 </script>
 <script type="module">
@@ -4695,7 +4713,6 @@ setInterval(() => {
     import { addDoc, collection }              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { deleteStaffMember }               from './staff.js';
 
-    /* ── OWNER: execute permanent staff deletion ── */
     window.confirmDelete = async function() {
         const uid = window.deleteTargetUid;
         if (!uid) return;
@@ -4711,6 +4728,8 @@ setInterval(() => {
         window.showToast(window.deleteTargetName + ' has been removed.', 'success');
 
         try {
+            // Permanently wipe the user document from DB to fully erase email and password
+            try { await deleteDoc(doc(db, 'users', uid)); } catch(err) { console.warn(err); }
             await deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);
         } catch(e) {
             // Revert the optimistic UI on failure
