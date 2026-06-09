@@ -2660,7 +2660,7 @@ window.openStaffRequestModal = function(btn) {
 window.executeStaffRequest = async function(action) {
     const req = window.currentStaffRequest;
     const actionBtn = document.getElementById(action === 'approve' ? 'sr-btn-approve' : 'sr-btn-decline');
-    loadBtn(actionBtn, true);
+    if (actionBtn) loadBtn(actionBtn, true);
     
     try {
         if (action === 'approve') {
@@ -2677,7 +2677,9 @@ window.executeStaffRequest = async function(action) {
             } else if (req.type === 'delete') {
                 // Permanently wipe the user document from DB to fully erase email and password
                 try { await deleteDoc(doc(db, 'users', req.targetUid)); } catch(err) { console.warn(err); }
-                await deleteStaffMember(req.targetUid, req.targetEmail, req.targetPwd);
+                if (typeof deleteStaffMember === 'function') {
+                    await deleteStaffMember(req.targetUid, req.targetEmail, req.targetPwd);
+                }
             }
         }
         
@@ -2702,25 +2704,27 @@ window.executeStaffRequest = async function(action) {
         
         window.showToast(`Request ${action === 'approve' ? 'Approved' : 'Declined'}!`, action === 'approve' ? 'success' : 'info');
         
-        const card = req.btn.closest('.notif-card');
-        if (card) {
-            card.classList.add('slide-left-out');
-            setTimeout(() => card.remove(), 350);
+        if (req.btn) {
+            const card = req.btn.closest('.notif-card');
+            if (card) {
+                card.classList.add('slide-left-out');
+                setTimeout(() => card.remove(), 350);
+            }
         }
     } catch(e) {
         console.error(e);
-        window.showToast(e.message, 'error');
+        window.showToast(e.message || "An error occurred", 'error');
     } finally {
-        loadBtn(actionBtn, false, action === 'approve' ? 'Approve' : 'Decline');
+        if (actionBtn) loadBtn(actionBtn, false, action === 'approve' ? 'Approve' : 'Decline');
         
-        // --- FORCE THE MODAL TO CLOSE ---
+        // --- FORCEFULLY KILL ALL STAFF REQUEST MODALS ---
         window.closeModal('staff-request-modal');
-        const modalOverlay = document.getElementById('staff-request-modal');
-        if (modalOverlay) {
-            modalOverlay.classList.remove('open');
-            modalOverlay.style.opacity = '0';
-            modalOverlay.style.visibility = 'hidden';
-        }
+        document.querySelectorAll('#staff-request-modal').forEach(m => {
+            m.classList.remove('open');
+            m.style.opacity = '0';
+            m.style.visibility = 'hidden';
+            m.style.zIndex = '-1';
+        });
     }
 };
 
@@ -4049,20 +4053,22 @@ function subscribeAll() {
           const sc = document.getElementById('staff-count-sub'); 
           if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`; 
           
-          // --- THE FIX: Prevent Cards From Refilling ---
+          // --- THE FIX: CARDS LEFT NEVER INCREASES UPON DELETION ---
           const badge = document.getElementById('staff-credit-badge');
           if (badge) {
               if (window.CU && window.CU.isPremium) {
                   badge.textContent = 'Cards Left: ∞';
               } else {
-                  // Track the highest number of staff created this session to prevent refills
-                  if (window.maxStaffReached === undefined) window.maxStaffReached = n.length;
-                  if (n.length > window.maxStaffReached) window.maxStaffReached = n.length;
+                  let maxStaffKey = 'max_staff_' + window.CU.companyId;
+                  let historicMax = parseInt(localStorage.getItem(maxStaffKey) || "0");
+                  let currentStaffCount = n.length;
                   
-                  let used = window.CU ? (window.CU.cardsUsed || window.maxStaffReached) : window.maxStaffReached;
-                  used = Math.max(used, window.maxStaffReached);
+                  if (currentStaffCount > historicMax) {
+                      historicMax = currentStaffCount;
+                      localStorage.setItem(maxStaffKey, historicMax);
+                  }
                   
-                  let left = 5 - used;
+                  let left = 5 - historicMax;
                   if (left < 0) left = 0;
                   badge.textContent = `Cards Left: ${left}`;
               }
@@ -4713,26 +4719,24 @@ window.checkDelRequestBtn = function(textarea) {
         btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
     }
 };
-
-/* ── Cards Left badge (uses window._allStaff, no module scope needed) ── */
-setInterval(() => {
-    /* ── Cards Left badge (Prevent Refill Mathematics) ── */
 setInterval(() => {
     const badge = document.getElementById('staff-credit-badge');
     const staff = window._allStaff;
-    if (!badge || !staff) return;
+    if (!badge || !staff || !window.CU) return;
     
-    if (window.CU && window.CU.isPremium) {
+    if (window.CU.isPremium) {
         badge.textContent = 'Cards Left: ∞';
     } else {
         const nonOwners = staff.filter(s => s.role !== 'owner').length;
-        if (window.maxStaffReached === undefined) window.maxStaffReached = nonOwners;
-        if (nonOwners > window.maxStaffReached) window.maxStaffReached = nonOwners;
+        let maxStaffKey = 'max_staff_' + window.CU.companyId;
+        let historicMax = parseInt(localStorage.getItem(maxStaffKey) || "0");
         
-        let used = window.CU ? (window.CU.cardsUsed || window.maxStaffReached) : window.maxStaffReached;
-        used = Math.max(used, window.maxStaffReached); // Locks the counter so it never drops
+        if (nonOwners > historicMax) {
+            historicMax = nonOwners;
+            localStorage.setItem(maxStaffKey, historicMax);
+        }
         
-        badge.textContent = 'Cards Left: ' + Math.max(0, 5 - used);
+        badge.textContent = 'Cards Left: ' + Math.max(0, 5 - historicMax);
     }
 }, 1000);
 </script>
