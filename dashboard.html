@@ -1376,7 +1376,7 @@
           <div style="flex:1;min-width:0; text-align: left;">
             <h1 class="page-ttl" style="display:flex; align-items:center; gap:12px;">
               My Team 
-              <span id="staff-credit-badge" style="background:#FEF3C7; color:#D97706; font-size:14px; padding:4px 10px; border-radius:8px; font-weight:700;">Cards Left: 0</span>
+              <span id="staff-credit-badge" style="background:#FEE2E2; color:#DC2626; font-size:14px; padding:4px 10px; border-radius:8px; font-weight:700; display:flex; align-items:center; gap:4px;">Checking Add-on...</span>
             </h1>
             <p class="page-sub" id="staff-count-sub"></p>
           </div>
@@ -1894,30 +1894,6 @@ function loadBtn(btn, loading, restoreText) {
       else if (btn._origHTML) btn.innerHTML = btn._origHTML; 
   }
 }
-// Universal tracking function for Cards Used
-window.getStrictCardsUsed = function(currentNonOwners) {
-    if (!window.CU || !window.CU.companyId) return currentNonOwners || 0;
-    
-    if (currentNonOwners === undefined) {
-        const staff = window._allStaff || [];
-        currentNonOwners = staff.filter(s => s.role !== 'owner').length;
-    }
-
-    let dbUsed = window.CU.cardsUsed || 0;
-    
-    // If the active staff count is somehow higher than the DB record, update the DB.
-    // Otherwise, ALWAYS trust the DB record (which never goes down).
-    if (currentNonOwners > dbUsed) {
-        dbUsed = currentNonOwners;
-        if (window.CU.role === 'owner') {
-            window.CU.cardsUsed = dbUsed;
-            try { updateDoc(doc(db, 'companies', window.CU.companyId), { cardsUsed: dbUsed }); } catch(e){}
-        }
-    }
-    
-    return dbUsed;
-};
-
 function esc(s = '') {
     return String(s)
         .replace(/&/g, '&amp;')
@@ -2649,7 +2625,23 @@ window.finalizeCreateStaff = async function() {
         return;
     }
 
+    // STRICT Add-on Verification before backend execution
+    let hasAddon = false;
+    if (window.CU && window.CU.addOnExpiry && new Date(window.CU.addOnExpiry).getTime() > Date.now()) {
+        hasAddon = true;
+    }
+    if (!hasAddon) {
+        window.showToast("Unlimited Staff Add-on required.", "error");
+        const errEl = document.getElementById('staff-error');
+        if (errEl) { errEl.textContent = "Add-on expired. Cannot create staff."; errEl.style.display = 'block'; }
+        document.getElementById('staff-otp-container').classList.add('hidden');
+        document.getElementById('staff-form-container').classList.remove('hidden');
+        if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify & Create');
+        return;
+    }
+
     try {
+        // ---   THE ULTIMATE BYPASS HACK   ---
         // We ignore the strict staff.js/backend function completely and create the user manually inline
         const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
         const { getAuth, createUserWithEmailAndPassword, updateProfile } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
@@ -2668,10 +2660,8 @@ window.finalizeCreateStaff = async function() {
             if (msg.includes('email-already-in-use')) msg = "This email is already registered in the system.";
             throw new Error(msg);
         }
-
         // 2. Set the display name in Auth
         await updateProfile(userCred.user, { displayName: window.tempStaffData.name });
-
         // 3. Write the user document directly into Firestore
         await setDoc(doc(db, 'users', userCred.user.uid), {
             uid: userCred.user.uid,
@@ -2685,17 +2675,15 @@ window.finalizeCreateStaff = async function() {
             createdBy: window.CU.uid || '',
             createdAt: Date.now()
         });
-
         // Sign out of the temporary auth instance
         await tempAuth.signOut();
-
+        // 4. Update the Company Stats properly
         if (window.CU && window.CU.role === 'owner') {
             const currentTotal = (window._allStaff || []).length;
-            
             try { 
                  await updateDoc(doc(db, 'companies', window.CU.companyId), { 
                      staffCount: currentTotal + 1 
-                     }); 
+                 }); 
              } catch(e){}
         }
 
@@ -4589,16 +4577,6 @@ function subscribeAll() {
           const n = uniqueStaff.filter(s => s.role !== 'owner'); 
           const sc = document.getElementById('staff-count-sub'); 
           if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`; 
-          
-          const badge = document.getElementById('staff-credit-badge');
-          if (badge) {
-              if (window.CU && window.CU.isPremium) {
-                  badge.textContent = 'Cards Left: ∞';
-              } else {
-                  let used = window.getStrictCardsUsed(n.length);
-                  badge.textContent = `Cards Left: ${Math.max(0, 5 - used)}`;
-              }
-          }
       })); 
   }
   
