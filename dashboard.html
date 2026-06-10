@@ -2140,22 +2140,19 @@ window.executeFullLogout = async function(btn) {
         btn.disabled = true;
     }
     try {
-        // 1. Wipe standard storage
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // 2. Wipe the hidden browser IndexedDB databases (where Firebase physically stores offline data)
-        try {
-            if (window.indexedDB && window.indexedDB.databases) {
-                const dbs = await window.indexedDB.databases();
-                dbs.forEach(db => window.indexedDB.deleteDatabase(db.name));
-            }
-        } catch(e) { console.warn("IndexedDB wipe skipped", e); }
+        // 1. Unsubscribe from the deletion listener so it doesn't panic
+        if (window.deletionUnsub) {
+            window.deletionUnsub();
+        }
 
-        // 3. Kill the Auth Session directly
+        // 2. Kill the Auth Session directly FIRST
         const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
         const auth = getAuth();
         await signOut(auth);
+        
+        // 3. Wipe standard storage safely
+        localStorage.clear();
+        sessionStorage.clear();
         
         window.location.replace('login.html');
     } catch (e) { 
@@ -2163,7 +2160,6 @@ window.executeFullLogout = async function(btn) {
         window.location.replace('login.html');
     }
 };
-
 window.handleUpgradeClick = async function() {
   const btn = document.getElementById('topbar-upgrade-btn');
   if (window.CU.role === 'owner') {
