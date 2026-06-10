@@ -287,7 +287,13 @@ async function loadCompanies() {
       const compId = doc.id;
       const staff = usersMap[compId] || [];
       
-      let staffCardsHtml = `<span class="tag tag-free" style="margin-right: 8px;">Cards: ${comp.staffCards || 0}</span>`;
+      let addonText = '';
+      if (comp.addOnExpiry && new Date(comp.addOnExpiry) > new Date()) {
+          const d = new Date(comp.addOnExpiry);
+          addonText = `<span class="tag" style="background:#D1FAE5; color:#065F46; margin-right: 8px;">Add-on till ${d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</span>`;
+      } else {
+          addonText = `<span class="tag" style="background:#FEE2E2; color:#DC2626; margin-right: 8px;">No Add-on</span>`;
+      }
       let planText = 'Basic Free';
       let planClass = 'tag-free';
       let expiryHtml = '';
@@ -314,7 +320,7 @@ async function loadCompanies() {
         <div class="card card-col">
           <div style="display:flex; justify-content:space-between; width:100%; border-bottom:1px solid #E2E3E9; padding-bottom:12px; margin-bottom:12px;">
             <div style="font-family:'Plus Jakarta Sans', sans-serif; font-weight:800; font-size:18px;">${comp.name}</div>
-            <div style="text-align:right;">${staffCardsHtml}<span class="tag ${planClass}">${planText}</span>${expiryHtml}</div>
+            <div style="text-align:right;">${addonText}<span class="tag ${planClass}">${planText}</span>${expiryHtml}</div>
           </div>
           <div style="width:100%;">
             <button class="staff-toggle" onclick="toggleStaff('${compId}')">
@@ -340,31 +346,22 @@ async function approveRequest(reqId, companyId, plan, type, count, price, compan
     const compSnap = await getDoc(compRef);
     const compData = compSnap.exists() ? compSnap.data() : {};
 
-    if (type === 'staff_card') {
-      const currentCards = compData.staffCards || 0;
-      await updateDoc(compRef, { staffCards: currentCards + count });
-      
-    } else if (type === 'addon') {
-      // Start from existing add-on expiry if active, otherwise start from today
+    const compRef = doc(db, 'companies', companyId);
+    const compSnap = await getDoc(compRef);
+    const compData = compSnap.exists() ? compSnap.data() : {};
+
+    if (type === 'addon') {
       let newAddOnExp = compData.addOnExpiry ? new Date(compData.addOnExpiry) : new Date();
-      if (newAddOnExp < new Date()) {
-        newAddOnExp = new Date();
-      }
+      if (newAddOnExp < new Date()) newAddOnExp = new Date();
       
-      if (plan.toLowerCase().includes('monthly')) {
-        newAddOnExp.setMonth(newAddOnExp.getMonth() + 1);
-      } else if (plan.toLowerCase().includes('yearly')) {
-        newAddOnExp.setFullYear(newAddOnExp.getFullYear() + 1);
-      }
+      if (plan.toLowerCase().includes('monthly')) newAddOnExp.setMonth(newAddOnExp.getMonth() + 1);
+      else if (plan.toLowerCase().includes('yearly')) newAddOnExp.setFullYear(newAddOnExp.getFullYear() + 1);
       
       await updateDoc(compRef, { addOnExpiry: newAddOnExp.toISOString() });
-      
     } else {
       // Main Plan Extension
       let expiry = compData.subscriptionExpiry ? new Date(compData.subscriptionExpiry) : new Date();
-      if (expiry < new Date()) {
-         expiry = new Date();
-      }
+      if (expiry < new Date()) expiry = new Date();
 
       if (plan === 'Monthly') expiry.setMonth(expiry.getMonth() + 1);
       else if (plan === 'Annual') expiry.setFullYear(expiry.getFullYear() + 1);
