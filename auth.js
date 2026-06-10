@@ -14,12 +14,91 @@ import {
   addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// Ensure Firebase has loaded the user state before allowing navigation
 export function requireAuth(redirectUrl = 'login.html') {
   return new Promise((resolve, reject) => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       unsubscribe();
       if (user) {
+        
+        // ==========================================
+        //  STEP 3: STAFF EXPIRY LOCKOUT SYSTEM
+        // ==========================================
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            
+            // Check if user is a staff member (not the owner)
+            if (userData.role !== 'owner' && userData.companyId) {
+              const compDocRef = doc(db, 'companies', userData.companyId);
+              const compDocSnap = await getDoc(compDocRef);
+              
+              if (compDocSnap.exists()) {
+                const compData = compDocSnap.data();
+                let hasActiveAddon = false;
+                
+                // Verify Add-on Expiry Timestamp
+                if (compData.addOnExpiry && new Date(compData.addOnExpiry) > new Date()) {
+                  hasActiveAddon = true;
+                }
+                
+                if (!hasActiveAddon) {
+                  // 1. Notify the Owner via notifications.js
+                  try {
+                    const { addNotification } = await import('./notifications.js');
+                    if (compData.ownerId) {
+                      await addNotification(compData.ownerId, {
+                        type: 'security_login',
+                        message: `Staff member ${userData.name || 'Unknown'} tried to log in, but access was denied because your Unlimited Staff Add-on has expired.`,
+                        actorName: userData.name || 'System'
+                      });
+                    }
+                  } catch (notifErr) {
+                    console.warn("Could not send lockout notification to owner:", notifErr);
+                  }
+
+                  // 2. Wipe the screen and render the 10-second lockout overlay
+                  document.body.innerHTML = `
+                    <div style="position:fixed;inset:0;background:#0F172A;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999999;font-family:'Plus Jakarta Sans', sans-serif;text-align:center;padding:24px;">
+                      <div style="width:80px;height:80px;background:rgba(239, 68, 68, 0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                      </div>
+                      <h1 style="font-size:28px;font-weight:800;margin-bottom:16px;letter-spacing:-0.03em;">Workspace Locked</h1>
+                      <p style="font-size:16px;color:#94A3B8;max-width:420px;line-height:1.6;margin-bottom:32px;">Your company premium plan ended. Tell your owner to upgrade the company account to restore access.</p>
+                      <div style="background:rgba(255,255,255,0.05);padding:12px 24px;border-radius:100px;font-size:14px;color:#F8FAFC;font-weight:600;">
+                        Closing automatically in <span id="lockout-timer" style="color:#EF4444;font-weight:800;">10</span> seconds...
+                      </div>
+                    </div>
+                  `;
+
+                  // 3. Start Timer and Force Sign Out (Destroys Firebase Session)
+                  let timeLeft = 10;
+                  const timerInterval = setInterval(() => {
+                    timeLeft--;
+                    const timerSpan = document.getElementById('lockout-timer');
+                    if (timerSpan) timerSpan.textContent = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                      clearInterval(timerInterval);
+                      signOut(auth).then(() => {
+                        window.location.href = 'login.html';
+                      });
+                    }
+                  }, 1000);
+
+                  resolve(null);
+                  return; // Halt further execution so no dashboard code loads
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error during staff lockout check:", err);
+        }
+        // ==========================================
+
         resolve(user);
       } else {
         if (window.location.pathname.indexOf(redirectUrl) === -1) {
