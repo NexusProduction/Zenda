@@ -2234,6 +2234,10 @@ window.renderNotifs = function(items) {
       iconType = `<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>`;
       iconBgClass = ''; 
       iconStyle = 'background: #FEF2F2; color: #DC2626;';
+    } else if (n.type === 'plan_expiry_warning') {
+      iconType = `<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>`;
+      iconBgClass = '';
+      iconStyle = 'background: #FFFBEB; color: #F59E0B;';
     } else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') {
       iconType = `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>`;
       iconBgClass = ''; 
@@ -2306,7 +2310,12 @@ window.renderNotifs = function(items) {
         `;
     } else if (n.type === 'staff_delete_request') {
     actionsHtml = `<button class="btn w-full" style="padding:10px 16px;font-size:0.9rem;background:var(--danger);color:white;border:none;border-radius:10px;font-weight:800;box-shadow:0 4px 12px rgba(255,59,48,0.25);width:100%;justify-content:center;margin-top:6px;" data-type="delete" data-id="${n.id}" data-target-uid="${n.targetUid || ''}" data-target-email="${esc(n.targetEmail || '')}" data-target-name="${esc(n.targetName || 'Staff')}" data-target-pwd="${btoa(n.targetPwd || '')}" data-target-joined="${esc(n.targetJoined || 'Unknown')}" data-requester-id="${n.requesterId || ''}" data-requester-name="${esc(n.requesterName || 'Staff')}" data-reason="${esc(n.reason || 'No reason provided')}" onclick="window.openStaffRequestModal(this)">Review Request &rarr;</button>`;
-} else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') {
+} else if (n.type === 'plan_expiry_warning') {
+        actionsHtml = `<div style="display:flex;gap:10px;width:100%;margin-top:6px;">
+                         <button class="btn btn-secondary w-full" style="padding:8px 14px;font-size:0.85rem;" onclick="window.dismissAlert(this)">Dismiss</button>
+                         <button class="btn btn-primary w-full" style="padding:8px 14px;font-size:0.85rem;background:#FF9500;border:none;box-shadow:0 4px 10px rgba(255,149,0,0.25);" onclick="window.location.href='subscription.html'">Upgrade</button>
+                       </div>`;
+    } else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') {
         actionsHtml = `
           <button class="btn btn-primary" style="padding:8px 16px;font-size:0.85rem; width: fit-content; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';" onclick="window.openCalendarApp(this, '${n.id}', '${n.eventDate || ''}')">Open in app</button>
           <button class="btn btn-secondary" style="padding:8px 16px;font-size:0.85rem; font-weight:700; border-radius: 8px; width: fit-content; border: 2px solid var(--bd-color); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='var(--tx-muted)'; this.style.backgroundColor='#E2E3E9';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--bd-color)'; this.style.backgroundColor='';" onclick="window.dismissAlert(this)">Dismiss</button>
@@ -4863,6 +4872,47 @@ function setupUI() {
         if (topUpgradeBtn) { if (ip) { topUpgradeBtn.classList.add('hidden'); topUpgradeBtn.style.display = 'none'; } else { topUpgradeBtn.classList.remove('hidden'); topUpgradeBtn.style.display = 'flex'; topUpgradeBtn.textContent = role === 'owner' ? '👑 Upgrade' : '👑 Request Upgrade'; } }
         
         window.renderSidebarCard();
+
+        // ==========================================
+        // STEP 4: DAILY EXPIRY WARNINGS LOGIC
+        // ==========================================
+        if (window.CU.role === 'owner') {
+            const msPerDay = 24 * 60 * 60 * 1000;
+            const now = Date.now();
+            let alertMsg = null;
+
+            if (cd.subscriptionExpiry) {
+                const mainExp = new Date(cd.subscriptionExpiry).getTime();
+                const daysMain = Math.floor((mainExp - now) / msPerDay);
+                if (daysMain >= 0 && daysMain <= 7) {
+                    alertMsg = `Your Main Premium Plan expires in ${daysMain} days. Renew now to prevent service interruption.`;
+                }
+            }
+
+            if (!alertMsg && cd.addOnExpiry) {
+                const addExp = new Date(cd.addOnExpiry).getTime();
+                const daysAddon = Math.floor((addExp - now) / msPerDay);
+                if (daysAddon >= 0 && daysAddon <= 7) {
+                    alertMsg = `Your Unlimited Staff Add-on expires in ${daysAddon} days. Renew now to prevent staff lockouts.`;
+                }
+            }
+
+            if (alertMsg) {
+                const lastWarningDate = localStorage.getItem('zenda_expiry_warn_date_' + window.CU.uid);
+                const todayStr = new Date().toDateString();
+                if (lastWarningDate !== todayStr) {
+                    localStorage.setItem('zenda_expiry_warn_date_' + window.CU.uid, todayStr);
+                    import('./notifications.js').then(({ addNotification }) => {
+                        addNotification(window.CU.uid, {
+                            type: 'plan_expiry_warning',
+                            message: alertMsg,
+                            actorName: 'System'
+                        });
+                    }).catch(console.error);
+                }
+            }
+        }
+        // ==========================================
       }
     }).catch(console.error);
   }
