@@ -259,8 +259,6 @@ async function loadRequests() {
     list.innerHTML = '<div class="empty" style="color:red;">Error loading requests. Are you logged in as Super Admin?</div>';
   }
 }
-
-// --- LOAD ALL COMPANIES DIRECTORY ---
 async function loadCompanies() {
   const list = document.getElementById('companyList');
   list.innerHTML = '<div class="empty">Fetching all companies...</div>';
@@ -269,18 +267,15 @@ async function loadCompanies() {
       getDocs(collection(db, 'companies')),
       getDocs(collection(db, 'users'))
     ]);
-
     const usersMap = {};
     userSnap.forEach(doc => {
       const u = doc.data();
       if (!usersMap[u.companyId]) usersMap[u.companyId] = [];
       usersMap[u.companyId].push(u);
     });
-
     if (compSnap.empty) {
       list.innerHTML = '<div class="empty">No companies registered yet.</div>'; return;
     }
-
     list.innerHTML = '';
     compSnap.forEach(doc => {
       const comp = doc.data();
@@ -294,6 +289,7 @@ async function loadCompanies() {
       } else {
           addonText = `<span class="tag" style="background:#FEE2E2; color:#DC2626; margin-right: 8px;">No Add-on</span>`;
       }
+
       let planText = 'Basic Free';
       let planClass = 'tag-free';
       let expiryHtml = '';
@@ -308,14 +304,12 @@ async function loadCompanies() {
           expiryHtml = `<div style="font-size:13px; color:${color}; font-weight:600; margin-top:6px;">${prefix} ${d.toLocaleDateString('en-US', {year: 'numeric', month: 'short', day: 'numeric'})}</div>`;
         }
       }
-
       let staffHtml = staff.map(s => `
         <div class="staff-item">
-          👤 <span style="font-weight:600;">${s.name}</span> <span class="staff-email">(${s.email || 'No email'})</span>
+            <span style="font-weight:600;">${s.name}</span> <span class="staff-email">(${s.email || 'No email'})</span>
           <span class="staff-role">${s.role}</span>
         </div>
       `).join('');
-
       list.innerHTML += `
         <div class="card card-col">
           <div style="display:flex; justify-content:space-between; width:100%; border-bottom:1px solid #E2E3E9; padding-bottom:12px; margin-bottom:12px;">
@@ -324,7 +318,7 @@ async function loadCompanies() {
           </div>
           <div style="width:100%;">
             <button class="staff-toggle" onclick="toggleStaff('${compId}')">
-              <span>View Staff (${staff.length})</span><span id="icon-${compId}">▼</span>
+              <span>View Staff (${staff.length})</span><span id="icon-${compId}"> </span>
             </button>
             <div id="staff-${compId}" class="staff-container" style="display: none;">
               <div style="font-size:12px; color:#6C6F80; font-weight:700; margin-bottom:8px; letter-spacing:0.05em; text-transform:uppercase;">Registered Members</div>
@@ -336,16 +330,9 @@ async function loadCompanies() {
     });
   } catch(e) { list.innerHTML = '<div class="empty" style="color:red;">Error loading companies.</div>'; }
 }
-
-// --- APPROVE LOGIC ---
 async function approveRequest(reqId, companyId, plan, type, count, price, companyName) {
   if (!confirm(`Are you sure you want to approve "${plan}" for "${companyName}"?`)) return;
   try {
-    
-    const compRef = doc(db, 'companies', companyId);
-    const compSnap = await getDoc(compRef);
-    const compData = compSnap.exists() ? compSnap.data() : {};
-
     const compRef = doc(db, 'companies', companyId);
     const compSnap = await getDoc(compRef);
     const compData = compSnap.exists() ? compSnap.data() : {};
@@ -359,7 +346,6 @@ async function approveRequest(reqId, companyId, plan, type, count, price, compan
       
       await updateDoc(compRef, { addOnExpiry: newAddOnExp.toISOString() });
     } else {
-      // Main Plan Extension
       let expiry = compData.subscriptionExpiry ? new Date(compData.subscriptionExpiry) : new Date();
       if (expiry < new Date()) expiry = new Date();
 
@@ -381,13 +367,12 @@ async function approveRequest(reqId, companyId, plan, type, count, price, compan
     txHistory.push({
       type: 'income',
       amount: price,
-      desc: `${plan} Approved — ${companyName}`,
+      desc: `${plan} Approved   ${companyName}`,
       date: new Date().toISOString()
     });
     
     await setDoc(walletRef, { balance: currentBalance, transactions: txHistory }, { merge: true });
-
-    alert(`✅ "${companyName}" request approved! ₹${price} added to your wallet.`);
+    alert(`  "${companyName}" request approved!  ${price} added to your wallet.`);
     loadRequests(); 
     renderWallet();
   } catch(e) {
