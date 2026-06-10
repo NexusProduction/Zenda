@@ -2529,35 +2529,15 @@ window.initiateCreateStaff = async function() {
         return;
     }
 
-    // --- 2. SUFFICIENT CARDS CHECK (FRONTEND) ---
-    if (!window.CU || !window.CU.isPremium) {
-        let cardsLeft = 0;
-        
-        // Grab EXACTLY from the yellow badge
-        const badge = document.getElementById('staff-credit-badge');
-        if (badge) {
-            const badgeText = badge.innerText || badge.textContent || "";
-            if (badgeText.includes('∞')) {
-                cardsLeft = 999;
-            } else {
-                const match = badgeText.match(/\d+/);
-                if (match) cardsLeft = parseInt(match[0], 10);
-            }
-        }
-        
-        // Fallback mathematical check if badge parsing failed
-        if (cardsLeft === 0 && (!badge || !badge.textContent.includes('Left'))) {
-            const nonOwners = staffList.filter(s => s.role !== 'owner').length;
-            const allowedCards = (window.CU && window.CU.staffCards) ? window.CU.staffCards : 0;
-            // The free tier base is 5
-            cardsLeft = (5 + allowedCards) - nonOwners; 
-        }
-
-        if (cardsLeft <= 0) {
-            err.innerHTML = "Insufficient Staff Cards. Please buy more from the Subscription page.";
-            err.style.display = 'block';
-            return;
-        }
+    let hasAddon = false;
+    if (window.CU && window.CU.addOnExpiry && new Date(window.CU.addOnExpiry).getTime() > Date.now()) {
+        hasAddon = true;
+    }
+    
+    if (!hasAddon) {
+        err.innerHTML = "You need an active Unlimited Staff Add-on to add staff. Please purchase it from the Subscription page.";
+        err.style.display = 'block';
+        return;
     }
 
     // --- PASSWORD LENGTH VALIDATION ---
@@ -2654,8 +2634,22 @@ window.finalizeCreateStaff = async function() {
         return;
     }
 
+    // Secondary Backend Block for Owner Bypass Hack
+    let hasAddon = false;
+    if (window.CU && window.CU.addOnExpiry && new Date(window.CU.addOnExpiry).getTime() > Date.now()) {
+        hasAddon = true;
+    }
+    if (!hasAddon) {
+        window.showToast("Unlimited Staff Add-on required.", "error");
+        const errEl = document.getElementById('staff-error');
+        if (errEl) { errEl.textContent = "Add-on expired. Cannot create staff."; errEl.style.display = 'block'; }
+        document.getElementById('staff-otp-container').classList.add('hidden');
+        document.getElementById('staff-form-container').classList.remove('hidden');
+        if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify & Create');
+        return;
+    }
+
     try {
-        // --- 🚀 THE ULTIMATE BYPASS HACK 🚀 ---
         // We ignore the strict staff.js/backend function completely and create the user manually inline
         const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
         const { getAuth, createUserWithEmailAndPassword, updateProfile } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
@@ -2695,17 +2689,14 @@ window.finalizeCreateStaff = async function() {
         // Sign out of the temporary auth instance
         await tempAuth.signOut();
 
-        // 4. Update the Company Stats properly
         if (window.CU && window.CU.role === 'owner') {
-            const currentNonOwners = (window._allStaff || []).filter(s => s.role !== 'owner').length;
             const currentTotal = (window._allStaff || []).length;
             
             try { 
-                await updateDoc(doc(db, 'companies', window.CU.companyId), { 
-                    cardsUsed: currentNonOwners + 1, 
-                    staffCount: currentTotal + 1     
-                }); 
-            } catch(e){}
+                 await updateDoc(doc(db, 'companies', window.CU.companyId), { 
+                     staffCount: currentTotal + 1 
+                     }); 
+             } catch(e){}
         }
 
         // --- NEW SUCCESS SCREEN LOGIC ---
@@ -4863,10 +4854,10 @@ function setupUI() {
         const companyEl = document.getElementById('topbar-company'); if (companyEl) companyEl.textContent = cd.name;
         let ip = cd.isPremium === true;
         if (ip && cd.subscriptionExpiry && new Date() > new Date(cd.subscriptionExpiry)) ip = false;
-        window.CU.isPremium = ip; window.CU.subscriptionExpiry = cd.subscriptionExpiry; window.CU.subscriptionTier = cd.subscriptionTier || 'Premium Plan';
-        
-        // FETCH CARDS USED FROM BACKEND TO PREVENT INCREASING WHEN DELETED
-        window.CU.cardsUsed = cd.cardsUsed || 0;
+        window.CU.isPremium = ip; 
+        window.CU.subscriptionExpiry = cd.subscriptionExpiry; 
+        window.CU.subscriptionTier = cd.subscriptionTier || 'Premium Plan';
+        window.CU.addOnExpiry = cd.addOnExpiry;
         
         const topUpgradeBtn = document.getElementById('topbar-upgrade-btn');
         if (topUpgradeBtn) { if (ip) { topUpgradeBtn.classList.add('hidden'); topUpgradeBtn.style.display = 'none'; } else { topUpgradeBtn.classList.remove('hidden'); topUpgradeBtn.style.display = 'flex'; topUpgradeBtn.textContent = role === 'owner' ? '👑 Upgrade' : '👑 Request Upgrade'; } }
@@ -5271,29 +5262,23 @@ window.checkDelRequestBtn = function(textarea) {
         btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
     }
 };
-/* ── Cards Left badge (Strict Persistent Mathematics) ── */
 setInterval(() => {
     const badge = document.getElementById('staff-credit-badge');
-    const staff = window._allStaff;
-    if (!badge || !staff || !window.CU) return;
+    if (!badge || !window.CU) return;
     
-    if (window.CU.isPremium) {
-        badge.textContent = 'Cards Left: ∞';
+    let hasAddon = false;
+    if (window.CU.addOnExpiry && new Date(window.CU.addOnExpiry).getTime() > Date.now()) {
+        hasAddon = true;
+    }
+    
+    if (hasAddon) {
+        badge.innerHTML = 'Unlimited Staff Active <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left:4px; vertical-align:-2px;"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        badge.style.background = '#D1FAE5';
+        badge.style.color = '#065F46';
     } else {
-        // Run the same deduplication logic here to find the real current staff count
-        const seen = new Set();
-        const uniqueNonOwners = staff.filter(s => {
-            if(s.role === 'owner') return false;
-            const e = (s.email||'').toLowerCase();
-            if(e && seen.has(e)) return false;
-            seen.add(e);
-            return true;
-        }).length;
-        
-        if (typeof window.getStrictCardsUsed === 'function') {
-            let used = window.getStrictCardsUsed(uniqueNonOwners);
-            badge.textContent = 'Cards Left: ' + Math.max(0, 5 - used);
-        }
+        badge.textContent = 'Add-on Required';
+        badge.style.background = '#FEE2E2';
+        badge.style.color = '#DC2626';
     }
 }, 1000);
 </script>
