@@ -68,15 +68,19 @@ export async function createStaff({ name, email, password, role, companyId, comp
     const compSnap = await getDoc(compRef);
     if (compSnap.exists()) {
       const compData = compSnap.data();
-      const currentCards = compData.staffCards || 0;
-      if (currentCards <= 0) {
-        await secAuth.signOut();
-        throw new Error("Insufficient Staff Cards. Please buy more from the Subscription page.");
+      
+      let hasActiveAddon = false;
+      if (compData.addOnExpiry) {
+        const addOnExp = new Date(compData.addOnExpiry);
+        if (addOnExp > new Date()) {
+          hasActiveAddon = true;
+        }
       }
-      await updateDoc(compRef, { 
-        staffCount: (compData.staffCount || 0) + 1,
-        staffCards: currentCards - 1 
-      });
+
+      if (!hasActiveAddon) {
+        await secAuth.signOut();
+        throw new Error("You need an active Unlimited Staff Add-on to create staff. Please purchase it from the Subscription page.");
+      }
     }
 
     // Create the Firestore Documents using the new or recycled UID
@@ -94,7 +98,7 @@ export async function createStaff({ name, email, password, role, companyId, comp
     
   } catch (err) {
     if (err.message && err.message.startsWith('FIELD:')) throw err;
-    if (err.message === "Insufficient Staff Cards. Please buy more from the Subscription page.") throw err;
+    if (err.message === "You need an active Unlimited Staff Add-on to create staff. Please purchase it from the Subscription page.") throw err;
     throw err;
   }
 }
@@ -148,11 +152,15 @@ export async function updateUserProfile(uid, updates) {
       const compSnap = await getDoc(compRef);
       
       if (compSnap.exists()) {
-        const currentCards = compSnap.data().staffCards || 0;
-        if (currentCards <= 0) {
-          throw new Error("Insufficient Staff Cards to change email. Please buy more from Subscription.");
+        const compData = compSnap.data();
+        let hasActiveAddon = false;
+        if (compData.addOnExpiry && new Date(compData.addOnExpiry) > new Date()) {
+          hasActiveAddon = true;
         }
-        await updateDoc(compRef, { staffCards: currentCards - 1 });
+
+        if (!hasActiveAddon) {
+          throw new Error("You need an active Unlimited Staff Add-on to modify staff emails.");
+        }
       }
     }
   }
