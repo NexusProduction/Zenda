@@ -225,23 +225,23 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
   <p class="subtitle" style="margin-bottom: 32px;">Purchase extra staff cards to expand your team.</p>
   
   <div class="grid" style="grid-template-columns: repeat(2, 1fr); max-width: 700px; margin: 0 auto;">
-    <div class="card" id="cardStaff1">
-      <div class="c-name">1 Staff Card</div>
-      <div class="c-desc">Add one additional staff member to your workspace.</div>
+    <div class="card" id="cardAddonMonthly">
+      <div class="c-name">Monthly Add-on</div>
+      <div class="c-desc">Add unlimited staff to your workspace for one month.</div>
       <div class="c-price-wrap">
-        <span class="price-sym">₹</span><span class="c-price">9</span>
+        <span class="price-sym">₹</span><span class="c-price">39</span><span class="c-period">/mo</span>
       </div>
-      <button class="btn btn-ghost" onclick="openPayment('1 Staff Card', 9, 'staff_card', 1)">Buy 1 Card</button>
+      <button class="btn btn-ghost" id="btnBuyAddonMonthly" onclick="openPayment('Monthly Add-on', 39, 'addon', 'monthly')">Buy Monthly Add-on</button>
     </div>
 
-    <div class="card popular" id="cardStaff5">
-      <div class="badge gold">Save ₹6</div>
-      <div class="c-name">5 Staff Cards</div>
-      <div class="c-desc">Instantly add up to five staff members to your workspace.</div>
+    <div class="card popular" id="cardAddonYearly">
+      <div class="badge gold">Save ₹278</div>
+      <div class="c-name">Yearly Add-on</div>
+      <div class="c-desc">Add unlimited staff to your workspace for one full year.</div>
       <div class="c-price-wrap">
-        <span class="price-sym">₹</span><span class="c-price">39</span>
+        <span class="price-sym">₹</span><span class="c-price">190</span><span class="c-period">/yr</span>
       </div>
-      <button class="btn btn-gold" onclick="openPayment('5 Staff Cards', 39, 'staff_card', 5)">Buy 5 Cards</button>
+      <button class="btn btn-gold" id="btnBuyAddonYearly" onclick="openPayment('Yearly Add-on', 190, 'addon', 'yearly')">Buy Yearly Add-on</button>
     </div>
   </div>
 
@@ -323,19 +323,67 @@ onAuthStateChanged(auth, async (user) => {
               document.getElementById('activeSubBanner').classList.add('show');
 
               const planType = (compData.planType || '').toLowerCase();
+              
               if (planType === 'monthly') {
-                const btn = document.getElementById('btnMonthly');
-                btn.textContent = '✓ Active Plan';
-                btn.className = 'btn btn-active';
-                btn.disabled = true;
-                btn.onclick = null;
-              } else if (planType === 'annual') {
-                const btn = document.getElementById('btnAnnual');
-                btn.textContent = '✓ Active Plan';
-                btn.className = 'btn btn-active';
-                btn.disabled = true;
-                btn.onclick = null;
+                const btnM = document.getElementById('btnMonthly');
+                btnM.textContent = '✓ Active Plan';
+                btnM.className = 'btn btn-active';
+                btnM.disabled = true;
+                btnM.onclick = null;
+                
+                const btnA = document.getElementById('btnAnnual');
+                btnA.disabled = true;
+                btnA.className = 'btn btn-muted';
+                btnA.textContent = 'Current Plan Active';
+                btnA.onclick = null;
+                
+                const btnAddonYr = document.getElementById('btnBuyAddonYearly');
+                btnAddonYr.disabled = true;
+                btnAddonYr.className = 'btn btn-muted';
+                btnAddonYr.textContent = 'Requires Yearly Plan';
+                btnAddonYr.onclick = null;
+                
+              } else if (planType === 'annual' || planType === 'yearly') {
+                const btnA = document.getElementById('btnAnnual');
+                btnA.textContent = '✓ Active Plan';
+                btnA.className = 'btn btn-active';
+                btnA.disabled = true;
+                btnA.onclick = null;
+                
+                const btnM = document.getElementById('btnMonthly');
+                btnM.disabled = true;
+                btnM.className = 'btn btn-muted';
+                btnM.textContent = 'Current Plan Active';
+                btnM.onclick = null;
+
+                const msLeft = expiry.getTime() - Date.now();
+                const daysLeft = msLeft / (1000 * 60 * 60 * 24);
+                
+                if (daysLeft < 90) { 
+                  const btnAddonYr = document.getElementById('btnBuyAddonYearly');
+                  btnAddonYr.disabled = true;
+                  btnAddonYr.className = 'btn btn-muted';
+                  btnAddonYr.textContent = 'Plan Ending Soon';
+                  btnAddonYr.onclick = null;
+                }
               }
+              
+              if (compData.addOnExpiry) {
+                const addOnExp = new Date(compData.addOnExpiry);
+                if (addOnExp > new Date()) {
+                  const addOnStr = addOnExp.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const bannerTxt = document.querySelector('.banner-text');
+                  if (!bannerTxt.innerHTML.includes('Unlimited Staff')) {
+                    bannerTxt.innerHTML += `<br><span style="color:#047857;">Unlimited Staff Add-on active till: ${addOnStr}</span>`;
+                  }
+                }
+              }
+            } else {
+               // Plan is expired, disable add-ons until renewed
+               document.getElementById('btnBuyAddonMonthly').disabled = true;
+               document.getElementById('btnBuyAddonYearly').disabled = true;
+               document.getElementById('btnBuyAddonMonthly').className = 'btn btn-muted';
+               document.getElementById('btnBuyAddonYearly').className = 'btn btn-muted';
             }
           }
         }
