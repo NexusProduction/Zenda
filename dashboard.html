@@ -2480,9 +2480,9 @@ window.initiateCreateStaff = async function() {
     const err = document.getElementById('staff-error');
     err.style.display = 'none';
 
-    if (!name || !email || !desig || !pwd) { 
-        err.textContent = "Some parameters are missing. Please fill all fields."; 
-        err.style.display = 'block'; 
+    if (!name || !email || !desig || !pwd) {
+        err.textContent = "Some parameters are missing. Please fill all fields.";
+        err.style.display = 'block';
         return; 
     }
     if (name.length < 6 || name.length > 15) {
@@ -2490,13 +2490,12 @@ window.initiateCreateStaff = async function() {
         err.style.display = 'block';
         return;
     }
-    if (!email.includes('@')) { 
-        err.textContent = "Email must contain an '@' symbol."; 
-        err.style.display = 'block'; 
+    if (!email.includes('@')) {
+        err.textContent = "Email must contain an '@' symbol.";
+        err.style.display = 'block';
         return; 
     }
 
-    // --- 1. EMAIL ALREADY REGISTERED CHECK ---
     const staffList = typeof allStaff !== 'undefined' ? allStaff : (window._allStaff || []);
     const emailExists = staffList.some(s => s.email && s.email.toLowerCase() === email.toLowerCase());
     if (emailExists) {
@@ -2505,32 +2504,29 @@ window.initiateCreateStaff = async function() {
         return;
     }
 
+    // --- STRICT ADD-ON CHECK (FRONTEND) ---
     let hasAddon = false;
     if (window.CU && window.CU.addOnExpiry && new Date(window.CU.addOnExpiry).getTime() > Date.now()) {
         hasAddon = true;
     }
-    
     if (!hasAddon) {
         err.innerHTML = "You need an active Unlimited Staff Add-on to add staff. Please purchase it from the Subscription page.";
         err.style.display = 'block';
         return;
     }
 
-    // --- PASSWORD LENGTH VALIDATION ---
     if (pwd.length < 8 || pwd.length > 16) {
         err.textContent = "Password must be between 8 and 16 characters.";
         err.style.display = 'block';
         return;
     }
-
     const pwdRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/;
-    if (!pwdRegex.test(pwd)) { 
-        err.textContent = "Password must contain at least one letter, one number, and one symbol (e.g., @, #, $)."; 
-        err.style.display = 'block'; 
+    if (!pwdRegex.test(pwd)) {
+        err.textContent = "Password must contain at least one letter, one number, and one symbol (e.g., @, #, $).";
+        err.style.display = 'block';
         return; 
     }
 
-    // --- 3. SEND EMAIL OTP ---
     if (typeof loadBtn === 'function') loadBtn(btn, true);
     window.tempStaffOTP = Math.floor(100000 + Math.random() * 900000).toString();
     window.tempStaffData = { name, email, desig, pwd };
@@ -2538,15 +2534,15 @@ window.initiateCreateStaff = async function() {
     try {
         if(typeof emailjs !== 'undefined' && emailjs.send) {
             await emailjs.send(
-              "service_dc7ge9b",   
-              "template_4turj9r",  
+              "service_dc7ge9b", 
+              "template_4turj9r", 
               {
                 to_email: email,
                 to_name: name,
                 otp_code: window.tempStaffOTP,
                 company_name: document.getElementById('topbar-company')?.innerText || 'Zenda'
               },
-              "dg8t6B0d-DhPa3Tl6"   
+              "dg8t6B0d-DhPa3Tl6"
             );
         } else {
             throw new Error("EmailJS not configured");
@@ -2554,32 +2550,43 @@ window.initiateCreateStaff = async function() {
     } catch(e) {
         console.warn("EmailJS failed, falling back to console OTP: ", window.tempStaffOTP);
     }
-
+    
     document.getElementById('staff-form-container').classList.add('hidden');
     document.getElementById('staff-otp-container').classList.remove('hidden');
     document.getElementById('otp-sent-email').textContent = email;
     
     if (typeof window.initStaffOtpBoxes === 'function') window.initStaffOtpBoxes();
-    
-    if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify Email & Create Staff →');
-};
+    if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify Email & Create Staff \u2192');
+}
 
 window.finalizeCreateStaff = async function() {
     const otpInput = document.getElementById('cs-otp-input').value.trim();
     const btn = document.getElementById('verify-staff-btn');
-
     if(otpInput !== window.tempStaffOTP) {
         window.showToast("Invalid OTP. Try again.", "error");
         return;
     }
-
     if (typeof loadBtn === 'function') loadBtn(btn, true);
+
+    // --- STRICT ADD-ON CHECK (BACKEND/FRONTEND HYBRID) ---
+    let hasAddon = false;
+    if (window.CU && window.CU.addOnExpiry && new Date(window.CU.addOnExpiry).getTime() > Date.now()) {
+        hasAddon = true;
+    }
+    if (!hasAddon) {
+        window.showToast("Unlimited Staff Add-on required.", "error");
+        const errEl = document.getElementById('staff-error');
+        if (errEl) { errEl.textContent = "Add-on expired. Cannot create staff."; errEl.style.display = 'block'; }
+        document.getElementById('staff-otp-container').classList.add('hidden');
+        document.getElementById('staff-form-container').classList.remove('hidden');
+        if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify & Create');
+        return;
+    }
 
     if (window.CU.role !== 'owner') {
         const staffList = typeof allStaff !== 'undefined' ? allStaff : (window._allStaff || []);
         const owner = staffList.find(s => s.role === 'owner');
         if (!owner) { window.showToast('Owner not found.', 'error'); loadBtn(btn, false, 'Verify & Create'); return; }
-
         const pendingData = {
             name: window.tempStaffData.name,
             email: window.tempStaffData.email,
@@ -2588,7 +2595,6 @@ window.finalizeCreateStaff = async function() {
             designation: window.tempStaffData.desig,
             companyId: window.CU.companyId || 'default'
         };
-
         try {
             const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
             await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
@@ -2610,59 +2616,26 @@ window.finalizeCreateStaff = async function() {
         return;
     }
 
-    // Secondary Backend Block for Owner Bypass Hack
-    let hasAddon = false;
-    if (window.CU && window.CU.addOnExpiry && new Date(window.CU.addOnExpiry).getTime() > Date.now()) {
-        hasAddon = true;
-    }
-    if (!hasAddon) {
-        window.showToast("Unlimited Staff Add-on required.", "error");
-        const errEl = document.getElementById('staff-error');
-        if (errEl) { errEl.textContent = "Add-on expired. Cannot create staff."; errEl.style.display = 'block'; }
-        document.getElementById('staff-otp-container').classList.add('hidden');
-        document.getElementById('staff-form-container').classList.remove('hidden');
-        if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify & Create');
-        return;
-    }
-
-    // STRICT Add-on Verification before backend execution
-    let hasAddon = false;
-    if (window.CU && window.CU.addOnExpiry && new Date(window.CU.addOnExpiry).getTime() > Date.now()) {
-        hasAddon = true;
-    }
-    if (!hasAddon) {
-        window.showToast("Unlimited Staff Add-on required.", "error");
-        const errEl = document.getElementById('staff-error');
-        if (errEl) { errEl.textContent = "Add-on expired. Cannot create staff."; errEl.style.display = 'block'; }
-        document.getElementById('staff-otp-container').classList.add('hidden');
-        document.getElementById('staff-form-container').classList.remove('hidden');
-        if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify & Create');
-        return;
-    }
-
     try {
-        // ---   THE ULTIMATE BYPASS HACK   ---
-        // We ignore the strict staff.js/backend function completely and create the user manually inline
+        // --- THE ULTIMATE BYPASS HACK ---
         const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
         const { getAuth, createUserWithEmailAndPassword, updateProfile } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
         const { doc, setDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
         
-        // Create a temporary Firebase instance so it doesn't log the Owner out
         const tempApp = initializeApp(auth.app.options, "TempApp_Create_" + Date.now());
         const tempAuth = getAuth(tempApp);
         
         let userCred;
         try {
-            // 1. Create the user in Firebase Auth directly
             userCred = await createUserWithEmailAndPassword(tempAuth, window.tempStaffData.email, window.tempStaffData.pwd);
         } catch (authErr) {
             let msg = authErr.message;
-            if (msg.includes('email-already-in-use')) msg = "This email is already registered in the system.";
+            if (msg.includes('email-already-in-use')) msg = "This email is already registered.";
             throw new Error(msg);
         }
-        // 2. Set the display name in Auth
+        
         await updateProfile(userCred.user, { displayName: window.tempStaffData.name });
-        // 3. Write the user document directly into Firestore
+        
         await setDoc(doc(db, 'users', userCred.user.uid), {
             uid: userCred.user.uid,
             name: window.tempStaffData.name,
@@ -2675,19 +2648,18 @@ window.finalizeCreateStaff = async function() {
             createdBy: window.CU.uid || '',
             createdAt: Date.now()
         });
-        // Sign out of the temporary auth instance
+        
         await tempAuth.signOut();
-        // 4. Update the Company Stats properly
+        
         if (window.CU && window.CU.role === 'owner') {
             const currentTotal = (window._allStaff || []).length;
             try { 
                  await updateDoc(doc(db, 'companies', window.CU.companyId), { 
                      staffCount: currentTotal + 1 
                  }); 
-             } catch(e){}
+            } catch(e){}
         }
-
-        // --- NEW SUCCESS SCREEN LOGIC ---
+        
         window.closeModal('create-staff-modal');
         window.triggerStaffSuccess(window.tempStaffData.name, false);
         
@@ -2696,7 +2668,7 @@ window.finalizeCreateStaff = async function() {
         document.getElementById('cs-designation').value = '';
         document.getElementById('cs-password').value = '';
         document.getElementById('cs-otp-input').value = '';
-        
+             
     } catch (err) {
         console.error(err);
         const msg = err.message || 'Staff creation failed.';
@@ -2710,7 +2682,7 @@ window.finalizeCreateStaff = async function() {
     } finally {
         if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify & Create');
     }
-};
+}
 
 window.triggerStaffSuccess = function(staffName, isRequest) {
   const screen = document.getElementById('staffSuccessScreen');
@@ -4552,33 +4524,31 @@ function subscribeAll() {
       })); 
   }
   
-  if (companyId && listenCompanyStaff) { 
-      unsubs.push(listenCompanyStaff(companyId, staff => { 
-          
-          // INSTANT FIX: DEDUPLICATE STAFF BY EMAIL TO FIX CORRUPTED DB RECORDS
-          const seenEmails = new Set();
-          const uniqueStaff = [];
-          for (let s of staff) {
-              const eKey = (s.email || '').toLowerCase().trim();
-              if (eKey && !seenEmails.has(eKey)) {
-                  seenEmails.add(eKey);
-                  uniqueStaff.push(s);
-              } else if (!eKey) {
-                  uniqueStaff.push(s); // Fallback for pure UIDs
-              }
-          }
-
-          allStaff = uniqueStaff;
-          window._allStaff = uniqueStaff; 
-          window.updateAllStats();
-          if(window.renderStaffCards) window.renderStaffCards(uniqueStaff); 
-          buildAssignSelect(uniqueStaff); 
-          
-          const n = uniqueStaff.filter(s => s.role !== 'owner'); 
-          const sc = document.getElementById('staff-count-sub'); 
-          if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`; 
-      })); 
-  }
+  if (companyId && listenCompanyStaff) {
+        unsubs.push(listenCompanyStaff(companyId, staff => {
+           const seenEmails = new Set();
+           const uniqueStaff = [];
+           for (let s of staff) {
+               const eKey = (s.email || '').toLowerCase().trim();
+               if (eKey && !seenEmails.has(eKey)) {
+                   seenEmails.add(eKey);
+                   uniqueStaff.push(s);
+               } else if (!eKey) {
+                   uniqueStaff.push(s); 
+               }
+           }
+           allStaff = uniqueStaff;
+           window._allStaff = uniqueStaff;
+           
+           window.updateAllStats();
+           if(window.renderStaffCards) window.renderStaffCards(uniqueStaff);
+           buildAssignSelect(uniqueStaff);
+           
+           const n = uniqueStaff.filter(s => s.role !== 'owner');
+           const sc = document.getElementById('staff-count-sub');
+           if (sc) sc.textContent = `${n.length} ${n.length !== 1 ? 'members' : 'member'}`;
+       }));
+    }
   
   if (listenInstalledApps) { 
       unsubs.push(listenInstalledApps(uid, ids => buildAppsGrid(ids))); 
