@@ -4108,104 +4108,66 @@ window.verifyProfileOTP = async function() {
     const input = Array.from(container.children).map(inp => inp.value).join('');
     const verifyBtn = document.getElementById('ppm-verify-btn');
     const errorMsg = document.getElementById('otp-error-msg');
-    
+
     if(errorMsg) errorMsg.style.opacity = '0';
-      if (input !== window.tempEmailOTP && input.length === 6) {
+
+    // 1. Check if OTP is wrong
+    if (input !== window.tempEmailOTP && input.length === 6) {
         window.otpFailedAttempts = (window.otpFailedAttempts || 0) + 1;
 
-        // ── 5-strike lockout ──
         if (window.otpFailedAttempts >= 5) {
             window.otpFailedAttempts = 0;
             window.closeProfileModal();
             try {
-                const { addDoc, collection } = await import(
-                    "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
-                );
+                const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
                 await addDoc(collection(db, 'users', window.CU.uid, 'notifications'), {
-                    type:      'security_alert',
-                    message:   'Too many incorrect OTP attempts detected. If this was not you, please contact support immediately.',
+                    type: 'security_alert',
+                    message: 'Too many incorrect OTP attempts detected. If this was not you, please contact support immediately.',
                     createdAt: Date.now(),
-                    read:      false,
-                    status:    'unread'
+                    read: false,
+                    status: 'unread'
                 });
             } catch(e) { console.error("Lockout notif failed:", e); }
             return;
         }
 
-        // ── Red button for 3 sec, then dull blue ──
+        // Normal failure visuals
+        if(errorMsg) {
+            errorMsg.textContent = `Invalid code. ${5 - window.otpFailedAttempts} attempts left.`;
+            errorMsg.style.opacity = '1';
+        }
+
         if (verifyBtn) {
             verifyBtn.textContent = 'Invalid Code';
-            verifyBtn.classList.add('btn-invalid');
+            verifyBtn.classList.add('error-state');
             verifyBtn.disabled = true;
-        }
 
-        // Clear boxes instantly
-        Array.from(container.children).forEach(inp => {
-            inp.value = '';
-            inp.classList.remove('filled');
-        });
-
-        // Revert after 3 seconds
-        setTimeout(() => {
-            if (!verifyBtn) return;
-            verifyBtn.textContent = 'Verify Code';
-            verifyBtn.classList.remove('btn-invalid');
-            verifyBtn.style.background = '#93C5FD';
-            verifyBtn.style.color      = '#1E3A8A';
-            verifyBtn.style.cursor     = 'not-allowed';
-            verifyBtn.style.opacity    = '0.7';
-            verifyBtn.style.boxShadow  = 'none';
-            verifyBtn.disabled = true;
-            if (container.children[0]) container.children[0].focus();
-        }, 3000);
-
-        return;
-    }
-    if (input.length < 6) return;
-
-    // ── Valid OTP — reset counter, show spinner ──
-    window.otpFailedAttempts = 0;
-    setBtnLoading('ppm-verify-btn', true);
-        // --- NORMAL FAILURE VISUALS ---
-        if(errorMsg) { 
-            errorMsg.textContent = `Invalid code. ${5 - window.otpFailedAttempts} attempts left.`; 
-            errorMsg.style.opacity = '1'; 
-        }
-        
-        if(verifyBtn) {
-            verifyBtn.textContent = 'Invalid Code';
-            verifyBtn.classList.add('error-state'); 
-            verifyBtn.disabled = true;
-            
-            // Clear any previous timer so they don't overlap
             if (window.otpErrorTimer) clearTimeout(window.otpErrorTimer);
-            
-            // Set new 3 second timer
+
             window.otpErrorTimer = setTimeout(() => {
                 if(errorMsg) errorMsg.style.opacity = '0';
                 verifyBtn.textContent = 'Verify Code';
-                verifyBtn.classList.remove('error-state'); 
-                
+                verifyBtn.classList.remove('error-state');
+
                 const currentInput = Array.from(container.children).map(inp => inp.value).join('');
                 verifyBtn.disabled = (currentInput.length < 6);
                 verifyBtn.style.opacity = (currentInput.length < 6) ? '0.5' : '1';
             }, 3000);
         }
 
-        // Instantly wipe boxes for retry
         Array.from(container.children).forEach(inp => {
             inp.value = '';
+            inp.classList.remove('filled');
         });
         if (container.children[0]) container.children[0].focus();
-        return; 
+        return;
     }
-    
+
     if (input.length < 6) return;
-    
-    // SUCCESS! Clear errors and attempts
+
+    // 2. SUCCESS - Valid OTP
     window.otpFailedAttempts = 0;
     if (window.otpErrorTimer) clearTimeout(window.otpErrorTimer);
-    
     setBtnLoading('ppm-verify-btn', true);
 
     // --- STEP 3: OTP Verified for Password Change ---
@@ -4219,7 +4181,7 @@ window.verifyProfileOTP = async function() {
         document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
         document.getElementById('ppm-view-otp').className = 'ppm-view hidden-left';
         document.getElementById('ppm-view-password').className = 'ppm-view active-view';
-        
+
         setBtnLoading('ppm-verify-btn', false, 'Verify Code');
         return;
     }
@@ -4228,30 +4190,29 @@ window.verifyProfileOTP = async function() {
     if (window.profileState.step === 1) {
         window.profileState.step = 2;
         window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        try { 
-            if(typeof emailjs !== 'undefined') { 
-                await emailjs.send("service_dc7ge9b", "template_4turj9r", { 
-                    to_email: window.profileState.newEmail, 
-                    to_name: window.CU.name, 
-                    otp_code: window.tempEmailOTP, 
-                    company_name: window.CU.companyName || 'Zenda' 
-                }, "dg8t6B0d-DhPa3Tl6"); 
-            } 
+
+        try {
+            if(typeof emailjs !== 'undefined') {
+                await emailjs.send("service_dc7ge9b", "template_4turj9r", {
+                    to_email: window.profileState.newEmail,
+                    to_name: window.CU.name,
+                    otp_code: window.tempEmailOTP,
+                    company_name: window.CU.companyName || 'Zenda'
+                }, "dg8t6B0d-DhPa3Tl6");
+            }
         } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
-        
+
         const otpView = document.getElementById('ppm-view-otp');
         otpView.style.transition = 'opacity 0.2s ease';
         otpView.style.opacity = '0';
-        
+
         setTimeout(() => {
             document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your NEW email address<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.profileState.newEmail}</b>`;
-            
-            // Clean slate for the new code
+
             Array.from(container.children).forEach(inp => {
                 inp.value = '';
             });
-            
+
             requestAnimationFrame(() => {
                 otpView.style.opacity = '1';
                 setBtnLoading('ppm-verify-btn', false, 'Verify Code');
@@ -4263,27 +4224,27 @@ window.verifyProfileOTP = async function() {
     // --- STEP 2: New Email Verified -> Update Database ---
     } else if (window.profileState.step === 2) {
         try {
-            if (auth.currentUser) { 
-                try { await updateEmail(auth.currentUser, window.profileState.newEmail); } 
-                catch(authErr) { console.warn("Bypassed Firebase auth rule."); } 
+            if (auth.currentUser) {
+                try { await updateEmail(auth.currentUser, window.profileState.newEmail); }
+                catch(authErr) { console.warn("Bypassed Firebase auth rule."); }
             }
             await updateDoc(doc(db, 'users', window.CU.uid), { email: window.profileState.newEmail });
-            
+
             window.CU.email = window.profileState.newEmail;
             window.showProfileSuccess();
-            
+
             const emailInput = document.getElementById('ppm-email');
             if(emailInput) emailInput.value = window.profileState.newEmail;
-            
-        } catch(e) { 
-            if(e.message && e.message.includes('requires-recent-login')) { 
-                window.showToast('Please sign out and sign back in to change your email.', 'error'); 
-            } else { 
-                window.showToast('Failed to update email: ' + e.message, 'error'); 
-            } 
-        } finally { 
-            setBtnLoading('ppm-verify-btn', false, 'Verify Code'); 
-            if (verifyBtn) verifyBtn.disabled = true; 
+
+        } catch(e) {
+            if(e.message && e.message.includes('requires-recent-login')) {
+                window.showToast('Please sign out and sign back in to change your email.', 'error');
+            } else {
+                window.showToast('Failed to update email: ' + e.message, 'error');
+            }
+        } finally {
+            setBtnLoading('ppm-verify-btn', false, 'Verify Code');
+            if (verifyBtn) verifyBtn.disabled = true;
         }
     }
 };
