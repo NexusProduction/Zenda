@@ -4335,61 +4335,58 @@ window.validatePasswordStrength = function() {
 };
 window.saveNewPassword = async function() {
     const newPwd = document.getElementById('ppm-new-pwd').value.trim();
-    if(newPwd.length < 6) {
-        window.showToast("Password must be at least 6 characters.", "error");
+    const confPwd = document.getElementById('ppm-confirm-pwd').value.trim();
+    
+    // 1. Verify that all parameters match (8 to 20 chars, complex, match)
+    const isLength = newPwd.length >= 8 && newPwd.length <= 20;
+    const isComplex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(newPwd);
+    const isMatch = (newPwd === confPwd) && newPwd.length > 0;
+
+    if (!isLength || !isComplex || !isMatch) {
+        window.showToast("Please ensure all password requirements are met.", "error");
         return;
     }
     
     setBtnLoading('ppm-save-pwd-btn', true);
     
     try {
-        // 1. Update in Firebase Authentication
+        // 2. Replace password in Firebase Authentication
         if (auth.currentUser) { 
+            const { updatePassword } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
             try { 
                 await updatePassword(auth.currentUser, newPwd); 
             } catch(authErr) { 
+                // Firebase Security Rule: Natively requires a recent login to change passwords.
+                // Since we removed the old password hack, if the session is too old, they must re-login.
                 if (authErr.message.includes('requires-recent-login')) {
-                    
-                    // SILENT RE-AUTH HACK
-                    let oldPwd = window.CU.password || window.CU.passwordHint;
-                    
-                    // If we don't have the old password saved, we CANNOT bypass Firebase security.
-                    if (!oldPwd) {
-                        window.showToast("Security sync required. Please log out and log back in to change your password.", "error");
-                        setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
-                        return;
-                    }
-
-                    const { EmailAuthProvider, reauthenticateWithCredential } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-                    
-                    try {
-                        const cred = EmailAuthProvider.credential(window.CU.email, oldPwd);
-                        await reauthenticateWithCredential(auth.currentUser, cred);
-                        
-                        // Retry the update after successful silent re-authentication
-                        await updatePassword(auth.currentUser, newPwd);
-                    } catch (silentErr) {
-                        window.showToast("Security sync required. Please log out and log back in to change your password.", "error");
-                        setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
-                        return;
-                    }
+                    window.showToast("Security timeout: Please log out and log back in to save your new password.", "error");
+                    setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
+                    return;
                 } else {
                     throw authErr;
                 }
             } 
         }
         
-        // 2. Update in Firestore Database
-        await updateDoc(doc(db, 'users', window.CU.uid), { password: newPwd, passwordHint: newPwd });
+        // 3. Replace old password with new one in Firestore Database
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        await updateDoc(doc(db, 'users', window.CU.uid), { 
+            password: newPwd, 
+            passwordHint: newPwd 
+        });
+        
+        // Update local session data
         window.CU.password = newPwd;
         window.CU.passwordHint = newPwd;
         
+        // 4. Trigger Success Screen & Cleanup
         window.showProfileSuccess();
         document.getElementById('ppm-new-pwd').value = '';
         document.getElementById('ppm-confirm-pwd').value = '';
+        
     } catch(e) {
         console.error(e);
-        window.showToast("Failed to update password.", "error");
+        window.showToast("Failed to update password. Please try again.", "error");
     } finally {
         setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
     }
