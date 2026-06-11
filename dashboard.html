@@ -1562,10 +1562,7 @@
             <p id="ppm-otp-msg" style="font-size: 0.9rem; color: #6B7280; line-height: 1.5; padding: 0 16px;"></p>
         </div>
         
-        <div class="otp-inputs-wrap" id="otp-inputs-container" style="margin-bottom: 12px;"></div>
-        
-        <div id="otp-error-msg" style="color: #DC2626; font-size: 0.85rem; font-weight: 700; text-align: center; min-height: 20px; margin-bottom: 16px; opacity: 0; transition: opacity 0.2s ease;"></div>
-        
+        <div class="otp-inputs-wrap" id="otp-inputs-container" style="margin-bottom: 12px;"></div>        
         <div style="display:flex; gap:12px;">
           <button class="ppm-btn" style="flex:1; background: #FFFFFF; border: 1.5px solid #E5E7EB; color: #4B5563; font-weight: 700; border-radius: 12px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#F9FAFB';" onmouseout="this.style.background='#FFFFFF';" onclick="window.cancelOtpView()">Cancel</button>
           <button class="ppm-btn" style="flex:1; background: #0066FF; border: none; color: #FFFFFF; font-weight: 700; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2);" id="ppm-verify-btn" onclick="window.verifyProfileOTP()">Verify Code</button>
@@ -1637,6 +1634,13 @@
       @media (max-width: 768px) {
         .add-staff-mobile-center { text-align: center !important; }
       }
+      /* Zenda Theme filled state for OTP boxes */
+.otp-box.filled {
+    background: #EEF2FF !important; 
+    border-color: #0066FF !important;
+    color: #0066FF !important;
+    box-shadow: inset 0 2px 4px rgba(0, 102, 255, 0.05) !important;
+}
     </style>
     <div class="modal" style="max-width: 540px;">
       
@@ -3983,19 +3987,23 @@ window.showProfileSuccess = function() {
     }, 2000); 
 };
 
-// Render 6 OTP boxes and handle auto-focus
+// Render 6 OTP boxes and handle auto-focus (Redesigned by Kole)
 function initOtpBoxes() {
     const container = document.getElementById('otp-inputs-container');
     container.innerHTML = '';
     
-    // Automatically disable the button when boxes are generated
     const verifyBtn = document.getElementById('ppm-verify-btn');
-    if (verifyBtn) verifyBtn.disabled = true; 
+    if (verifyBtn) {
+        verifyBtn.disabled = true; 
+        verifyBtn.style.opacity = '0.5'; // Dull blue initially
+    }
 
-    // Helper to check length and toggle button
     const checkOtpLength = () => {
         const val = Array.from(container.children).map(inp => inp.value).join('');
-        if (verifyBtn) verifyBtn.disabled = (val.length < 6);
+        if (verifyBtn) {
+            verifyBtn.disabled = (val.length < 6);
+            verifyBtn.style.opacity = (val.length < 6) ? '0.5' : '1'; // Saturated blue when ready
+        }
         return val;
     };
 
@@ -4009,26 +4017,33 @@ function initOtpBoxes() {
         input.dataset.index = i;
         
         input.addEventListener('input', (e) => {
-            // Restrict to numbers only
             e.target.value = e.target.value.replace(/[^0-9]/g, ''); 
             
+            // Add Zenda blue theme if filled
+            if (e.target.value.length > 0) {
+                e.target.classList.add('filled');
+            } else {
+                e.target.classList.remove('filled');
+            }
+
             if (e.target.value.length === 1 && i < 5) {
                 container.children[i + 1].focus();
             }
             
-            const val = checkOtpLength(); // Validate button state
-            if (val.length === 6) window.verifyProfileOTP(); // Auto-verify at 6
+            checkOtpLength(); 
+            // NOTE: Auto-verify line removed completely. User must click.
         });
         
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Backspace') {
+                e.target.classList.remove('filled'); // Remove blue state
                 if (e.target.value === '' && i > 0) {
                     container.children[i - 1].focus();
                     container.children[i - 1].value = '';
+                    container.children[i - 1].classList.remove('filled');
                 } else {
-                    e.target.value = ''; // Clear current box if it has a value
+                    e.target.value = ''; 
                 }
-                // Delay slightly to let the value clear before checking
                 setTimeout(checkOtpLength, 10); 
             }
         });
@@ -4041,41 +4056,34 @@ window.verifyProfileOTP = async function() {
     const container = document.getElementById('otp-inputs-container');
     const input = Array.from(container.children).map(inp => inp.value).join('');
     const verifyBtn = document.getElementById('ppm-verify-btn');
-    const errorMsg = document.getElementById('otp-error-msg');
     
-    // Clear previous errors
-    if(errorMsg) errorMsg.style.opacity = '0';
-    if(verifyBtn) verifyBtn.style.background = '#0066FF';
-    
-    // --- INVALID CODE HANDLING ---
+    // --- INVALID CODE HANDLING (Direct Button State) ---
     if (input !== window.tempEmailOTP && input.length === 6) { 
-        if(errorMsg) { 
-            errorMsg.textContent = 'Invalid code. Please try again.'; 
-            errorMsg.style.opacity = '1'; 
-        }
-        
         if(verifyBtn) {
-            // Change button to Red
+            // Transform button to Red Error State
             verifyBtn.textContent = 'Invalid Code';
-            verifyBtn.style.background = '#DC2626';
+            verifyBtn.style.background = '#DC2626'; // Saturated Red
             verifyBtn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.25)';
+            verifyBtn.style.opacity = '1';
             verifyBtn.disabled = true;
             
-            // Revert back exactly after 3 seconds
+            // Revert back to dull blue after 3 seconds
             setTimeout(() => {
-                if(errorMsg) errorMsg.style.opacity = '0';
                 verifyBtn.textContent = 'Verify Code';
-                verifyBtn.style.background = '#0066FF'; // Back to blue
-                verifyBtn.style.boxShadow = '0 4px 12px rgba(0, 102, 255, 0.2)';
+                verifyBtn.style.background = '#0066FF'; 
+                verifyBtn.style.boxShadow = 'none';
                 
-                // Keep disabled if they haven't re-typed 6 digits
                 const currentInput = Array.from(container.children).map(inp => inp.value).join('');
                 verifyBtn.disabled = (currentInput.length < 6);
-            }, 3000); // 3000ms = 3 seconds
+                verifyBtn.style.opacity = (currentInput.length < 6) ? '0.5' : '1';
+            }, 3000); 
         }
 
-        // Wipe boxes instantly for retry
-        Array.from(container.children).forEach(inp => inp.value = '');
+        // Wipe boxes visually for retry
+        Array.from(container.children).forEach(inp => {
+            inp.value = '';
+            inp.classList.remove('filled');
+        });
         container.children[0].focus();
         return; 
     }
@@ -4083,8 +4091,6 @@ window.verifyProfileOTP = async function() {
     if (input.length < 6) return;
     
     setBtnLoading('ppm-verify-btn', true);
-
-    // --- STEP 3: OTP Verified for Password Change ---
     if (window.profileState.step === 3) {
         const newPwdInput = document.getElementById('ppm-new-pwd');
         const confPwdInput = document.getElementById('ppm-confirm-pwd');
@@ -4270,12 +4276,23 @@ window.cancelOtpView = function() {
     window.profileState  = { newEmail: '', step: 0 };
 
     const container = document.getElementById('otp-inputs-container');
-    if (container) Array.from(container.children).forEach(inp => inp.value = '');
+    if (container) {
+        Array.from(container.children).forEach(inp => {
+            inp.value = '';
+            inp.classList.remove('filled');
+        });
+    }
 
-    const errorMsg = document.getElementById('otp-error-msg');
-    if (errorMsg) { errorMsg.textContent = ''; errorMsg.style.opacity = '0'; }
+    // Reset button states
+    const verifyBtn = document.getElementById('ppm-verify-btn');
+    if(verifyBtn) {
+        verifyBtn.textContent = 'Verify Code';
+        verifyBtn.style.background = '#0066FF';
+        verifyBtn.disabled = true;
+        verifyBtn.style.opacity = '0.5';
+    }
 
-    // Strict Class Reversal to prevent meshing
+    // Strict Class Reversal: Slide back to the edit view
     document.getElementById('ppm-view-otp').className  = 'ppm-view hidden-right';
     document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
     document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
