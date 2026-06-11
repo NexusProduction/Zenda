@@ -2318,6 +2318,14 @@ window.renderNotifs = function(items) {
     if (n.type === 'security_login' || n.type === 'security_alert') {
       iconType = `<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>`;
       iconBgClass = 'security';
+      
+      // NEW: Add the Discuss button for the 5-fail lockout
+      if (n.type === 'security_alert') {
+          actionsHtml = `<div style="display:flex;gap:10px;width:100%;margin-top:6px;">
+                           <button class="btn btn-secondary w-full" style="padding:8px 14px;font-size:0.85rem;background:#FEE2E2;color:#DC2626;border:none;" onclick="window.dismissAlert(this)">Dismiss</button>
+                           <button class="btn btn-primary w-full" style="padding:8px 14px;font-size:0.85rem;background:#0066FF;border:none;box-shadow:0 4px 10px rgba(0,102,255,0.25);" onclick="document.getElementById('contact-modal').classList.add('open'); window.dismissAlert(this);">Discuss</button>
+                         </div>`;
+      }
     } else if (n.type === 'task_received' || n.type === 'task_update') {
       iconType = `<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>`;
       iconBgClass = 'task';
@@ -4010,6 +4018,18 @@ function initOtpBoxes() {
         return val;
     };
 
+    // --- NEW: Helper to instantly cancel error state ---
+    const clearErrorState = () => {
+        if (verifyBtn && verifyBtn.classList.contains('error-state')) {
+            verifyBtn.classList.remove('error-state');
+            verifyBtn.textContent = 'Verify Code';
+            if (window.otpErrorTimer) {
+                clearTimeout(window.otpErrorTimer);
+                window.otpErrorTimer = null;
+            }
+        }
+    };
+
     for (let i = 0; i < 6; i++) {
         const input = document.createElement('input');
         input.type = 'text'; 
@@ -4020,6 +4040,8 @@ function initOtpBoxes() {
         input.dataset.index = i;
         
         input.addEventListener('input', (e) => {
+            clearErrorState(); // Instantly revert button to normal when user types
+
             e.target.value = e.target.value.replace(/[^0-9]/g, ''); 
             
             if (e.target.value.length === 1 && i < 5) {
@@ -4029,6 +4051,8 @@ function initOtpBoxes() {
         });
         
         input.addEventListener('keydown', (e) => {
+            clearErrorState(); // Instantly revert button to normal on backspace
+
             if (e.key === 'Backspace') {
                 if (e.target.value === '') {
                     // Jump back and clear the PREVIOUS box
@@ -4047,6 +4071,8 @@ function initOtpBoxes() {
     }
     setTimeout(() => { if (container.children[0]) container.children[0].focus(); }, 400); 
 }
+window.otpFailedAttempts = 0; // Global tracker for failures
+
 window.verifyProfileOTP = async function() {
     const container = document.getElementById('otp-inputs-container');
     const input = Array.from(container.children).map(inp => inp.value).join('');
@@ -4057,40 +4083,67 @@ window.verifyProfileOTP = async function() {
     
     // --- INVALID CODE HANDLING ---
     if (input !== window.tempEmailOTP && input.length === 6) { 
+        window.otpFailedAttempts++; // Log the failure
+        
+        // --- 5 STRIKE LOCKOUT LOGIC ---
+        if (window.otpFailedAttempts >= 5) {
+            window.otpFailedAttempts = 0; // Reset for next time
+            window.closeProfileModal(); // Kick them out of the modal
+            window.showToast("Too many incorrect attempts.", "error");
+
+            // Send Notification to Database
+            try {
+                const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+                await addDoc(collection(db, 'users', window.CU.uid, 'notifications'), {
+                    type: 'security_alert',
+                    message: `Too many incorrect OTP attempts on your account. Please wait some time before trying again.`,
+                    createdAt: Date.now(),
+                    read: false,
+                    status: 'unread'
+                });
+            } catch(e) { console.error("Failed to send lockout notif", e); }
+            return;
+        }
+
+        // --- NORMAL FAILURE VISUALS ---
         if(errorMsg) { 
-            errorMsg.textContent = 'Invalid code. Please try again.'; 
+            errorMsg.textContent = `Invalid code. ${5 - window.otpFailedAttempts} attempts left.`; 
             errorMsg.style.opacity = '1'; 
         }
         
         if(verifyBtn) {
             verifyBtn.textContent = 'Invalid Code';
-            // THIS is the magic line. It triggers the saturated red CSS!
             verifyBtn.classList.add('error-state'); 
             verifyBtn.disabled = true;
             
-            // Revert back exactly after 3 seconds
-            setTimeout(() => {
+            // Clear any previous timer so they don't overlap
+            if (window.otpErrorTimer) clearTimeout(window.otpErrorTimer);
+            
+            // Set new 3 second timer
+            window.otpErrorTimer = setTimeout(() => {
                 if(errorMsg) errorMsg.style.opacity = '0';
                 verifyBtn.textContent = 'Verify Code';
-                
-                // Remove the red force class to let it be blue again
                 verifyBtn.classList.remove('error-state'); 
                 
                 const currentInput = Array.from(container.children).map(inp => inp.value).join('');
                 verifyBtn.disabled = (currentInput.length < 6);
+                verifyBtn.style.opacity = (currentInput.length < 6) ? '0.5' : '1';
             }, 3000);
         }
 
         // Instantly wipe boxes for retry
         Array.from(container.children).forEach(inp => {
             inp.value = '';
-            inp.classList.remove('filled'); // Clear any residual flags
         });
-        container.children[0].focus();
+        if (container.children[0]) container.children[0].focus();
         return; 
     }
     
     if (input.length < 6) return;
+    
+    // SUCCESS! Clear errors and attempts
+    window.otpFailedAttempts = 0;
+    if (window.otpErrorTimer) clearTimeout(window.otpErrorTimer);
     
     setBtnLoading('ppm-verify-btn', true);
 
@@ -4136,14 +4189,13 @@ window.verifyProfileOTP = async function() {
             // Clean slate for the new code
             Array.from(container.children).forEach(inp => {
                 inp.value = '';
-                inp.classList.remove('filled');
             });
             
             requestAnimationFrame(() => {
                 otpView.style.opacity = '1';
                 setBtnLoading('ppm-verify-btn', false, 'Verify Code');
                 if (verifyBtn) verifyBtn.disabled = true;
-                setTimeout(() => { container.children[0].focus(); }, 100);
+                setTimeout(() => { if (container.children[0]) container.children[0].focus(); }, 100);
             });
         }, 250);
 
