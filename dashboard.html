@@ -1625,16 +1625,19 @@
           <input type="text" id="ppm-confirm-pwd" class="ppm-input" placeholder="Confirm new password" maxlength="20" autocomplete="off" style="padding-right: 16px !important;" oninput="window.validatePasswordStrength()">
         </div>
         
-        <!-- Modernized Dynamic Checklist -->
-        <div class="pwd-req-list" id="pwd-reqs">
-            <div class="pwd-req-item" id="req-length"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle></svg> 8 to 20 characters</div>
-            <div class="pwd-req-item" id="req-complex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle></svg> Letters, numbers, & symbols</div>
-            <div class="pwd-req-item" id="req-match"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle></svg> Passwords match</div>
+        <!-- Premium Horizontal Password Meter -->
+        <div class="pwd-meter-wrapper" style="margin-top: 12px; margin-bottom: 24px;">
+            <div style="display: flex; height: 5px; background: #F1F5F9; border-radius: 6px; overflow: hidden;">
+                <div id="pwd-meter-bar" style="width: 0%; background: #EF4444; transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);"></div>
+            </div>
+            <!-- Collapsible Error Text Container -->
+            <div id="pwd-error-msg" style="height: 0; opacity: 0; margin-top: 0; overflow: hidden; color: #DC2626; font-size: 0.85rem; font-weight: 700; text-align: center; transition: all 0.3s ease;"></div>
         </div>
         
         <div class="ppm-actions visible">
           <button type="button" class="ppm-btn ppm-btn-secondary" onclick="window.backToEditFromPassword()">Cancel</button>
-          <button type="button" class="ppm-btn ppm-btn-primary" id="ppm-save-pwd-btn" onclick="window.saveNewPassword()" disabled>Save Password</button>
+          <!-- Notice: Removed the 'disabled' attribute so it can always be clicked to reveal errors -->
+          <button type="button" class="ppm-btn ppm-btn-primary" id="ppm-save-pwd-btn" onclick="window.saveNewPassword()">Save Password</button>
         </div>
       </div>
       <!-- VIEW 4: CONTACT SUPPORT (Slides from Left) -->
@@ -4368,51 +4371,62 @@ window.backToEditFromPassword = function() {
 window.validatePasswordStrength = function() {
     const pwd1 = document.getElementById('ppm-new-pwd').value;
     const pwd2 = document.getElementById('ppm-confirm-pwd').value;
-    const btn = document.getElementById('ppm-save-pwd-btn');
-    
-    // Requirements
-    const isLength = pwd1.length >= 8 && pwd1.length <= 20;
-    const isComplex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(pwd1);
-    const isMatch = (pwd1 === pwd2) && pwd1.length > 0;
 
-    // DOM Elements
-    const elLength = document.getElementById('req-length');
-    const elComplex = document.getElementById('req-complex');
-    const elMatch = document.getElementById('req-match');
-    
-    // Modern Icons
-    const successIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-    const neutralIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"></circle></svg>';
+    let score = 0;
+    if (pwd1.length >= 8) score++;
+    if (/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(pwd1)) score++;
+    if (pwd1.length > 0 && pwd1 === pwd2) score++;
 
-    // Update UI visually
-    if(elLength) {
-        if(isLength) { elLength.className = 'pwd-req-item valid'; elLength.innerHTML = successIcon + ' 8 to 20 characters'; } 
-        else { elLength.className = 'pwd-req-item'; elLength.innerHTML = neutralIcon + ' 8 to 20 characters'; }
+    // Control the horizontal meter
+    const bar = document.getElementById('pwd-meter-bar');
+    if (bar) {
+        if (pwd1.length === 0) {
+            bar.style.width = '0%';
+        } else if (score <= 1) {
+            bar.style.width = '33.33%';
+            bar.style.background = '#EF4444'; // Red
+        } else if (score === 2) {
+            bar.style.width = '66.66%';
+            bar.style.background = '#F59E0B'; // Orange
+        } else if (score === 3) {
+            bar.style.width = '100%';
+            bar.style.background = '#10B981'; // Green
+        }
     }
-
-    if(elComplex) {
-        if(isComplex) { elComplex.className = 'pwd-req-item valid'; elComplex.innerHTML = successIcon + ' Letters, numbers, & symbols'; } 
-        else { elComplex.className = 'pwd-req-item'; elComplex.innerHTML = neutralIcon + ' Letters, numbers, & symbols'; }
-    }
-
-    if(elMatch) {
-        if(isMatch) { elMatch.className = 'pwd-req-item valid'; elMatch.innerHTML = successIcon + ' Passwords match'; } 
-        else { elMatch.className = 'pwd-req-item'; elMatch.innerHTML = neutralIcon + ' Passwords match'; }
-    }
-
-    // Activate Button ONLY if all pass
-    if (btn) btn.disabled = !(isLength && isComplex && isMatch);
 };
+
 window.saveNewPassword = async function() {
     const newPwd = document.getElementById('ppm-new-pwd').value.trim();
     const confPwd = document.getElementById('ppm-confirm-pwd').value.trim();
+    const errEl = document.getElementById('pwd-error-msg');
     
-    const isLength = newPwd.length >= 8 && newPwd.length <= 20;
-    const isComplex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(newPwd);
-    const isMatch = (newPwd === confPwd) && newPwd.length > 0;
+    // Helper function to show and auto-collapse errors
+    const showError = (msg) => {
+        if (!errEl) return;
+        errEl.textContent = msg;
+        errEl.style.height = '18px';      // Expands container
+        errEl.style.marginTop = '12px';   // Adds padding dynamically
+        errEl.style.opacity = '1';
+        
+        if (window.pwdErrorTimer) clearTimeout(window.pwdErrorTimer);
+        window.pwdErrorTimer = setTimeout(() => {
+            errEl.style.height = '0';     // Collapses container
+            errEl.style.marginTop = '0';  // Removes padding dynamically
+            errEl.style.opacity = '0';
+            setTimeout(() => { if(errEl.style.opacity === '0') errEl.textContent = ''; }, 300);
+        }, 3000); // Disappears completely after 3 seconds
+    };
 
-    if (!isLength || !isComplex || !isMatch) {
-        window.showToast("Please ensure all password requirements are met.", "error");
+    if (newPwd.length < 8 || newPwd.length > 20) {
+        showError("Password must be 8 to 20 characters.");
+        return;
+    }
+    if (!/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(newPwd)) {
+        showError("Must contain letters, numbers, and symbols.");
+        return;
+    }
+    if (newPwd !== confPwd) {
+        showError("Passwords do not match.");
         return;
     }
     
@@ -4447,8 +4461,6 @@ window.saveNewPassword = async function() {
                         }
                     }
                     
-                    // FIX 2: If the old session completely fails to verify, Firebase physically rejects the request. 
-                    // To avoid the "Session Expired" crash, we fallback to sending them an automatic password reset email.
                     if (!silentAuthSuccess) {
                         await sendPasswordResetEmail(auth, auth.currentUser.email);
                         window.showToast("Security sync failed: We sent a secure reset link to your email so you can change it.", "info");
@@ -4463,7 +4475,6 @@ window.saveNewPassword = async function() {
                 }
             } 
             
-            // This only runs if Auth update succeeded
             await updateDoc(doc(db, 'users', auth.currentUser.uid), { 
                 password: newPwd, 
                 passwordHint: newPwd 
@@ -4477,12 +4488,16 @@ window.saveNewPassword = async function() {
         
         window.showProfileSuccess();
         
-        // Return UI states strictly to normal post-success
         setTimeout(() => {
             document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
             document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
             document.getElementById('ppm-new-pwd').value = '';
             document.getElementById('ppm-confirm-pwd').value = '';
+            
+            // Reset the meter bar for the next time it's opened
+            const bar = document.getElementById('pwd-meter-bar');
+            if(bar) { bar.style.width = '0%'; bar.style.background = '#EF4444'; }
+            
         }, 500);
         
     } catch(e) {
