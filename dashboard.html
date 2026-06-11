@@ -4211,7 +4211,6 @@ window.handleProfileNext = async function() {
 window.initiatePasswordChange = async function(btn) {
     if(btn) {
         btn._origText = btn.innerHTML;
-        // Inject smooth inline spinner directly into the pill
         btn.innerHTML = `<span style="width:14px;height:14px;border:2px solid rgba(0,102,255,0.2);border-top-color:#0066FF;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Sending...`;
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.8';
@@ -4232,14 +4231,17 @@ window.initiatePasswordChange = async function(btn) {
     } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
 
     document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your email address<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.CU.email}</b>`;
-    initOtpBoxes();
     
-    // Slide to the OTP view
-    document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
+    // Clear OTP boxes safely
+    const container = document.getElementById('otp-inputs-container');
+    if (container) { Array.from(container.children).forEach(inp => inp.value = ''); }
+    
+    // FIX 1: Strict Modal Class Assignment to Prevent Meshing
     document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-contact').className = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
     document.getElementById('ppm-view-otp').className = 'ppm-view active-view';
     
-    // Restore button text for next time
     if(btn) {
         btn.innerHTML = btn._origText;
         btn.style.pointerEvents = 'auto';
@@ -4257,10 +4259,11 @@ window.closeContactView = function() {
 };
 
 window.backToEditFromPassword = function() {
+    // Strict Class Reversal
     document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-otp').className = 'ppm-view hidden-right';
     document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
     
-    // Clear temporary inputs safely
     const npwd = document.getElementById('ppm-new-pwd'); if(npwd) npwd.value = '';
     const cpwd = document.getElementById('ppm-confirm-pwd'); if(cpwd) cpwd.value = '';
     if(window.validatePasswordStrength) window.validatePasswordStrength();
@@ -4269,32 +4272,18 @@ window.backToEditFromPassword = function() {
     if(pwdContainer) pwdContainer.classList.remove('hidden-pop');
 };
 window.cancelOtpView = function() {
-    // Kill the pending OTP / password-change operation entirely
     window.tempEmailOTP = '';
     window.profileState  = { newEmail: '', step: 0 };
 
-    // Wipe all OTP input boxes
     const container = document.getElementById('otp-inputs-container');
     if (container) Array.from(container.children).forEach(inp => inp.value = '');
 
-    // Clear the inline error message
     const errorMsg = document.getElementById('otp-error-msg');
     if (errorMsg) { errorMsg.textContent = ''; errorMsg.style.opacity = '0'; }
 
-    // If this was triggered from an email-change OTP, also reset the email field
-    if (window.currentEditField === 'email') {
-        const emailInput = document.getElementById('ppm-email');
-        if (emailInput) { emailInput.value = window.CU.email || ''; emailInput.disabled = true; }
-        const fieldEl = document.getElementById('field-email');
-        if (fieldEl) fieldEl.classList.remove('editing');
-        window.currentEditField = null;
-        document.querySelectorAll('.pen-trigger').forEach(p => p.style.display = 'flex');
-        const actionsEl = document.getElementById('ppm-actions');
-        if (actionsEl) actionsEl.classList.remove('visible');
-    }
-
-    // Slide smoothly back to Edit Profile — do NOT close the modal
+    // Strict Class Reversal to prevent meshing
     document.getElementById('ppm-view-otp').className  = 'ppm-view hidden-right';
+    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
     document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
 };
 window.validatePasswordStrength = function() {
@@ -4337,7 +4326,6 @@ window.saveNewPassword = async function() {
     const newPwd = document.getElementById('ppm-new-pwd').value.trim();
     const confPwd = document.getElementById('ppm-confirm-pwd').value.trim();
     
-    // 1. Verify that all parameters match
     const isLength = newPwd.length >= 8 && newPwd.length <= 20;
     const isComplex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(newPwd);
     const isMatch = (newPwd === confPwd) && newPwd.length > 0;
@@ -4351,15 +4339,13 @@ window.saveNewPassword = async function() {
     
     try {
         if (auth.currentUser) { 
-            const { updatePassword, EmailAuthProvider, reauthenticateWithCredential } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+            const { updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
             const { doc, getDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
             
             try { 
                 await updatePassword(auth.currentUser, newPwd); 
             } catch(authErr) { 
                 if (authErr.message.includes('requires-recent-login')) {
-                    
-                    // FIX: Fetch the password directly from Firestore to ensure it is perfectly accurate
                     const userRef = doc(db, 'users', auth.currentUser.uid);
                     const userSnap = await getDoc(userRef);
                     let oldPwd = null;
@@ -4368,19 +4354,26 @@ window.saveNewPassword = async function() {
                         oldPwd = userSnap.data().password || userSnap.data().passwordHint;
                     }
                     
-                    if (!oldPwd) {
-                        window.showToast("Cannot verify old session. Please log out and back in.", "error");
-                        setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
-                        return;
+                    let silentAuthSuccess = false;
+                    if (oldPwd) {
+                        try {
+                            const cred = EmailAuthProvider.credential(auth.currentUser.email, oldPwd);
+                            await reauthenticateWithCredential(auth.currentUser, cred);
+                            await updatePassword(auth.currentUser, newPwd);
+                            silentAuthSuccess = true;
+                        } catch (silentErr) {
+                            console.warn("Silent Auth failed because DB password doesn't match actual Auth password.");
+                        }
                     }
                     
-                    try {
-                        const cred = EmailAuthProvider.credential(auth.currentUser.email, oldPwd);
-                        await reauthenticateWithCredential(auth.currentUser, cred);
-                        await updatePassword(auth.currentUser, newPwd); // Retry after silent auth
-                    } catch (silentErr) {
-                        console.error("Silent Auth Failed:", silentErr);
-                        window.showToast("Database out of sync. Please log out and log back in.", "error");
+                    // FIX 2: If the old session completely fails to verify, Firebase physically rejects the request. 
+                    // To avoid the "Session Expired" crash, we fallback to sending them an automatic password reset email.
+                    if (!silentAuthSuccess) {
+                        await sendPasswordResetEmail(auth, auth.currentUser.email);
+                        window.showToast("Security sync failed: We sent a secure reset link to your email so you can change it.", "info");
+                        
+                        document.getElementById('premium-prof-overlay').classList.remove('open');
+                        window.cancelProfileEdit();
                         setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
                         return;
                     }
@@ -4389,27 +4382,27 @@ window.saveNewPassword = async function() {
                 }
             } 
             
-            // 2. Replace old password with new one in Firestore Database (Only runs if Auth succeeded)
+            // This only runs if Auth update succeeded
             await updateDoc(doc(db, 'users', auth.currentUser.uid), { 
                 password: newPwd, 
                 passwordHint: newPwd 
             });
             
-            // Update local session data
             if (window.CU) {
                 window.CU.password = newPwd;
                 window.CU.passwordHint = newPwd;
             }
         }
         
-        // 3. Trigger Success Screen & Cleanup
         window.showProfileSuccess();
-        document.getElementById('ppm-new-pwd').value = '';
-        document.getElementById('ppm-confirm-pwd').value = '';
         
-        // Force close the password modal to prevent UI meshing
-        const pwdModal = document.getElementById('ppm-new-pwd').closest('.modal, .popup, .overlay');
-        if (pwdModal) pwdModal.style.display = 'none';
+        // Return UI states strictly to normal post-success
+        setTimeout(() => {
+            document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
+            document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
+            document.getElementById('ppm-new-pwd').value = '';
+            document.getElementById('ppm-confirm-pwd').value = '';
+        }, 500);
         
     } catch(e) {
         console.error("Password Update Error:", e);
@@ -4425,28 +4418,25 @@ window.verifyProfileOTP = async function() {
     const verifyBtn = document.getElementById('ppm-verify-btn');
     const errorMsg = document.getElementById('otp-error-msg');
     
-    // Clear previous errors
-    errorMsg.style.opacity = '0';
-    verifyBtn.style.background = '#0066FF';
+    if(errorMsg) errorMsg.style.opacity = '0';
+    if(verifyBtn) verifyBtn.style.background = '#0066FF';
     
     if (input !== window.tempEmailOTP && input.length === 6) { 
-        // Show inline error instead of toast
-        errorMsg.textContent = 'Invalid code. Please try again.';
-        errorMsg.style.opacity = '1';
-        
-        // Temporarily change button to red "Invalid Code"
-        verifyBtn.textContent = 'Invalid Code';
-        verifyBtn.style.background = '#DC2626';
-        verifyBtn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.2)';
-        
-        // Reset after 4 seconds
-        setTimeout(() => {
-            errorMsg.style.opacity = '0';
-            verifyBtn.textContent = 'Verify Code';
-            verifyBtn.style.background = '#0066FF';
-            verifyBtn.style.boxShadow = '0 4px 12px rgba(0, 102, 255, 0.2)';
-        }, 4000);
-
+        if(errorMsg) { errorMsg.textContent = 'Invalid code. Please try again.'; errorMsg.style.opacity = '1'; }
+        if(verifyBtn) {
+            verifyBtn.textContent = 'Invalid Code';
+            verifyBtn.style.background = '#DC2626';
+            verifyBtn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.2)';
+            verifyBtn.disabled = true;
+            setTimeout(() => {
+                if(errorMsg) errorMsg.style.opacity = '0';
+                verifyBtn.textContent = 'Verify Code';
+                verifyBtn.style.background = '#0066FF';
+                verifyBtn.style.boxShadow = '0 4px 12px rgba(0, 102, 255, 0.2)';
+                const currentInput = Array.from(container.children).map(inp => inp.value).join('');
+                verifyBtn.disabled = (currentInput.length < 6);
+            }, 4000);
+        }
         Array.from(container.children).forEach(inp => inp.value = '');
         container.children[0].focus();
         return; 
@@ -4463,8 +4453,11 @@ window.verifyProfileOTP = async function() {
         if (confPwdInput) confPwdInput.value = '';
         if (window.validatePasswordStrength) window.validatePasswordStrength();
 
+        // Strict Forward Slide
+        document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
         document.getElementById('ppm-view-otp').className = 'ppm-view hidden-left';
         document.getElementById('ppm-view-password').className = 'ppm-view active-view';
+        
         setBtnLoading('ppm-verify-btn', false, 'Verify Code');
         return;
     }
@@ -4496,6 +4489,7 @@ window.verifyProfileOTP = async function() {
             requestAnimationFrame(() => {
                 otpView.style.opacity = '1';
                 setBtnLoading('ppm-verify-btn', false, 'Verify Code');
+                if (verifyBtn) verifyBtn.disabled = true;
                 setTimeout(() => { container.children[0].focus(); }, 100);
             });
         }, 250);
@@ -4523,6 +4517,7 @@ window.verifyProfileOTP = async function() {
             } 
         } finally { 
             setBtnLoading('ppm-verify-btn', false, 'Verify Code'); 
+            if (verifyBtn) verifyBtn.disabled = true; 
         }
     }
 };
