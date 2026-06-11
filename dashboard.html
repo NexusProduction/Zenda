@@ -1003,7 +1003,7 @@
     .otp-sub { font-family: 'SF Pro Display', 'Inter', sans-serif; font-size: 14px; color: #8E8E93; line-height: 140%; text-align: center; margin-bottom: 24px; padding: 0 16px; }
     
     .otp-inputs-wrap { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
-    .otp-box { width: 48px; height: 48px; border-radius: 10px; background: #F2F2F7; border: 1px solid transparent; text-align: center; font-size: 24px; font-weight: 700; color: #1C1C1E; outline: none; transition: all 0.2s; font-family: 'SF Pro Display', 'Inter', sans-serif; }
+    .otp-box { transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1); width: 48px; height: 48px; border-radius: 10px; background: #F2F2F7; border: 1px solid transparent; text-align: center; font-size: 24px; font-weight: 700; color: #1C1C1E; outline: none;}
     .otp-box.anim-in { animation: popIn 0.3s cubic-bezier(0.25, 1, 0.5, 1) backwards; }
 
     @keyframes popIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
@@ -1283,11 +1283,12 @@
     font-family: 'SF Pro Display', 'Plus Jakarta Sans', sans-serif; 
 }
 
-.otp-box:focus { 
-    background: #FFFFFF; 
-    border-color: #0066FF; 
-    box-shadow: 0 4px 12px rgba(0, 102, 255, 0.15); 
-    transform: translateY(-2px); 
+.otp-box:focus {
+    border-color: #0066FF !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15) !important;
+    color: #0066FF !important;
+    outline: none;
 }
 
         /* 5. Fix the massive SVG circles in the password checklist */
@@ -1640,6 +1641,13 @@
     border-color: #0066FF !important;
     color: #0066FF !important;
     box-shadow: inset 0 2px 4px rgba(0, 102, 255, 0.05) !important;
+}
+      #ppm-verify-btn.error-state,
+#ppm-verify-btn.error-state:disabled {
+    background: #DC2626 !important; /* Saturated Red */
+    color: #FFFFFF !important;
+    opacity: 1 !important; /* Keep it bold, completely remove the dullness */
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35) !important;
 }
     </style>
     <div class="modal" style="max-width: 540px;">
@@ -3987,7 +3995,6 @@ window.showProfileSuccess = function() {
     }, 2000); 
 };
 
-// Render 6 OTP boxes and handle auto-focus (Redesigned by Kole)
 function initOtpBoxes() {
     const container = document.getElementById('otp-inputs-container');
     container.innerHTML = '';
@@ -3995,14 +4002,14 @@ function initOtpBoxes() {
     const verifyBtn = document.getElementById('ppm-verify-btn');
     if (verifyBtn) {
         verifyBtn.disabled = true; 
-        verifyBtn.style.opacity = '0.5'; // Dull blue initially
+        verifyBtn.style.opacity = '0.5'; 
     }
 
     const checkOtpLength = () => {
         const val = Array.from(container.children).map(inp => inp.value).join('');
         if (verifyBtn) {
             verifyBtn.disabled = (val.length < 6);
-            verifyBtn.style.opacity = (val.length < 6) ? '0.5' : '1'; // Saturated blue when ready
+            verifyBtn.style.opacity = (val.length < 6) ? '0.5' : '1';
         }
         return val;
     };
@@ -4019,7 +4026,7 @@ function initOtpBoxes() {
         input.addEventListener('input', (e) => {
             e.target.value = e.target.value.replace(/[^0-9]/g, ''); 
             
-            // Add Zenda blue theme if filled
+            // Add blue filled state
             if (e.target.value.length > 0) {
                 e.target.classList.add('filled');
             } else {
@@ -4029,20 +4036,22 @@ function initOtpBoxes() {
             if (e.target.value.length === 1 && i < 5) {
                 container.children[i + 1].focus();
             }
-            
             checkOtpLength(); 
-            // NOTE: Auto-verify line removed completely. User must click.
         });
         
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Backspace') {
-                e.target.classList.remove('filled'); // Remove blue state
-                if (e.target.value === '' && i > 0) {
-                    container.children[i - 1].focus();
-                    container.children[i - 1].value = '';
-                    container.children[i - 1].classList.remove('filled');
+                if (e.target.value === '') {
+                    // Jump back and clear the PREVIOUS box and its blue color
+                    if (i > 0) {
+                        container.children[i - 1].focus();
+                        container.children[i - 1].value = '';
+                        container.children[i - 1].classList.remove('filled'); 
+                    }
                 } else {
-                    e.target.value = ''; 
+                    // Clear CURRENT box and its blue color
+                    e.target.value = '';
+                    e.target.classList.remove('filled'); 
                 }
                 setTimeout(checkOtpLength, 10); 
             }
@@ -4051,27 +4060,22 @@ function initOtpBoxes() {
     }
     setTimeout(() => container.children[0].focus(), 400); 
 }
-
 window.verifyProfileOTP = async function() {
     const container = document.getElementById('otp-inputs-container');
     const input = Array.from(container.children).map(inp => inp.value).join('');
     const verifyBtn = document.getElementById('ppm-verify-btn');
     
-    // --- INVALID CODE HANDLING (Direct Button State) ---
+    // --- INVALID CODE HANDLING ---
     if (input !== window.tempEmailOTP && input.length === 6) { 
         if(verifyBtn) {
-            // Transform button to Red Error State
             verifyBtn.textContent = 'Invalid Code';
-            verifyBtn.style.background = '#DC2626'; // Saturated Red
-            verifyBtn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.25)';
-            verifyBtn.style.opacity = '1';
+            verifyBtn.classList.add('error-state'); // Forces the saturated red CSS
             verifyBtn.disabled = true;
             
-            // Revert back to dull blue after 3 seconds
+            // Revert back exactly after 3 seconds
             setTimeout(() => {
                 verifyBtn.textContent = 'Verify Code';
-                verifyBtn.style.background = '#0066FF'; 
-                verifyBtn.style.boxShadow = 'none';
+                verifyBtn.classList.remove('error-state'); // Removes the red force
                 
                 const currentInput = Array.from(container.children).map(inp => inp.value).join('');
                 verifyBtn.disabled = (currentInput.length < 6);
@@ -4079,7 +4083,7 @@ window.verifyProfileOTP = async function() {
             }, 3000); 
         }
 
-        // Wipe boxes visually for retry
+        // Instantly wipe boxes and remove all blue color for retry
         Array.from(container.children).forEach(inp => {
             inp.value = '';
             inp.classList.remove('filled');
@@ -4091,6 +4095,8 @@ window.verifyProfileOTP = async function() {
     if (input.length < 6) return;
     
     setBtnLoading('ppm-verify-btn', true);
+
+    // --- STEP 3: OTP Verified for Password Change ---
     if (window.profileState.step === 3) {
         const newPwdInput = document.getElementById('ppm-new-pwd');
         const confPwdInput = document.getElementById('ppm-confirm-pwd');
@@ -4128,7 +4134,12 @@ window.verifyProfileOTP = async function() {
         
         setTimeout(() => {
             document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your NEW email address<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.profileState.newEmail}</b>`;
-            Array.from(container.children).forEach(inp => inp.value = '');
+            
+            // Clean slate for the new code
+            Array.from(container.children).forEach(inp => {
+                inp.value = '';
+                inp.classList.remove('filled');
+            });
             
             requestAnimationFrame(() => {
                 otpView.style.opacity = '1';
@@ -4165,7 +4176,6 @@ window.verifyProfileOTP = async function() {
         }
     }
 };
-
 window.handleProfileNext = async function() {
     const btnId = 'ppm-next-btn';
     setBtnLoading(btnId, true);
