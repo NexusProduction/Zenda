@@ -1004,7 +1004,6 @@
     
     .otp-inputs-wrap { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
     .otp-box { width: 48px; height: 48px; border-radius: 10px; background: #F2F2F7; border: 1px solid transparent; text-align: center; font-size: 24px; font-weight: 700; color: #1C1C1E; outline: none; transition: all 0.2s; font-family: 'SF Pro Display', 'Inter', sans-serif; }
-    .otp-box:focus { background: #FFFFFF; border-color: #0066FF; box-shadow: 0 0 0 4px rgba(0, 102, 255, 0.2); }
     .otp-box.anim-in { animation: popIn 0.3s cubic-bezier(0.25, 1, 0.5, 1) backwards; }
 
     @keyframes popIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
@@ -1269,14 +1268,27 @@
             box-sizing: border-box !important;
             justify-content: space-between !important;
         }
-        .otp-box {
-            width: 100% !important; /* Let flex properly distribute them */
-            max-width: 42px !important;
-            height: 48px !important;
-            font-size: 1.4rem !important;
-            flex: 1 1 auto !important;
-            padding: 0 !important;
-        }
+        .otp-box { 
+    width: 48px; 
+    height: 48px; 
+    border-radius: 12px; 
+    background: #F4F7FF; /* Light blue background */
+    border: 1.5px solid #D1E0FF; /* Soft blue border */
+    text-align: center; 
+    font-size: 24px; 
+    font-weight: 800; 
+    color: #0066FF; /* Blue text */
+    outline: none; 
+    transition: all 0.2s ease; 
+    font-family: 'SF Pro Display', 'Plus Jakarta Sans', sans-serif; 
+}
+
+.otp-box:focus { 
+    background: #FFFFFF; 
+    border-color: #0066FF; 
+    box-shadow: 0 4px 12px rgba(0, 102, 255, 0.15); 
+    transform: translateY(-2px); 
+}
 
         /* 5. Fix the massive SVG circles in the password checklist */
         .pwd-req-list {
@@ -4035,38 +4047,39 @@ window.verifyProfileOTP = async function() {
     if(errorMsg) errorMsg.style.opacity = '0';
     if(verifyBtn) verifyBtn.style.background = '#0066FF';
     
+    // --- INVALID CODE HANDLING ---
     if (input !== window.tempEmailOTP && input.length === 6) { 
-        // 1. Show inline error instead of toast
-        if(errorMsg) {
-            errorMsg.textContent = 'Invalid code. Please try again.';
-            errorMsg.style.opacity = '1';
+        if(errorMsg) { 
+            errorMsg.textContent = 'Invalid code. Please try again.'; 
+            errorMsg.style.opacity = '1'; 
         }
         
-        // 2. Temporarily change button to red "Invalid Code"
         if(verifyBtn) {
+            // Change button to Red
             verifyBtn.textContent = 'Invalid Code';
             verifyBtn.style.background = '#DC2626';
-            verifyBtn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.2)';
+            verifyBtn.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.25)';
             verifyBtn.disabled = true;
             
-            // 3. Reset after 4 seconds
+            // Revert back exactly after 3 seconds
             setTimeout(() => {
                 if(errorMsg) errorMsg.style.opacity = '0';
                 verifyBtn.textContent = 'Verify Code';
-                verifyBtn.style.background = '#0066FF';
+                verifyBtn.style.background = '#0066FF'; // Back to blue
                 verifyBtn.style.boxShadow = '0 4px 12px rgba(0, 102, 255, 0.2)';
                 
-                // Keep disabled if they haven't re-typed 6 digits yet
+                // Keep disabled if they haven't re-typed 6 digits
                 const currentInput = Array.from(container.children).map(inp => inp.value).join('');
                 verifyBtn.disabled = (currentInput.length < 6);
-            }, 4000);
+            }, 3000); // 3000ms = 3 seconds
         }
 
-        // 4. Wipe boxes instantly for retry
+        // Wipe boxes instantly for retry
         Array.from(container.children).forEach(inp => inp.value = '');
         container.children[0].focus();
         return; 
     }
+    
     if (input.length < 6) return;
     
     setBtnLoading('ppm-verify-btn', true);
@@ -4079,8 +4092,10 @@ window.verifyProfileOTP = async function() {
         if (confPwdInput) confPwdInput.value = '';
         if (window.validatePasswordStrength) window.validatePasswordStrength();
 
+        document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
         document.getElementById('ppm-view-otp').className = 'ppm-view hidden-left';
         document.getElementById('ppm-view-password').className = 'ppm-view active-view';
+        
         setBtnLoading('ppm-verify-btn', false, 'Verify Code');
         return;
     }
@@ -4112,10 +4127,7 @@ window.verifyProfileOTP = async function() {
             requestAnimationFrame(() => {
                 otpView.style.opacity = '1';
                 setBtnLoading('ppm-verify-btn', false, 'Verify Code');
-                
-                // Re-disable button since boxes were cleared
                 if (verifyBtn) verifyBtn.disabled = true;
-                
                 setTimeout(() => { container.children[0].focus(); }, 100);
             });
         }, 250);
