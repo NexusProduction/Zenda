@@ -1635,19 +1635,14 @@
       @media (max-width: 768px) {
         .add-staff-mobile-center { text-align: center !important; }
       }
-      /* Zenda Theme filled state for OTP boxes */
-.otp-box.filled {
-    background: #EEF2FF !important; 
-    border-color: #0066FF !important;
-    color: #0066FF !important;
-    box-shadow: inset 0 2px 4px rgba(0, 102, 255, 0.05) !important;
-}
-      #ppm-verify-btn.error-state,
+      /* Force the button red, overriding the default disabled blue */
+#ppm-verify-btn.error-state,
 #ppm-verify-btn.error-state:disabled {
-    background: #DC2626 !important; /* Saturated Red */
+    background: #DC2626 !important; 
     color: #FFFFFF !important;
-    opacity: 1 !important; /* Keep it bold, completely remove the dullness */
+    opacity: 1 !important; 
     box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35) !important;
+    pointer-events: none !important;
 }
     </style>
     <div class="modal" style="max-width: 540px;">
@@ -4064,29 +4059,40 @@ window.verifyProfileOTP = async function() {
     const container = document.getElementById('otp-inputs-container');
     const input = Array.from(container.children).map(inp => inp.value).join('');
     const verifyBtn = document.getElementById('ppm-verify-btn');
+    const errorMsg = document.getElementById('otp-error-msg');
+    
+    if(errorMsg) errorMsg.style.opacity = '0';
     
     // --- INVALID CODE HANDLING ---
     if (input !== window.tempEmailOTP && input.length === 6) { 
+        if(errorMsg) { 
+            errorMsg.textContent = 'Invalid code. Please try again.'; 
+            errorMsg.style.opacity = '1'; 
+        }
+        
         if(verifyBtn) {
             verifyBtn.textContent = 'Invalid Code';
-            verifyBtn.classList.add('error-state'); // Forces the saturated red CSS
+            // THIS is the magic line. It triggers the saturated red CSS!
+            verifyBtn.classList.add('error-state'); 
             verifyBtn.disabled = true;
             
             // Revert back exactly after 3 seconds
             setTimeout(() => {
+                if(errorMsg) errorMsg.style.opacity = '0';
                 verifyBtn.textContent = 'Verify Code';
-                verifyBtn.classList.remove('error-state'); // Removes the red force
+                
+                // Remove the red force class to let it be blue again
+                verifyBtn.classList.remove('error-state'); 
                 
                 const currentInput = Array.from(container.children).map(inp => inp.value).join('');
                 verifyBtn.disabled = (currentInput.length < 6);
-                verifyBtn.style.opacity = (currentInput.length < 6) ? '0.5' : '1';
-            }, 3000); 
+            }, 3000);
         }
 
-        // Instantly wipe boxes and remove all blue color for retry
+        // Instantly wipe boxes for retry
         Array.from(container.children).forEach(inp => {
             inp.value = '';
-            inp.classList.remove('filled');
+            inp.classList.remove('filled'); // Clear any residual flags
         });
         container.children[0].focus();
         return; 
