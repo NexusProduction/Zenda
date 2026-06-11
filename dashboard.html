@@ -4337,7 +4337,7 @@ window.saveNewPassword = async function() {
     const newPwd = document.getElementById('ppm-new-pwd').value.trim();
     const confPwd = document.getElementById('ppm-confirm-pwd').value.trim();
     
-    // 1. Verify that all parameters match (8 to 20 chars, complex, match)
+    // 1. Verify that all parameters match
     const isLength = newPwd.length >= 8 && newPwd.length <= 20;
     const isComplex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(newPwd);
     const isMatch = (newPwd === confPwd) && newPwd.length > 0;
@@ -4350,31 +4350,37 @@ window.saveNewPassword = async function() {
     setBtnLoading('ppm-save-pwd-btn', true);
     
     try {
-        // 2. Replace password in Firebase Authentication
         if (auth.currentUser) { 
             const { updatePassword, EmailAuthProvider, reauthenticateWithCredential } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+            const { doc, getDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
             
             try { 
                 await updatePassword(auth.currentUser, newPwd); 
             } catch(authErr) { 
-                // FIREBASE RULE BYPASS: Firebase strictly requires a recent login to change passwords.
-                // Since the user verified via OTP, we silently re-authenticate them in the background 
-                // using their stored password so they don't get the "requires-recent-login" error.
                 if (authErr.message.includes('requires-recent-login')) {
-                    let oldPwd = window.CU.password || window.CU.passwordHint;
+                    
+                    // FIX: Fetch the password directly from Firestore to ensure it is perfectly accurate
+                    const userRef = doc(db, 'users', auth.currentUser.uid);
+                    const userSnap = await getDoc(userRef);
+                    let oldPwd = null;
+                    
+                    if (userSnap.exists()) {
+                        oldPwd = userSnap.data().password || userSnap.data().passwordHint;
+                    }
                     
                     if (!oldPwd) {
-                        window.showToast("Security sync required. Please log out and log back in.", "error");
+                        window.showToast("Cannot verify old session. Please log out and back in.", "error");
                         setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
                         return;
                     }
                     
                     try {
-                        const cred = EmailAuthProvider.credential(window.CU.email, oldPwd);
+                        const cred = EmailAuthProvider.credential(auth.currentUser.email, oldPwd);
                         await reauthenticateWithCredential(auth.currentUser, cred);
                         await updatePassword(auth.currentUser, newPwd); // Retry after silent auth
                     } catch (silentErr) {
-                        window.showToast("Session expired. Please log out and log back in.", "error");
+                        console.error("Silent Auth Failed:", silentErr);
+                        window.showToast("Database out of sync. Please log out and log back in.", "error");
                         setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
                         return;
                     }
@@ -4382,27 +4388,32 @@ window.saveNewPassword = async function() {
                     throw authErr;
                 }
             } 
+            
+            // 2. Replace old password with new one in Firestore Database (Only runs if Auth succeeded)
+            await updateDoc(doc(db, 'users', auth.currentUser.uid), { 
+                password: newPwd, 
+                passwordHint: newPwd 
+            });
+            
+            // Update local session data
+            if (window.CU) {
+                window.CU.password = newPwd;
+                window.CU.passwordHint = newPwd;
+            }
         }
         
-        // 3. Replace old password with new one in Firestore Database
-        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        await updateDoc(doc(db, 'users', window.CU.uid), { 
-            password: newPwd, 
-            passwordHint: newPwd 
-        });
-        
-        // Update local session data
-        window.CU.password = newPwd;
-        window.CU.passwordHint = newPwd;
-        
-        // 4. Trigger Success Screen & Cleanup
+        // 3. Trigger Success Screen & Cleanup
         window.showProfileSuccess();
         document.getElementById('ppm-new-pwd').value = '';
         document.getElementById('ppm-confirm-pwd').value = '';
         
+        // Force close the password modal to prevent UI meshing
+        const pwdModal = document.getElementById('ppm-new-pwd').closest('.modal, .popup, .overlay');
+        if (pwdModal) pwdModal.style.display = 'none';
+        
     } catch(e) {
         console.error("Password Update Error:", e);
-        window.showToast("Failed to update password. Please try again.", "error");
+        window.showToast(e.message || "Failed to update password. Please try again.", "error");
     } finally {
         setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
     }
