@@ -4211,6 +4211,7 @@ window.handleProfileNext = async function() {
 window.initiatePasswordChange = async function(btn) {
     if(btn) {
         btn._origText = btn.innerHTML;
+        // Inject smooth inline spinner directly into the pill
         btn.innerHTML = `<span style="width:14px;height:14px;border:2px solid rgba(0,102,255,0.2);border-top-color:#0066FF;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Sending...`;
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.8';
@@ -4232,43 +4233,25 @@ window.initiatePasswordChange = async function(btn) {
 
     document.getElementById('ppm-otp-msg').innerHTML = `Enter the verification code sent to your email address<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.CU.email}</b>`;
     
-    // THE FIX: This line physicaly draws the 6 OTP input boxes onto the screen!
+    // 1. Visually draw the 6 input boxes
     initOtpBoxes();
     
-    // Strict Modal Class Assignment to Prevent Meshing
-    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
-    document.getElementById('ppm-view-contact').className = 'ppm-view hidden-right';
+    // 2. Strict slide transition
     document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
+    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
     document.getElementById('ppm-view-otp').className = 'ppm-view active-view';
     
+    // 3. Restore button text for next time
     if(btn) {
         btn.innerHTML = btn._origText;
         btn.style.pointerEvents = 'auto';
         btn.style.opacity = '1';
     }
 };
-window.openContactView = function() {
-    document.getElementById('ppm-view-edit').className = 'ppm-view hidden-right';
-    document.getElementById('ppm-view-contact').className = 'ppm-view active-view';
-};
 
 window.closeContactView = function() {
     document.getElementById('ppm-view-contact').className = 'ppm-view hidden-left';
     document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
-};
-
-window.backToEditFromPassword = function() {
-    // Strict Class Reversal
-    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
-    document.getElementById('ppm-view-otp').className = 'ppm-view hidden-right';
-    document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
-    
-    const npwd = document.getElementById('ppm-new-pwd'); if(npwd) npwd.value = '';
-    const cpwd = document.getElementById('ppm-confirm-pwd'); if(cpwd) cpwd.value = '';
-    if(window.validatePasswordStrength) window.validatePasswordStrength();
-    
-    const pwdContainer = document.getElementById('change-pwd-container');
-    if(pwdContainer) pwdContainer.classList.remove('hidden-pop');
 };
 window.cancelOtpView = function() {
     window.tempEmailOTP = '';
