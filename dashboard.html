@@ -4038,7 +4038,6 @@ function initOtpBoxes() {
     const verifyBtn = document.getElementById('ppm-verify-btn');
 
     function setVerifyState(state) {
-        // state: 'disabled' | 'ready'
         if (!verifyBtn) return;
         if (state === 'ready') {
             verifyBtn.style.background   = '#2563EB';
@@ -4049,9 +4048,9 @@ function initOtpBoxes() {
             verifyBtn.disabled           = false;
         } else {
             verifyBtn.style.background   = '#93C5FD';
-            verifyBtn.style.color        = '#FFFFFF'; /* Forced White */
+            verifyBtn.style.color        = '#FFFFFF';
             verifyBtn.style.cursor       = 'not-allowed';
-            verifyBtn.style.opacity      = '1';       /* Solid Opacity */
+            verifyBtn.style.opacity      = '1';
             verifyBtn.style.boxShadow    = 'none';
             verifyBtn.disabled           = true;
         }
@@ -4068,6 +4067,23 @@ function initOtpBoxes() {
         input.inputMode   = 'numeric';
         input.maxLength   = 1;
         input.className   = 'otp-box';
+
+        // Smart Paste Handler
+        input.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+            if (pastedData) {
+                for (let j = 0; j < pastedData.length; j++) {
+                    if (container.children[j]) {
+                        container.children[j].value = pastedData[j];
+                        container.children[j].classList.add('filled');
+                    }
+                }
+                const focusIndex = Math.min(pastedData.length, 5);
+                container.children[focusIndex].focus();
+                checkLength();
+            }
+        });
 
         input.addEventListener('input', (e) => {
             e.target.value = e.target.value.replace(/[^0-9]/g, '');
@@ -4096,7 +4112,6 @@ function initOtpBoxes() {
         container.appendChild(input);
     }
 
-    // Start disabled
     setVerifyState('disabled');
     setTimeout(() => { if (container.children[0]) container.children[0].focus(); }, 350);
 }
@@ -4104,14 +4119,18 @@ window.otpFailedAttempts = 0; // Global tracker for failures
 
 window.verifyProfileOTP = async function() {
     const container = document.getElementById('otp-inputs-container');
-    const input = Array.from(container.children).map(inp => inp.value).join('');
+    
+    // THE FIX: Strictly strip all invisible spaces/characters and force string comparison
+    const input = Array.from(container.children).map(inp => String(inp.value).replace(/[^0-9]/g, '')).join('');
+    const expectedOTP = String(window.tempEmailOTP).trim();
+    
     const verifyBtn = document.getElementById('ppm-verify-btn');
     const errorMsg = document.getElementById('otp-error-msg');
 
     if(errorMsg) errorMsg.style.opacity = '0';
 
     // 1. Check if OTP is wrong
-    if (input !== window.tempEmailOTP && input.length === 6) {
+    if (input !== expectedOTP && input.length === 6) {
         window.otpFailedAttempts = (window.otpFailedAttempts || 0) + 1;
 
         if (window.otpFailedAttempts >= 5) {
@@ -4210,6 +4229,7 @@ window.verifyProfileOTP = async function() {
 
             Array.from(container.children).forEach(inp => {
                 inp.value = '';
+                inp.classList.remove('filled');
             });
 
             requestAnimationFrame(() => {
@@ -4230,7 +4250,7 @@ window.verifyProfileOTP = async function() {
             await updateDoc(doc(db, 'users', window.CU.uid), { email: window.profileState.newEmail });
 
             window.CU.email = window.profileState.newEmail;
-            window.showProfileSuccess("Change Completed!");
+            window.showProfileSuccess("Email Updated!");
 
             const emailInput = document.getElementById('ppm-email');
             if(emailInput) emailInput.value = window.profileState.newEmail;
@@ -4313,6 +4333,8 @@ window.handleProfileNext = async function() {
 };
 window.initiatePasswordChange = async function(btn) {
     if(btn) {
+        // THE FIX: Physically disable the button to stop accidental double-fires
+        btn.disabled = true; 
         btn._origText = btn.innerHTML;
         btn.innerHTML = `<span style="width:14px;height:14px;border:2px solid rgba(0,102,255,0.2);border-top-color:#0066FF;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Sending...`;
         btn.style.pointerEvents = 'none';
@@ -4322,7 +4344,6 @@ window.initiatePasswordChange = async function(btn) {
     window.profileState = { step: 3 }; 
     window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
     
-    // THE FIX: Grab email directly from the input field or Firebase Auth, not the DB object
     const targetEmail = document.getElementById('ppm-email').value || (auth.currentUser ? auth.currentUser.email : '');
     
     try { 
@@ -4338,16 +4359,14 @@ window.initiatePasswordChange = async function(btn) {
 
     document.getElementById('ppm-otp-msg').innerHTML = `Verify your Email Id<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${targetEmail}</b>`;
     
-    // 1. Visually draw the 6 input boxes
     initOtpBoxes();
     
-    // 2. Strict slide transition
     document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
     document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
     document.getElementById('ppm-view-otp').className = 'ppm-view active-view';
     
-    // 3. Restore button text for next time
     if(btn) {
+        btn.disabled = false; // Re-enable the button once transition is done
         btn.innerHTML = btn._origText;
         btn.style.pointerEvents = 'auto';
         btn.style.opacity = '1';
