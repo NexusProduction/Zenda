@@ -4268,7 +4268,11 @@ window.handleProfileNext = async function() {
 
     if (window.currentEditField === 'email') {
         const newEmail = document.getElementById('ppm-email').value.trim();
-        if (newEmail === window.CU.email) { window.cancelProfileEdit(); return; }
+        
+        // THE FIX: Securely fetch the old email to avoid 'undefined'
+        const oldEmail = (auth.currentUser ? auth.currentUser.email : window.CU.email) || 'your current email';
+        
+        if (newEmail === oldEmail) { window.cancelProfileEdit(); return; }
         
         window.profileState = { newEmail: newEmail, step: 1 };
         window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
@@ -4276,15 +4280,15 @@ window.handleProfileNext = async function() {
         try {
             if(typeof emailjs !== 'undefined') {
                 await emailjs.send("service_z74bzhj", "template_1v5a12p", { 
-                    to_email: window.CU.email, 
-                    to_name: window.CU.name, 
+                    to_email: oldEmail, 
+                    to_name: window.CU.name || 'User', 
                     otp_code: window.tempEmailOTP, 
                     company_name: window.CU.companyName || 'Zenda' 
                 }, "JE_ZMndTyx9drKYe-");
             }
         } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
 
-        document.getElementById('ppm-otp-msg').innerHTML = `Verify your Old Email Id<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.CU.email}</b>`;
+        document.getElementById('ppm-otp-msg').innerHTML = `Verify your Old Email Id<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${oldEmail}</b>`;
         initOtpBoxes();
         
         document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
@@ -4296,7 +4300,6 @@ window.handleProfileNext = async function() {
 window.initiatePasswordChange = async function(btn) {
     if(btn) {
         btn._origText = btn.innerHTML;
-        // Inject smooth inline spinner directly into the pill
         btn.innerHTML = `<span style="width:14px;height:14px;border:2px solid rgba(0,102,255,0.2);border-top-color:#0066FF;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Sending...`;
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.8';
@@ -4305,18 +4308,21 @@ window.initiatePasswordChange = async function(btn) {
     window.profileState = { step: 3 }; 
     window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
     
+    // THE FIX: Grab email directly from the input field or Firebase Auth, not the DB object
+    const targetEmail = document.getElementById('ppm-email').value || (auth.currentUser ? auth.currentUser.email : '');
+    
     try { 
         if(typeof emailjs !== 'undefined') { 
             await emailjs.send("service_z74bzhj", "template_1v5a12p", { 
-                to_email: window.CU.email, 
-                to_name: window.CU.name, 
+                to_email: targetEmail, 
+                to_name: window.CU.name || 'User', 
                 otp_code: window.tempEmailOTP, 
                 company_name: window.CU.companyName || 'Zenda' 
             }, "JE_ZMndTyx9drKYe-"); 
         } 
     } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
 
-    document.getElementById('ppm-otp-msg').innerHTML = `Verify your Email Id<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.profileState.newEmail}</b>`;
+    document.getElementById('ppm-otp-msg').innerHTML = `Verify your Email Id<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${targetEmail}</b>`;
     
     // 1. Visually draw the 6 input boxes
     initOtpBoxes();
