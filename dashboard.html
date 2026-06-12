@@ -4506,25 +4506,23 @@ window.saveNewPassword = async function() {
     const showError = (msg) => {
         if (!errEl) return;
         errEl.textContent = msg;
-        errEl.style.height = '18px';      // Expands container
-        errEl.style.marginTop = '12px';   // Adds padding dynamically
+        errEl.style.height = '18px';      
+        errEl.style.marginTop = '12px';   
         errEl.style.opacity = '1';
         
         if (window.pwdErrorTimer) clearTimeout(window.pwdErrorTimer);
         window.pwdErrorTimer = setTimeout(() => {
-            errEl.style.height = '0';     // Collapses container
-            errEl.style.marginTop = '0';  // Removes padding dynamically
+            errEl.style.height = '0';     
+            errEl.style.marginTop = '0';  
             errEl.style.opacity = '0';
             setTimeout(() => { if(errEl.style.opacity === '0') errEl.textContent = ''; }, 300);
-        }, 3000); // Disappears completely after 3 seconds
+        }, 4000); // Increased to 4 seconds so it's easier to read
     };
 
-    if (newPwd.length < 8 || newPwd.length > 20) {
-        showError("Password must be 8 to 20 characters.");
-        return;
-    }
-    if (!/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(newPwd)) {
-        showError("Must contain letters, numbers, and symbols.");
+    // THE FIX: Removed the strict Number/Symbol requirements. 
+    // It now only requires the Firebase default of 6+ characters.
+    if (newPwd.length < 6) {
+        showError("Password must be at least 6 characters long.");
         return;
     }
     if (newPwd !== confPwd) {
@@ -4565,7 +4563,7 @@ window.saveNewPassword = async function() {
                     
                     if (!silentAuthSuccess) {
                         await sendPasswordResetEmail(auth, auth.currentUser.email);
-                        window.showToast("Security sync failed: We sent a secure reset link to your email so you can change it.", "info");
+                        window.showToast("Security sync failed: We sent a secure reset link to your email.", "error");
                         
                         document.getElementById('premium-prof-overlay').classList.remove('open');
                         window.cancelProfileEdit();
@@ -4588,7 +4586,7 @@ window.saveNewPassword = async function() {
             }
         }
         
-        window.showProfileSuccess("Change Completed!");
+        window.showProfileSuccess("Password Updated!");
         
         setTimeout(() => {
             document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
