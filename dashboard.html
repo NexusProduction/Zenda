@@ -3987,9 +3987,16 @@ window.validateProfileInputs = function() {
     btn.disabled = !isValid;
 };
 
-window.showProfileSuccess = function() {
-    // Show the tick overlay (Its solid background will smoothly cover the form!)
+window.showProfileSuccess = function(customText) {
     const overlay = document.getElementById('ppm-success-tick');
+    const textEl = overlay ? overlay.querySelector('.ppm-success-text') : null;
+    
+    // Dynamically update the text based on what was changed
+    if (textEl) {
+        textEl.textContent = customText || "Updated Successfully";
+    }
+    
+    // Show the tick overlay (It will adapt to the exact size of the current box)
     if (overlay) overlay.classList.add('active');
     
     // Update data locally in the background
@@ -4208,7 +4215,7 @@ window.verifyProfileOTP = async function() {
             await updateDoc(doc(db, 'users', window.CU.uid), { email: window.profileState.newEmail });
 
             window.CU.email = window.profileState.newEmail;
-            window.showProfileSuccess();
+            window.showProfileSuccess("Change Completed!");
 
             const emailInput = document.getElementById('ppm-email');
             if(emailInput) emailInput.value = window.profileState.newEmail;
@@ -4234,7 +4241,7 @@ window.handleProfileNext = async function() {
             await updateDoc(doc(db, 'users', window.CU.uid), { avatarData: window.pendingAvatarFile });
             localStorage.setItem('zenda_logo_' + window.CU.uid, window.pendingAvatarFile);
             window.CU.avatarData = window.pendingAvatarFile;
-            window.showProfileSuccess();
+            window.showProfileSuccess("Change Completed!");
         } catch(e) { window.showToast("Failed to save picture", "error"); setBtnLoading(btnId, false, 'Next'); }
         return;
     }
@@ -4250,7 +4257,7 @@ window.handleProfileNext = async function() {
           if(auth.currentUser) await updateProfile(auth.currentUser, { displayName: newName });
           window.CU.name = newName;
           
-          window.showProfileSuccess();
+          window.showProfileSuccess("Change Completed!");
       } catch(e) {
           window.showToast("Failed to save name", "error");
           setBtnLoading(btnId, false, 'Next');
@@ -4507,7 +4514,7 @@ window.saveNewPassword = async function() {
             }
         }
         
-        window.showProfileSuccess();
+        window.showProfileSuccess("Change Completed!");
         
         setTimeout(() => {
             document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
