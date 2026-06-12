@@ -4377,9 +4377,9 @@ window.cancelOtpView = function() {
         verifyBtn.className            = 'ppm-btn';
         verifyBtn.disabled             = true;
         verifyBtn.style.background     = '#93C5FD';
-        verifyBtn.style.color          = '#1E3A8A';
+        verifyBtn.style.color          = '#FFFFFF';
         verifyBtn.style.cursor         = 'not-allowed';
-        verifyBtn.style.opacity        = '0.7';
+        verifyBtn.style.opacity        = '1';
         verifyBtn.style.boxShadow      = 'none';
     }
 
@@ -4388,17 +4388,33 @@ window.cancelOtpView = function() {
     document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
     document.getElementById('ppm-view-edit').className     = 'ppm-view active-view';
     
-    // Restore the correct button text
+    // --- THE FIX: FULLY RESET THE EDIT STATE ---
+    
+    // 1. Clear the active edit field tracker
+    window.currentEditField = null;
+    
+    // 2. Bring all the pencil icons back
+    document.querySelectorAll('.pen-trigger').forEach(p => p.style.display = 'flex');
+    
+    // 3. Reset input fields to their original values, lock them, and remove the blue border
+    ['name', 'email'].forEach(f => {
+        const input = document.getElementById('ppm-' + f);
+        if(input && window.CU) { 
+            input.value = window.CU[f] || ''; 
+            input.disabled = true; 
+        }
+        const fieldEl = document.getElementById('field-' + f);
+        if(fieldEl) fieldEl.classList.remove('editing');
+    });
+
+    // 4. Hide the Save/Cancel buttons since we are no longer editing
+    document.getElementById('ppm-actions').classList.remove('visible');
+
+    // 5. Restore the Save button to its default state just in case
     const nextBtn = document.getElementById('ppm-next-btn');
     if (nextBtn) {
-        nextBtn.textContent = 'Save Changes';
-    }
-
-    // THE FIX: Smartly restore or hide the Save/Cancel actions based on edit state
-    if (window.currentEditField || window.pendingAvatarFile) {
-        document.getElementById('ppm-actions').classList.add('visible');
-    } else {
-        document.getElementById('ppm-actions').classList.remove('visible');
+        setBtnLoading('ppm-next-btn', false, 'Save Changes');
+        nextBtn.disabled = true;
     }
 };
 window.backToEditFromPassword = function() {
