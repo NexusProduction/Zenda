@@ -1620,7 +1620,15 @@
         <div class="ppm-top-bar">
           <h3 class="ppm-title" style="font-size: 1.4rem; font-weight: 800; color: #111827; margin: 0;">Set New Password</h3>
         </div>
-        
+
+        <!-- NEW: Current Password (required for re-authentication) -->
+        <div class="ppm-field">
+          <div class="ppm-input-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </div>
+          <input type="text" id="ppm-current-pwd" class="ppm-input" placeholder="Enter current password" maxlength="20" autocomplete="off" style="padding-right: 16px !important;">
+        </div>
+
         <!-- Changed type="password" to type="text" to make text visible -->
         <div class="ppm-field">
           <div class="ppm-input-icon">
@@ -4423,10 +4431,9 @@ window.cancelOtpView = function() {
     }
 };
 window.backToEditFromPassword = function() {
-    // Clear the password inputs
+    const cpwdField = document.getElementById('ppm-current-pwd'); if(cpwdField) cpwdField.value = ''; 
     const npwd = document.getElementById('ppm-new-pwd'); if(npwd) npwd.value = '';
     const cpwd = document.getElementById('ppm-confirm-pwd'); if(cpwd) cpwd.value = '';
-    
     // Reset the strength meter
     window.validatePasswordStrength();
     const bar = document.getElementById('pwd-meter-bar');
@@ -4479,27 +4486,31 @@ window.validatePasswordStrength = function() {
 };
 
 window.saveNewPassword = async function() {
-    const newPwd = document.getElementById('ppm-new-pwd').value.trim();
+    const currentPwd = document.getElementById('ppm-current-pwd').value.trim();
+    const newPwd  = document.getElementById('ppm-new-pwd').value.trim();
     const confPwd = document.getElementById('ppm-confirm-pwd').value.trim();
-    const errEl = document.getElementById('pwd-error-msg');
-    
-    // Helper function to show and auto-collapse errors
+    const errEl   = document.getElementById('pwd-error-msg');
+
     const showError = (msg) => {
         if (!errEl) return;
         errEl.textContent = msg;
-        errEl.style.height = '18px';      // Expands container
-        errEl.style.marginTop = '12px';   // Adds padding dynamically
+        errEl.style.height = '18px';
+        errEl.style.marginTop = '12px';
         errEl.style.opacity = '1';
-        
+
         if (window.pwdErrorTimer) clearTimeout(window.pwdErrorTimer);
         window.pwdErrorTimer = setTimeout(() => {
-            errEl.style.height = '0';     // Collapses container
-            errEl.style.marginTop = '0';  // Removes padding dynamically
+            errEl.style.height = '0';
+            errEl.style.marginTop = '0';
             errEl.style.opacity = '0';
             setTimeout(() => { if(errEl.style.opacity === '0') errEl.textContent = ''; }, 300);
-        }, 3000); // Disappears completely after 3 seconds
+        }, 3000);
     };
 
+    if (!currentPwd) {
+        showError("Please enter your current password.");
+        return;
+    }
     if (newPwd.length < 8 || newPwd.length > 20) {
         showError("Password must be 8 to 20 characters.");
         return;
@@ -4512,75 +4523,63 @@ window.saveNewPassword = async function() {
         showError("Passwords do not match.");
         return;
     }
-    
+    if (newPwd === currentPwd) {
+        showError("New password must be different from current password.");
+        return;
+    }
+
     setBtnLoading('ppm-save-pwd-btn', true);
-    
+
     try {
-        if (auth.currentUser) { 
-            const { updatePassword, EmailAuthProvider, reauthenticateWithCredential } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-            const { doc, getDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-            
-            try { 
-                await updatePassword(auth.currentUser, newPwd); 
-            } catch(authErr) { 
-                if (authErr.message.includes('requires-recent-login') || authErr.code === 'auth/requires-recent-login') {
-                    const userRef = doc(db, 'users', auth.currentUser.uid);
-                    const userSnap = await getDoc(userRef);
-                    let oldPwd = null;
-                    
-                    if (userSnap.exists()) {
-                        oldPwd = userSnap.data().password || userSnap.data().passwordHint;
-                    }
-                    
-                    let silentAuthSuccess = false;
-                    if (oldPwd) {
-                        try {
-                            const cred = EmailAuthProvider.credential(auth.currentUser.email, oldPwd);
-                            await reauthenticateWithCredential(auth.currentUser, cred);
-                            await updatePassword(auth.currentUser, newPwd);
-                            silentAuthSuccess = true;
-                        } catch (silentErr) {
-                            console.warn("Silent Auth failed because DB password doesn't match actual Auth password.");
-                        }
-                    }
-                    
-                    if (!silentAuthSuccess) {
-                        // Triggers an error toast instead of sending a reset link
-                        throw new Error("Security sync failed. Please log out and log back in to change your password.");
-                    }
-                } else {
-                    throw authErr;
-                }
-            } 
-            
-            await updateDoc(doc(db, 'users', auth.currentUser.uid), { 
-                password: newPwd, 
-                passwordHint: newPwd 
-            });
-            
-            if (window.CU) {
-                window.CU.password = newPwd;
-                window.CU.passwordHint = newPwd;
+        if (!auth.currentUser) throw new Error("No active session. Please log in again.");
+
+        const { updatePassword, EmailAuthProvider, reauthenticateWithCredential } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+
+        // Re-authenticate with the password the user just typed (always fresh, never relies on a stale DB hint)
+        try {
+            const cred = EmailAuthProvider.credential(auth.currentUser.email, currentPwd);
+            await reauthenticateWithCredential(auth.currentUser, cred);
+        } catch (reauthErr) {
+            if (reauthErr.code === 'auth/too-many-requests') {
+                showError("Too many attempts. Please wait and try again.");
+            } else {
+                showError("Current password is incorrect.");
             }
+            setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
+            return;
         }
-        
+
+        // Re-auth succeeded -> update Auth password
+        await updatePassword(auth.currentUser, newPwd);
+
+        // Keep Firestore hint in sync
+        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+            password: newPwd,
+            passwordHint: newPwd
+        });
+
+        if (window.CU) {
+            window.CU.password = newPwd;
+            window.CU.passwordHint = newPwd;
+        }
+
         window.showProfileSuccess("Change Completed!");
-        
+
         setTimeout(() => {
             document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
             document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
+            document.getElementById('ppm-current-pwd').value = '';
             document.getElementById('ppm-new-pwd').value = '';
             document.getElementById('ppm-confirm-pwd').value = '';
-            
-            // Reset the meter bar for the next time it's opened
+
             const bar = document.getElementById('pwd-meter-bar');
             if(bar) { bar.style.width = '0%'; bar.style.background = '#EF4444'; }
-            
         }, 500);
-        
+
     } catch(e) {
         console.error("Password Update Error:", e);
-        window.showToast(e.message || "Failed to update password. Please try again.", "error");
+        showError(e.message || "Failed to update password. Please try again.");
     } finally {
         setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
     }
