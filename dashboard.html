@@ -4517,7 +4517,7 @@ window.saveNewPassword = async function() {
     
     try {
         if (auth.currentUser) { 
-            const { updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+            const { updatePassword, EmailAuthProvider, reauthenticateWithCredential } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
             const { doc, getDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
             
             try { 
@@ -4545,21 +4545,8 @@ window.saveNewPassword = async function() {
                     }
                     
                     if (!silentAuthSuccess) {
-                        await sendPasswordResetEmail(auth, auth.currentUser.email);
-                        
-                        // FIX: Use showProfileSuccess to trigger the tick animation gracefully instead of abruptly closing the modal.
-                        window.showProfileSuccess("Reset link sent to email!");
-                        
-                        setTimeout(() => {
-                            document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
-                            document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
-                            document.getElementById('ppm-new-pwd').value = '';
-                            document.getElementById('ppm-confirm-pwd').value = '';
-                            
-                            const bar = document.getElementById('pwd-meter-bar');
-                            if(bar) { bar.style.width = '0%'; bar.style.background = '#EF4444'; }
-                        }, 500);
-                        return;
+                        // Triggers an error toast instead of sending a reset link
+                        throw new Error("Security sync failed. Please log out and log back in to change your password.");
                     }
                 } else {
                     throw authErr;
