@@ -5145,7 +5145,7 @@ function listenForAccountDeletion() {
   // Listen to the current user's document in Firestore
   const userDocRef = doc(db, 'users', window.CU.uid);
   
-  onSnapshot(userDocRef, async (docSnap) => {
+  window.deletionUnsub = onSnapshot(userDocRef, async (docSnap) => {
     // If the document does not exist, the account was deleted
     if (!docSnap.exists()) {
       // Find the owner's name from the allStaff array if available
@@ -5159,8 +5159,10 @@ function listenForAccountDeletion() {
 
       // Show the overlay
       const overlay = document.getElementById('deleted-account-overlay');
-      document.getElementById('deleted-owner-name').textContent = ownerName;
-      overlay.style.display = 'flex';
+      if (overlay) {
+          document.getElementById('deleted-owner-name').textContent = ownerName;
+          overlay.style.display = 'flex';
+      }
 
       // Start the 10-second countdown
       let secondsLeft = 10;
@@ -5168,7 +5170,7 @@ function listenForAccountDeletion() {
       
       const timer = setInterval(async () => {
         secondsLeft--;
-        countdownSpan.textContent = secondsLeft;
+        if (countdownSpan) countdownSpan.textContent = secondsLeft;
         
         if (secondsLeft <= 0) {
           clearInterval(timer);
@@ -5185,8 +5187,92 @@ function listenForAccountDeletion() {
           }
         }
       }, 1000);
+    } else {
+      // === REAL-TIME MOBILE SYNC FIX ===
+      // Instantly updates the phone UI if email/name changes in DB
+      const realData = docSnap.data();
+      if (realData) {
+          window.CU = { ...window.CU, ...realData };
+          
+          // Silently update profile modal inputs to reflect live data
+          const nameInput = document.getElementById('ppm-name');
+          if (nameInput && nameInput.disabled) nameInput.value = window.CU.name || '';
+          
+          const emailInput = document.getElementById('ppm-email');
+          if (emailInput && emailInput.disabled) emailInput.value = window.CU.email || '';
+          
+          // Update Greeting
+          const fn = (window.CU.name || 'User').split(' ')[0];
+          const greetName = document.querySelector('.greeting-name');
+          if (greetName) greetName.textContent = fn;
+          
+          // Update Sidebar & Bottom Nav Avatars
+          const col = window.avatarColor(window.CU.name), ini = window.getInitials(window.CU.name);
+          const src = window.CU.avatarData || localStorage.getItem('zenda_logo_' + window.CU.uid) || null;
+          if (typeof window.setAv === 'function') {
+              window.setAv('topbar-avatar', ini, col, 38, src); 
+              window.setAv('bn-avatar', ini, col, 28, src);
+          }
+          if (typeof window.renderSidebarCard === 'function') window.renderSidebarCard();
+      }
     }
   });
+}
+
+async function init() {
+  console.log("STEP 1 INIT START");
+  try {
+      console.log("STEP 2 BEFORE AUTH");
+      await requireAuth('login.html');
+      
+      console.log("STEP 3 AFTER AUTH");
+      let cu = await getCurrentUser();
+      
+      // === FORCED CACHE OVERRIDE FOR MOBILE BUG ===
+      // If the phone cached an old email/name, we pull directly 
+      // from the live Firestore database using the true Auth UID.
+      if (auth.currentUser) {
+          try {
+              const liveDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+              if (liveDoc.exists()) {
+                  cu = { ...cu, ...liveDoc.data(), uid: auth.currentUser.uid };
+                  // Flush the corrupt cache
+                  localStorage.setItem('userCache', JSON.stringify(cu));
+                  localStorage.setItem('currentUser', JSON.stringify(cu));
+              }
+          } catch (e) {
+              console.warn("Live fetch fallback failed:", e);
+          }
+      }
+      // ============================================
+
+      console.log("STEP 4 USER =", cu);
+      window.CU = cu;
+      
+      if (!cu) {
+          console.error("STEP 5 USER NULL - FORCING SAFE LOGOUT");
+          // Safely breaks the deadlock if your database document is missing
+          if (window.deletionUnsub) window.deletionUnsub();
+          const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+          await signOut(getAuth());
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.replace('login.html');
+          return;
+      }
+      
+      console.log("STEP 6 USER OK");
+
+      setupUI();
+      subscribeAll();
+      listenForAccountDeletion();
+      window.showView('home');
+
+  } catch(err) {
+      console.error("INIT CRASH", err);
+      // Fallback: Clear cache if a corrupted state triggers a fatal UI crash
+      localStorage.clear();
+  }
 }
 window.triggerDeletionOverlay = function() {
     const overlay = document.createElement('div');
