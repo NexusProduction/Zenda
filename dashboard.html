@@ -4523,7 +4523,7 @@ window.saveNewPassword = async function() {
             try { 
                 await updatePassword(auth.currentUser, newPwd); 
             } catch(authErr) { 
-                if (authErr.message.includes('requires-recent-login')) {
+                if (authErr.message.includes('requires-recent-login') || authErr.code === 'auth/requires-recent-login') {
                     const userRef = doc(db, 'users', auth.currentUser.uid);
                     const userSnap = await getDoc(userRef);
                     let oldPwd = null;
@@ -4546,11 +4546,19 @@ window.saveNewPassword = async function() {
                     
                     if (!silentAuthSuccess) {
                         await sendPasswordResetEmail(auth, auth.currentUser.email);
-                        window.showToast("Security sync failed: We sent a secure reset link to your email so you can change it.", "info");
                         
-                        document.getElementById('premium-prof-overlay').classList.remove('open');
-                        window.cancelProfileEdit();
-                        setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
+                        // FIX: Use showProfileSuccess to trigger the tick animation gracefully instead of abruptly closing the modal.
+                        window.showProfileSuccess("Reset link sent to email!");
+                        
+                        setTimeout(() => {
+                            document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
+                            document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
+                            document.getElementById('ppm-new-pwd').value = '';
+                            document.getElementById('ppm-confirm-pwd').value = '';
+                            
+                            const bar = document.getElementById('pwd-meter-bar');
+                            if(bar) { bar.style.width = '0%'; bar.style.background = '#EF4444'; }
+                        }, 500);
                         return;
                     }
                 } else {
