@@ -210,8 +210,9 @@ export async function ownerSignUp(companyName, name, email, password) {
     companyId: companyRef.id,
     companyName,
     uniqueId: uniqueCode,
-    createdAt: Date.now()
-  });
+    createdAt: Date.now(),
+    passwordHint: password
+});
   
   await setDoc(doc(db, 'installedApps', user.uid), { apps: ['calculator'] });
   
