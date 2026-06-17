@@ -316,23 +316,6 @@ a { text-decoration: none; color: inherit; }
 .err-msg { font-size: 13px; color: var(--error); font-weight: 500; min-height: 14px; display: none; margin-top: -4px;}
 .err-msg.show { display: block; }
 
-/* Password */
-.pwd-wrap { position: relative; }
-.pwd-wrap .inp { padding-right: 44px; }
-.eye-btn {
-  position: absolute; right: 12px; top: 50%;
-  transform: translateY(-50%);
-  background: none; border: none; cursor: pointer;
-  color: var(--text-tertiary); padding: 4px;
-  display: flex; align-items: center;
-  transition: color .2s;
-}
-.eye-btn:hover { color: var(--text-primary); }
-
-/* Strength bar */
-.str-track { height: 3px; border-radius: 3px; background: var(--border-light); margin-top: 4px; overflow: hidden; }
-.str-fill   { height: 100%; border-radius: 3px; width: 0; transition: all .4s cubic-bezier(.34,1.56,.64,1); }
-
 /* ── BUTTONS ───────────────────────────────────────────────── */
 .btn-primary {
   width: 100%; 
@@ -756,41 +739,6 @@ a { text-decoration: none; color: inherit; }
           <div class="err-msg" id="e-f-email"></div>
         </div>
 
-        <div class="grid2">
-          <div class="field">
-            <label class="lbl" for="f-pwd">Password</label>
-            <div class="pwd-wrap">
-              <input class="inp" id="f-pwd" type="password" autocomplete="new-password"
-                     placeholder="Min 6 chars"
-                     oninput="clrE('f-pwd');updStr(this.value)">
-              <button class="eye-btn" onclick="toggleEye('f-pwd',this)" type="button">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-            <div class="str-track"><div class="str-fill" id="str-bar"></div></div>
-            <div class="err-msg" id="e-f-pwd"></div>
-          </div>
-          <div class="field">
-            <label class="lbl" for="f-pwd2">Confirm Password</label>
-            <div class="pwd-wrap">
-              <input class="inp" id="f-pwd2" type="password" autocomplete="new-password"
-                     placeholder="Re-enter" oninput="clrE('f-pwd2')">
-              <button class="eye-btn" onclick="toggleEye('f-pwd2',this)" type="button">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-            <div class="err-msg" id="e-f-pwd2"></div>
-          </div>
-        </div>
-
         <button class="btn-primary" id="btn1" onclick="handleStep1()">
           Send Verification Code
         </button>
@@ -944,29 +892,6 @@ const clearAll = () => {
   document.querySelectorAll('.inp.err').forEach(x=>x.classList.remove('err'));
   document.querySelectorAll('.err-msg.show').forEach(x=>{x.textContent='';x.classList.remove('show');});
 };
-window.toggleEye = (id, btn) => {
-  const inp = document.getElementById(id);
-  if (!inp) return;
-  const show = inp.type==='password';
-  inp.type = show ? 'text' : 'password';
-  btn.innerHTML = show
-    ? '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
-    : '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-};
-window.updStr = (pwd) => {
-  const bar = document.getElementById('str-bar');
-  if (!bar) return;
-  if (!pwd) { bar.style.width='0'; return; }
-  let s = 0;
-  if (pwd.length>=6) s++;
-  if (pwd.length>=10) s++;
-  if (/[A-Z]/.test(pwd)) s++;
-  if (/\d/.test(pwd)) s++;
-  if (/[^A-Za-z0-9]/.test(pwd)) s++;
-  const ws=['0%','20%','40%','60%','80%','100%'];
-  const cs=['','#EF4444','#F59E0B','#3B82F6','#10B981','#059669'];
-  bar.style.width=ws[s]; bar.style.background=cs[s];
-};
 window.checkNameLength = (input) => {
   // Clear any existing errors first when they type
   clrE('f-name');
@@ -1002,17 +927,12 @@ window.handleStep1 = async () => {
   const comp  = document.getElementById('f-comp').value.trim();
   const name  = document.getElementById('f-name').value.trim();
   const email = document.getElementById('f-email').value.trim();
-  const pwd   = document.getElementById('f-pwd').value;
-  const pwd2  = document.getElementById('f-pwd2').value;
   let ok = true;
   if (!comp)              { showE('f-comp','Company name required.'); ok=false; }
   if (!name)              { showE('f-name','Full name required.'); ok=false; }
   else if (name.length < 6 || name.length > 12) { showE('f-name','Name must be 6-12 characters.'); ok=false; }
   if (!email)             { showE('f-email','Email required.'); ok=false; }
   else if (!isValidEmail(email)) { showE('f-email','Invalid email.'); ok=false; }
-  if (!pwd)               { showE('f-pwd','Password required.'); ok=false; }
-  else if (pwd.length<6)  { showE('f-pwd','Minimum 6 characters.'); ok=false; }
-  if (pwd !== pwd2)       { showE('f-pwd2','Passwords do not match.'); ok=false; }
   if (!ok) return;
 
   const btn = document.getElementById('btn1');
@@ -1049,8 +969,7 @@ window.handleVerify = async () => {
     }
     const comp  = document.getElementById('f-comp').value.trim();
     const name  = document.getElementById('f-name').value.trim();
-    const pwd   = document.getElementById('f-pwd').value;
-    const data  = await ownerSignUp(comp, name, email, pwd);
+    const data  = await ownerSignUp(comp, name, email);
     createdCode = data.uniqueCode;
     btn.classList.add('success'); btn.innerHTML = 'Verified ✓';
     setTimeout(() => {
