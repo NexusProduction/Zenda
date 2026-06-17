@@ -11,7 +11,10 @@ import {
   setDoc, 
   getDoc,
   collection,
-  addDoc
+  addDoc,
+  query,
+  where,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 export function requireAuth(redirectUrl = 'login.html') {
@@ -163,34 +166,70 @@ export async function getCurrentUser() {
   });
 }
 
-// Log a user in and trigger the security notification
-export async function login(email, password) {
+// ── PASSWORDLESS HELPERS ─────────────────────────────────────────
+// Firebase's client SDK still requires *some* credential under the hood to
+// create/sign-in an Auth user. The user never sees this — it's generated
+// randomly at signup and stored (same field that already held the real
+// password before: `passwordHint`), then used silently after OTP success.
+function generateAuthKey(length = 24) {
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  const bytes = new Uint32Array(length);
+  crypto.getRandomValues(bytes);
+  let key = '';
+  for (let i = 0; i < length; i++) {
+    key += charset[bytes[i] % charset.length];
+  }
+  return key;
+}
+
+// Look up a user document by email — used to confirm an account exists
+// before sending a login OTP, and to fetch their name for the email template.
+export async function findUserByEmail(email) {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    // SECURITY NOTIFICATION ARCHITECTURE: Write the login alert
-    try {
-        await addDoc(collection(db, 'users', user.uid, 'notifications'), {
-            type: 'security_login',
-            message: 'Your account was accessed from a new device.',
-            createdAt: Date.now(),
-            read: false,
-            status: 'unread'
-        });
-    } catch(err) {
-        console.warn("Could not write security alert:", err);
-    }
-    
-    return user;
+    const q = query(collection(db, 'users'), where('email', '==', email.trim()));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { uid: d.id, ...d.data() };
   } catch (error) {
+    console.error('findUserByEmail failed:', error);
     throw error;
   }
 }
 
-// Sign up a new owner/user
-export async function ownerSignUp(companyName, name, email, password) {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+// Call this ONLY after verifyUserOTP() has returned success.
+// Silently signs the user in using their internal auth key and writes the
+// "new device" security notification (same behaviour the old login() had).
+export async function completeOTPLogin(email) {
+  const userRecord = await findUserByEmail(email);
+  if (!userRecord) throw new Error('No account found with this email.');
+
+  const authKey = userRecord.passwordHint;
+  if (!authKey) throw new Error('This account is missing its login credential. Please contact support.');
+
+  const userCredential = await signInWithEmailAndPassword(auth, email, authKey);
+  const user = userCredential.user;
+
+  try {
+    await addDoc(collection(db, 'users', user.uid, 'notifications'), {
+      type: 'security_login',
+      message: 'Your account was accessed from a new device.',
+      createdAt: Date.now(),
+      read: false,
+      status: 'unread'
+    });
+  } catch (err) {
+    console.warn("Could not write security alert:", err);
+  }
+
+  return user;
+}
+
+// Sign up a new owner/user — passwordless. An internal credential is
+// generated automatically; the user only ever supplies their email.
+export async function ownerSignUp(companyName, name, email) {
+  const authKey = generateAuthKey();
+  const userCredential = await createUserWithEmailAndPassword(auth, email, authKey);
   const user = userCredential.user;
   await updateProfile(user, { displayName: name });
   
@@ -211,7 +250,7 @@ export async function ownerSignUp(companyName, name, email, password) {
     companyName,
     uniqueId: uniqueCode,
     createdAt: Date.now(),
-    passwordHint: password
+    passwordHint: authKey
 });
   
   await setDoc(doc(db, 'installedApps', user.uid), { apps: ['calculator'] });
