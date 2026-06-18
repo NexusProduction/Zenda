@@ -14,18 +14,67 @@ export function drawCompanyCard(canvas, { companyName, ownerName, email, uniqueC
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height, theme = CARD_THEMES.company;
   ctx.clearRect(0, 0, W, H);
+
   const grad = ctx.createLinearGradient(0, 0, W, H);
   grad.addColorStop(0, theme.gradStart); grad.addColorStop(0.5, theme.gradMid); grad.addColorStop(1, theme.gradEnd);
   ctx.fillStyle = grad; roundRect(ctx, 0, 0, W, H, 20); ctx.fill();
 
-  ctx.font = 'bold 14px "Outfit", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText('⚡ ZENDA', 24, 32);
-  ctx.font = 'bold 11px "DM Mono", monospace'; ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.textAlign = 'right'; ctx.fillText('COMPANY CARD', W - 24, 32); ctx.textAlign = 'left';
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(24, 44); ctx.lineTo(W - 24, 44); ctx.stroke();
-  ctx.font = 'bold 22px "Outfit", sans-serif'; ctx.fillStyle = '#ffffff'; ctx.fillText(truncate(companyName, 22), 24, 80);
-  ctx.font = '500 13px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillText(ownerName, 24, 100);
-  ctx.font = '400 11px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillText(email, 24, 120);
-  ctx.font = 'bold 13px "DM Mono", monospace'; ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText(formatCode(uniqueCode), 24, H - 24);
-  ctx.font = 'bold 11px "Outfit", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.textAlign = 'right'; ctx.fillText('zenda.app', W - 24, H - 24); ctx.textAlign = 'left';
+  // Subtle background shape
+  ctx.save();
+  ctx.globalAlpha = 0.05; ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(W - 30, -30, 110, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // Top row: brand + badge
+  ctx.font = 'bold 16px "Outfit", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.fillText('⚡ ZENDA', 24, 34);
+
+  const badgeLabel = 'COMPANY';
+  ctx.font = 'bold 13px "Outfit", sans-serif';
+  const badgeWidth = ctx.measureText(badgeLabel).width + 24;
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  roundRect(ctx, W - 24 - badgeWidth, 18, badgeWidth, 24, 6);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.textAlign = 'center';
+  ctx.fillText(badgeLabel, W - 24 - (badgeWidth / 2), 34);
+  ctx.textAlign = 'left';
+
+  // Divider
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(24, 52); ctx.lineTo(W - 24, 52); ctx.stroke();
+
+  // Big company name + owner line
+  ctx.font = 'bold 32px "Outfit", sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(truncate(companyName, 20), 24, 92);
+
+  ctx.font = '500 13px "DM Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fillText(`${ownerName} • Owner`, 24, 112);
+
+  // Credentials box — fills the middle instead of leaving it empty
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  roundRect(ctx, 24, 134, W - 48, 80, 12);
+  ctx.fill();
+
+  ctx.font = '500 13px "DM Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('Email:', 40, 160);
+  ctx.fillText('Code:', 40, 192);
+
+  ctx.font = 'bold 15px "DM Mono", monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(email, 95, 160);
+
+  ctx.fillStyle = '#FCD34D';
+  ctx.fillText(formatCode(uniqueCode), 95, 192);
+
+  // Bottom row
+  ctx.font = 'bold 11px "Outfit", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.textAlign = 'right'; ctx.fillText('zenda.app', W - 24, H - 24); ctx.textAlign = 'left';
 }
 
 // ---- REDESIGNED STAFF / MANAGER CARD ----
@@ -113,15 +162,20 @@ export function downloadCard(canvas, filename = 'zenda-card.png') {
   const link = document.createElement('a'); link.download = filename; link.href = canvas.toDataURL('image/png', 1.0); link.click();
 }
 export function shareCardWhatsApp(canvas, fileName = 'Zenda ID Card') {
-  canvas.toBlob(blob => {
-    if (navigator.share) {
-      const file = new File([blob], fileName + '.png', { type: 'image/png' });
-      navigator.share({ title: 'Zenda ID Card', text: 'Here is my Zenda ID Card', files: [file] }).catch(console.error);
-    } else {
-      downloadCard(canvas, fileName + '.png');
-      const text = encodeURIComponent('Here is my Zenda ID Card! Download and view. 📇');
-      window.open(`https://wa.me/?text=${text}`, '_blank');
-    }
+  return new Promise((resolve) => {
+    canvas.toBlob(blob => {
+      if (navigator.share) {
+        const file = new File([blob], fileName + '.png', { type: 'image/png' });
+        navigator.share({ title: 'Zenda ID Card', text: 'Here is my Zenda ID Card', files: [file] })
+          .catch(console.error)
+          .finally(resolve);
+      } else {
+        downloadCard(canvas, fileName + '.png');
+        const text = encodeURIComponent('Here is my Zenda ID Card! Download and view. 📇');
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+        resolve();
+      }
+    });
   });
 }
 export function renderCardToElement(containerId, type, data) {
