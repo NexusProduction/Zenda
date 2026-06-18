@@ -133,12 +133,18 @@ a { text-decoration: none; color: inherit; }
   24%, 62%  { opacity: 1; transform: translateY(0) scale(1); }
   65%, 100% { opacity: 0; transform: translateY(-8px) scale(1.02); }
 }
+/* REPLACE EXISTING ANIM-FACE CSS WITH THIS */
+.anim-face-sad, .anim-face-happy {
+  transition: opacity 0.4s var(--spring);
+}
 
-.anim-face-sad { animation: anim-face-sad 12s linear infinite; }
-@keyframes anim-face-sad { 0% {opacity:1;} 21.9% {opacity:1;} 22% {opacity:0;} 71.9% {opacity:0;} 72% {opacity:1;} 100% {opacity:1;} }
+/* Default state: Sad/Neutral */
+.anim-face-sad { opacity: 1; }
+.anim-face-happy { opacity: 0; }
 
-.anim-face-happy { animation: anim-face-happy 12s linear infinite; }
-@keyframes anim-face-happy { 0% {opacity:0;} 21.9% {opacity:0;} 22% {opacity:1;} 71.9% {opacity:1;} 72% {opacity:0;} 100% {opacity:0;} }
+/* Active state: Happy (Triggered via JS) */
+.is-typing .anim-face-sad { opacity: 0; }
+.is-typing .anim-face-happy { opacity: 1; }
 
 .anim-body { transform-origin: 250px 500px; animation: anim-body 12s ease-in-out infinite; }
 @keyframes anim-body {
@@ -328,6 +334,28 @@ a { text-decoration: none; color: inherit; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 900px) {
+   /* ADD TO MOBILE MEDIA QUERY */
+  
+  /* Boost font size for standard iOS/Android legibility */
+  .inp { 
+    font-size: 17px; 
+    padding: 16px; 
+  }
+  
+  /* Ensure minimum 44px touch target area for "fat fingers" */
+  .btn-link { 
+    min-height: 44px; 
+    min-width: 44px; 
+    padding: 0 12px; 
+    display: inline-flex; 
+    align-items: center; 
+    margin-left: -12px; /* Offset padding to maintain left-alignment */
+  }
+
+  /* Make the overlapping form panel feel like a native bottom-sheet */
+  .form-panel { 
+    padding-top: 40px; 
+  }
   /* 1. Enable Full Native Mobile Scrolling */
   body { padding: 0; overflow-y: auto; display: block; height: auto; background: var(--bg-surface); }
   
@@ -365,6 +393,37 @@ a { text-decoration: none; color: inherit; }
   /* 5. Mobile Optimized OTP Boxes */
   .otp-inputs-wrap { gap: 6px; justify-content: center; }
   .otp-box { width: 44px; height: 50px; font-size: 20px; border-radius: 10px; }
+}
+   /* ADD TO THE BOTTOM OF YOUR CSS */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 4-6% perceived lightness gaps between layers */
+    --bg-page: #0B0F19;         /* Layer 1: Base */
+    --bg-surface: #111827;      /* Layer 2: Form Panel */
+    --bg-alt: #1F2937;          /* Layer 3: Inputs */
+    
+    --border-light: #374151;
+    --border-mid: #4B5563;
+    
+    --text-primary: #F9FAFB;
+    --text-secondary: #D1D5DB;
+    --text-tertiary: #9CA3AF;
+  }
+  
+  /* Deepen the visual panel gradient for dark mode */
+  .visual-panel {
+    background: linear-gradient(160deg, #1E293B 0%, #0F172A 100%);
+  }
+  
+  /* Inverse input hover states */
+  .inp:hover:not(:focus), .inp:focus { 
+    background: var(--bg-surface); 
+  }
+  
+  /* Fix code box visibility */
+  .code-box { 
+    background: var(--bg-alt); 
+  }
 }
 </style>
 </head>
@@ -676,7 +735,18 @@ const showE = (id, msg) => {
   const e = document.getElementById('e-'+id);
   if (e) { e.textContent=msg; e.classList.add('show'); }
 };
-
+// ADD THIS EVENT LISTENER TO TOGGLE THE HAPPY FACE
+document.querySelectorAll('.inp').forEach(input => {
+  input.addEventListener('input', (e) => {
+    const svgCanvas = document.getElementById('scene-svg');
+    // If the user types a valid string and there's no error, make the character smile
+    if (e.target.value.trim().length > 1 && !e.target.classList.contains('err')) {
+      svgCanvas.classList.add('is-typing');
+    } else {
+      svgCanvas.classList.remove('is-typing');
+    }
+  });
+});
 window.checkNameLength = (input) => {
   clrE('f-name');
   const btn = document.getElementById('main-btn');
@@ -724,29 +794,36 @@ async function processSendOTP() {
   const btn = document.getElementById('main-btn');
   btnLoad(btn, true);
   
+  // REPLACE THE TRY/CATCH IN processSendOTP() WITH THIS:
   try {
-    await sendOTP(email, name, comp);
-    
-    // UI Transitions
+    // 1. OPTIMISTIC UI: Assume success and transition immediately
     document.getElementById('f-comp').disabled = true;
     document.getElementById('f-name').disabled = true;
     document.getElementById('f-email').disabled = true;
     document.getElementById('display-email').textContent = email;
     
-    // Slide down OTP Area
     const otpContainer = document.getElementById('otp-slide-container');
     otpContainer.classList.add('show');
     setupBoxes();
     startTimer();
     
-    // Change Button State
     currentState = 'verify';
     btnLoad(btn, false, 'Verify & Create Workspace');
+
+    // 2. SERVER REQUEST: Now hit the server in the background
+    await sendOTP(email, name, comp);
     toast('Verification code sent.', 'toast-ok');
 
   } catch(err) {
-    toast('Error: ' + err.message, 'toast-err');
+    // 3. ROLLBACK: Only revert the UI if the background request actually fails
+    document.getElementById('f-comp').disabled = false;
+    document.getElementById('f-name').disabled = false;
+    document.getElementById('f-email').disabled = false;
+    document.getElementById('otp-slide-container').classList.remove('show');
+    
+    currentState = 'send';
     btnLoad(btn, false, 'Send Verification Code');
+    toast('Error: ' + err.message, 'toast-err');
   }
 }
 
