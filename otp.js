@@ -2,9 +2,15 @@
 //  ZENDA — OTP System
 // =============================================
 
-import { db, EMAILJS_CONFIG, OTP_EXPIRY_MINUTES } from './firebase-config.js';
-import { doc, setDoc, getDoc, deleteDoc } from
-  "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { db, OTP_EXPIRY_MINUTES } from './firebase-config.js';
+import { doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// 1. HARDCODED EMAILJS CREDENTIALS
+const EMAILJS_CONFIG = {
+  serviceId: 'service_z74bzhj',
+  templateId: 'template_1v5a12p',
+  publicKey: 'JE_ZMndTyx9drKYe-'
+};
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -57,9 +63,8 @@ function isEmailJSConfigured() {
   return (
     typeof emailjs !== 'undefined' &&
     EMAILJS_CONFIG.publicKey &&
-    EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY' &&
-    EMAILJS_CONFIG.serviceId !== 'YOUR_SERVICE_ID' &&
-    EMAILJS_CONFIG.templateId !== 'YOUR_TEMPLATE_ID'
+    EMAILJS_CONFIG.serviceId &&
+    EMAILJS_CONFIG.templateId
   );
 }
 
@@ -69,16 +74,23 @@ async function sendOTPEmail(email, otp, userName = '', companyName = 'Zenda') {
     showOTPOnScreen(otp, email);
     return true;
   }
+  
   try {
     await emailjs.send(
       EMAILJS_CONFIG.serviceId,
       EMAILJS_CONFIG.templateId,
-      { to_email: email, otp_code: otp, user_name: userName || email.split('@')[0], company_name: companyName },
+      { 
+        to_email: email, 
+        otp_code: otp, 
+        user_name: userName || email.split('@')[0], 
+        company_name: companyName 
+      },
       EMAILJS_CONFIG.publicKey
     );
+    console.log('[ZENDA] Email sent successfully via EmailJS!');
     return true;
   } catch (err) {
-    console.warn('[ZENDA] EmailJS failed, showing OTP on screen:', err);
+    console.error('[ZENDA] EmailJS failed, showing OTP on screen:', err);
     showOTPOnScreen(otp, email);
     return true;
   }
@@ -89,13 +101,17 @@ async function verifyOTP(email, enteredOTP) {
   const docRef = doc(db, 'otps', key);
   const snap = await getDoc(docRef);
   if (!snap.exists()) return { success: false, message: 'OTP not found. Please request a new one.' };
+  
   const data = snap.data();
   if (data.used) return { success: false, message: 'OTP already used. Please request a new one.' };
+  
   if (new Date() > new Date(data.expiresAt)) {
     await deleteDoc(docRef);
     return { success: false, message: 'OTP expired. Please request a new one.' };
   }
+  
   if (data.otp !== enteredOTP.trim()) return { success: false, message: 'Incorrect OTP. Please try again.' };
+  
   await setDoc(docRef, { ...data, used: true });
   return { success: true };
 }
