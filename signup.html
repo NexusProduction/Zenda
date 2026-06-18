@@ -663,19 +663,16 @@ a { text-decoration: none; color: inherit; }
         <div class="field">
           <label class="lbl" for="f-comp">Company Name</label>
           <input class="inp" id="f-comp" type="text" placeholder="Acme Corp" oninput="clrE('f-comp')">
-          <div class="err-msg" id="e-f-comp"></div>
         </div>
         <div class="field">
           <label class="lbl" id="lbl-f-name" for="f-name">Your Full Name</label>
           <input class="inp" id="f-name" type="text" placeholder="John Doe" oninput="checkNameLength(this)">
-          <div class="err-msg" id="e-f-name"></div>
         </div>
       </div>
       
       <div class="field full">
         <label class="lbl" for="f-email">Work Email</label>
         <input class="inp" id="f-email" type="email" autocomplete="email" placeholder="you@company.com" oninput="clrE('f-email')">
-        <div class="err-msg" id="e-f-email"></div>
       </div>
 
       <div id="otp-slide-container" class="otp-slide-container">
@@ -761,27 +758,13 @@ if (EMAILJS_CONFIG?.publicKey && EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBL
 
 window.clrE = (id) => {
   document.getElementById(id)?.classList.remove('err');
-  const e = document.getElementById('e-'+id);
-  if (e) { e.textContent=''; e.classList.remove('show'); }
 };
 
-const showE = (id, msg) => {
+const showE = (id) => {
   document.getElementById(id)?.classList.add('err');
-  const e = document.getElementById('e-'+id);
-  if (e) { e.textContent=msg; e.classList.add('show'); }
 };
-// ADD THIS EVENT LISTENER TO TOGGLE THE HAPPY FACE
-document.querySelectorAll('.inp').forEach(input => {
-  input.addEventListener('input', (e) => {
-    const svgCanvas = document.getElementById('scene-svg');
-    // If the user types a valid string and there's no error, make the character smile
-    if (e.target.value.trim().length > 1 && !e.target.classList.contains('err')) {
-      svgCanvas.classList.add('is-typing');
-    } else {
-      svgCanvas.classList.remove('is-typing');
-    }
-  });
-});
+
+// Character limit handler (makes box/label red but no text popup)
 window.checkNameLength = (input) => {
   clrE('f-name');
   const btn = document.getElementById('main-btn');
@@ -791,7 +774,6 @@ window.checkNameLength = (input) => {
     input.classList.add('err');
     lbl.style.color = 'var(--error)';
     input.style.color = 'var(--error)';
-    showE('f-name', 'Maximum 12 characters allowed.');
     btn.disabled = true;
   } else {
     input.classList.remove('err');
@@ -801,31 +783,21 @@ window.checkNameLength = (input) => {
   }
 };
 
-window.handleMainAction = async () => {
-  const btn = document.getElementById('main-btn');
-  // THE BUG FIX: If the button is already loading, ignore extra Enter key presses!
-  if (btn.disabled) return; 
-
-  if (currentState === 'send') {
-    await processSendOTP();
-  } else {
-    await processVerifyOTP();
-  }
-};
 async function processSendOTP() {
+  // Only remove the red outlines, no text to clear anymore
   document.querySelectorAll('.inp.err').forEach(x=>x.classList.remove('err'));
-  document.querySelectorAll('.err-msg.show').forEach(x=>{x.textContent='';x.classList.remove('show');});
   
   const comp  = document.getElementById('f-comp').value.trim();
   const name  = document.getElementById('f-name').value.trim();
   const email = document.getElementById('f-email').value.trim();
   
   let ok = true;
-  if (!comp) { showE('f-comp','Company required.'); ok=false; }
-  if (!name) { showE('f-name','Name required.'); ok=false; }
-  else if (name.length < 6 || name.length > 12) { showE('f-name','Name must be 6-12 characters.'); ok=false; }
-  if (!email) { showE('f-email','Email required.'); ok=false; }
-  else if (!isValidEmail(email)) { showE('f-email','Invalid email.'); ok=false; }
+  // Trigger the red box only
+  if (!comp) { showE('f-comp'); ok=false; }
+  if (!name) { showE('f-name'); ok=false; }
+  else if (name.length < 6 || name.length > 12) { showE('f-name'); ok=false; }
+  if (!email) { showE('f-email'); ok=false; }
+  else if (!isValidEmail(email)) { showE('f-email'); ok=false; }
   
   if (!ok) return;
   
@@ -866,70 +838,6 @@ async function processSendOTP() {
     currentState = 'send';
     btnLoad(btn, false, 'Send Verification Code');
     toast('Error: ' + err.message, 'toast-err');
-  }
-}
-
-
-async function processVerifyOTP() {
-  const otp = getOTP();
-  if (otp.length !== 6) { toast('Enter the complete 6-digit code.', 'toast-err'); return; }
-  
-  const btn = document.getElementById('main-btn');
-  btnLoad(btn, true);
-  
-  try {
-    const email = document.getElementById('f-email').value.trim();
-    const res = await verifyUserOTP(email, otp);
-    
-    if (!res.success) {
-      if (res.message.toLowerCase().includes('expire') || res.message.toLowerCase().includes('timeout')) {
-        // Backend says it's expired
-        revertToSendStep();
-        toast('Verification code expired. Please request a new one.', 'toast-err');
-      } else {
-        // Wrong OTP entered
-        toast(res.message, 'toast-err');
-        btnLoad(btn, false, 'Verify & Create Workspace');
-        
-        // Turn boxes red
-        document.querySelectorAll('#otp-row .otp-box').forEach(b => {
-          b.style.borderColor = 'var(--error)';
-          b.style.color = 'var(--error)';
-          b.style.background = 'var(--error-bg)';
-        });
-        
-        // Focus the last box
-        const boxes = document.querySelectorAll('#otp-row .otp-box');
-        boxes[5]?.focus();
-      }
-      return;
-    }
-    
-    // OTP Success!
-    const comp  = document.getElementById('f-comp').value.trim();
-    const name  = document.getElementById('f-name').value.trim();
-    const data  = await ownerSignUp(comp, name, email);
-    createdCode = data.uniqueCode;
-    
-    // Success State Transitions
-    document.getElementById('view-form').style.display = 'none';
-    document.getElementById('view-success').style.display = 'flex';
-    
-    createdCanvas = renderCardToElement('card-container', 'company', {
-      companyName: comp, ownerName: name, email, uniqueCode: createdCode
-    });
-    
-    toast('Workspace created! 🎉', 'toast-ok');
-
-  } catch(err) {
-   // Catch any other backend expiration errors
-   if (err.message.toLowerCase().includes('expire') || err.message.toLowerCase().includes('timeout')) {
-      revertToSendStep();
-      toast('Verification code expired. Please request a new one.', 'toast-err');
-    } else {
-      toast('Error: ' + err.message, 'toast-err');
-      btnLoad(btn, false, 'Verify & Create Workspace');
-    }
   }
 }
 window.dlCard = () => {
