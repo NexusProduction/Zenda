@@ -846,6 +846,7 @@ async function processSendOTP() {
     currentState = 'verify';
     btnLoad(btn, false, 'Verify & Create Workspace');
 
+    // Start 60-second local expiration timer
     otpTimer = setTimeout(() => {
       if (currentState === 'verify') {
         revertToSendStep();
@@ -867,6 +868,8 @@ async function processSendOTP() {
     toast('Error: ' + err.message, 'toast-err');
   }
 }
+
+
 async function processVerifyOTP() {
   const otp = getOTP();
   if (otp.length !== 6) { toast('Enter the complete 6-digit code.', 'toast-err'); return; }
@@ -879,25 +882,30 @@ async function processVerifyOTP() {
     const res = await verifyUserOTP(email, otp);
     
     if (!res.success) {
-      if (err.message.toLowerCase().includes('expire')) {
-      revertToSendStep();
-      toast('Verification code expired. Please request a new one.', 'toast-err');
-    } else {
+      if (res.message.toLowerCase().includes('expire') || res.message.toLowerCase().includes('timeout')) {
+        // Backend says it's expired
+        revertToSendStep();
+        toast('Verification code expired. Please request a new one.', 'toast-err');
+      } else {
+        // Wrong OTP entered
         toast(res.message, 'toast-err');
         btnLoad(btn, false, 'Verify & Create Workspace');
         
-        // Turn boxes red so the user visually sees the mistake and can recheck it
+        // Turn boxes red
         document.querySelectorAll('#otp-row .otp-box').forEach(b => {
           b.style.borderColor = 'var(--error)';
           b.style.color = 'var(--error)';
           b.style.background = 'var(--error-bg)';
         });
+        
+        // Focus the last box
         const boxes = document.querySelectorAll('#otp-row .otp-box');
         boxes[5]?.focus();
       }
       return;
     }
     
+    // OTP Success!
     const comp  = document.getElementById('f-comp').value.trim();
     const name  = document.getElementById('f-name').value.trim();
     const data  = await ownerSignUp(comp, name, email);
@@ -914,9 +922,10 @@ async function processVerifyOTP() {
     toast('Workspace created! 🎉', 'toast-ok');
 
   } catch(err) {
-   if (err.message.toLowerCase().includes('expire')) {
+   // Catch any other backend expiration errors
+   if (err.message.toLowerCase().includes('expire') || err.message.toLowerCase().includes('timeout')) {
       revertToSendStep();
-      document.getElementById('inline-notification').style.display = 'block';
+      toast('Verification code expired. Please request a new one.', 'toast-err');
     } else {
       toast('Error: ' + err.message, 'toast-err');
       btnLoad(btn, false, 'Verify & Create Workspace');
