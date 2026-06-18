@@ -558,24 +558,6 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-/* --- MODERN PASSWORD VALIDATION TAGS --- */
-.pwd-req-list {
-    margin-top: 16px; margin-bottom: 24px; padding: 0 4px;
-    display: flex; flex-wrap: wrap; gap: 8px; /* Tag layout */
-}
-.pwd-req-item {
-    font-size: 0.75rem; font-weight: 700; color: #64748B;
-    background: #F1F5F9; border: 1px solid #E2E8F0;
-    padding: 6px 12px; border-radius: 20px;
-    display: flex; align-items: center; gap: 6px; 
-    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-}
-.pwd-req-item.valid { 
-    color: #059669; 
-    background: #ECFDF5;
-    border-color: #A7F3D0;
-}
-.pwd-req-item svg { width: 14px; height: 14px; stroke-width: 3; flex-shrink: 0; }
 
 /* Ensure modal transitions are snappy, not lagging */
 .ppm-view {
@@ -1319,25 +1301,6 @@
     cursor: not-allowed !important;
     pointer-events: none !important;
 }
-
-        /* 5. Fix the massive SVG circles in the password checklist */
-        .pwd-req-list {
-            padding: 0 !important;
-            margin-bottom: 20px !important;
-        }
-        .pwd-req-item {
-            align-items: flex-start !important;
-            font-size: 0.75rem !important;
-            line-height: 1.3 !important;
-            margin-bottom: 8px !important;
-        }
-        .pwd-req-item svg {
-            width: 16px !important;
-            height: 16px !important;
-            min-width: 16px !important; /* CRITICAL: Locks the SVG size */
-            flex-shrink: 0 !important;  /* Stops the browser from stretching it */
-            margin-top: 1px !important;
-        }
     }
   </style>
 </head>
@@ -1609,44 +1572,6 @@
   </div>
 
 </div>
-
-     <!-- VIEW 3: SET NEW PASSWORD -->
-      <div class="ppm-view hidden-right" id="ppm-view-password">
-        <!-- Structured Tactile Header -->
-        <div class="ppm-top-bar">
-          <h3 class="ppm-title" style="font-size: 1.4rem; font-weight: 800; color: #111827; margin: 0;">Set New Password</h3>
-        </div>
-
-        <!-- Changed type="password" to type="text" to make text visible -->
-        <div class="ppm-field">
-          <div class="ppm-input-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          </div>
-          <input type="text" id="ppm-new-pwd" class="ppm-input" placeholder="Enter new password" maxlength="20" autocomplete="off" style="padding-right: 16px !important;" oninput="window.validatePasswordStrength()">
-        </div>
-
-        <div class="ppm-field" style="margin-bottom: 8px !important;">
-          <div class="ppm-input-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-          </div>
-          <input type="text" id="ppm-confirm-pwd" class="ppm-input" placeholder="Confirm new password" maxlength="20" autocomplete="off" style="padding-right: 16px !important;" oninput="window.validatePasswordStrength()">
-        </div>
-        
-        <!-- Premium Horizontal Password Meter -->
-        <div class="pwd-meter-wrapper" style="margin-top: 12px; margin-bottom: 24px;">
-            <div style="display: flex; height: 5px; background: #F1F5F9; border-radius: 6px; overflow: hidden;">
-                <div id="pwd-meter-bar" style="width: 0%; background: #EF4444; transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);"></div>
-            </div>
-            <!-- Collapsible Error Text Container -->
-            <div id="pwd-error-msg" style="height: 0; opacity: 0; margin-top: 0; overflow: hidden; color: #DC2626; font-size: 0.85rem; font-weight: 700; text-align: center; transition: all 0.3s ease;"></div>
-        </div>
-        
-        <div class="ppm-actions visible">
-          <button type="button" class="ppm-btn ppm-btn-secondary" onclick="window.backToEditFromPassword()">Cancel</button>
-          <!-- Notice: Removed the 'disabled' attribute so it can always be clicked to reveal errors -->
-          <button type="button" class="ppm-btn ppm-btn-primary" id="ppm-save-pwd-btn" onclick="window.saveNewPassword()">Save Password</button>
-        </div>
-      </div>
       <!-- VIEW 4: CONTACT SUPPORT (Slides from Left) -->
       <div class="ppm-view hidden-left" id="ppm-view-contact">
         <div style="text-align: center; margin-bottom: 24px; padding-top: 10px;">
@@ -3744,10 +3669,6 @@ window.openProfileModal = function() {
     // Reset to the edit view cleanly
     document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
     document.getElementById('ppm-view-otp').className  = 'ppm-view hidden-right';
-    
-    // THIS FIXES THE PASSWORD BOX APPEARING AT THE BOTTOM ON REOPEN
-    const pwdView = document.getElementById('ppm-view-password');
-    if (pwdView) pwdView.className = 'ppm-view hidden-right'; 
     const contactView = document.getElementById('ppm-view-contact');
     if (contactView) contactView.className = 'ppm-view hidden-left'; // ADD THIS LINE
     
@@ -3923,7 +3844,6 @@ window.enableProfileEdit = function(field) {
 };
 
 window.cancelProfileEdit = function() {
-    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
     if (!window.currentEditField && !window.pendingAvatarFile) {
         window.closeProfileModal();
         return;
@@ -4151,23 +4071,6 @@ window.verifyProfileOTP = async function() {
     if (window.otpErrorTimer) clearTimeout(window.otpErrorTimer);
     setBtnLoading('ppm-verify-btn', true);
 
-    // --- STEP 3: OTP Verified for Password Change ---
-    if (window.profileState.step === 3) {
-        const newPwdInput = document.getElementById('ppm-new-pwd');
-        const confPwdInput = document.getElementById('ppm-confirm-pwd');
-        if (newPwdInput) newPwdInput.value = '';
-        if (confPwdInput) confPwdInput.value = '';
-        if (window.validatePasswordStrength) window.validatePasswordStrength();
-
-        document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
-        document.getElementById('ppm-view-otp').className = 'ppm-view hidden-left';
-        document.getElementById('ppm-view-password').className = 'ppm-view active-view';
-
-        setBtnLoading('ppm-verify-btn', false, 'Verify Code');
-        return;
-    }
-
-    // --- STEP 1: Old Email Verified -> Send OTP to New Email ---
     if (window.profileState.step === 1) {
         window.profileState.step = 2;
         window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
@@ -4289,46 +4192,7 @@ window.handleProfileNext = async function() {
         setBtnLoading(btnId, false, 'Next');
     }
 };
-window.initiatePasswordChange = async function(btn) {
-    if(btn) {
-        btn._origText = btn.innerHTML;
-        // Inject smooth inline spinner directly into the pill
-        btn.innerHTML = `<span style="width:14px;height:14px;border:2px solid rgba(0,102,255,0.2);border-top-color:#0066FF;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Sending...`;
-        btn.style.pointerEvents = 'none';
-        btn.style.opacity = '0.8';
-    }
-    
-    window.profileState = { step: 3 }; 
-    window.tempEmailOTP = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    try { 
-        if(typeof emailjs !== 'undefined') { 
-            await emailjs.send("service_z74bzhj", "template_1v5a12p", { 
-                to_email: window.CU.email, 
-                to_name: window.CU.name, 
-                otp_code: window.tempEmailOTP, 
-                company_name: window.CU.companyName || 'Zenda' 
-            }, "JE_ZMndTyx9drKYe-"); 
-        } 
-    } catch(e) { console.warn("EmailJS failed, OTP:", window.tempEmailOTP); }
 
-    document.getElementById('ppm-otp-msg').innerHTML = `Verify your Email Id<br><b style="color:#1C1C1E; font-weight: 800; display: inline-block; margin-top: 4px;">${window.profileState.newEmail}</b>`;
-    
-    // 1. Visually draw the 6 input boxes
-    initOtpBoxes();
-    
-    // 2. Strict slide transition
-    document.getElementById('ppm-view-edit').className = 'ppm-view hidden-left';
-    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
-    document.getElementById('ppm-view-otp').className = 'ppm-view active-view';
-    
-    // 3. Restore button text for next time
-    if(btn) {
-        btn.innerHTML = btn._origText;
-        btn.style.pointerEvents = 'auto';
-        btn.style.opacity = '1';
-    }
-};
 
 window.openContactView = function() {
     // Slide the edit view away to the right
@@ -4382,7 +4246,6 @@ window.cancelOtpView = function() {
 
     // Slide back to edit view
     document.getElementById('ppm-view-otp').className      = 'ppm-view hidden-right';
-    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
     document.getElementById('ppm-view-edit').className     = 'ppm-view active-view';
     
     // --- FULLY RESET THE EDIT STATE ---
@@ -4416,153 +4279,6 @@ window.cancelOtpView = function() {
     if (nextBtn) {
         setBtnLoading('ppm-next-btn', false, 'Save Changes');
         nextBtn.disabled = true;
-    }
-};
-window.backToEditFromPassword = function() {
-    const cpwdField = document.getElementById('ppm-current-pwd'); if(cpwdField) cpwdField.value = ''; 
-    const npwd = document.getElementById('ppm-new-pwd'); if(npwd) npwd.value = '';
-    const cpwd = document.getElementById('ppm-confirm-pwd'); if(cpwd) cpwd.value = '';
-    // Reset the strength meter
-    window.validatePasswordStrength();
-    const bar = document.getElementById('pwd-meter-bar');
-    if(bar) { bar.style.width = '0%'; bar.style.background = '#EF4444'; }
-
-    // Slide smoothly back to the edit view
-    document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
-    document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
-
-    // Bring the change password pill back
-    const pwdContainer = document.getElementById('change-pwd-container');
-    if(pwdContainer) pwdContainer.classList.remove('hidden-pop');
-    
-    // THE FIX: Hide the Save/Cancel buttons unless another field is actively being edited
-    if (window.currentEditField || window.pendingAvatarFile) {
-        document.getElementById('ppm-actions').classList.add('visible');
-    } else {
-        document.getElementById('ppm-actions').classList.remove('visible');
-    }
-    
-    // Reset internal state
-    window.profileState.step = 0;
-};
-
-window.validatePasswordStrength = function() {
-    const pwd1 = document.getElementById('ppm-new-pwd').value;
-    const pwd2 = document.getElementById('ppm-confirm-pwd').value;
-
-    let score = 0;
-    if (pwd1.length >= 8) score++;
-    if (/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(pwd1)) score++;
-    if (pwd1.length > 0 && pwd1 === pwd2) score++;
-
-    // Control the horizontal meter
-    const bar = document.getElementById('pwd-meter-bar');
-    if (bar) {
-        if (pwd1.length === 0) {
-            bar.style.width = '0%';
-        } else if (score <= 1) {
-            bar.style.width = '33.33%';
-            bar.style.background = '#EF4444'; // Red
-        } else if (score === 2) {
-            bar.style.width = '66.66%';
-            bar.style.background = '#F59E0B'; // Orange
-        } else if (score === 3) {
-            bar.style.width = '100%';
-            bar.style.background = '#10B981'; // Green
-        }
-    }
-};
-
-window.saveNewPassword = async function() {
-    const newPwd  = document.getElementById('ppm-new-pwd').value.trim();
-    const confPwd = document.getElementById('ppm-confirm-pwd').value.trim();
-    const errEl   = document.getElementById('pwd-error-msg');
-
-    const showError = (msg) => {
-        if (!errEl) return;
-        errEl.textContent = msg;
-        errEl.style.height = '18px';
-        errEl.style.marginTop = '12px';
-        errEl.style.opacity = '1';
-
-        if (window.pwdErrorTimer) clearTimeout(window.pwdErrorTimer);
-        window.pwdErrorTimer = setTimeout(() => {
-            errEl.style.height = '0';
-            errEl.style.marginTop = '0';
-            errEl.style.opacity = '0';
-            setTimeout(() => { if(errEl.style.opacity === '0') errEl.textContent = ''; }, 300);
-        }, 3000);
-    };
-
-    if (newPwd.length < 8 || newPwd.length > 20) {
-        showError("Password must be 8 to 20 characters.");
-        return;
-    }
-    if (!/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).+$/.test(newPwd)) {
-        showError("Must contain letters, numbers, and symbols.");
-        return;
-    }
-    if (newPwd !== confPwd) {
-        showError("Passwords do not match.");
-        return;
-    }
-
-    setBtnLoading('ppm-save-pwd-btn', true);
-
-    try {
-        if (!auth.currentUser) throw new Error("Session expired. Please log out and log back in.");
-
-        const { updatePassword, signInWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-        const { doc, getDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-
-        try {
-            // Try the direct update first
-            await updatePassword(auth.currentUser, newPwd);
-        } catch (err) {
-            if (err.code === 'auth/requires-recent-login') {
-                // Session too old — silently refresh it using the stored credential, then retry
-                const userRef  = doc(db, 'users', auth.currentUser.uid);
-                const userSnap = await getDoc(userRef);
-                const oldPwd   = userSnap.exists() ? (userSnap.data().password || userSnap.data().passwordHint) : null;
-                const email    = auth.currentUser.email;
-
-                if (!oldPwd) throw new Error("Could not refresh session. Please log out and log back in.");
-
-                const freshCred = await signInWithEmailAndPassword(auth, email, oldPwd);
-                await updatePassword(freshCred.user, newPwd);
-            } else {
-                throw err;
-            }
-        }
-
-        // Keep Firestore in sync with the new password
-        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-            password: newPwd,
-            passwordHint: newPwd
-        });
-
-        if (window.CU) {
-            window.CU.password = newPwd;
-            window.CU.passwordHint = newPwd;
-        }
-
-        window.showProfileSuccess("Change Completed!");
-
-        setTimeout(() => {
-            document.getElementById('ppm-view-password').className = 'ppm-view hidden-right';
-            document.getElementById('ppm-view-edit').className = 'ppm-view active-view';
-            document.getElementById('ppm-new-pwd').value = '';
-            document.getElementById('ppm-confirm-pwd').value = '';
-
-            const bar = document.getElementById('pwd-meter-bar');
-            if(bar) { bar.style.width = '0%'; bar.style.background = '#EF4444'; }
-        }, 500);
-
-    } catch(e) {
-        console.error("Password Update Error:", e);
-        showError(e.message || "Failed to update password. Please try again.");
-    } finally {
-        setBtnLoading('ppm-save-pwd-btn', false, 'Save Password');
     }
 };
 window.openDeleteTaskModal = function(id, title) { 
