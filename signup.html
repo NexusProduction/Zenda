@@ -828,10 +828,11 @@ window.checkNameLength = (input) => {
   }
 };
 
+window.otpTimeout = null; // Bulletproof declaration
+
 window.handleMainAction = async () => {
   const btn = document.getElementById('main-btn');
-  // THE BUG FIX: If the button is already loading, ignore extra Enter key presses!
-  if (btn.disabled) return; 
+  if (btn && btn.disabled) return; // Prevent double-clicks
 
   if (currentState === 'send') {
     await processSendOTP();
@@ -839,6 +840,7 @@ window.handleMainAction = async () => {
     await processVerifyOTP();
   }
 };
+
 async function processSendOTP() {
   document.querySelectorAll('.inp.err').forEach(x=>x.classList.remove('err'));
   document.querySelectorAll('.err-msg.show').forEach(x=>{x.textContent='';x.classList.remove('show');});
@@ -874,8 +876,8 @@ async function processSendOTP() {
     btnLoad(btn, false, 'Verify & Create Workspace');
 
     // --- THE 60 SECOND AUTO-EXPIRE TIMER ---
-    if (otpTimeout) clearTimeout(otpTimeout);
-    otpTimeout = setTimeout(() => {
+    if (window.otpTimeout) clearTimeout(window.otpTimeout);
+    window.otpTimeout = setTimeout(() => {
       // If 60 seconds pass and they are still on the verify step, roll them back
       if (currentState === 'verify') {
         clearBoxes();
@@ -894,7 +896,7 @@ async function processSendOTP() {
 
   } catch(err) {
     // ROLLBACK: Revert the UI if the backend request fails
-    if (otpTimeout) clearTimeout(otpTimeout);
+    if (window.otpTimeout) clearTimeout(window.otpTimeout);
     document.getElementById('f-comp').disabled = false;
     document.getElementById('f-name').disabled = false;
     document.getElementById('f-email').disabled = false;
@@ -936,7 +938,7 @@ async function processVerifyOTP() {
     }
     
     // SUCCESS! Clear the 60-second expiration timer so it doesn't interrupt the success screen
-    if (otpTimeout) clearTimeout(otpTimeout);
+    if (window.otpTimeout) clearTimeout(window.otpTimeout);
 
     const comp  = document.getElementById('f-comp').value.trim();
     const name  = document.getElementById('f-name').value.trim();
