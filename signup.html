@@ -274,16 +274,45 @@ a { text-decoration: none; color: inherit; }
 .otp-info { font-size: 14px; color: var(--text-secondary); text-align: left; margin-bottom: 12px; font-weight: 500;}
 .otp-info strong { color: var(--text-primary); font-weight: 700; }
 
-.otp-inputs-wrap { display: flex; gap: 6px; justify-content: space-between; margin-bottom: 16px; width: 100%; box-sizing: border-box; }
+/* --- PREMIUM OTP AREA (PC) --- */
+.otp-inputs-wrap { 
+  display: flex; 
+  gap: 12px; 
+  justify-content: flex-start; 
+  margin-bottom: 20px; 
+  width: 100%; 
+}
 
 .otp-box {
-  width: 48px; height: 52px; border-radius: 14px; 
-  background: #F0F6FF; border: 2px solid #BFDBFE; color: #1D4ED8;
-  text-align: center; font-size: 22px; font-weight: 800; outline: none;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); font-family: var(--font-display);
+  width: 52px; 
+  height: 60px; 
+  border-radius: 12px; 
+  background: var(--bg-alt); 
+  border: 1.5px solid var(--border-mid); 
+  color: var(--text-primary);
+  text-align: center; 
+  font-size: 24px; 
+  font-weight: 700; 
+  outline: none;
+  transition: all 0.2s var(--spring); 
+  font-family: var(--font-display);
+  padding: 0;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
 }
-.otp-box:focus { border-color: #3B82F6 !important; background: #EFF6FF !important; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important; transform: scale(1.06); }
-.otp-box.filled { background: #DBEAFE !important; border-color: #2563EB !important; color: #1D4ED8 !important; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15) !important; }
+
+.otp-box:focus { 
+  border-color: var(--brand) !important; 
+  background: #ffffff !important; 
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15), 0 0 0 3px rgba(0, 102, 204, 0.1) !important; 
+  transform: translateY(-2px); 
+}
+
+.otp-box.filled { 
+  border-color: var(--brand) !important; 
+  background: #ffffff !important; 
+  color: var(--brand) !important; 
+  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.08) !important;
+}
 
 .resend-row { text-align: left; font-size: 13px; color: var(--text-secondary); font-weight: 500; margin-top: 4px; }
 .resend-val { font-family: var(--font-mono); color: var(--text-primary); font-weight: 700; }
@@ -405,9 +434,19 @@ a { text-decoration: none; color: inherit; }
     box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
   }
 
-  /* 5. Mobile Optimized OTP Boxes */
-  .otp-inputs-wrap { gap: 6px; justify-content: center; }
-  .otp-box { width: 44px; height: 50px; font-size: 20px; border-radius: 10px; }
+  /* --- PREMIUM OTP AREA (MOBILE) --- */
+  .otp-inputs-wrap { 
+    gap: 6px; 
+    justify-content: space-between; /* Spreads boxes evenly across any screen size */
+    width: 100%;
+  }
+  .otp-box { 
+    width: 100%; /* Allows flexbox to handle the width dynamically */
+    max-width: 48px; /* Caps the size on wider phones */
+    height: 54px; 
+    font-size: 22px; 
+    border-radius: 10px; 
+  }
 }
 </style>
 </head>
@@ -791,13 +830,9 @@ async function processSendOTP() {
     otpContainer.classList.add('show');
     setupBoxes();
     startTimer();
-    
+   
     currentState = 'verify';
     btnLoad(btn, false, 'Verify & Create Workspace');
-
-    // 2. SERVER REQUEST: Now hit the server in the background
-    await sendOTP(email, name, comp);
-    toast('Verification code sent.', 'toast-ok');
 
   } catch(err) {
     // 3. ROLLBACK: Only revert the UI if the background request actually fails
@@ -855,9 +890,11 @@ async function processVerifyOTP() {
 window.resendOTP = async () => {
   try {
     await sendOTP(document.getElementById('f-email').value.trim());
-    clearBoxes(); startTimer(); // Automatically hides button, shows text, restarts timer
-    toast('New code sent.', 'toast-ok');
-  } catch(e) { toast('Failed to resend.', 'toast-err'); }
+    clearBoxes(); 
+    startTimer(); 
+  } catch(e) { 
+    toast('Failed to resend.', 'toast-err'); // Keep error toasts only
+  }
 };
 
 window.copyCode = () => {
