@@ -41,39 +41,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-/* ==========================================================================
-   OTP EXPIRED NOTIFICATION STYLES
-   ========================================================================== */
-.inline-notification {
-  display: none;
-  margin-top: 16px;
-  padding: 12px 16px;
-  border-radius: var(--r-md);
-  font-size: 14px;
-  font-weight: 600;
-  animation: slideDown 0.2s ease-out;
-}
 
-/* PC Styles: Left aligned */
-@media (min-width: 901px) {
-  .inline-notification {
-    background: var(--error-bg);
-    color: var(--error);
-    border: 1px solid #FECACA;
-    text-align: left;
-  }
-}
-
-/* Mobile Styles: Centered, Dark Background, White Text */
-@media (max-width: 900px) {
-  .inline-notification {
-    background: #1E293B; /* Dark background */
-    color: #FFFFFF;      /* White text */
-    text-align: center;
-    border: none;
-  }
-}
-/* ADAPTIVE NO-SCROLL BODY */
 body {
   font-family: var(--font-body);
   background: var(--bg-page);
@@ -727,9 +695,6 @@ a { text-decoration: none; color: inherit; }
       <button class="btn-primary" id="main-btn" onclick="handleMainAction()">
         Send Verification Code
       </button>
-
-      <div id="inline-notification" class="inline-notification">OTP Expired</div>
-
       <p style="font-size:13px; color:var(--text-tertiary); text-align:center; font-weight:500; margin-top:24px;">
         By signing up you agree to our 
         <a href="terms.html" style="color:var(--text-primary); text-decoration:underline; text-underline-offset:3px; font-weight: 600;">Terms of Service</a>
@@ -884,7 +849,7 @@ async function processSendOTP() {
     otpTimer = setTimeout(() => {
       if (currentState === 'verify') {
         revertToSendStep();
-        document.getElementById('inline-notification').style.display = 'block';
+        toast('Verification code expired. Please request a new one.', 'toast-err');
       }
     }, 60000);
 
@@ -914,10 +879,10 @@ async function processVerifyOTP() {
     const res = await verifyUserOTP(email, otp);
     
     if (!res.success) {
-      if (res.message.toLowerCase().includes('expire') || res.message.toLowerCase().includes('timeout')) {
-        revertToSendStep();
-        document.getElementById('inline-notification').style.display = 'block';
-      } else {
+      if (err.message.toLowerCase().includes('expire')) {
+      revertToSendStep();
+      toast('Verification code expired. Please request a new one.', 'toast-err');
+    } else {
         toast(res.message, 'toast-err');
         btnLoad(btn, false, 'Verify & Create Workspace');
         
@@ -927,8 +892,6 @@ async function processVerifyOTP() {
           b.style.color = 'var(--error)';
           b.style.background = 'var(--error-bg)';
         });
-        document.getElementById('inline-notification').style.display = 'none';
-        // Focus the last box so they can easily press 'Backspace' to fix the typo
         const boxes = document.querySelectorAll('#otp-row .otp-box');
         boxes[5]?.focus();
       }
