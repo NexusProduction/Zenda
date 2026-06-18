@@ -876,7 +876,6 @@ async function processSendOTP() {
     toast('Error: ' + err.message, 'toast-err');
   }
 }
-
 async function processVerifyOTP() {
   const otp = getOTP();
   if (otp.length !== 6) { toast('Enter the complete 6-digit code.', 'toast-err'); return; }
@@ -889,9 +888,30 @@ async function processVerifyOTP() {
     const res = await verifyUserOTP(email, otp);
     
     if (!res.success) {
-      toast(res.message, 'toast-err');
       clearBoxes();
-      btnLoad(btn, false, 'Verify & Create Workspace');
+      
+      // --- THE UX FIX: Intercept expired codes silently ---
+      // If the backend message mentions "expire" or "timeout"
+      if (res.message.toLowerCase().includes('expire') || res.message.toLowerCase().includes('timeout')) {
+        
+        // 1. Hide the OTP boxes
+        document.getElementById('otp-slide-container').classList.remove('show');
+        
+        // 2. Unlock the form inputs
+        document.getElementById('f-comp').disabled = false;
+        document.getElementById('f-name').disabled = false;
+        document.getElementById('f-email').disabled = false;
+        
+        // 3. Revert the button back to "Send Verification Code"
+        currentState = 'send';
+        btnLoad(btn, false, 'Send Verification Code');
+        
+        // Note: We deliberately DO NOT call toast() here, removing the notification entirely.
+      } else {
+        // For normal errors (like typing the wrong code), show the toast and keep them on the Verify step
+        toast(res.message, 'toast-err');
+        btnLoad(btn, false, 'Verify & Create Workspace');
+      }
       return;
     }
     
@@ -912,8 +932,18 @@ async function processVerifyOTP() {
     toast('Workspace created! 🎉', 'toast-ok');
 
   } catch(err) {
-    toast('Error: ' + err.message, 'toast-err');
-    btnLoad(btn, false, 'Verify & Create Workspace');
+    // Intercept deep backend expiration errors here too
+    if (err.message.toLowerCase().includes('expire')) {
+      document.getElementById('otp-slide-container').classList.remove('show');
+      document.getElementById('f-comp').disabled = false;
+      document.getElementById('f-name').disabled = false;
+      document.getElementById('f-email').disabled = false;
+      currentState = 'send';
+      btnLoad(btn, false, 'Send Verification Code');
+    } else {
+      toast('Error: ' + err.message, 'toast-err');
+      btnLoad(btn, false, 'Verify & Create Workspace');
+    }
   }
 }
 window.copyCode = () => {
