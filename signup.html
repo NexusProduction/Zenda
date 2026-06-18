@@ -273,13 +273,12 @@ a { text-decoration: none; color: inherit; }
 
 .otp-info { font-size: 14px; color: var(--text-secondary); text-align: left; margin-bottom: 12px; font-weight: 500;}
 .otp-info strong { color: var(--text-primary); font-weight: 700; }
-
-/* --- PREMIUM OTP AREA (PC) --- */
+/* MOBILE OTP SPACING */
 .otp-inputs-wrap { 
   display: flex; 
-  gap: 12px; 
-  justify-content: flex-start; 
-  margin-bottom: 20px; 
+  gap: 8px; 
+  justify-content: space-between; 
+  margin-bottom: 8px; /* Reduced from 24px to remove the dead space */
   width: 100%; 
 }
 
@@ -822,13 +821,16 @@ window.checkNameLength = (input) => {
 };
 
 window.handleMainAction = async () => {
+  const btn = document.getElementById('main-btn');
+  // THE BUG FIX: If the button is already loading, ignore extra Enter key presses!
+  if (btn.disabled) return; 
+
   if (currentState === 'send') {
     await processSendOTP();
   } else {
     await processVerifyOTP();
   }
 };
-
 async function processSendOTP() {
   document.querySelectorAll('.inp.err').forEach(x=>x.classList.remove('err'));
   document.querySelectorAll('.err-msg.show').forEach(x=>{x.textContent='';x.classList.remove('show');});
@@ -891,29 +893,30 @@ async function processVerifyOTP() {
     const res = await verifyUserOTP(email, otp);
     
     if (!res.success) {
-      clearBoxes();
-      
-      // --- THE UX FIX: Intercept expired codes silently ---
-      // If the backend message mentions "expire" or "timeout"
+      // If expired, go back to Step 1 silently
       if (res.message.toLowerCase().includes('expire') || res.message.toLowerCase().includes('timeout')) {
-        
-        // 1. Hide the OTP boxes
+        clearBoxes();
         document.getElementById('otp-slide-container').classList.remove('show');
-        
-        // 2. Unlock the form inputs
         document.getElementById('f-comp').disabled = false;
         document.getElementById('f-name').disabled = false;
         document.getElementById('f-email').disabled = false;
-        
-        // 3. Revert the button back to "Send Verification Code"
         currentState = 'send';
         btnLoad(btn, false, 'Send Verification Code');
-        
-        // Note: We deliberately DO NOT call toast() here, removing the notification entirely.
       } else {
-        // For normal errors (like typing the wrong code), show the toast and keep them on the Verify step
+        // THE RECHECK FIX: Wrong OTP entered. Show error toast, but DO NOT clear the boxes.
         toast(res.message, 'toast-err');
         btnLoad(btn, false, 'Verify & Create Workspace');
+        
+        // Turn boxes red so the user visually sees the mistake and can recheck it
+        document.querySelectorAll('#otp-row .otp-box').forEach(b => {
+          b.style.borderColor = 'var(--error)';
+          b.style.color = 'var(--error)';
+          b.style.background = 'var(--error-bg)';
+        });
+        
+        // Focus the last box so they can easily press 'Backspace' to fix the typo
+        const boxes = document.querySelectorAll('#otp-row .otp-box');
+        boxes[5]?.focus();
       }
       return;
     }
@@ -935,7 +938,6 @@ async function processVerifyOTP() {
     toast('Workspace created! 🎉', 'toast-ok');
 
   } catch(err) {
-    // Intercept deep backend expiration errors here too
     if (err.message.toLowerCase().includes('expire')) {
       document.getElementById('otp-slide-container').classList.remove('show');
       document.getElementById('f-comp').disabled = false;
@@ -971,13 +973,19 @@ window.waCard = () => {
     shareCardWhatsApp(createdCanvas, comp ? comp+' access card' : 'Zenda card');
   }
 };
-
 // DASHBOARD STYLE OTP INPUT LOGIC
 function setupBoxes() {
   const boxes = [...document.querySelectorAll('#otp-row .otp-box')];
   boxes.forEach((b, i) => {
     b.value = ''; b.classList.remove('filled');
     b.oninput = (e) => {
+      // Clear the red error styles the moment the user starts typing again
+      boxes.forEach(bx => {
+        bx.style.borderColor = '';
+        bx.style.color = '';
+        bx.style.background = '';
+      });
+
       b.value = b.value.replace(/[^0-9]/g, '');
       if (b.value) {
           b.classList.add('filled');
@@ -985,10 +993,15 @@ function setupBoxes() {
       } else {
           b.classList.remove('filled');
       }
-      if (getOTP().length === 6) processVerifyOTP();
+      
+      // Auto-submit with a tiny 50ms delay so the 6th digit visually renders before UI locks
+      if (getOTP().length === 6) setTimeout(() => handleMainAction(), 50);
     };
     b.onkeydown = (e) => {
       if (e.key === 'Backspace') {
+        // Also clear error styles on backspace
+        boxes.forEach(bx => { bx.style.borderColor = ''; bx.style.color = ''; bx.style.background = ''; });
+        
         if (!b.value && i > 0) {
             boxes[i - 1].focus();
             boxes[i - 1].value = '';
@@ -1003,10 +1016,10 @@ function setupBoxes() {
       e.preventDefault();
       const d = e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);
       d.split('').forEach((c,j) => { if (boxes[j]) { boxes[j].value=c; boxes[j].classList.add('filled'); }});
-      if (d.length===6) processVerifyOTP();
+      if (d.length===6) setTimeout(() => handleMainAction(), 50);
     };
   });
-  setTimeout(() => boxes[0]?.focus(), 400); // Focus after slide animation
+  setTimeout(() => boxes[0]?.focus(), 400); 
 }
 
 function getOTP() { return [...document.querySelectorAll('#otp-row .otp-box')].map(b=>b.value).join(''); }
