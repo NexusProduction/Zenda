@@ -245,17 +245,15 @@ a { text-decoration: none; color: inherit; }
 .err-msg { font-size: 12px; color: var(--error); font-weight: 600; margin-top: 4px; display: none; text-align: left;}
 .err-msg.show { display: block; animation: slideDown 0.2s ease-out; }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-
-/* BUTTONS */
 .btn-primary {
-  width: 100%; padding: 16px; border-radius: var(--r-md);
-  font-family: var(--font-display); font-weight: 700; font-size: 16px;
+  width: 100%; padding: 15px; border-radius: 10px;
+  font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: -0.01em;
   color: #fff; background: var(--brand); border: none; cursor: pointer;
-  transition: all 0.2s var(--spring);
+  transition: all 0.2s ease;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  box-shadow: var(--shadow-btn); margin-top: 16px;
+  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.18); margin-top: 16px;
 }
-.btn-primary:hover { background: var(--brand-hover); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0, 102, 204, 0.3); }
+.btn-primary:hover { background: var(--brand-hover); box-shadow: 0 4px 12px rgba(0, 102, 204, 0.22); }
 .btn-primary:active { transform: scale(.98); }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; background: #64748B; }
 
@@ -313,7 +311,7 @@ a { text-decoration: none; color: inherit; }
   box-shadow: 0 2px 8px rgba(0, 102, 204, 0.08) !important;
 }
 /* SUCCESS VIEW */
-#view-success { display: none; text-align: center; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+#view-success { display: none; flex-direction: column; justify-content: center; height: 100%; }
 .success-icon {
   width: 72px; height: 72px; border-radius: var(--r-lg); 
   background: var(--brand-light); display: flex;
@@ -334,18 +332,19 @@ a { text-decoration: none; color: inherit; }
 
 .action-row { display: flex; gap: 16px; width: 100%; margin-top: 12px; }
 .btn-dl, .btn-wa {
-  flex:1; padding: 16px; border-radius: var(--r-sm);
-  font-family: var(--font-display); font-weight: 600; font-size: 15px;
-  cursor: pointer; transition: all .3s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
+  flex:1; padding: 14px; border-radius: 10px;
+  font-family: var(--font-display); font-weight: 600; font-size: 14px;
+  cursor: pointer; transition: all .2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn-dl { background: #fff; border: 2px solid var(--border-mid); color: var(--text-primary); }
+.btn-dl { background: #fff; border: 1.5px solid var(--border-mid); color: var(--text-primary); }
 .btn-dl:hover { border-color: var(--text-primary); background: var(--bg-alt); }
-.btn-wa { background: var(--success); border: none; color: #fff; box-shadow: 0 4px 12px rgba(16,185,129,.2); }
-.btn-wa:hover { background: var(--success-dark); transform: translateY(-1px); }
+.btn-wa { background: var(--success); border: none; color: #fff; box-shadow: 0 2px 8px rgba(16,185,129,.16); }
+.btn-wa:hover { background: var(--success-dark); }
 
-/* TOAST */
 #toast-anchor { position:fixed; bottom:32px; right:32px; z-index:9999; display:flex; flex-direction:column; gap:12px; }
-.toast {
+@media (max-width: 900px) {
+  #toast-anchor { right: auto; left: 20px; bottom: 24px; }
+}.toast {
   padding: 16px 24px; border-radius: var(--r-md); font-size: 15px; font-weight: 600;
   box-shadow: 0 12px 32px rgba(15,23,42,.15); min-width: 280px;
   animation: toast-in .4s var(--spring); border: 1px solid; display: flex; align-items: center; gap: 12px;
@@ -704,24 +703,7 @@ a { text-decoration: none; color: inherit; }
       </p>
     </div>
 
-    <div id="view-success">
-      <div class="success-icon">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
-      </div>
-      <h1 class="page-title" style="margin-bottom: 12px; text-align: center;">Workspace is Live!</h1>
-      <p style="color: var(--text-secondary); margin-bottom: 32px; font-weight: 500; text-align: center;">
-        Your environment has been successfully created. Save your access code.
-      </p>
-
-      <div class="code-box" id="code-box" onclick="copyCode()">
-        <div class="code-label" style="text-align: center;">Master Company Code</div>
-        <div class="code-val" id="code-val" style="text-align: center;">—</div>
-        <div class="code-hint" style="text-align: center;">Click to copy</div>
-      </div>
-
-      <div id="card-container" class="card-area"></div>
+     <div id="view-success">
 
       <div class="action-row">
         <button class="btn-dl" onclick="dlCard()">
@@ -760,6 +742,7 @@ import { isValidEmail }              from './utils.js';
 let currentState = 'send'; // 'send' or 'verify'
 let createdCanvas = null;
 let createdCode   = '';
+let otpTimer       = null;
 
 // Initialize EmailJS silently
 if (EMAILJS_CONFIG?.publicKey && EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') {
@@ -865,12 +848,17 @@ async function processSendOTP() {
     currentState = 'verify';
     btnLoad(btn, false, 'Verify & Create Workspace');
 
-    // 2. THE MISSING LINE: ACTUALLY SEND THE EMAIL! 
-    // (This got deleted by accident earlier. It triggers the EmailJS backend)
+    otpTimer = setTimeout(() => {
+      if (currentState === 'verify') {
+        revertToSendStep();
+        toast('Verification code expired. Please request a new one.', 'toast-err');
+      }
+    }, 60000);
+
     await sendOTP(email, name, comp);
 
   } catch(err) {
-    // 3. ROLLBACK: Only revert the UI if the background request actually fails
+    clearTimeout(otpTimer);
     document.getElementById('f-comp').disabled = false;
     document.getElementById('f-name').disabled = false;
     document.getElementById('f-email').disabled = false;
@@ -893,15 +881,8 @@ async function processVerifyOTP() {
     const res = await verifyUserOTP(email, otp);
     
     if (!res.success) {
-      // If expired, go back to Step 1 silently
       if (res.message.toLowerCase().includes('expire') || res.message.toLowerCase().includes('timeout')) {
-        clearBoxes();
-        document.getElementById('otp-slide-container').classList.remove('show');
-        document.getElementById('f-comp').disabled = false;
-        document.getElementById('f-name').disabled = false;
-        document.getElementById('f-email').disabled = false;
-        currentState = 'send';
-        btnLoad(btn, false, 'Send Verification Code');
+        revertToSendStep();
       } else {
         // THE RECHECK FIX: Wrong OTP entered. Show error toast, but DO NOT clear the boxes.
         toast(res.message, 'toast-err');
@@ -929,7 +910,6 @@ async function processVerifyOTP() {
     // Success State Transitions
     document.getElementById('view-form').style.display = 'none';
     document.getElementById('view-success').style.display = 'flex';
-    document.getElementById('code-val').textContent = createdCode.slice(0,4) + '-' + createdCode.slice(4);
     
     createdCanvas = renderCardToElement('card-container', 'company', {
       companyName: comp, ownerName: name, email, uniqueCode: createdCode
@@ -938,28 +918,14 @@ async function processVerifyOTP() {
     toast('Workspace created! 🎉', 'toast-ok');
 
   } catch(err) {
-    if (err.message.toLowerCase().includes('expire')) {
-      document.getElementById('otp-slide-container').classList.remove('show');
-      document.getElementById('f-comp').disabled = false;
-      document.getElementById('f-name').disabled = false;
-      document.getElementById('f-email').disabled = false;
-      currentState = 'send';
-      btnLoad(btn, false, 'Send Verification Code');
+   if (err.message.toLowerCase().includes('expire')) {
+      revertToSendStep();
     } else {
       toast('Error: ' + err.message, 'toast-err');
       btnLoad(btn, false, 'Verify & Create Workspace');
     }
   }
 }
-window.copyCode = () => {
-  if (!createdCode) return;
-  navigator.clipboard.writeText(createdCode).then(() => {
-    const b = document.getElementById('code-box');
-    b.style.borderColor='var(--brand)';
-    setTimeout(() => { b.style.borderColor=''; }, 900);
-    toast('Code copied!', 'toast-ok');
-  });
-};
 window.dlCard = () => {
   if (createdCanvas) {
     const comp = document.getElementById('f-comp').value.trim();
@@ -1021,7 +987,17 @@ function setupBoxes() {
   });
   setTimeout(() => boxes[0]?.focus(), 400); 
 }
-
+function revertToSendStep() {
+  clearTimeout(otpTimer);
+    const comp  = document.getElementById('f-comp').value.trim();
+  clearBoxes();
+  document.getElementById('otp-slide-container').classList.remove('show');
+  document.getElementById('f-comp').disabled = false;
+  document.getElementById('f-name').disabled = false;
+  document.getElementById('f-email').disabled = false;
+  currentState = 'send';
+  btnLoad(document.getElementById('main-btn'), false, 'Send Verification Code');
+}
 function getOTP() { return [...document.querySelectorAll('#otp-row .otp-box')].map(b=>b.value).join(''); }
 function clearBoxes() { [...document.querySelectorAll('#otp-row .otp-box')].forEach(b=>{b.value='';b.classList.remove('filled');}); document.querySelector('#otp-row .otp-box')?.focus(); }
 function btnLoad(btn, loading, label) {
