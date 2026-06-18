@@ -903,10 +903,20 @@ async function processVerifyOTP() {
         currentState = 'send';
         btnLoad(btn, false, 'Send Verification Code');
       } else {
-        // THE FIX: Wrong OTP entered. Show error toast and immediately clear all boxes.
+        // THE RECHECK FIX: Wrong OTP entered. Show error toast, but DO NOT clear the boxes.
         toast(res.message, 'toast-err');
-        clearBoxes(); 
         btnLoad(btn, false, 'Verify & Create Workspace');
+        
+        // Turn boxes red so the user visually sees the mistake and can recheck it
+        document.querySelectorAll('#otp-row .otp-box').forEach(b => {
+          b.style.borderColor = 'var(--error)';
+          b.style.color = 'var(--error)';
+          b.style.background = 'var(--error-bg)';
+        });
+        
+        // Focus the last box so they can easily press 'Backspace' to fix the typo
+        const boxes = document.querySelectorAll('#otp-row .otp-box');
+        boxes[5]?.focus();
       }
       return;
     }
