@@ -357,15 +357,8 @@ a { text-decoration: none; color: inherit; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 900px) {
-  #toast-anchor { 
-    left: 50%; 
-    right: auto; 
-    transform: translateX(-50%); 
-    bottom: 24px; 
-    width: max-content; 
-    max-width: 90vw;
-    align-items: center; /* Centers the toast notification itself */
-  }
+   /* ADD TO MOBILE MEDIA QUERY */
+  
   /* Boost font size for standard iOS/Android legibility */
   .inp { 
     font-size: 17px; 
@@ -767,7 +760,6 @@ import { isValidEmail }              from './utils.js';
 let currentState = 'send'; // 'send' or 'verify'
 let createdCanvas = null;
 let createdCode   = '';
-let otpTimeout    = null; // <--- ADD THIS LINE
 
 // Initialize EmailJS silently
 if (EMAILJS_CONFIG?.publicKey && EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') {
@@ -828,11 +820,10 @@ window.checkNameLength = (input) => {
   }
 };
 
-window.otpTimeout = null; // Bulletproof declaration
-
 window.handleMainAction = async () => {
   const btn = document.getElementById('main-btn');
-  if (btn && btn.disabled) return; // Prevent double-clicks
+  // THE BUG FIX: If the button is already loading, ignore extra Enter key presses!
+  if (btn.disabled) return; 
 
   if (currentState === 'send') {
     await processSendOTP();
@@ -840,7 +831,6 @@ window.handleMainAction = async () => {
     await processVerifyOTP();
   }
 };
-
 async function processSendOTP() {
   document.querySelectorAll('.inp.err').forEach(x=>x.classList.remove('err'));
   document.querySelectorAll('.err-msg.show').forEach(x=>{x.textContent='';x.classList.remove('show');});
@@ -875,28 +865,12 @@ async function processSendOTP() {
     currentState = 'verify';
     btnLoad(btn, false, 'Verify & Create Workspace');
 
-    // --- THE 60 SECOND AUTO-EXPIRE TIMER ---
-    if (window.otpTimeout) clearTimeout(window.otpTimeout);
-    window.otpTimeout = setTimeout(() => {
-      // If 60 seconds pass and they are still on the verify step, roll them back
-      if (currentState === 'verify') {
-        clearBoxes();
-        document.getElementById('otp-slide-container').classList.remove('show');
-        document.getElementById('f-comp').disabled = false;
-        document.getElementById('f-name').disabled = false;
-        document.getElementById('f-email').disabled = false;
-        currentState = 'send';
-        btnLoad(document.getElementById('main-btn'), false, 'Send Verification Code');
-        toast('OTP Expired. Please request a new one.', 'toast-err');
-      }
-    }, 60000); // 60,000 milliseconds = 60 seconds
-    // ---------------------------------------
-
+    // 2. THE MISSING LINE: ACTUALLY SEND THE EMAIL! 
+    // (This got deleted by accident earlier. It triggers the EmailJS backend)
     await sendOTP(email, name, comp);
 
   } catch(err) {
-    // ROLLBACK: Revert the UI if the backend request fails
-    if (window.otpTimeout) clearTimeout(window.otpTimeout);
+    // 3. ROLLBACK: Only revert the UI if the background request actually fails
     document.getElementById('f-comp').disabled = false;
     document.getElementById('f-name').disabled = false;
     document.getElementById('f-email').disabled = false;
@@ -905,70 +879,6 @@ async function processSendOTP() {
     currentState = 'send';
     btnLoad(btn, false, 'Send Verification Code');
     toast('Error: ' + err.message, 'toast-err');
-  }
-}
-
-async function processVerifyOTP() {
-  const otp = getOTP();
-  if (otp.length !== 6) { toast('Enter the complete 6-digit code.', 'toast-err'); return; }
-  
-  const btn = document.getElementById('main-btn');
-  btnLoad(btn, true);
-  
-  try {
-    const email = document.getElementById('f-email').value.trim();
-    const res = await verifyUserOTP(email, otp);
-    
-    if (!res.success) {
-      if (res.message.toLowerCase().includes('expire') || res.message.toLowerCase().includes('timeout')) {
-        clearBoxes();
-        document.getElementById('otp-slide-container').classList.remove('show');
-        document.getElementById('f-comp').disabled = false;
-        document.getElementById('f-name').disabled = false;
-        document.getElementById('f-email').disabled = false;
-        currentState = 'send';
-        btnLoad(btn, false, 'Send Verification Code');
-        toast('OTP Expired. Please request a new one.', 'toast-err');
-      } else {
-        toast(res.message, 'toast-err');
-        clearBoxes(); 
-        btnLoad(btn, false, 'Verify & Create Workspace');
-      }
-      return;
-    }
-    
-    // SUCCESS! Clear the 60-second expiration timer so it doesn't interrupt the success screen
-    if (window.otpTimeout) clearTimeout(window.otpTimeout);
-
-    const comp  = document.getElementById('f-comp').value.trim();
-    const name  = document.getElementById('f-name').value.trim();
-    const data  = await ownerSignUp(comp, name, email);
-    createdCode = data.uniqueCode;
-    
-    // Success State Transitions
-    document.getElementById('view-form').style.display = 'none';
-    document.getElementById('view-success').style.display = 'flex';
-    document.getElementById('code-val').textContent = createdCode.slice(0,4) + '-' + createdCode.slice(4);
-    
-    createdCanvas = renderCardToElement('card-container', 'company', {
-      companyName: comp, ownerName: name, email, uniqueCode: createdCode
-    });
-    
-    toast('Workspace created! 🎉', 'toast-ok');
-
-  } catch(err) {
-    if (err.message.toLowerCase().includes('expire')) {
-      document.getElementById('otp-slide-container').classList.remove('show');
-      document.getElementById('f-comp').disabled = false;
-      document.getElementById('f-name').disabled = false;
-      document.getElementById('f-email').disabled = false;
-      currentState = 'send';
-      btnLoad(btn, false, 'Send Verification Code');
-      toast('OTP Expired. Please request a new one.', 'toast-err');
-    } else {
-      toast('Error: ' + err.message, 'toast-err');
-      btnLoad(btn, false, 'Verify & Create Workspace');
-    }
   }
 }
 async function processVerifyOTP() {
