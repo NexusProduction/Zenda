@@ -759,7 +759,6 @@ import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-gen
 import { isValidEmail }              from './utils.js';
 
 let currentState = 'send'; // 'send' or 'verify'
-let timerID = null;
 let createdCanvas = null;
 let createdCode   = '';
 
@@ -850,7 +849,6 @@ async function processSendOTP() {
   const btn = document.getElementById('main-btn');
   btnLoad(btn, true);
   
-  // REPLACE THE TRY/CATCH IN processSendOTP() WITH THIS:
   try {
     // 1. OPTIMISTIC UI: Assume success and transition immediately
     document.getElementById('f-comp').disabled = true;
@@ -861,7 +859,7 @@ async function processSendOTP() {
     const otpContainer = document.getElementById('otp-slide-container');
     otpContainer.classList.add('show');
     setupBoxes();
-    startTimer();
+    // DELETE THE startTimer(); LINE THAT WAS HERE
    
     currentState = 'verify';
     btnLoad(btn, false, 'Verify & Create Workspace');
@@ -918,17 +916,6 @@ async function processVerifyOTP() {
     btnLoad(btn, false, 'Verify & Create Workspace');
   }
 }
-
-window.resendOTP = async () => {
-  try {
-    await sendOTP(document.getElementById('f-email').value.trim());
-    clearBoxes(); 
-    startTimer(); 
-  } catch(e) { 
-    toast('Failed to resend.', 'toast-err'); // Keep error toasts only
-  }
-};
-
 window.copyCode = () => {
   if (!createdCode) return;
   navigator.clipboard.writeText(createdCode).then(() => {
@@ -991,31 +978,6 @@ function setupBoxes() {
 
 function getOTP() { return [...document.querySelectorAll('#otp-row .otp-box')].map(b=>b.value).join(''); }
 function clearBoxes() { [...document.querySelectorAll('#otp-row .otp-box')].forEach(b=>{b.value='';b.classList.remove('filled');}); document.querySelector('#otp-row .otp-box')?.focus(); }
-
-function startTimer() {
-  if (timerID) clearInterval(timerID);
-  let s = 60;
-  const tv = document.getElementById('timer-val');
-  const tt = document.getElementById('timer-txt');
-  const rb = document.getElementById('resend-btn');
-  
-  // Immediately show text, hide button, reset value
-  tt.style.display = 'inline'; 
-  rb.style.display = 'none'; 
-  tv.textContent = s + 's';
-  
-  timerID = setInterval(() => {
-    s--;
-    tv.textContent = s + 's';
-    if (s <= 0) { 
-      clearInterval(timerID); 
-      // Timer done: Hide text, show clickable button
-      tt.style.display = 'none'; 
-      rb.style.display = 'inline-block'; 
-    }
-  }, 1000);
-}
-
 function btnLoad(btn, loading, label) {
   if (!btn) return;
   if (loading) { btn.disabled=true; btn.dataset.lbl=btn.innerHTML; btn.innerHTML='<span class="spinner"></span>'; }
