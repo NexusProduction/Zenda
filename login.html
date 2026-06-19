@@ -549,10 +549,11 @@ window.blastItem = function(e, wrapId) {
 };
 </script>
 <script type="module">
-import { auth } from './firebase-config.js';
+import { auth, db } from './firebase-config.js';
+import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { sendOTP, verifyUserOTP } from './otp.js';
 import { completeOTPLogin } from './auth.js';
-try { 
+try {
     emailjs.init("JE_ZMndTyx9drKYe-"); 
 } catch(e) { 
     console.error("EmailJS Init Error:", e); 
@@ -642,6 +643,19 @@ window.handleLoginFlow = async () => {
         btnLoad(btn, true);
 
         try {
+            // 1. CHECK IF EMAIL EXISTS IN DATABASE
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('email', '==', email));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                // Email not found in the database!
+                showErr('email-input', 'This email is not registered.');
+                btnLoad(btn, false, 'Send Login Code');
+                return; // Stop the login process here
+            }
+
+            // 2. IF IT EXISTS, PROCEED TO SEND OTP
             loginEmail = email;
             await sendOTP(email, email.split('@')[0], 'Zenda');
 
