@@ -196,19 +196,39 @@ export async function findUserByEmail(email) {
     throw error;
   }
 }
-
 // Call this ONLY after verifyUserOTP() has returned success.
-// Silently signs the user in using their internal auth key and writes the
-// "new device" security notification (same behaviour the old login() had).
 export async function completeOTPLogin(email) {
   const userRecord = await findUserByEmail(email);
   if (!userRecord) throw new Error('No account found with this email.');
 
-  const authKey = userRecord.passwordHint;
-  if (!authKey) throw new Error('This account is missing its login credential. Please contact support.');
+  // Gather possible keys in case data was saved differently
+  const possibleKeys = [];
+  if (userRecord.passwordHint) possibleKeys.push(userRecord.passwordHint);
+  if (userRecord.password) possibleKeys.push(userRecord.password);
+  
+  if (possibleKeys.length === 0) {
+    throw new Error('This account is missing its login credential. Please contact support.');
+  }
 
-  const userCredential = await signInWithEmailAndPassword(auth, email, authKey);
-  const user = userCredential.user;
+  let user = null;
+  let lastErr = null;
+
+  // Try all possible stored passwords to force a successful sync
+  for (const key of possibleKeys) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, key.trim());
+      user = userCredential.user;
+      break; // Success!
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  // If ALL attempts fail, the Firebase Auth data is permanently out of sync with Firestore
+  if (!user) {
+    console.error("Credential Mismatch:", lastErr);
+    throw new Error('Security Error: Your account credentials are out of sync. Please contact support to reset your account.');
+  }
 
   try {
     await addDoc(collection(db, 'users', user.uid, 'notifications'), {
