@@ -549,8 +549,8 @@ window.blastItem = function(e, wrapId) {
 };
 </script>
 <script type="module">
-import { auth, db } from './firebase-config.js';
-import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { auth } from './firebase-config.js';
+import { fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { sendOTP, verifyUserOTP } from './otp.js';
 import { completeOTPLogin } from './auth.js';
 try {
@@ -652,16 +652,14 @@ window.handleLoginFlow = async () => {
         btnLoad(btn, true);
 
         try {
-            // 1. CHECK IF EMAIL EXISTS IN DATABASE
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('email', '==', email));
-            const querySnapshot = await getDocs(q);
-
-            if (querySnapshot.empty) {
-                // Email not found in the database!
-                showErr('email-input', 'This email is not registered.');
+            // 1. CHECK FIREBASE AUTHENTICATION DIRECTLY
+            const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+            
+            if (signInMethods.length === 0) {
+                // Email not found in Firebase Auth! Show bottom notification only.
+                toast('This email does not exist.', 'err');
                 btnLoad(btn, false, 'Send Login Code');
-                return; // Stop the login process here
+                return; // Stop here
             }
 
             // 2. IF IT EXISTS, PROCEED TO SEND OTP
@@ -679,23 +677,15 @@ window.handleLoginFlow = async () => {
             setTimeout(() => {
                 btn.classList.remove('btn-success');
                 btnLoad(btn, false, 'Verify Code');
-                setupBoxes(); // Initialize and focus the 6 boxes
-                loginStep = 2; // Move to step 2
+                setupBoxes();
+                loginStep = 2; 
             }, 1000);
 
             toast('Login code sent! Check your email.', 'info');
 
         } catch(e) {
-            console.error("Send OTP Error: ", e);
-            
-            // Intercept Firebase permission errors and show custom message
-            if (e.message.includes('permissions') || e.message.includes('Missing or insufficient')) {
-                // Show ONLY the notification in the bottom area
-                toast('This email does not exist.', 'err');
-            } else {
-                toast('Failed to send code: ' + e.message, 'err');
-            }
-            
+            console.error("Login Error: ", e);
+            toast('Failed to send code: ' + e.message, 'err');
             btnLoad(btn, false, 'Send Login Code');
         }
     } 
