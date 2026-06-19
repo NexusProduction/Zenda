@@ -459,7 +459,6 @@ window.clrErr = id => { document.getElementById(id)?.classList.remove('err'); co
 function showErr(id,msg){ document.getElementById(id)?.classList.add('err'); const e=document.getElementById('e-'+id); if(e){e.textContent=msg;e.classList.add('show');} }
 function clearAllErrs(){ document.querySelectorAll('.finp.err').forEach(e=>e.classList.remove('err')); document.querySelectorAll('.ferr').forEach(e=>{e.textContent='';}); }
 
-// ── PASSWORDLESS LOGIN FLOW: email → OTP → auto sign-in ──
 window.doLogin = async () => {
   clearAllErrs();
   const email = document.getElementById('email').value.trim();
@@ -470,21 +469,18 @@ window.doLogin = async () => {
   if(!isValidEmail(email)){ showErr('email','Invalid email.'); return; }
 
   btnLoad(btn,true);
-  window.isVerifyingOTP = true; // Tell the auth listener NOT to auto-redirect
+  window.isVerifyingOTP = true; 
 
   try {
-    const userRecord = await findUserByEmail(email);
-    if (!userRecord) {
-      window.isVerifyingOTP = false;
-      showErr('email', 'No account found with this email.');
-      btnLoad(btn,false,'Send Login Code');
-      return;
-    }
+    // REMOVED: findUserByEmail(email) check.
+    // Bypassing the unauthenticated database call stops the permissions error. 
+    // We now proceed directly to sending the OTP.
 
     loginEmail = email;
     window.tempRemember = rememberChecked;
 
-    await sendOTP(email, userRecord.name);
+    // Send OTP directly (using a generic name placeholder since we skipped the DB fetch)
+    await sendOTP(email, "User"); 
     document.getElementById('otp-email-lbl').textContent = email;
 
     btn.classList.add('btn-success');
@@ -501,7 +497,7 @@ window.doLogin = async () => {
     toast('Login code sent to your inbox','info');
 
   } catch(e) {
-    window.isVerifyingOTP = false; // Turn auto-redirect back on if they fail
+    window.isVerifyingOTP = false; 
     toast(e.message,'err');
     btnLoad(btn,false,'Send Login Code');
   }
