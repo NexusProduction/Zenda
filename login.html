@@ -438,7 +438,9 @@ import { auth } from './firebase-config.js';
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { sendOTP, verifyUserOTP } from './otp.js';
 
-// 1. Initialize EmailJS
+// EmailJS is initialized here so otp.js's internal emailjs.send() calls work.
+// otp.js owns ALL OTP generation, storage (Firestore), and email sending now —
+// this file no longer generates or sends OTPs directly.
 try { 
     emailjs.init("JE_ZMndTyx9drKYe-"); 
 } catch(e) { 
@@ -446,7 +448,6 @@ try {
 }
 
 let loginEmail = '';
-let currentOTP = ''; 
 let timerID = null;
 
 // --- UI & Helper Functions ---
@@ -479,13 +480,14 @@ function startTimer(){
 }
 
 // --- CORE LOGIN LOGIC ---
+// All OTP generation/storage/emailing happens inside sendOTP()/verifyUserOTP()
+// (otp.js, Firestore-backed). This file only triggers and reads the result.
 
 window.doLogin = async () => {
-    const btn0 = document.getElementById('btn-login');
-    if (btn0.disabled) return;   // ignore duplicate Enter/click triggers
+    const btn = document.getElementById('btn-login');
+    if (btn.disabled) return;   // ignore duplicate Enter/click triggers
     clearAllErrs();
     const email = document.getElementById('email').value.trim();
-    const btn = document.getElementById('btn-login');
 
     if(!email){ showErr('email','Required.'); return; }
     if(!isValidEmail(email)){ showErr('email','Invalid email.'); return; }
@@ -495,18 +497,6 @@ window.doLogin = async () => {
     try {
         loginEmail = email;
         await sendOTP(email, email.split('@')[0], 'Zenda');
-
-        // DEV LOG: Print OTP to browser console
-        console.log("=====================================");
-        console.log("🔑 LOGIN OTP GENERATED: ", currentOTP);
-        console.log("=====================================");
-
-        await emailjs.send("service_z74bzhj", "template_1v5a12p", {
-    to_email: email,
-    otp_code: currentOTP,
-    user_name: email.split('@')[0],
-    company_name: 'Zenda'
-});
 
         document.getElementById('otp-email-lbl').textContent = email;
         btn.classList.add('btn-success');
@@ -520,48 +510,41 @@ window.doLogin = async () => {
             startTimer();
         }, 500); 
 
-        // Show the OTP directly on the screen for easy testing
-        toast('Login code sent! (Test Code: ' + currentOTP + ')', 'info');
+        toast('Login code sent! Check your email.', 'info');
 
     } catch(e) {
-        console.error("EmailJS Send Error: ", e);
-        toast('Failed to send email. Check console.','err');
+        console.error("Send OTP Error: ", e);
+        toast('Failed to send code: ' + e.message, 'err');
         btnLoad(btn,false,'Send Login Code');
     }
 };
 
 window.resendOTP = async () => { 
     try { 
-        currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
-        await emailjs.send("service_z74bzhj", "template_1v5a12p", { 
-            to_email: loginEmail, 
-            otp: currentOTP,
-            message: currentOTP
-        });
+        await sendOTP(loginEmail, loginEmail.split('@')[0], 'Zenda');
         setupBoxes(); 
         startTimer(); 
-        toast('New code sent! (Test Code: ' + currentOTP + ')', 'info'); 
+        toast('New code sent! Check your email.', 'info'); 
     } catch(e) { 
-        console.error("EmailJS Resend Error: ", e);
-        toast('Failed to resend.','err'); 
+        console.error("Resend OTP Error: ", e);
+        toast('Failed to resend: ' + e.message, 'err'); 
     } 
 };
 
 window.verifyOTP = async () => {
-    const btn0 = document.getElementById('btn-verify');
-    if (btn0.disabled) return;
+    const btn = document.getElementById('btn-verify');
+    if (btn.disabled) return;
     const otp = getOTPVal();
     if(otp.length !== 6){ toast('Enter all 6 digits.','err'); return; }
-    const btn = document.getElementById('btn-verify');
     btnLoad(btn,true);
-    
-    // Verify OTP locally
-    const res = await verifyUserOTP(loginEmail, otp);
-if (res.success) {
-        try {
+
+    try {
+        const res = await verifyUserOTP(loginEmail, otp);
+
+        if (res.success) {
             // Log into Firebase anonymously to create a valid session
             await signInAnonymously(auth);
-            
+
             // Save email to local storage
             localStorage.setItem('zenda_logged_in_user', loginEmail);
 
@@ -575,15 +558,15 @@ if (res.success) {
             // Redirect to dashboard
             setTimeout(()=>{ window.location.href='dashboard.html'; }, 1600);
 
-        } catch (error) {
-            toast('Firebase Session Error: ' + error.message, 'err');
+        } else {
+            toast(res.message || 'Invalid code. Please try again.', 'err');
+            document.querySelectorAll('#otp-row .obox').forEach(b=>{b.value='';b.classList.remove('on');});
+            document.querySelector('#otp-row .obox')?.focus();
             btnLoad(btn, false, 'Secure Sign In');
         }
-    } else {
-        toast('Invalid code. Please try again.','err');
-        document.querySelectorAll('#otp-row .obox').forEach(b=>{b.value='';b.classList.remove('on');});
-        document.querySelector('#otp-row .obox')?.focus();
-        btnLoad(btn,false,'Secure Sign In');
+    } catch (error) {
+        toast('Verification error: ' + error.message, 'err');
+        btnLoad(btn, false, 'Secure Sign In');
     }
 };
 
