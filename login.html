@@ -9,6 +9,50 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234F46E5'/><text x='50' y='72' font-family='Arial, sans-serif' font-size='68' font-weight='bold' fill='white' text-anchor='middle'>Z</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
+/* --- 6-BOX OTP STYLES --- */
+.otp-inputs-wrap {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.otp-box {
+  width: 100%;
+  max-width: 56px;
+  height: 60px;
+  border-radius: 12px;
+  background: #F8FAFC;
+  border: 1.5px solid #E2E8F0;
+  color: #0F172A;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 0;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.otp-box:focus {
+  border-color: #5A55E0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(90, 85, 224, 0.15), 0 0 0 3px rgba(90, 85, 224, 0.1) !important;
+  transform: translateY(-2px);
+}
+
+.otp-box.filled {
+  border-color: #5A55E0 !important;
+  background: #ffffff !important;
+  color: #5A55E0 !important;
+  box-shadow: 0 2px 8px rgba(90, 85, 224, 0.08) !important;
+}
+
+.otp-box:disabled {
+  background: #F8FAFC;
+  border-color: transparent;
+  cursor: not-allowed;
+}
 :root{
     /* Premium Palette Base */
     --bg-page: #F3F4F6;
@@ -319,8 +363,15 @@ a{text-decoration:none;color:inherit}
       </div>
 
       <div class="form-group otp-group disabled" id="otp-group">
-        <label class="form-label" for="otp-input">Login Code</label>
-        <input type="text" id="otp-input" class="login-input" placeholder="• • • • • •" maxlength="6" disabled>
+        <label class="form-label">Login Code</label>
+        <div class="otp-inputs-wrap" id="otp-row">
+          <input class="otp-box" maxlength="1" inputmode="numeric" disabled>
+          <input class="otp-box" maxlength="1" inputmode="numeric" disabled>
+          <input class="otp-box" maxlength="1" inputmode="numeric" disabled>
+          <input class="otp-box" maxlength="1" inputmode="numeric" disabled>
+          <input class="otp-box" maxlength="1" inputmode="numeric" disabled>
+          <input class="otp-box" maxlength="1" inputmode="numeric" disabled>
+        </div>
       </div>
 
       <div class="toggle-container hidden" id="keep-signed-in-wrap">
@@ -454,9 +505,61 @@ function clearAllErrs(){ document.querySelectorAll('.login-input.err').forEach(e
 function btnLoad(btn,loading,label){ if(!btn)return; if(loading){btn.disabled=true;btn.dataset.lbl=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>';} else{btn.disabled=false;btn.innerHTML=label||btn.dataset.lbl;} }
 function toast(msg,type='info'){ const c=document.getElementById('toasts'); const t=document.createElement('div'); t.className='toast t-'+type; t.innerHTML='<span>'+msg+'</span>'; c.appendChild(t); setTimeout(()=>t.remove(),3500); }
 function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-
 // Login State Tracking
 let loginStep = 1; 
+
+// Extract OTP from the 6 boxes
+function getOTP() { 
+    return [...document.querySelectorAll('#otp-row .otp-box')].map(b => b.value).join(''); 
+}
+
+// Logic for auto-advancing 6 boxes
+function setupBoxes() {
+    const boxes = [...document.querySelectorAll('#otp-row .otp-box')];
+    boxes.forEach((b, i) => {
+        b.disabled = false; // Enable the boxes
+        b.value = ''; 
+        b.classList.remove('filled');
+        
+        b.oninput = (e) => {
+            b.value = b.value.replace(/[^0-9]/g, '');
+            if (b.value) {
+                b.classList.add('filled');
+                if (i < boxes.length - 1) boxes[i + 1].focus();
+            } else {
+                b.classList.remove('filled');
+            }
+            // Auto-submit when 6th digit is entered
+            if (getOTP().length === 6) setTimeout(() => window.handleLoginFlow(), 50);
+        };
+        
+        b.onkeydown = (e) => {
+            if (e.key === 'Backspace') {
+                if (!b.value && i > 0) {
+                    boxes[i - 1].focus();
+                    boxes[i - 1].value = '';
+                    boxes[i - 1].classList.remove('filled');
+                } else {
+                    b.value = '';
+                    b.classList.remove('filled');
+                }
+            }
+        };
+        
+        b.onpaste = (e) => {
+            e.preventDefault();
+            const d = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+            d.split('').forEach((c, j) => { 
+                if (boxes[j]) { 
+                    boxes[j].value = c; 
+                    boxes[j].classList.add('filled'); 
+                }
+            });
+            if (d.length === 6) setTimeout(() => window.handleLoginFlow(), 50);
+        };
+    });
+    setTimeout(() => boxes[0]?.focus(), 100); 
+}
 
 window.handleLoginFlow = async () => {
     const btn = document.getElementById('primary-login-btn');
@@ -465,7 +568,6 @@ window.handleLoginFlow = async () => {
 
     const emailInput = document.getElementById('email-input');
     const otpGroup = document.getElementById('otp-group');
-    const otpInput = document.getElementById('otp-input');
     const toggleWrap = document.getElementById('keep-signed-in-wrap');
 
     // === STEP 1: SEND EMAIL ===
@@ -478,22 +580,20 @@ window.handleLoginFlow = async () => {
 
         try {
             loginEmail = email;
-            // Your exact Firebase/EmailJS Call
             await sendOTP(email, email.split('@')[0], 'Zenda');
 
             // UI Transitions
             emailInput.disabled = true;
             otpGroup.classList.remove('disabled');
-            otpInput.disabled = false;
             toggleWrap.classList.remove('hidden');
-
+            
             btn.classList.add('btn-success');
             btn.innerHTML = 'Code Sent ✓';
 
             setTimeout(() => {
                 btn.classList.remove('btn-success');
                 btnLoad(btn, false, 'Verify Code');
-                otpInput.focus();
+                setupBoxes(); // Initialize and focus the 6 boxes
                 loginStep = 2; // Move to step 2
             }, 1000);
 
@@ -507,13 +607,12 @@ window.handleLoginFlow = async () => {
     } 
     // === STEP 2: VERIFY OTP ===
     else if (loginStep === 2) {
-        const otp = otpInput.value.trim();
+        const otp = getOTP();
         if(otp.length !== 6){ toast('Enter all 6 digits.', 'err'); return; }
 
         btnLoad(btn, true);
 
         try {
-            // Your exact Firebase Verification Call
             const res = await verifyUserOTP(loginEmail, otp);
 
             if (res.success) {
@@ -529,13 +628,16 @@ window.handleLoginFlow = async () => {
                     document.getElementById('success-overlay').classList.add('show');
                 }, 400);
 
-                // Redirect to dashboard
                 setTimeout(()=>{ window.location.href='dashboard.html'; }, 1600);
 
             } else {
                 toast(res.message || 'Invalid code. Please try again.', 'err');
-                otpInput.value = '';
-                otpInput.focus();
+                
+                // Clear boxes visually on error
+                const boxes = [...document.querySelectorAll('#otp-row .otp-box')];
+                boxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
+                boxes[0]?.focus();
+                
                 btnLoad(btn, false, 'Verify Code');
             }
         } catch (error) {
@@ -545,18 +647,12 @@ window.handleLoginFlow = async () => {
     }
 };
 
-// Handle Enter Key for the single form
+// Handle Enter Key for the form
 document.addEventListener('keydown', e => { 
     if(e.key === 'Enter') {
         e.preventDefault();
         window.handleLoginFlow();
     }
-});
-
-// Format OTP Input to only accept numbers
-document.getElementById('otp-input')?.addEventListener('input', function(e) {
-    this.value = this.value.replace(/\D/g, '');
-    if (this.value.length === 6) window.handleLoginFlow(); // Auto-verify when 6 digits entered
 });
 </script>
 </body>
