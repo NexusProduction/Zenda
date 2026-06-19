@@ -436,6 +436,7 @@ window.blastItem = function(e, wrapId) {
 <script type="module">
 import { auth } from './firebase-config.js';
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { sendOTP, verifyUserOTP } from './otp.js';
 
 // 1. Initialize EmailJS
 try { 
@@ -491,7 +492,7 @@ window.doLogin = async () => {
 
     try {
         loginEmail = email;
-        currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
+        await sendOTP(email, email.split('@')[0], 'Zenda');
 
         // DEV LOG: Print OTP to browser console
         console.log("=====================================");
@@ -551,7 +552,8 @@ window.verifyOTP = async () => {
     btnLoad(btn,true);
     
     // Verify OTP locally
-    if (otp === currentOTP) {
+    const res = await verifyUserOTP(loginEmail, otp);
+if (res.success) {
         try {
             // Log into Firebase anonymously to create a valid session
             await signInAnonymously(auth);
