@@ -744,55 +744,61 @@ a { text-decoration: none; color: inherit; }
 </div>
 
 <div id="toast-anchor"></div>
-<script type="module">
-import { auth } from './firebase-config.js';
-import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
-import { isValidEmail } from './utils.js';
 
-let currentState = 'send'; 
+<script type="module">
+import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
+import { ownerSignUp }               from './auth.js';
+import { sendOTP, verifyUserOTP }    from './otp.js';
+import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
+import { isValidEmail }              from './utils.js';
+
+let currentState = 'send'; // 'send' or 'verify'
 let createdCanvas = null;
 let createdCode   = '';
 let otpTimer       = null;
 
-let currentOTP = '';
-let loginEmail = '';
+// Initialize EmailJS silently
+if (EMAILJS_CONFIG?.publicKey && EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') {
+  try { emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey }); } catch(e) {}
+}
 
-// Initialize EmailJS
-try { emailjs.init("JE_ZMndTyx9drKYe-"); } catch(e) { console.error("EmailJS Init Error", e); }
-
+// Ensure SVG adapts and focuses on the face properly on mobile
 (function() {
   var svg = document.getElementById('scene-svg');
   function setVB() {
+    // Adjusted mobile viewBox (50 -20 400 500) to shift the camera focus higher up towards the head
     if (window.innerWidth <= 820) svg.setAttribute('viewBox', '50 -20 400 500');
     else svg.setAttribute('viewBox', '30 0 440 510');
   }
-  if(svg) {
-      setVB();
-      window.addEventListener('resize', setVB);
-  }
+  setVB(); 
+  window.addEventListener('resize', setVB);
 })();
+window.clrE = (id) => {
+  document.getElementById(id)?.classList.remove('err');
+};
 
-window.clrE = (id) => { document.getElementById(id)?.classList.remove('err'); };
-const showE = (id) => { document.getElementById(id)?.classList.add('err'); };
-
+const showE = (id) => {
+  document.getElementById(id)?.classList.add('err');
+};
+// ADD THIS EVENT LISTENER TO TOGGLE THE HAPPY FACE
 document.querySelectorAll('.inp').forEach(input => {
   input.addEventListener('input', (e) => {
     const svgCanvas = document.getElementById('scene-svg');
-    if(svgCanvas) {
-        if (e.target.value.trim().length > 1 && !e.target.classList.contains('err')) {
-          svgCanvas.classList.add('is-typing');
-        } else {
-          svgCanvas.classList.remove('is-typing');
-        }
+    // If the user types a valid string and there's no error, make the character smile
+    if (e.target.value.trim().length > 1 && !e.target.classList.contains('err')) {
+      svgCanvas.classList.add('is-typing');
+    } else {
+      svgCanvas.classList.remove('is-typing');
     }
   });
 });
-
-window.checkNameLength = (input) => { clrE('f-name'); };
+window.checkNameLength = (input) => {
+  clrE('f-name');
+};
 
 window.handleMainAction = async () => {
   const btn = document.getElementById('main-btn');
+  // THE BUG FIX: If the button is already loading, ignore extra Enter key presses!
   if (btn.disabled) return; 
 
   if (currentState === 'send') {
@@ -801,7 +807,6 @@ window.handleMainAction = async () => {
     await processVerifyOTP();
   }
 };
-
 async function processSendOTP() {
   document.querySelectorAll('.inp.err').forEach(x=>x.classList.remove('err'));
   
@@ -822,6 +827,7 @@ async function processSendOTP() {
   btnLoad(btn, true);
   
   try {
+    // 1. OPTIMISTIC UI: Assume success and transition immediately
     document.getElementById('f-comp').disabled = true;
     document.getElementById('f-name').disabled = true;
     document.getElementById('f-email').disabled = true;
@@ -834,6 +840,7 @@ async function processSendOTP() {
     currentState = 'verify';
     btnLoad(btn, false, 'Verify & Create Workspace');
 
+    // Start 60-second local expiration timer
     otpTimer = setTimeout(() => {
       if (currentState === 'verify') {
         revertToSendStep();
@@ -841,28 +848,9 @@ async function processSendOTP() {
       }
     }, 60000);
 
-    // Generate Local OTP
-    loginEmail = email;
-    currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // DEV LOG: Print OTP to browser console
-    console.log("=====================================");
-    console.log("🔑 TEST OTP GENERATED: ", currentOTP);
-    console.log("=====================================");
-
-    await emailjs.send("service_z74bzhj", "template_1v5a12p", {
-        to_email: email,
-        to_name: name,
-        company: comp,
-        otp: currentOTP,
-        message: currentOTP // Fallback for some EmailJS templates
-    });
-
-    // Display OTP inside the success popup so you can test immediately
-    toast('Code sent! (Test Code: ' + currentOTP + ')', 'toast-ok');
+    await sendOTP(email, name, comp);
 
   } catch(err) {
-    console.error(err);
     clearTimeout(otpTimer);
     document.getElementById('f-comp').disabled = false;
     document.getElementById('f-name').disabled = false;
@@ -871,9 +859,10 @@ async function processSendOTP() {
     
     currentState = 'send';
     btnLoad(btn, false, 'Send Verification Code');
-    toast('Error sending email. Check console.', 'toast-err');
+    toast('Error: ' + err.message, 'toast-err');
   }
 }
+
 
 async function processVerifyOTP() {
   const otp = getOTP();
@@ -882,47 +871,67 @@ async function processVerifyOTP() {
   const btn = document.getElementById('main-btn');
   btnLoad(btn, true);
   
-  if (otp === currentOTP) {
+  try {
+    const email = document.getElementById('f-email').value.trim();
+    const res = await verifyUserOTP(email, otp);
+    
+    if (!res.success) {
+      if (res.message.toLowerCase().includes('expire') || res.message.toLowerCase().includes('timeout')) {
+        // Backend says it's expired
+        revertToSendStep();
+        toast('Verification code expired. Please request a new one.', 'toast-err');
+      } else {
+        // Wrong OTP entered
+        toast(res.message, 'toast-err');
+        btnLoad(btn, false, 'Verify & Create Workspace');
+        
+        // Turn boxes red
+        document.querySelectorAll('#otp-row .otp-box').forEach(b => {
+          b.style.borderColor = 'var(--error)';
+          b.style.color = 'var(--error)';
+          b.style.background = 'var(--error-bg)';
+        });
+        
+        // Focus the last box
+        const boxes = document.querySelectorAll('#otp-row .otp-box');
+        boxes[5]?.focus();
+      }
+      return;
+    }
+    
+    // OTP correct — kill the local timer so it can never fire "expired" after this point
     clearTimeout(otpTimer);
     
-    try {
-      await signInAnonymously(auth);
-      localStorage.setItem('zenda_logged_in_user', loginEmail);
-
-      const comp  = document.getElementById('f-comp').value.trim();
-      const name  = document.getElementById('f-name').value.trim();
-      
-      createdCode = "ZEN-" + Math.floor(100000 + Math.random() * 900000);
-      
-      document.getElementById('view-form').style.display = 'none';
-      document.getElementById('view-success').style.display = 'flex';
-      
-      createdCanvas = renderCardToElement('card-container', 'company', {
-        companyName: comp, ownerName: name, email: loginEmail, uniqueCode: createdCode
-      });
-      
-      toast('Workspace created! 🎉', 'toast-ok');
-
-    } catch(err) {
-       toast('Error generating session: ' + err.message, 'toast-err');
-       btnLoad(btn, false, 'Verify & Create Workspace');
-    }
-
-  } else {
-    toast('Invalid Verification Code', 'toast-err');
-    btnLoad(btn, false, 'Verify & Create Workspace');
+    // OTP Success!
+    const comp  = document.getElementById('f-comp').value.trim();
+    const name  = document.getElementById('f-name').value.trim();
+    const data  = await ownerSignUp(comp, name, email);
+    createdCode = data.uniqueCode;
     
-    document.querySelectorAll('#otp-row .otp-box').forEach(b => {
-      b.style.borderColor = 'var(--error)';
-      b.style.color = 'var(--error)';
-      b.style.background = 'var(--error-bg)';
+    // Success State Transitions
+    document.getElementById('view-form').style.display = 'none';
+    document.getElementById('view-success').style.display = 'flex';
+    
+    createdCanvas = renderCardToElement('card-container', 'company', {
+      companyName: comp, ownerName: name, email, uniqueCode: createdCode
     });
     
-    const boxes = document.querySelectorAll('#otp-row .otp-box');
-    boxes[5]?.focus();
+    toast('Workspace created! 🎉', 'toast-ok');
+
+  } catch(err) {
+   const msg = err.message.toLowerCase();
+   if (msg.includes('expire') || msg.includes('timeout')) {
+      revertToSendStep();
+      toast('Verification code expired. Please request a new one.', 'toast-err');
+    } else if (msg.includes('already') || msg.includes('exists') || msg.includes('in-use') || msg.includes('in use')) {
+      toast('Email already used.', 'toast-err');
+      btnLoad(btn, false, 'Verify & Create Workspace');
+    } else {
+      toast('Error: ' + err.message, 'toast-err');
+      btnLoad(btn, false, 'Verify & Create Workspace');
+    }
   }
 }
-
 window.dlCard = () => {
   if (createdCanvas) {
     const comp = document.getElementById('f-comp').value.trim();
@@ -936,12 +945,13 @@ window.waCard = () => {
     shareCardWhatsApp(createdCanvas, comp ? comp+' access card' : 'Zenda card');
   }
 };
-
+// DASHBOARD STYLE OTP INPUT LOGIC
 function setupBoxes() {
   const boxes = [...document.querySelectorAll('#otp-row .otp-box')];
   boxes.forEach((b, i) => {
     b.value = ''; b.classList.remove('filled');
     b.oninput = (e) => {
+      // Clear the red error styles the moment the user starts typing again
       boxes.forEach(bx => {
         bx.style.borderColor = '';
         bx.style.color = '';
@@ -956,10 +966,12 @@ function setupBoxes() {
           b.classList.remove('filled');
       }
       
+      // Auto-submit with a tiny 50ms delay so the 6th digit visually renders before UI locks
       if (getOTP().length === 6) setTimeout(() => handleMainAction(), 50);
     };
     b.onkeydown = (e) => {
       if (e.key === 'Backspace') {
+        // Also clear error styles on backspace
         boxes.forEach(bx => { bx.style.borderColor = ''; bx.style.color = ''; bx.style.background = ''; });
         
         if (!b.value && i > 0) {
@@ -981,9 +993,9 @@ function setupBoxes() {
   });
   setTimeout(() => boxes[0]?.focus(), 400); 
 }
-
 function revertToSendStep() {
   clearTimeout(otpTimer);
+    const comp  = document.getElementById('f-comp').value.trim();
   clearBoxes();
   document.getElementById('otp-slide-container').classList.remove('show');
   document.getElementById('f-comp').disabled = false;
@@ -992,10 +1004,8 @@ function revertToSendStep() {
   currentState = 'send';
   btnLoad(document.getElementById('main-btn'), false, 'Send Verification Code');
 }
-
 function getOTP() { return [...document.querySelectorAll('#otp-row .otp-box')].map(b=>b.value).join(''); }
 function clearBoxes() { [...document.querySelectorAll('#otp-row .otp-box')].forEach(b=>{b.value='';b.classList.remove('filled');}); document.querySelector('#otp-row .otp-box')?.focus(); }
-
 function btnLoad(btn, loading, label) {
   if (!btn) return;
   if (loading) { btn.disabled=true; btn.dataset.lbl=btn.innerHTML; btn.innerHTML='<span class="spinner"></span>'; }
