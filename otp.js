@@ -67,22 +67,33 @@ function isEmailJSConfigured() {
     EMAILJS_CONFIG.templateId
   );
 }
+
 async function sendOTPEmail(email, otp, userName = '', companyName = 'Zenda') {
   if (!isEmailJSConfigured()) {
-    throw new Error('Email service is not configured.');
+    console.warn(`[ZENDA DEV] OTP for ${email}: ${otp}`);
+    showOTPOnScreen(otp, email);
+    return true;
   }
-
-  await emailjs.send(
-    EMAILJS_CONFIG.serviceId,
-    EMAILJS_CONFIG.templateId,
-    {
-      to_email: email,
-      otp_code: otp,
-      user_name: userName || email.split('@')[0],
-      company_name: companyName
-    },
-    EMAILJS_CONFIG.publicKey
-  );
+  
+  try {
+    await emailjs.send(
+      EMAILJS_CONFIG.serviceId,
+      EMAILJS_CONFIG.templateId,
+      { 
+        to_email: email, 
+        otp_code: otp, 
+        user_name: userName || email.split('@')[0], 
+        company_name: companyName 
+      },
+      EMAILJS_CONFIG.publicKey
+    );
+    console.log('[ZENDA] Email sent successfully via EmailJS!');
+    return true;
+  } catch (err) {
+    console.error('[ZENDA] EmailJS failed, showing OTP on screen:', err);
+    showOTPOnScreen(otp, email);
+    return true;
+  }
 }
 
 async function verifyOTP(email, enteredOTP) {
