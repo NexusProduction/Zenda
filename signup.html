@@ -750,50 +750,46 @@ import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/fi
 import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
 import { isValidEmail } from './utils.js';
 
-let currentState = 'send'; // 'send' or 'verify'
+let currentState = 'send'; 
 let createdCanvas = null;
 let createdCode   = '';
 let otpTimer       = null;
 
-// NEW Variables for Local OTP Bypass
 let currentOTP = '';
 let loginEmail = '';
 
-// 1. Initialize EmailJS with your exact Public Key
+// Initialize EmailJS
 try { emailjs.init("JE_ZMndTyx9drKYe-"); } catch(e) { console.error("EmailJS Init Error", e); }
 
-// Ensure SVG adapts and focuses on the face properly on mobile
 (function() {
   var svg = document.getElementById('scene-svg');
   function setVB() {
     if (window.innerWidth <= 820) svg.setAttribute('viewBox', '50 -20 400 500');
     else svg.setAttribute('viewBox', '30 0 440 510');
   }
-  setVB(); 
-  window.addEventListener('resize', setVB);
+  if(svg) {
+      setVB();
+      window.addEventListener('resize', setVB);
+  }
 })();
-window.clrE = (id) => {
-  document.getElementById(id)?.classList.remove('err');
-};
 
-const showE = (id) => {
-  document.getElementById(id)?.classList.add('err');
-};
+window.clrE = (id) => { document.getElementById(id)?.classList.remove('err'); };
+const showE = (id) => { document.getElementById(id)?.classList.add('err'); };
 
-// Toggle happy face
 document.querySelectorAll('.inp').forEach(input => {
   input.addEventListener('input', (e) => {
     const svgCanvas = document.getElementById('scene-svg');
-    if (e.target.value.trim().length > 1 && !e.target.classList.contains('err')) {
-      svgCanvas.classList.add('is-typing');
-    } else {
-      svgCanvas.classList.remove('is-typing');
+    if(svgCanvas) {
+        if (e.target.value.trim().length > 1 && !e.target.classList.contains('err')) {
+          svgCanvas.classList.add('is-typing');
+        } else {
+          svgCanvas.classList.remove('is-typing');
+        }
     }
   });
 });
-window.checkNameLength = (input) => {
-  clrE('f-name');
-};
+
+window.checkNameLength = (input) => { clrE('f-name'); };
 
 window.handleMainAction = async () => {
   const btn = document.getElementById('main-btn');
@@ -845,16 +841,28 @@ async function processSendOTP() {
       }
     }, 60000);
 
-    // 2. Generate and Send Local OTP via EmailJS
+    // Generate Local OTP
     loginEmail = email;
     currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
     
+    // DEV LOG: Print OTP to browser console
+    console.log("=====================================");
+    console.log("🔑 TEST OTP GENERATED: ", currentOTP);
+    console.log("=====================================");
+
     await emailjs.send("service_z74bzhj", "template_1v5a12p", {
         to_email: email,
-        otp: currentOTP
+        to_name: name,
+        company: comp,
+        otp: currentOTP,
+        message: currentOTP // Fallback for some EmailJS templates
     });
 
+    // Display OTP inside the success popup so you can test immediately
+    toast('Code sent! (Test Code: ' + currentOTP + ')', 'toast-ok');
+
   } catch(err) {
+    console.error(err);
     clearTimeout(otpTimer);
     document.getElementById('f-comp').disabled = false;
     document.getElementById('f-name').disabled = false;
@@ -874,22 +882,18 @@ async function processVerifyOTP() {
   const btn = document.getElementById('main-btn');
   btnLoad(btn, true);
   
-  // 3. Verify Local OTP
   if (otp === currentOTP) {
     clearTimeout(otpTimer);
     
     try {
-      // Create an anonymous session so Firebase recognizes them as logged in
       await signInAnonymously(auth);
       localStorage.setItem('zenda_logged_in_user', loginEmail);
 
       const comp  = document.getElementById('f-comp').value.trim();
       const name  = document.getElementById('f-name').value.trim();
       
-      // Generate a mock unique code for the card since we bypassed the database
       createdCode = "ZEN-" + Math.floor(100000 + Math.random() * 900000);
       
-      // Success State Transitions
       document.getElementById('view-form').style.display = 'none';
       document.getElementById('view-success').style.display = 'flex';
       
@@ -905,18 +909,15 @@ async function processVerifyOTP() {
     }
 
   } else {
-    // Wrong OTP entered
     toast('Invalid Verification Code', 'toast-err');
     btnLoad(btn, false, 'Verify & Create Workspace');
     
-    // Turn boxes red
     document.querySelectorAll('#otp-row .otp-box').forEach(b => {
       b.style.borderColor = 'var(--error)';
       b.style.color = 'var(--error)';
       b.style.background = 'var(--error-bg)';
     });
     
-    // Focus the last box
     const boxes = document.querySelectorAll('#otp-row .otp-box');
     boxes[5]?.focus();
   }
@@ -936,7 +937,6 @@ window.waCard = () => {
   }
 };
 
-// DASHBOARD STYLE OTP INPUT LOGIC
 function setupBoxes() {
   const boxes = [...document.querySelectorAll('#otp-row .otp-box')];
   boxes.forEach((b, i) => {
