@@ -436,272 +436,157 @@ window.blastItem = function(e, wrapId) {
 <script type="module">
 import { auth } from './firebase-config.js';
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
-import { isValidEmail } from './utils.js';
 
-let currentState = 'send'; 
-let createdCanvas = null;
-let createdCode   = '';
-let otpTimer       = null;
+// 1. Initialize EmailJS
+try { 
+    emailjs.init("JE_ZMndTyx9drKYe-"); 
+} catch(e) { 
+    console.error("EmailJS Init Error:", e); 
+}
 
-let currentOTP = '';
 let loginEmail = '';
+let currentOTP = ''; 
+let timerID = null;
 
-// Initialize EmailJS
-try { emailjs.init("JE_ZMndTyx9drKYe-"); } catch(e) { console.error("EmailJS Init Error", e); }
+// --- UI & Helper Functions ---
+window.go = v => { document.querySelectorAll('[id^="v-"]').forEach(el=>el.style.display='none'); document.getElementById(v).style.display='block'; clearAllErrs(); };
+window.clrErr = id => { document.getElementById(id)?.classList.remove('err'); const e=document.getElementById('e-'+id); if(e){e.textContent='';e.classList.remove('show');} };
+function showErr(id,msg){ document.getElementById(id)?.classList.add('err'); const e=document.getElementById('e-'+id); if(e){e.textContent=msg;e.classList.add('show');} }
+function clearAllErrs(){ document.querySelectorAll('.finp.err').forEach(e=>e.classList.remove('err')); document.querySelectorAll('.ferr').forEach(e=>{e.textContent='';}); }
+function btnLoad(btn,loading,label){ if(!btn)return; if(loading){btn.disabled=true;btn.dataset.lbl=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>';} else{btn.disabled=false;btn.innerHTML=label||btn.dataset.lbl;} }
+function toast(msg,type='info'){ const c=document.getElementById('toasts'); const t=document.createElement('div'); t.className='toast t-'+type; t.innerHTML='<span>'+msg+'</span>'; c.appendChild(t); setTimeout(()=>t.remove(),3500); }
+function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function getOTPVal(){ return Array.from(document.querySelectorAll('#otp-row .obox')).map(b=>b.value).join(''); }
 
-(function() {
-  var svg = document.getElementById('scene-svg');
-  function setVB() {
-    if (window.innerWidth <= 820) svg.setAttribute('viewBox', '50 -20 400 500');
-    else svg.setAttribute('viewBox', '30 0 440 510');
-  }
-  if(svg) {
-      setVB();
-      window.addEventListener('resize', setVB);
-  }
-})();
-
-window.clrE = (id) => { document.getElementById(id)?.classList.remove('err'); };
-const showE = (id) => { document.getElementById(id)?.classList.add('err'); };
-
-document.querySelectorAll('.inp').forEach(input => {
-  input.addEventListener('input', (e) => {
-    const svgCanvas = document.getElementById('scene-svg');
-    if(svgCanvas) {
-        if (e.target.value.trim().length > 1 && !e.target.classList.contains('err')) {
-          svgCanvas.classList.add('is-typing');
-        } else {
-          svgCanvas.classList.remove('is-typing');
-        }
-    }
-  });
-});
-
-window.checkNameLength = (input) => { clrE('f-name'); };
-
-window.handleMainAction = async () => {
-  const btn = document.getElementById('main-btn');
-  if (btn.disabled) return; 
-
-  if (currentState === 'send') {
-    await processSendOTP();
-  } else {
-    await processVerifyOTP();
-  }
-};
-
-async function processSendOTP() {
-  document.querySelectorAll('.inp.err').forEach(x=>x.classList.remove('err'));
-  
-  const comp  = document.getElementById('f-comp').value.trim();
-  const name  = document.getElementById('f-name').value.trim();
-  const email = document.getElementById('f-email').value.trim();
-  
-  let ok = true;
-  if (!comp) { showE('f-comp','Company required.'); ok=false; }
-  if (!name) { showE('f-name','Name required.'); ok=false; }
-  else if (name.length < 6 || name.length > 12) { showE('f-name','Name must be 6-12 characters.'); ok=false; }
-  if (!email) { showE('f-email','Email required.'); ok=false; }
-  else if (!isValidEmail(email)) { showE('f-email','Invalid email.'); ok=false; }
-  
-  if (!ok) return;
-  
-  const btn = document.getElementById('main-btn');
-  btnLoad(btn, true);
-  
-  try {
-    document.getElementById('f-comp').disabled = true;
-    document.getElementById('f-name').disabled = true;
-    document.getElementById('f-email').disabled = true;
-    document.getElementById('display-email').textContent = email;
-    
-    const otpContainer = document.getElementById('otp-slide-container');
-    otpContainer.classList.add('show');
-    setupBoxes();
-   
-    currentState = 'verify';
-    btnLoad(btn, false, 'Verify & Create Workspace');
-
-    otpTimer = setTimeout(() => {
-      if (currentState === 'verify') {
-        revertToSendStep();
-        toast('Verification code expired.', 'toast-err');
-      }
-    }, 60000);
-
-    // Generate Local OTP
-    loginEmail = email;
-    currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // DEV LOG: Print OTP to browser console
-    console.log("=====================================");
-    console.log("🔑 TEST OTP GENERATED: ", currentOTP);
-    console.log("=====================================");
-
-    await emailjs.send("service_z74bzhj", "template_1v5a12p", {
-        to_email: email,
-        to_name: name,
-        company: comp,
-        otp: currentOTP,
-        message: currentOTP // Fallback for some EmailJS templates
-    });
-
-    // Display OTP inside the success popup so you can test immediately
-    toast('Code sent! (Test Code: ' + currentOTP + ')', 'toast-ok');
-
-  } catch(err) {
-    console.error(err);
-    clearTimeout(otpTimer);
-    document.getElementById('f-comp').disabled = false;
-    document.getElementById('f-name').disabled = false;
-    document.getElementById('f-email').disabled = false;
-    document.getElementById('otp-slide-container').classList.remove('show');
-    
-    currentState = 'send';
-    btnLoad(btn, false, 'Send Verification Code');
-    toast('Error sending email. Check console.', 'toast-err');
-  }
+function setupBoxes(){ 
+    const boxes=document.querySelectorAll('#otp-row .obox'); 
+    boxes.forEach((box,i)=>{ 
+        box.value=''; box.classList.remove('on'); 
+        box.oninput=()=>{ box.value=box.value.replace(/\D/g,'').slice(-1); box.classList.toggle('on',!!box.value); if(box.value&&i<boxes.length-1) boxes[i+1].focus(); }; 
+        box.onkeydown=e=>{ if(e.key==='Backspace'&&!box.value&&i>0){ boxes[i-1].focus(); boxes[i-1].value=''; boxes[i-1].classList.remove('on'); }}; 
+        box.onpaste=e=>{ e.preventDefault(); const p=e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6); p.split('').forEach((c,j)=>{ if(boxes[j]){boxes[j].value=c;boxes[j].classList.add('on');} }); if(p.length===6) window.verifyOTP(); }; 
+    }); 
+    setTimeout(()=>{ boxes[0]?.focus(); },80); 
 }
 
-async function processVerifyOTP() {
-  const otp = getOTP();
-  if (otp.length !== 6) { toast('Enter the complete 6-digit code.', 'toast-err'); return; }
-  
-  const btn = document.getElementById('main-btn');
-  btnLoad(btn, true);
-  
-  if (otp === currentOTP) {
-    clearTimeout(otpTimer);
-    
+function startTimer(){ 
+    if(timerID) clearInterval(timerID); 
+    let s=60; 
+    const tv=document.getElementById('timer-val'), tt=document.getElementById('timer-txt'), rb=document.getElementById('resend-btn'); 
+    tt.style.display='inline'; rb.style.display='none'; tv.textContent=s+'s'; 
+    timerID=setInterval(()=>{ s--; tv.textContent=s+'s'; if(s<=0){ clearInterval(timerID); tt.style.display='none'; rb.style.display='inline'; } },1000); 
+}
+
+// --- CORE LOGIN LOGIC ---
+
+window.doLogin = async () => {
+    clearAllErrs();
+    const email = document.getElementById('email').value.trim();
+    const btn = document.getElementById('btn-login');
+
+    if(!email){ showErr('email','Required.'); return; }
+    if(!isValidEmail(email)){ showErr('email','Invalid email.'); return; }
+
+    btnLoad(btn,true);
+
     try {
-      await signInAnonymously(auth);
-      localStorage.setItem('zenda_logged_in_user', loginEmail);
+        loginEmail = email;
+        currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
 
-      const comp  = document.getElementById('f-comp').value.trim();
-      const name  = document.getElementById('f-name').value.trim();
-      
-      createdCode = "ZEN-" + Math.floor(100000 + Math.random() * 900000);
-      
-      document.getElementById('view-form').style.display = 'none';
-      document.getElementById('view-success').style.display = 'flex';
-      
-      createdCanvas = renderCardToElement('card-container', 'company', {
-        companyName: comp, ownerName: name, email: loginEmail, uniqueCode: createdCode
-      });
-      
-      toast('Workspace created! 🎉', 'toast-ok');
+        // DEV LOG: Print OTP to browser console
+        console.log("=====================================");
+        console.log("🔑 LOGIN OTP GENERATED: ", currentOTP);
+        console.log("=====================================");
 
-    } catch(err) {
-       toast('Error generating session: ' + err.message, 'toast-err');
-       btnLoad(btn, false, 'Verify & Create Workspace');
+        // Send via EmailJS
+        await emailjs.send("service_z74bzhj", "template_1v5a12p", {
+            to_email: email,
+            otp: currentOTP,
+            message: currentOTP
+        });
+
+        document.getElementById('otp-email-lbl').textContent = email;
+        btn.classList.add('btn-success');
+        btn.innerHTML = 'Code Sent ✓';
+
+        setTimeout(() => {
+            btn.classList.remove('btn-success');
+            btnLoad(btn, false, 'Send Login Code');
+            go('v-otp');
+            setupBoxes();
+            startTimer();
+        }, 500); 
+
+        // Show the OTP directly on the screen for easy testing
+        toast('Login code sent! (Test Code: ' + currentOTP + ')', 'info');
+
+    } catch(e) {
+        console.error("EmailJS Send Error: ", e);
+        toast('Failed to send email. Check console.','err');
+        btnLoad(btn,false,'Send Login Code');
     }
-
-  } else {
-    toast('Invalid Verification Code', 'toast-err');
-    btnLoad(btn, false, 'Verify & Create Workspace');
-    
-    document.querySelectorAll('#otp-row .otp-box').forEach(b => {
-      b.style.borderColor = 'var(--error)';
-      b.style.color = 'var(--error)';
-      b.style.background = 'var(--error-bg)';
-    });
-    
-    const boxes = document.querySelectorAll('#otp-row .otp-box');
-    boxes[5]?.focus();
-  }
-}
-
-window.dlCard = () => {
-  if (createdCanvas) {
-    const comp = document.getElementById('f-comp').value.trim();
-    downloadCard(createdCanvas, (comp?comp.toLowerCase().replace(/\s+/g,'-'):'workspace')+'-card.png');
-    toast('Card downloaded.', 'toast-ok');
-  }
-};
-window.waCard = () => {
-  if (createdCanvas) {
-    const comp = document.getElementById('f-comp').value.trim();
-    shareCardWhatsApp(createdCanvas, comp ? comp+' access card' : 'Zenda card');
-  }
 };
 
-function setupBoxes() {
-  const boxes = [...document.querySelectorAll('#otp-row .otp-box')];
-  boxes.forEach((b, i) => {
-    b.value = ''; b.classList.remove('filled');
-    b.oninput = (e) => {
-      boxes.forEach(bx => {
-        bx.style.borderColor = '';
-        bx.style.color = '';
-        bx.style.background = '';
-      });
+window.resendOTP = async () => { 
+    try { 
+        currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
+        await emailjs.send("service_z74bzhj", "template_1v5a12p", { 
+            to_email: loginEmail, 
+            otp: currentOTP,
+            message: currentOTP
+        });
+        setupBoxes(); 
+        startTimer(); 
+        toast('New code sent! (Test Code: ' + currentOTP + ')', 'info'); 
+    } catch(e) { 
+        console.error("EmailJS Resend Error: ", e);
+        toast('Failed to resend.','err'); 
+    } 
+};
 
-      b.value = b.value.replace(/[^0-9]/g, '');
-      if (b.value) {
-          b.classList.add('filled');
-          if (i < boxes.length - 1) boxes[i + 1].focus();
-      } else {
-          b.classList.remove('filled');
-      }
-      
-      if (getOTP().length === 6) setTimeout(() => handleMainAction(), 50);
-    };
-    b.onkeydown = (e) => {
-      if (e.key === 'Backspace') {
-        boxes.forEach(bx => { bx.style.borderColor = ''; bx.style.color = ''; bx.style.background = ''; });
-        
-        if (!b.value && i > 0) {
-            boxes[i - 1].focus();
-            boxes[i - 1].value = '';
-            boxes[i - 1].classList.remove('filled');
-        } else {
-            b.value = '';
-            b.classList.remove('filled');
+window.verifyOTP = async () => {
+    const otp = getOTPVal();
+    if(otp.length !== 6){ toast('Enter all 6 digits.','err'); return; }
+    const btn = document.getElementById('btn-verify');
+    btnLoad(btn,true);
+    
+    // Verify OTP locally
+    if (otp === currentOTP) {
+        try {
+            // Log into Firebase anonymously to create a valid session
+            await signInAnonymously(auth);
+            
+            // Save email to local storage
+            localStorage.setItem('zenda_logged_in_user', loginEmail);
+
+            btn.classList.add('btn-success');
+            btn.innerHTML = 'Verified ✓';
+
+            setTimeout(() => {
+                document.getElementById('success-overlay').classList.add('show');
+            }, 400);
+
+            // Redirect to dashboard
+            setTimeout(()=>{ window.location.href='dashboard.html'; }, 1600);
+
+        } catch (error) {
+            toast('Firebase Session Error: ' + error.message, 'err');
+            btnLoad(btn, false, 'Secure Sign In');
         }
-      }
-    };
-    b.onpaste = (e) => {
-      e.preventDefault();
-      const d = e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);
-      d.split('').forEach((c,j) => { if (boxes[j]) { boxes[j].value=c; boxes[j].classList.add('filled'); }});
-      if (d.length===6) setTimeout(() => handleMainAction(), 50);
-    };
-  });
-  setTimeout(() => boxes[0]?.focus(), 400); 
-}
+    } else {
+        toast('Invalid code. Please try again.','err');
+        document.querySelectorAll('#otp-row .obox').forEach(b=>{b.value='';b.classList.remove('on');});
+        document.querySelector('#otp-row .obox')?.focus();
+        btnLoad(btn,false,'Secure Sign In');
+    }
+};
 
-function revertToSendStep() {
-  clearTimeout(otpTimer);
-  clearBoxes();
-  document.getElementById('otp-slide-container').classList.remove('show');
-  document.getElementById('f-comp').disabled = false;
-  document.getElementById('f-name').disabled = false;
-  document.getElementById('f-email').disabled = false;
-  currentState = 'send';
-  btnLoad(document.getElementById('main-btn'), false, 'Send Verification Code');
-}
-
-function getOTP() { return [...document.querySelectorAll('#otp-row .otp-box')].map(b=>b.value).join(''); }
-function clearBoxes() { [...document.querySelectorAll('#otp-row .otp-box')].forEach(b=>{b.value='';b.classList.remove('filled');}); document.querySelector('#otp-row .otp-box')?.focus(); }
-
-function btnLoad(btn, loading, label) {
-  if (!btn) return;
-  if (loading) { btn.disabled=true; btn.dataset.lbl=btn.innerHTML; btn.innerHTML='<span class="spinner"></span>'; }
-  else { btn.disabled=false; btn.innerHTML=label||btn.dataset.lbl||'Submit'; }
-}
-
-function toast(msg, cls='toast-ok') {
-  const a = document.getElementById('toast-anchor');
-  const t = document.createElement('div');
-  t.className = `toast ${cls}`;
-  t.innerHTML = `<span>${msg}</span>`;
-  a.appendChild(t);
-  setTimeout(() => { t.style.cssText='opacity:0;transform:translateX(30px) scale(0.95);transition:all .3s'; setTimeout(()=>t.remove(),300); }, 3500);
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') handleMainAction();
+document.addEventListener('keydown',e=>{ 
+    if(e.key!=='Enter') return; 
+    const v=[...document.querySelectorAll('[id^="v-"]')].find(el=>el.style.display!=='none'); 
+    if(!v) return; 
+    if(v.id==='v-login') window.doLogin(); 
+    else if(v.id==='v-otp') window.verifyOTP(); 
 });
 </script>
 </body>
