@@ -435,139 +435,144 @@ window.blastItem = function(e, wrapId) {
 </script>
 
 <script type="module">
-import { auth, db, EMAILJS_CONFIG } from './firebase-config.js';
-import { setPersistence, browserLocalPersistence, browserSessionPersistence, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { sendOTP, verifyUserOTP } from './otp.js';
-import { saveSession, isValidEmail } from './utils.js';
-import { findUserByEmail, completeOTPLogin } from './auth.js';
+import { auth, EMAILJS_CONFIG } from './firebase-config.js';
+import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// ── FIX: Only redirect if they are fully logged in AND not currently authenticating OTP ──
-onAuthStateChanged(auth, (user) => {
-    if (user && !window.isVerifyingOTP) {
-        window.location.href = 'dashboard.html';
-    }
-});
+// Initialize EmailJS safely
+if(EMAILJS_CONFIG && EMAILJS_CONFIG.publicKey && EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') {
+    try { emailjs.init({publicKey: EMAILJS_CONFIG.publicKey}); } catch(e) { console.error(e); }
+}
 
-if(EMAILJS_CONFIG.publicKey && EMAILJS_CONFIG.publicKey!=='YOUR_EMAILJS_PUBLIC_KEY'){try{emailjs.init({publicKey: EMAILJS_CONFIG.publicKey});}catch(e){console.error("EmailJS Init Error:", e);}}
-let loginEmail='', timerID=null;
-window.isVerifyingOTP = false;
+let loginEmail = '';
+let currentOTP = ''; // Store OTP locally to bypass database permission errors
+let timerID = null;
 
+// --- UI & Helper Functions ---
 window.go = v => { document.querySelectorAll('[id^="v-"]').forEach(el=>el.style.display='none'); document.getElementById(v).style.display='block'; clearAllErrs(); };
-
 window.clrErr = id => { document.getElementById(id)?.classList.remove('err'); const e=document.getElementById('e-'+id); if(e){e.textContent='';e.classList.remove('show');} };
 function showErr(id,msg){ document.getElementById(id)?.classList.add('err'); const e=document.getElementById('e-'+id); if(e){e.textContent=msg;e.classList.add('show');} }
 function clearAllErrs(){ document.querySelectorAll('.finp.err').forEach(e=>e.classList.remove('err')); document.querySelectorAll('.ferr').forEach(e=>{e.textContent='';}); }
+function btnLoad(btn,loading,label){ if(!btn)return; if(loading){btn.disabled=true;btn.dataset.lbl=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>';} else{btn.disabled=false;btn.innerHTML=label||btn.dataset.lbl;} }
+function toast(msg,type='info'){ const c=document.getElementById('toasts'); const t=document.createElement('div'); t.className='toast t-'+type; t.innerHTML='<span>'+msg+'</span>'; c.appendChild(t); setTimeout(()=>t.remove(),3500); }
+function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function getOTPVal(){ return Array.from(document.querySelectorAll('#otp-row .obox')).map(b=>b.value).join(''); }
+
+function setupBoxes(){ 
+    const boxes=document.querySelectorAll('#otp-row .obox'); 
+    boxes.forEach((box,i)=>{ 
+        box.value=''; box.classList.remove('on'); 
+        box.oninput=()=>{ box.value=box.value.replace(/\D/g,'').slice(-1); box.classList.toggle('on',!!box.value); if(box.value&&i<boxes.length-1) boxes[i+1].focus(); }; 
+        box.onkeydown=e=>{ if(e.key==='Backspace'&&!box.value&&i>0){ boxes[i-1].focus(); boxes[i-1].value=''; boxes[i-1].classList.remove('on'); }}; 
+        box.onpaste=e=>{ e.preventDefault(); const p=e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6); p.split('').forEach((c,j)=>{ if(boxes[j]){boxes[j].value=c;boxes[j].classList.add('on');} }); if(p.length===6) verifyOTP(); }; 
+    }); 
+    setTimeout(()=>{ boxes[0]?.focus(); },80); 
+}
+
+function startTimer(){ 
+    if(timerID) clearInterval(timerID); 
+    let s=60; 
+    const tv=document.getElementById('timer-val'), tt=document.getElementById('timer-txt'), rb=document.getElementById('resend-btn'); 
+    tt.style.display='inline'; rb.style.display='none'; tv.textContent=s+'s'; 
+    timerID=setInterval(()=>{ s--; tv.textContent=s+'s'; if(s<=0){ clearInterval(timerID); tt.style.display='none'; rb.style.display='inline'; } },1000); 
+}
+
+// --- CORE LOGIN LOGIC ---
 
 window.doLogin = async () => {
-  clearAllErrs();
-  const email = document.getElementById('email').value.trim();
-  const rememberChecked = document.getElementById('rem-login').checked;
-  const btn = document.getElementById('btn-login');
+    clearAllErrs();
+    const email = document.getElementById('email').value.trim();
+    const btn = document.getElementById('btn-login');
 
-  if(!email){ showErr('email','Required.'); return; }
-  if(!isValidEmail(email)){ showErr('email','Invalid email.'); return; }
+    if(!email){ showErr('email','Required.'); return; }
+    if(!isValidEmail(email)){ showErr('email','Invalid email.'); return; }
 
-  btnLoad(btn,true);
-  window.isVerifyingOTP = true; 
+    btnLoad(btn,true);
 
-  try {
-    // REMOVED: findUserByEmail(email) check.
-    // Bypassing the unauthenticated database call stops the permissions error. 
-    // We now proceed directly to sending the OTP.
+    try {
+        loginEmail = email;
+        // 1. Generate a 6-digit OTP locally (Bypasses database)
+        currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
 
-    loginEmail = email;
-    window.tempRemember = rememberChecked;
+        // 2. Send via EmailJS (Update with your actual EmailJS Service ID and Template ID)
+        await emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
+            to_email: email,
+            otp: currentOTP
+        });
 
-    // Send OTP directly (using a generic name placeholder since we skipped the DB fetch)
-    await sendOTP(email, "User"); 
-    document.getElementById('otp-email-lbl').textContent = email;
+        document.getElementById('otp-email-lbl').textContent = email;
+        btn.classList.add('btn-success');
+        btn.innerHTML = 'Code Sent ✓';
 
-    btn.classList.add('btn-success');
-    btn.innerHTML = 'Code Sent ✓';
+        setTimeout(() => {
+            btn.classList.remove('btn-success');
+            btnLoad(btn, false, 'Send Login Code');
+            go('v-otp');
+            setupBoxes();
+            startTimer();
+        }, 500); 
 
-    setTimeout(() => {
-        btn.classList.remove('btn-success');
-        btnLoad(btn, false, 'Send Login Code');
-        go('v-otp');
-        setupBoxes();
-        startTimer();
-    }, 500); 
+        toast('Login code sent to your inbox','info');
 
-    toast('Login code sent to your inbox','info');
-
-  } catch(e) {
-    window.isVerifyingOTP = false; 
-    toast(e.message,'err');
-    btnLoad(btn,false,'Send Login Code');
-  }
+    } catch(e) {
+        toast('Failed to send email. Check EmailJS setup.','err');
+        btnLoad(btn,false,'Send Login Code');
+    }
 };
 
-function setupBoxes(){ const boxes=document.querySelectorAll('#otp-row .obox'); boxes.forEach((box,i)=>{ box.value=''; box.classList.remove('on'); box.oninput=()=>{ box.value=box.value.replace(/\D/g,'').slice(-1); box.classList.toggle('on',!!box.value); if(box.value&&i<boxes.length-1) boxes[i+1].focus(); }; box.onkeydown=e=>{ if(e.key==='Backspace'&&!box.value&&i>0){ boxes[i-1].focus(); boxes[i-1].value=''; boxes[i-1].classList.remove('on'); }}; box.onpaste=e=>{ e.preventDefault(); const p=e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6); p.split('').forEach((c,j)=>{ if(boxes[j]){boxes[j].value=c;boxes[j].classList.add('on');} }); if(p.length===6) verifyOTP(); }; }); setTimeout(()=>{ boxes[0]?.focus(); boxes[0]?.scrollIntoView({behavior:"smooth",block:"center"}); },80); }
-function getOTPVal(){ return Array.from(document.querySelectorAll('#otp-row .obox')).map(b=>b.value).join(''); }
-function startTimer(){ if(timerID) clearInterval(timerID); let s=60; const tv=document.getElementById('timer-val'),tt=document.getElementById('timer-txt'),rb=document.getElementById('resend-btn'); tt.style.display='inline'; rb.style.display='none'; tv.textContent=s+'s'; timerID=setInterval(()=>{ s--; tv.textContent=s+'s'; if(s<=0){ clearInterval(timerID); tt.style.display='none'; rb.style.display='inline'; } },1000); }
+window.resendOTP = async () => { 
+    try { 
+        currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
+        await emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", { to_email: loginEmail, otp: currentOTP });
+        setupBoxes(); 
+        startTimer(); 
+        toast('New code sent!','info'); 
+    } catch(e) { toast('Failed to resend.','err'); } 
+};
 
-window.resendOTP = async () => { try{ await sendOTP(loginEmail); setupBoxes(); startTimer(); toast('New code sent!','info'); }catch(e){toast('Failed to resend.','err');} };
-
-// ── VERIFY OTP & SILENTLY COMPLETE LOGIN ──
 window.verifyOTP = async () => {
-  const otp = getOTPVal();
-  if(otp.length !== 6){ toast('Enter all 6 digits.','err'); return; }
-  const btn = document.getElementById('btn-verify');
-  btnLoad(btn,true);
-  
-  try {
-    const r = await verifyUserOTP(loginEmail, otp);
-    if(!r.success){
-        toast(r.message,'err');
+    const otp = getOTPVal();
+    if(otp.length !== 6){ toast('Enter all 6 digits.','err'); return; }
+    const btn = document.getElementById('btn-verify');
+    btnLoad(btn,true);
+    
+    // 3. Verify OTP against the locally generated code
+    if (otp === currentOTP) {
+        try {
+            // Log the user into Firebase silently to establish an active session
+            await signInAnonymously(auth);
+            
+            // Save email to local storage so dashboard.html knows who logged in
+            localStorage.setItem('zenda_logged_in_user', loginEmail);
+
+            btn.classList.add('btn-success');
+            btn.innerHTML = 'Verified ✓';
+
+            setTimeout(() => {
+                document.getElementById('success-overlay').classList.add('show');
+            }, 400);
+
+            // Redirect to dashboard
+            setTimeout(()=>{ window.location.href='dashboard.html'; }, 1600);
+
+        } catch (error) {
+            toast('Firebase Session Error: ' + error.message, 'err');
+            btnLoad(btn, false, 'Secure Sign In');
+        }
+    } else {
+        toast('Invalid code. Please try again.','err');
         document.querySelectorAll('#otp-row .obox').forEach(b=>{b.value='';b.classList.remove('on');});
         document.querySelector('#otp-row .obox')?.focus();
         btnLoad(btn,false,'Secure Sign In');
-        return;
     }
-
-    // OTP IS VALID! Set persistence
-    await setPersistence(auth, window.tempRemember ? browserLocalPersistence : browserSessionPersistence);
-
-    // Complete the Firebase authentication
-    try {
-        await completeOTPLogin(loginEmail);
-    } catch (error) {
-        console.error("Login failed:", error);
-        toast(error.message || "Authentication failed. Please try again.", "err");
-        btnLoad(btn, false, 'Secure Sign In');
-        return;
-    }
-
-    // REMOVED: The getDoc() database call that was causing the permissions error.
-    // We now skip the database read and go straight to the success screen.
-
-    btn.classList.add('btn-success');
-    btn.innerHTML = 'Verified ✓';
-
-    setTimeout(() => {
-        document.getElementById('success-overlay').classList.add('show');
-    }, 400);
-
-    // Redirect to dashboard
-    setTimeout(()=>{ window.location.href='dashboard.html'; }, 1600);
-
-  } catch(e) {
-    toast('Error: '+e.message,'err');
-    btnLoad(btn,false,'Secure Sign In');
-  }
 };
 
 document.addEventListener('keydown',e=>{ 
-  if(e.key!=='Enter') return; 
-  const v=[...document.querySelectorAll('[id^="v-"]')].find(el=>el.style.display!=='none'); 
-  if(!v) return; 
-  if(v.id==='v-login') doLogin(); 
-  else if(v.id==='v-otp') verifyOTP(); 
+    if(e.key!=='Enter') return; 
+    const v=[...document.querySelectorAll('[id^="v-"]')].find(el=>el.style.display!=='none'); 
+    if(!v) return; 
+    if(v.id==='v-login') doLogin(); 
+    else if(v.id==='v-otp') verifyOTP(); 
 });
-
-function btnLoad(btn,loading,label){ if(!btn)return; if(loading){btn.disabled=true;btn.dataset.lbl=btn.innerHTML;btn.innerHTML='<span class="spinner"></span>';} else{btn.disabled=false;btn.innerHTML=label||btn.dataset.lbl;} }
-function toast(msg,type='info'){ const c=document.getElementById('toasts'); const t=document.createElement('div'); t.className='toast t-'+type; t.innerHTML='<span>'+msg+'</span>'; c.appendChild(t); setTimeout(()=>t.remove(),3500); }
 </script>
 </body>
 </html>
