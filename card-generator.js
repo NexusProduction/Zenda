@@ -54,22 +54,18 @@ export function drawCompanyCard(canvas, { companyName, ownerName, email, uniqueC
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.fillText(`${ownerName} • Owner`, 24, 112);
 
-  // Credentials box — fills the middle instead of leaving it empty
+  // Credentials box — single email row, centered
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  roundRect(ctx, 24, 134, W - 48, 80, 12);
+  roundRect(ctx, 24, 134, W - 48, 56, 12);
   ctx.fill();
 
   ctx.font = '500 13px "DM Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('Email:', 40, 160);
-  ctx.fillText('Code:', 40, 192);
+  ctx.fillText('Email:', 40, 167);
 
   ctx.font = 'bold 15px "DM Mono", monospace';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(email, 95, 160);
-
-  ctx.fillStyle = '#FCD34D';
-  ctx.fillText(formatCode(uniqueCode), 95, 192);
+  ctx.fillText(email, 95, 167);
 
   // Bottom row
   ctx.font = 'bold 11px "Outfit", sans-serif';
@@ -183,7 +179,7 @@ export function renderCardToElement(containerId, type, data) {
   if (!container) return null;
   const canvas = document.createElement('canvas');
   canvas.width = 480; canvas.height = 280;
-  canvas.style.width = '100%'; canvas.style.maxWidth = '400px'; canvas.style.borderRadius = '16px'; canvas.style.boxShadow = '0 12px 40px rgba(0,0,0,0.25)';
+  canvas.style.width = '100%'; canvas.style.maxWidth = '460px'; canvas.style.borderRadius = '16px'; canvas.style.boxShadow = '0 12px 40px rgba(0,0,0,0.25)';
   container.innerHTML = ''; container.appendChild(canvas);
   if (type === 'company') drawCompanyCard(canvas, data); else drawStaffCard(canvas, data);
   return canvas;
