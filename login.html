@@ -433,18 +433,19 @@ window.blastItem = function(e, wrapId) {
     }, 150); // The 150ms delay creates the "zoom then blast" effect
 };
 </script>
-
 <script type="module">
-import { auth, EMAILJS_CONFIG } from './firebase-config.js';
+import { auth } from './firebase-config.js';
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// Initialize EmailJS safely
-if(EMAILJS_CONFIG && EMAILJS_CONFIG.publicKey && EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') {
-    try { emailjs.init({publicKey: EMAILJS_CONFIG.publicKey}); } catch(e) { console.error(e); }
+// 1. Initialize EmailJS with your exact Public Key
+try { 
+    emailjs.init("JE_ZMndTyx9drKYe-"); 
+} catch(e) { 
+    console.error("EmailJS Init Error:", e); 
 }
 
 let loginEmail = '';
-let currentOTP = ''; // Store OTP locally to bypass database permission errors
+let currentOTP = ''; 
 let timerID = null;
 
 // --- UI & Helper Functions ---
@@ -490,11 +491,10 @@ window.doLogin = async () => {
 
     try {
         loginEmail = email;
-        // 1. Generate a 6-digit OTP locally (Bypasses database)
         currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // 2. Send via EmailJS (Update with your actual EmailJS Service ID and Template ID)
-        await emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
+        // 2. Send via EmailJS using your exact Service & Template IDs
+        await emailjs.send("service_z74bzhj", "template_1v5a12p", {
             to_email: email,
             otp: currentOTP
         });
@@ -514,7 +514,8 @@ window.doLogin = async () => {
         toast('Login code sent to your inbox','info');
 
     } catch(e) {
-        toast('Failed to send email. Check EmailJS setup.','err');
+        console.error("EmailJS Send Error: ", e);
+        toast('Failed to send email. Check console.','err');
         btnLoad(btn,false,'Send Login Code');
     }
 };
@@ -522,11 +523,17 @@ window.doLogin = async () => {
 window.resendOTP = async () => { 
     try { 
         currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
-        await emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", { to_email: loginEmail, otp: currentOTP });
+        await emailjs.send("service_z74bzhj", "template_1v5a12p", { 
+            to_email: loginEmail, 
+            otp: currentOTP 
+        });
         setupBoxes(); 
         startTimer(); 
         toast('New code sent!','info'); 
-    } catch(e) { toast('Failed to resend.','err'); } 
+    } catch(e) { 
+        console.error("EmailJS Resend Error: ", e);
+        toast('Failed to resend.','err'); 
+    } 
 };
 
 window.verifyOTP = async () => {
@@ -535,13 +542,13 @@ window.verifyOTP = async () => {
     const btn = document.getElementById('btn-verify');
     btnLoad(btn,true);
     
-    // 3. Verify OTP against the locally generated code
+    // 3. Verify OTP locally
     if (otp === currentOTP) {
         try {
-            // Log the user into Firebase silently to establish an active session
+            // Log into Firebase anonymously to create a valid session
             await signInAnonymously(auth);
             
-            // Save email to local storage so dashboard.html knows who logged in
+            // Save email to local storage
             localStorage.setItem('zenda_logged_in_user', loginEmail);
 
             btn.classList.add('btn-success');
