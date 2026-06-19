@@ -240,10 +240,6 @@ a { text-decoration: none; color: inherit; }
 .inp.err { border-color: var(--error) !important; background: var(--error-bg); }
 .inp.err:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
 .inp:disabled { opacity: 0.6; cursor: not-allowed; background: #E2E8F0; border-color: #CBD5E1; color: #475569; }
-
-.err-msg { font-size: 12px; color: var(--error); font-weight: 600; margin-top: 4px; display: none; text-align: left;}
-.err-msg.show { display: block; animation: slideDown 0.2s ease-out; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 .btn-primary {
   width: 100%; padding: 15px; border-radius: 10px;
   font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: -0.01em;
@@ -274,8 +270,8 @@ a { text-decoration: none; color: inherit; }
 .otp-inputs-wrap { 
   display: flex; 
   gap: 8px; 
-  justify-content: space-between; 
-  margin-bottom: 8px; /* Reduced from 24px to remove the dead space */
+  justify-content: space-between;
+  margin-bottom: 10px;
   width: 100%; 
 }
 
@@ -435,8 +431,8 @@ a { text-decoration: none; color: inherit; }
   
   /* 3. Seamless Overlapping Form - Flex stretches to fill the rest */
   .form-panel { 
-    flex: 1; /* Automatically stretches to completely cover the bottom dead space */
-    padding: 40px 20px 60px; 
+    flex: 1;
+    padding: 40px 20px 20px;
     border-radius: 24px 24px 0 0; 
     background: var(--bg-surface); 
     margin-top: -24px; 
@@ -680,19 +676,16 @@ a { text-decoration: none; color: inherit; }
         <div class="field">
           <label class="lbl" for="f-comp">Company Name</label>
           <input class="inp" id="f-comp" type="text" placeholder="Acme Corp" oninput="clrE('f-comp')">
-          <div class="err-msg" id="e-f-comp"></div>
         </div>
         <div class="field">
           <label class="lbl" id="lbl-f-name" for="f-name">Your Full Name</label>
           <input class="inp" id="f-name" type="text" placeholder="John Doe" oninput="checkNameLength(this)">
-          <div class="err-msg" id="e-f-name"></div>
         </div>
       </div>
       
       <div class="field full">
         <label class="lbl" for="f-email">Work Email</label>
         <input class="inp" id="f-email" type="email" autocomplete="email" placeholder="you@company.com" oninput="clrE('f-email')">
-        <div class="err-msg" id="e-f-email"></div>
       </div>
 
       <div id="otp-slide-container" class="otp-slide-container">
@@ -719,6 +712,8 @@ a { text-decoration: none; color: inherit; }
     </div>
 
      <div id="view-success">
+
+      <div id="card-container" style="display:flex; justify-content:center; margin-bottom:24px;"></div>
 
       <div class="action-row">
         <button class="btn-dl" onclick="dlCard()">
@@ -775,17 +770,12 @@ if (EMAILJS_CONFIG?.publicKey && EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBL
   setVB(); 
   window.addEventListener('resize', setVB);
 })();
-
 window.clrE = (id) => {
   document.getElementById(id)?.classList.remove('err');
-  const e = document.getElementById('e-'+id);
-  if (e) { e.textContent=''; e.classList.remove('show'); }
 };
 
-const showE = (id, msg) => {
+const showE = (id) => {
   document.getElementById(id)?.classList.add('err');
-  const e = document.getElementById('e-'+id);
-  if (e) { e.textContent=msg; e.classList.add('show'); }
 };
 // ADD THIS EVENT LISTENER TO TOGGLE THE HAPPY FACE
 document.querySelectorAll('.inp').forEach(input => {
@@ -831,7 +821,6 @@ window.handleMainAction = async () => {
 };
 async function processSendOTP() {
   document.querySelectorAll('.inp.err').forEach(x=>x.classList.remove('err'));
-  document.querySelectorAll('.err-msg.show').forEach(x=>{x.textContent='';x.classList.remove('show');});
   
   const comp  = document.getElementById('f-comp').value.trim();
   const name  = document.getElementById('f-name').value.trim();
@@ -922,6 +911,9 @@ async function processVerifyOTP() {
       return;
     }
     
+    // OTP correct — kill the local timer so it can never fire "expired" after this point
+    clearTimeout(otpTimer);
+    
     // OTP Success!
     const comp  = document.getElementById('f-comp').value.trim();
     const name  = document.getElementById('f-name').value.trim();
@@ -939,10 +931,13 @@ async function processVerifyOTP() {
     toast('Workspace created! 🎉', 'toast-ok');
 
   } catch(err) {
-   // Catch any other backend expiration errors
-   if (err.message.toLowerCase().includes('expire') || err.message.toLowerCase().includes('timeout')) {
+   const msg = err.message.toLowerCase();
+   if (msg.includes('expire') || msg.includes('timeout')) {
       revertToSendStep();
       toast('Verification code expired. Please request a new one.', 'toast-err');
+    } else if (msg.includes('already') || msg.includes('exists') || msg.includes('in-use') || msg.includes('in use')) {
+      toast('Email already used.', 'toast-err');
+      btnLoad(btn, false, 'Verify & Create Workspace');
     } else {
       toast('Error: ' + err.message, 'toast-err');
       btnLoad(btn, false, 'Verify & Create Workspace');
