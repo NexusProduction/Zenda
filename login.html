@@ -515,6 +515,7 @@ window.verifyOTP = async () => {
   if(otp.length !== 6){ toast('Enter all 6 digits.','err'); return; }
   const btn = document.getElementById('btn-verify');
   btnLoad(btn,true);
+  
   try {
     const r = await verifyUserOTP(loginEmail, otp);
     if(!r.success){
@@ -525,12 +526,12 @@ window.verifyOTP = async () => {
         return;
     }
 
-    // OTP IS VALID! Set persistence, then sign in using the stored internal credential
+    // OTP IS VALID! Set persistence
     await setPersistence(auth, window.tempRemember ? browserLocalPersistence : browserSessionPersistence);
 
-    let user;
+    // Complete the Firebase authentication
     try {
-        user = await completeOTPLogin(loginEmail);
+        await completeOTPLogin(loginEmail);
     } catch (error) {
         console.error("Login failed:", error);
         toast(error.message || "Authentication failed. Please try again.", "err");
@@ -538,10 +539,8 @@ window.verifyOTP = async () => {
         return;
     }
 
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (userDoc.exists()) {
-        saveSession({ uid: user.uid, ...userDoc.data() });
-    }
+    // REMOVED: The getDoc() database call that was causing the permissions error.
+    // We now skip the database read and go straight to the success screen.
 
     btn.classList.add('btn-success');
     btn.innerHTML = 'Verified ✓';
@@ -550,6 +549,7 @@ window.verifyOTP = async () => {
         document.getElementById('success-overlay').classList.add('show');
     }, 400);
 
+    // Redirect to dashboard
     setTimeout(()=>{ window.location.href='dashboard.html'; }, 1600);
 
   } catch(e) {
