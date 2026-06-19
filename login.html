@@ -435,12 +435,8 @@ window.blastItem = function(e, wrapId) {
 </script>
 <script type="module">
 import { auth } from './firebase-config.js';
-import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { sendOTP, verifyUserOTP } from './otp.js';
-
-// EmailJS is initialized here so otp.js's internal emailjs.send() calls work.
-// otp.js owns ALL OTP generation, storage (Firestore), and email sending now —
-// this file no longer generates or sends OTPs directly.
+import { completeOTPLogin } from './auth.js';
 try { 
     emailjs.init("JE_ZMndTyx9drKYe-"); 
 } catch(e) { 
@@ -542,8 +538,8 @@ window.verifyOTP = async () => {
         const res = await verifyUserOTP(loginEmail, otp);
 
         if (res.success) {
-            // Log into Firebase anonymously to create a valid session
-            await signInAnonymously(auth);
+    // Sign in as the REAL account tied to this email — not anonymous
+    await completeOTPLogin(loginEmail);
 
             // Save email to local storage
             localStorage.setItem('zenda_logged_in_user', loginEmail);
