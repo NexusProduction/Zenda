@@ -6,7 +6,7 @@ import { db, OTP_EXPIRY_MINUTES } from './firebase-config.js';
 import { doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const EMAILJS_CONFIG = {
-  serviceId: 'service_z74bzhj',
+  serviceId: 'service_eq2vbrf',
   templateId: 'template_tfoskjm',
   publicKey: 'e5zf2Kl3AwVaSEO9E'
 };
