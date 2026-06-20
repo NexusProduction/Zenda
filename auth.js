@@ -4,7 +4,10 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut,
-  updateProfile
+  updateProfile,
+  updateEmail,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { 
   doc, 
@@ -276,6 +279,53 @@ export async function ownerSignUp(companyName, name, email) {
   await setDoc(doc(db, 'installedApps', user.uid), { apps: ['calculator'] });
   
   return { uid: user.uid, uniqueCode, companyId: companyRef.id };
+}
+
+// ── EMAIL CHANGE (FIXED) ─────────────────────────────────────────
+// Updates the email in BOTH Firebase Auth and Firestore. Firebase Auth is
+// the source of truth for login: completeOTPLogin() signs in against the
+// *Auth* record, not the Firestore doc. If only Firestore is updated, the
+// account becomes unrecoverable on next login ("credentials out of sync").
+//
+// Call this from your profile/settings page instead of writing `email`
+// to Firestore directly, e.g.:
+//   import { updateUserEmail } from './auth.js';
+//   await updateUserEmail(newEmailInput.value);
+export async function updateUserEmail(newEmail) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not signed in.');
+
+  newEmail = newEmail.trim().toLowerCase();
+  if (!newEmail) throw new Error('Please enter an email.');
+  if (newEmail === (user.email || '').toLowerCase()) return false; // nothing changed
+
+  // Make sure no other account is already using this email
+  const existing = await findUserByEmail(newEmail);
+  if (existing && existing.uid !== user.uid) {
+    throw new Error('That email is already in use by another account.');
+  }
+
+  // Pull the hidden auth key so we can re-authenticate. Firebase requires a
+  // *recent* login before it will let you change an email address, and
+  // passwordless sessions can easily be old, so we re-auth silently here
+  // rather than forcing the user through a password prompt they don't have.
+  const userDocRef = doc(db, 'users', user.uid);
+  const userDocSnap = await getDoc(userDocRef);
+  if (!userDocSnap.exists()) throw new Error('User profile not found.');
+  const userData = userDocSnap.data();
+  const authKey = userData.passwordHint || userData.password;
+  if (!authKey) throw new Error('Missing login credential — cannot verify identity to change email.');
+
+  const credential = EmailAuthProvider.credential(user.email, authKey);
+  await reauthenticateWithCredential(user, credential);
+
+  // 1. Update Firebase Auth FIRST — this is what login actually checks.
+  await updateEmail(user, newEmail);
+
+  // 2. Now mirror it into Firestore so they stay in sync.
+  await setDoc(userDocRef, { ...userData, email: newEmail }, { merge: true });
+
+  return true;
 }
 
 // Standard logout
