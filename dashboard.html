@@ -4123,6 +4123,20 @@ window.verifyProfileOTP = async function() {
             const pwd = window.CU.passwordHint || window.CU.password;
             if (!pwd) throw new Error('Missing account credential. Please contact support.');
 
+            // --- DUPLICATE EMAIL CHECK (cross-company) ---
+            // Looks across the ENTIRE 'users' collection, not just this company's
+            // staff. A staff member that was actually deleted (deleteDoc) leaves
+            // zero trace here, so this only blocks emails that are genuinely
+            // still attached to a live account somewhere — never a cleanly
+            // deleted one.
+            const dupSnap = await getDocs(query(collection(db, 'users'), where('email', '==', newEmail)));
+            const takenByOther = dupSnap.docs.some(d => d.id !== window.CU.uid);
+            if (takenByOther) {
+                window.showToast('That email is already used by another account.', 'error');
+                window.cancelOtpView(); // back out cleanly, like hitting Cancel
+                return;
+            }
+
             // Sign in on a fresh secondary Auth instance — guarantees a recent
             // login so updateEmail() won't get rejected, and means we never
             // touch Firestore unless the Auth side actually succeeded first.
@@ -4148,8 +4162,12 @@ window.verifyProfileOTP = async function() {
 
         } catch(e) {
             console.error('Email change failed:', e);
+            // Backstop: even if our Firestore check above somehow misses it
+            // (e.g. an orphaned Auth account whose Firestore doc never got
+            // cleaned up), Firebase Auth itself still refuses the change here.
             if (e.code === 'auth/email-already-in-use') {
                 window.showToast('That email is already used by another account.', 'error');
+                window.cancelOtpView();
             } else if (e.message && e.message.includes('requires-recent-login')) {
                 window.showToast('Please sign out and sign back in to change your email.', 'error');
             } else if (e.code === 'auth/operation-not-allowed') {
