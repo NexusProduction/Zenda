@@ -4119,21 +4119,41 @@ window.verifyProfileOTP = async function() {
     // --- STEP 2: New Email Verified -> Update Database ---
     } else if (window.profileState.step === 2) {
         try {
-            if (auth.currentUser) {
-    try { await updateEmail(auth.currentUser, window.profileState.newEmail); }
-    catch(authErr) { console.warn("Bypassed Firebase auth rule."); }
-}
-await updateDoc(doc(db, 'users', window.CU.uid), { email: window.profileState.newEmail });
+            const newEmail = window.profileState.newEmail;
+            const pwd = window.CU.passwordHint || window.CU.password;
+            if (!pwd) throw new Error('Missing account credential. Please contact support.');
 
-            window.CU.email = window.profileState.newEmail;
+            // Sign in on a fresh secondary Auth instance — guarantees a recent
+            // login so updateEmail() won't get rejected, and means we never
+            // touch Firestore unless the Auth side actually succeeded first.
+            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+            const { getAuth, signInWithEmailAndPassword, updateEmail: updateEmailFn, signOut } =
+                await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+
+            const tempApp  = initializeApp(auth.app.options, "TempApp_EmailChange_" + Date.now());
+            const tempAuth = getAuth(tempApp);
+
+            const cred = await signInWithEmailAndPassword(tempAuth, window.CU.email, pwd);
+            await updateEmailFn(cred.user, newEmail);
+            await signOut(tempAuth);
+
+            // Only now — Auth side is confirmed updated — do we touch Firestore.
+            await updateDoc(doc(db, 'users', window.CU.uid), { email: newEmail });
+
+            window.CU.email = newEmail;
             window.showProfileSuccess("Change Completed!");
 
             const emailInput = document.getElementById('ppm-email');
-            if(emailInput) emailInput.value = window.profileState.newEmail;
+            if (emailInput) emailInput.value = newEmail;
 
         } catch(e) {
-            if(e.message && e.message.includes('requires-recent-login')) {
+            console.error('Email change failed:', e);
+            if (e.code === 'auth/email-already-in-use') {
+                window.showToast('That email is already used by another account.', 'error');
+            } else if (e.message && e.message.includes('requires-recent-login')) {
                 window.showToast('Please sign out and sign back in to change your email.', 'error');
+            } else if (e.code === 'auth/operation-not-allowed') {
+                window.showToast('Email changes are blocked by your Firebase project settings (Email Enumeration Protection). Use verifyBeforeUpdateEmail instead, or disable that setting in Firebase Console → Authentication → Settings.', 'error');
             } else {
                 window.showToast('Failed to update email: ' + e.message, 'error');
             }
