@@ -5,11 +5,10 @@
 import { db, OTP_EXPIRY_MINUTES } from './firebase-config.js';
 import { doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 1. HARDCODED EMAILJS CREDENTIALS
 const EMAILJS_CONFIG = {
   serviceId: 'service_z74bzhj',
-  templateId: 'template_1v5a12p',
-  publicKey: 'JE_ZMndTyx9drKYe-'
+  templateId: 'template_tfoskjm',
+  publicKey: 'e5zf2Kl3AwVaSEO9E'
 };
 
 function generateOTP() {
