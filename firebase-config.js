@@ -20,7 +20,7 @@ export { auth, db };
 export { firebaseConfig };
 
 export const EMAILJS_CONFIG = {
-  serviceId: "service_z74bzhj",
+  serviceId: "service_eq2vbrf",
   templateId: "template_tfoskjm",
   publicKey: "e5zf2Kl3AwVaSEO9E"
 };
