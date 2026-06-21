@@ -11,20 +11,6 @@
   
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      setTimeout(() => {
-        const loader = document.getElementById('loading-overlay');
-        if (loader) { 
-          loader.style.opacity = '0'; 
-          loader.style.pointerEvents = 'none'; 
-          setTimeout(() => loader.remove(), 600); 
-        }
-      }, 1500);
-    });
-  </script>
-
   <style>
     /* --- CSS RESET & BASE VARIABLES --- */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,7 +18,29 @@
     .hidden { display: none !important; }
 
     @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.session-check-overlay {
+  position: fixed; inset: 0; z-index: 99999;
+  background: var(--bg-page, #F8FAFC);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  transition: opacity 0.25s ease;
+}
+.session-check-overlay.hide { opacity: 0; pointer-events: none; }
+.session-check-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid rgba(0, 102, 204, 0.15);
+  border-top-color: var(--ac, #0066CC);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+.session-check-text {
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--tx-muted);
+  letter-spacing: -0.01em;
+}
 
     :root {
       --bd-color: #E2E8F0 !important; 
@@ -1318,10 +1326,9 @@
 </head>
 <body>
   
-  <div id="loading-overlay" class="loader-overlay" style="position:fixed;inset:0;background:#fff;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s">
-    <div class="heartbeat-wrapper" style="font-size:18px;font-weight:800;color:var(--tx-main);letter-spacing:-0.02em;">
-      <div style="width:40px;height:40px;border-radius:12px;background:var(--ac);display:flex;align-items:center;justify-content:center;color:white;font-size:24px;font-weight:900;">Z</div> Zenda
-    </div>
+  <div id="session-check-overlay" class="session-check-overlay">
+    <div class="session-check-spinner"></div>
+    <div class="session-check-text">Checking your session…</div>
   </div>
 
   <div class="panel-overlay" id="panel-overlay" onclick="window.closeAllPanels()"></div>
@@ -5026,10 +5033,19 @@ async function init() {
       listenForAccountDeletion();
       window.showView('home');
 
+      // Dashboard is genuinely ready now — hide the loader.
+      const sessionLoader = document.getElementById('session-check-overlay');
+      if (sessionLoader) {
+          sessionLoader.classList.add('hide');
+          setTimeout(() => sessionLoader.remove(), 300);
+      }
+
   } catch(err) {
       console.error("INIT CRASH", err);
       // Fallback: Clear cache if a corrupted state triggers a fatal UI crash
       localStorage.clear();
+      const sessionLoader = document.getElementById('session-check-overlay');
+      if (sessionLoader) sessionLoader.classList.add('hide');
   }
 }
 window.triggerDeletionOverlay = function() {
