@@ -27,7 +27,10 @@ export function requireAuth(redirectUrl = 'login.html') {
       if (user) {
         
         // ==========================================
-        //  STEP 3: STAFF EXPIRY LOCKOUT SYSTEM
+        //  STEP 3: STAFF PREMIUM LOCKOUT SYSTEM
+        //  (Add-on / staff-card purchase system removed — staff
+        //   access now gates directly off the company's premium
+        //   subscription status: companies/{id}.isPremium.)
         // ==========================================
         try {
           const userDocRef = doc(db, 'users', user.uid);
@@ -43,21 +46,21 @@ export function requireAuth(redirectUrl = 'login.html') {
               
               if (compDocSnap.exists()) {
                 const compData = compDocSnap.data();
-                let hasActiveAddon = false;
-                
-                // Verify Add-on Expiry Timestamp
-                if (compData.addOnExpiry && new Date(compData.addOnExpiry) > new Date()) {
-                  hasActiveAddon = true;
+                let isUpgraded = false;
+
+                // Company must be marked premium AND not past its expiry
+                if (compData.isPremium === true) {
+                  isUpgraded = !compData.subscriptionExpiry || new Date(compData.subscriptionExpiry) > new Date();
                 }
-                
-                if (!hasActiveAddon) {
-                  // 1. Notify the Owner via notifications.js
+
+                if (!isUpgraded) {
+                  // 1. Notify the Owner: "{staff} tried to log in but account is not upgraded"
                   try {
                     const { addNotification } = await import('./notifications.js');
                     if (compData.ownerId) {
                       await addNotification(compData.ownerId, {
-                        type: 'security_login',
-                        message: `Staff member ${userData.name || 'Unknown'} tried to log in, but access was denied because your Unlimited Staff Add-on has expired.`,
+                        type: 'staff_login_blocked',
+                        message: `Staff member ${userData.name || 'Unknown'} tried to log in, but your account is not upgraded.`,
                         actorName: userData.name || 'System'
                       });
                     }
@@ -65,22 +68,22 @@ export function requireAuth(redirectUrl = 'login.html') {
                     console.warn("Could not send lockout notification to owner:", notifErr);
                   }
 
-                  // 2. Wipe the screen and render the 10-second lockout overlay
+                  // 2. Wipe the screen and render the 15-second lockout overlay
                   document.body.innerHTML = `
                     <div style="position:fixed;inset:0;background:#0F172A;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999999;font-family:'Plus Jakarta Sans', sans-serif;text-align:center;padding:24px;">
                       <div style="width:80px;height:80px;background:rgba(239, 68, 68, 0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                       </div>
-                      <h1 style="font-size:28px;font-weight:800;margin-bottom:16px;letter-spacing:-0.03em;">Workspace Locked</h1>
-                      <p style="font-size:16px;color:#94A3B8;max-width:420px;line-height:1.6;margin-bottom:32px;">Your company premium plan ended. Tell your owner to upgrade the company account to restore access.</p>
+                      <h1 style="font-size:28px;font-weight:800;margin-bottom:16px;letter-spacing:-0.03em;">Account Not Upgraded</h1>
+                      <p style="font-size:16px;color:#94A3B8;max-width:420px;line-height:1.6;margin-bottom:32px;">Your account is not upgraded. Tell your owner to upgrade the company account to restore access.</p>
                       <div style="background:rgba(255,255,255,0.05);padding:12px 24px;border-radius:100px;font-size:14px;color:#F8FAFC;font-weight:600;">
-                        Closing automatically in <span id="lockout-timer" style="color:#EF4444;font-weight:800;">10</span> seconds...
+                        Closing automatically in <span id="lockout-timer" style="color:#EF4444;font-weight:800;">15</span> seconds...
                       </div>
                     </div>
                   `;
 
-                  // 3. Start Timer and Force Sign Out (Destroys Firebase Session)
-                  let timeLeft = 10;
+                  // 3. Start 15s Timer and Force Sign Out (Destroys Firebase Session)
+                  let timeLeft = 15;
                   const timerInterval = setInterval(() => {
                     timeLeft--;
                     const timerSpan = document.getElementById('lockout-timer');
