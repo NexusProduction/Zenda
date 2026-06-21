@@ -4452,7 +4452,7 @@ window.confirmDelete = async function() {
         const btn = document.getElementById('del-confirm-btn');
         if (btn) { btn.textContent = 'Removing…'; btn.disabled = true; }
 
-        // Optimistically fade the card
+        // Optimistically fade the card while the request is in flight
         document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
             .forEach(c => { c.style.opacity = '0.4'; c.style.pointerEvents = 'none'; });
 
@@ -4460,18 +4460,46 @@ window.confirmDelete = async function() {
         window.showToast(window.deleteTargetName + ' has been removed.', 'success');
 
         try {
-            // 1. Wipe DB User Document
+            // Dynamically import required Firestore methods
+            const { doc, deleteDoc, collection, query, where, getDocs, writeBatch } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+
+            // 1. Permanently wipe the user document from DB to fully erase email and password
             try { await deleteDoc(doc(db, 'users', uid)); } catch(err) { console.warn(err); }
             
-            // 2. WIPE FIREBASE AUTHENTICATION ACCOUNT (Releases the email permanently)
+            // 2. Remove Auth
             if (typeof window.deleteUserFromAuth === 'function') {
                 await window.deleteUserFromAuth(window.deleteTargetEmail, window.deleteTargetPwd);
             }
-            
-            // 3. Fallback functions
             if (typeof deleteStaffMember === 'function') {
                 await deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd);
             }
+
+            // 3. CLEANUP PENDING NOTIFICATIONS
+            if (window.CU && window.CU.uid) {
+                const batch = writeBatch(db);
+                // Find any pending deletion requests for this user in the owner's notifications
+                const reqSnap = await getDocs(query(collection(db, 'users', window.CU.uid, 'notifications'), where('type', '==', 'staff_delete_request'), where('targetUid', '==', uid)));
+
+                reqSnap.docs.forEach(d => {
+                    const nData = d.data();
+                    batch.delete(d.ref); // Delete the notification from owner's inbox
+
+                    // Notify the staff member who made the request that it's obsolete
+                    if (nData.requesterId) {
+                        const staffNotifRef = doc(collection(db, 'users', nData.requesterId, 'notifications'));
+                        batch.set(staffNotifRef, {
+                            type: 'system',
+                            message: `Your request to remove "${nData.targetName || window.deleteTargetName}" was dismissed because they were already removed from the team by the owner.`,
+                            read: false,
+                            createdAt: Date.now(),
+                            status: 'unread'
+                        });
+                    }
+                });
+                
+                await batch.commit(); // Execute deletion and sending notifications simultaneously
+            }
+
         } catch(e) {
             // Revert the optimistic UI on failure
             document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
