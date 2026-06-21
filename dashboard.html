@@ -2571,26 +2571,71 @@ window.initStaffOtpBoxes = function() {
         input.dataset.index = i;
         
         input.addEventListener('input', (e) => {
+            // Remove error colors if typing
+            Array.from(container.children).forEach(b => {
+                b.style.borderColor = ''; b.style.color = ''; b.style.background = '';
+            });
+
             // Restrict to numbers only
             e.target.value = e.target.value.replace(/[^0-9]/g, ''); 
             
+            // Add filled visual state
+            if (e.target.value) {
+                e.target.classList.add('filled');
+            } else {
+                e.target.classList.remove('filled');
+            }
+
             // Auto-advance to next box
             if (e.target.value.length === 1 && i < 5) {
                 container.children[i + 1].focus();
             }
-            checkOtpLength(); 
+            
+            // Auto-submit when exactly 6 digits are typed
+            const currentVal = checkOtpLength(); 
+            if (currentVal.length === 6) {
+                setTimeout(() => window.finalizeCreateStaff(), 100);
+            }
         });
         
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Backspace') {
+                // Remove error colors
+                Array.from(container.children).forEach(b => {
+                    b.style.borderColor = ''; b.style.color = ''; b.style.background = '';
+                });
+
                 if (e.target.value === '' && i > 0) {
                     // Move back and clear previous
                     container.children[i - 1].focus();
                     container.children[i - 1].value = '';
+                    container.children[i - 1].classList.remove('filled');
                 } else {
                     e.target.value = ''; // Clear current box
+                    e.target.classList.remove('filled');
                 }
                 setTimeout(checkOtpLength, 10); 
+            }
+        });
+        
+        // Add robust copy/paste support
+        input.addEventListener('paste', (e) => {
+            e.preventDefault();
+            Array.from(container.children).forEach(b => {
+                b.style.borderColor = ''; b.style.color = ''; b.style.background = '';
+            });
+
+            const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+            pastedData.split('').forEach((char, index) => {
+                if (container.children[index]) {
+                    container.children[index].value = char;
+                    container.children[index].classList.add('filled');
+                }
+            });
+            
+            // Auto-submit on paste
+            if (checkOtpLength().length === 6) {
+                setTimeout(() => window.finalizeCreateStaff(), 100);
             }
         });
         
@@ -2694,14 +2739,53 @@ window.initiateCreateStaff = async function() {
     if (typeof window.initStaffOtpBoxes === 'function') window.initStaffOtpBoxes();
     if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify Email & Create Staff \u2192');
 }
-
 window.finalizeCreateStaff = async function() {
     const otpInput = document.getElementById('cs-otp-input').value.trim();
     const btn = document.getElementById('verify-staff-btn');
+    
+    // 1. CATCH INVALID OTP AND SHOW VISUAL ERROR
     if(otpInput !== window.tempStaffOTP) {
-        window.showToast("Invalid OTP. Try again.", "error");
+        
+        // Force the notification toast to appear ABOVE the modal box
+        const toastContainer = document.getElementById('custom-toast-container');
+        if(toastContainer) toastContainer.style.zIndex = '9999999';
+        window.showToast("Invalid Verification Code.", "error");
+
+        // Turn button Red
+        const origText = btn.innerHTML;
+        btn.innerHTML = 'Invalid Code';
+        btn.style.background = '#DC2626'; 
+        btn.style.boxShadow = '0 4px 14px rgba(220, 38, 38, 0.4)';
+        
+        // Turn boxes Red
+        const boxes = document.querySelectorAll('#cs-otp-boxes .otp-box');
+        boxes.forEach(b => {
+            b.style.borderColor = '#DC2626';
+            b.style.color = '#DC2626';
+            b.style.background = '#FEF2F2';
+        });
+
+        // Reset the form after 2 seconds
+        setTimeout(() => {
+            btn.innerHTML = origText;
+            btn.style.background = '';
+            btn.style.boxShadow = '';
+            
+            boxes.forEach(b => {
+                b.value = '';
+                b.style.borderColor = '';
+                b.style.color = '';
+                b.style.background = '';
+                b.classList.remove('filled');
+            });
+            document.getElementById('cs-otp-input').value = '';
+            btn.disabled = true;
+            if(boxes[0]) boxes[0].focus();
+        }, 2000);
+
         return;
     }
+    
     if (typeof loadBtn === 'function') loadBtn(btn, true);
 
     // --- PREMIUM GATE (Add-on system removed) ---
