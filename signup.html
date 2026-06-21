@@ -751,6 +751,7 @@ import { ownerSignUp }               from './auth.js';
 import { sendOTP, verifyUserOTP }    from './otp.js';
 import { renderCardToElement, downloadCard, shareCardWhatsApp } from './card-generator.js';
 import { isValidEmail }              from './utils.js';
+import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 let currentState = 'send'; // 'send' or 'verify'
 let createdCanvas = null;
@@ -827,6 +828,17 @@ async function processSendOTP() {
   btnLoad(btn, true);
   
   try {
+    // --- DUPLICATE EMAIL CHECK (cross-company, runs BEFORE the OTP is sent) ---
+    // Looks across the entire 'users' collection so nobody burns a 6-digit
+    // code on an email that's already tied to a live account anywhere.
+    const dupSnap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+    if (!dupSnap.empty) {
+      showE('f-email', 'This email is already registered.');
+      toast('That email is already registered. Try logging in instead.', 'toast-err');
+      btnLoad(btn, false, 'Send Verification Code');
+      return;
+    }
+
     // 1. OPTIMISTIC UI: Assume success and transition immediately
     document.getElementById('f-comp').disabled = true;
     document.getElementById('f-name').disabled = true;
@@ -862,8 +874,6 @@ async function processSendOTP() {
     toast('Error: ' + err.message, 'toast-err');
   }
 }
-
-
 async function processVerifyOTP() {
   const otp = getOTP();
   if (otp.length !== 6) { toast('Enter the complete 6-digit code.', 'toast-err'); return; }
@@ -924,8 +934,9 @@ async function processVerifyOTP() {
       revertToSendStep();
       toast('Verification code expired. Please request a new one.', 'toast-err');
     } else if (msg.includes('already') || msg.includes('exists') || msg.includes('in-use') || msg.includes('in use')) {
-      toast('Email already used.', 'toast-err');
-      btnLoad(btn, false, 'Verify & Create Workspace');
+      revertToSendStep();
+      showE('f-email', 'This email is already registered.');
+      toast('That email is already registered. Try logging in instead.', 'toast-err');
     } else {
       toast('Error: ' + err.message, 'toast-err');
       btnLoad(btn, false, 'Verify & Create Workspace');
