@@ -63,23 +63,22 @@ export async function createStaff({ name, email, password, role, companyId, comp
       }
     }
 
-    // Deduct Staff Card
+    // Staff creation requires an active company premium subscription.
+    // (The old per-seat "Unlimited Staff Add-on" purchase system has
+    // been removed — this is now a simple upgraded / not-upgraded gate.)
     const compRef = doc(db, 'companies', companyId);
     const compSnap = await getDoc(compRef);
     if (compSnap.exists()) {
       const compData = compSnap.data();
-      
-      let hasActiveAddon = false;
-      if (compData.addOnExpiry) {
-        const addOnExp = new Date(compData.addOnExpiry);
-        if (addOnExp > new Date()) {
-          hasActiveAddon = true;
-        }
+
+      let isUpgraded = compData.isPremium === true;
+      if (isUpgraded && compData.subscriptionExpiry && new Date(compData.subscriptionExpiry) <= new Date()) {
+        isUpgraded = false;
       }
 
-      if (!hasActiveAddon) {
+      if (!isUpgraded) {
         await secAuth.signOut();
-        throw new Error("You need an active Unlimited Staff Add-on to create staff. Please purchase it from the Subscription page.");
+        throw new Error("Your account is not upgraded. Please upgrade from the Subscription page to add staff.");
       }
     }
 
@@ -146,20 +145,21 @@ export async function updateUserProfile(uid, updates) {
   if (userSnap.exists()) {
     const userData = userSnap.data();
     
-    // If the user's email is being updated to a new value, deduct 1 staff point
+    // Editing a staff member's email requires an active company premium
+    // subscription. (Add-on/staff-card purchase system removed.)
     if (updates.email && updates.email !== userData.email) {
       const compRef = doc(db, 'companies', userData.companyId);
       const compSnap = await getDoc(compRef);
       
       if (compSnap.exists()) {
         const compData = compSnap.data();
-        let hasActiveAddon = false;
-        if (compData.addOnExpiry && new Date(compData.addOnExpiry) > new Date()) {
-          hasActiveAddon = true;
+        let isUpgraded = compData.isPremium === true;
+        if (isUpgraded && compData.subscriptionExpiry && new Date(compData.subscriptionExpiry) <= new Date()) {
+          isUpgraded = false;
         }
 
-        if (!hasActiveAddon) {
-          throw new Error("You need an active Unlimited Staff Add-on to modify staff emails.");
+        if (!isUpgraded) {
+          throw new Error("Your account is not upgraded. Please upgrade to modify staff emails.");
         }
       }
     }
