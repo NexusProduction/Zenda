@@ -1673,6 +1673,13 @@
         </div>
       </div>
 
+      <div class="ppm-success-overlay" id="add-staff-success-tick">
+        <div class="apple-tick">
+          <svg width="34" height="34" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <div class="ppm-success-text" id="add-staff-success-text">Added Successfully</div>
+      </div>
+
       <div class="modal-hdr" style="padding: 20px 32px;">
         <div class="modal-ttl add-staff-mobile-center" style="width: 100%;">Add Staff Member</div>
       </div>
@@ -2736,7 +2743,6 @@ window.finalizeCreateStaff = async function() {
                 read: false,
                 status: 'unread'
             });
-            window.closeModal('create-staff-modal');
             window.triggerStaffSuccess(window.tempStaffData.name, true);
         } catch(e) {
             window.showToast('Failed to send request.', 'error');
@@ -2789,8 +2795,9 @@ window.finalizeCreateStaff = async function() {
             } catch(e){}
         }
         
-        window.closeModal('create-staff-modal');
         window.triggerStaffSuccess(window.tempStaffData.name, false);
+        
+        document.getElementById('cs-name').value = '';
         
         document.getElementById('cs-name').value = '';
         document.getElementById('cs-email').value = '';
@@ -2813,27 +2820,20 @@ window.finalizeCreateStaff = async function() {
 }
 
 window.triggerStaffSuccess = function(staffName, isRequest) {
-  const screen = document.getElementById('staffSuccessScreen');
-  if(!screen) return;
+  const overlay = document.getElementById('add-staff-success-tick');
+  const textEl = document.getElementById('add-staff-success-text');
   
-  document.getElementById('succStaffName').textContent = staffName;
-  
-  if(isRequest) {
-      screen.querySelector('.succ-title').textContent = 'Request Submitted! 🎉';
-      screen.querySelector('.succ-sub').innerHTML = `Your request to add <strong id="succStaffName">${esc(staffName)}</strong> has been sent to the owner for approval.`;
-      screen.querySelector('.pending-badge').style.background = '#FEF3C7';
-      screen.querySelector('.pending-badge').style.color = '#92400E';
-      screen.querySelector('.pending-badge').innerHTML = '⏳ Awaiting Admin Approval';
-  } else {
-      screen.querySelector('.succ-title').textContent = 'Congratulations! 🎉';
-      screen.querySelector('.succ-sub').innerHTML = `Staff member <strong id="succStaffName">${esc(staffName)}</strong> has been successfully added to your team.`;
-      screen.querySelector('.pending-badge').style.background = '#D1FAE5';
-      screen.querySelector('.pending-badge').style.color = '#065F46';
-      screen.querySelector('.pending-badge').innerHTML = '✅ Added Successfully';
+  if (overlay && textEl) {
+      // Adjust text based on whether they are owner or staff
+      textEl.textContent = isRequest ? 'Request Submitted' : 'Added Successfully';
+      overlay.classList.add('active'); // Pops the green tick inside the modal
+      
+      // Wait exactly 2 seconds, then close the modal
+      setTimeout(() => {
+          overlay.classList.remove('active');
+          window.closeModal('create-staff-modal');
+      }, 2000);
   }
-  
-  screen.classList.add('show');
-  window.fireConfetti();
 };
 
 window.closeStaffSuccess = function() {
@@ -3232,17 +3232,10 @@ window.downloadCardFromNotif = async function(btn, b64Data, notifId) {
         ctx.font = 'bold 16px -apple-system, sans-serif';
         ctx.fillText(data.designation ? data.designation.toUpperCase() : 'STAFF', 24, 145);
         ctx.fillStyle = '#86868B';
-        ctx.font = '16px -apple-system, sans-serif';
-        ctx.fillText(data.email || '', 24, 175);
-        ctx.fillStyle = '#F5F5F7';
-        ctx.beginPath();
-        ctx.roundRect(24, 205, 352, 45, 8);
-        ctx.fill();
-        ctx.fillStyle = '#1D1D1F';
-        ctx.font = 'bold 15px monospace';
-        ctx.fillText('Password: ' + (data.password || '***'), 40, 233);
+    ctx.font = '16px -apple-system, sans-serif';
+    ctx.fillText(data.email, 24, 175);
 
-        setTimeout(() => {
+    setTimeout(() => {
             const link = document.createElement('a');
             link.download = `${(data.name || 'Staff').replace(/\s+/g, '_')}_ID_Card.png`;
             link.href = canvas.toDataURL('image/png');
@@ -5397,19 +5390,6 @@ setInterval(() => {
       You will be logged out in <span id="deleted-countdown" style="font-size: 1.5rem; color: #1D1D1F; font-weight: 900;">10</span> seconds.
     </p>
   </div>
-</div>
-<div class="success-screen" id="staffSuccessScreen">
-  <canvas id="confetti"></canvas>
-  <div class="trophy-icon">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-      <polyline points="22 4 12 14.01 9 11.01"/>
-    </svg>
-  </div>
-  <div class="succ-title">Congratulations! 🎉</div>
-  <div class="succ-sub">Staff member <strong id="succStaffName"></strong> has been successfully added to your team.</div>
-  <div class="pending-badge" style="background:#D1FAE5; color:#065F46;">✅ Added Successfully</div>
-  <button class="succ-btn" onclick="window.closeStaffSuccess()">Back to Dashboard →</button>
 </div>
 </body>
 </html>
