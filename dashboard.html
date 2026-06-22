@@ -1682,10 +1682,19 @@
         <div class="modal-ttl add-staff-mobile-center" style="width: 100%;">Add Staff Member</div>
       </div>
       
+      <!-- Added responsive CSS block for the form grid -->
+      <style>
+        @media (max-width: 768px) {
+            .mobile-stack-grid { grid-template-columns: 1fr !important; }
+        }
+      </style>
+      
       <div class="modal-body" id="staff-form-container" style="padding:24px 32px 32px;">
         <div style="margin-bottom:24px;">
-          <div style="font-weight:800;color:var(--tx-main);margin-bottom:16px;font-size:1.1rem;">Personal Details</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <!-- Personal Details text removed entirely -->
+          
+          <!-- Added 'mobile-stack-grid' class so it stacks 1-by-1 on phones -->
+          <div class="mobile-stack-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
             <div><label class="form-label">Full Name</label><input class="form-input" id="cs-name" type="text" placeholder="Jane Doe" minlength="6" maxlength="12"></div>
             <div><label class="form-label">Email</label><input class="form-input" id="cs-email" type="email" placeholder="jane@company.com" maxlength="30"></div>
           </div>
@@ -1693,7 +1702,9 @@
         </div>
         
         <div id="staff-error" style="color:var(--danger); font-size:0.9rem; font-weight:700; margin-bottom:12px; text-align:center; display:none;"></div>
-        <button class="btn btn-primary w-full" id="create-staff-btn" style="padding:14px;font-size:1rem;" onclick="window.initiateCreateStaff()">Verify Email &amp; Create Staff →</button>
+        
+        <!-- Arrow removed from button text -->
+        <button class="btn btn-primary w-full" id="create-staff-btn" style="padding:14px;font-size:1rem;" onclick="window.initiateCreateStaff()">Verify Email &amp; Create Staff</button>
       </div>
 
       <div class="modal-body hidden" id="staff-otp-container" style="padding:40px 32px 40px; text-align:center; position: relative;">
@@ -4683,10 +4694,12 @@ window.renderStaffCards = function(staffList) {
     
     container.style.display = 'grid'; 
 
-    // Sort so current user's card is always shown first
+    // Sort logic: 1st = You, 2nd = Owner, 3rd = Everyone else
     const sortedStaff = [...staffList].sort((a, b) => {
         if (a.uid === window.CU.uid) return -1;
         if (b.uid === window.CU.uid) return 1;
+        if (a.role === 'owner') return -1;
+        if (b.role === 'owner') return 1;
         return 0;
     });
 
@@ -4706,9 +4719,13 @@ window.renderStaffCards = function(staffList) {
             : window.getInitials(staff.name);
         const avColor = staff.avatarData ? 'transparent' : window.avatarColor(staff.name);
 
-        const displayName = isSelf 
-            ? `${esc(staff.name)} <span style="color: var(--tx-muted); font-size: 0.85em; font-weight: 600;">(You)</span>` 
-            : esc(staff.name);
+        // Name Formatting Logic
+        let displayName = esc(staff.name);
+        if (isSelf) {
+            displayName = `${esc(staff.name)} <span style="color: var(--tx-muted); font-size: 0.85em; font-weight: 600;">(You)</span>`;
+        } else if (staff.role === 'owner') {
+            displayName = `${esc(staff.name)} <span style="color: var(--tx-muted); font-size: 0.85em; font-weight: 600;">(Owner)</span>`;
+        }
 
         let displayDesig = esc(staff.designation || 'Staff');
         if (staff.role === 'owner') {
