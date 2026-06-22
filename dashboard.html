@@ -4427,54 +4427,238 @@ window.executeTaskDelete = async function() {
   finally { loadBtn(btn, false, 'Delete Task'); deleteTaskTargetId = null; }
 };
 
-window.confirmDecline = async function() {
-  const reasonInput = document.getElementById('decline-reason');
-  const reason = reasonInput?.value.trim();
-  if (!reason) { window.showToast("Please provide a reason for declining.", "error"); reasonInput.focus(); return; }
-  if (reason.length > 120) { window.showToast("Reason must be 120 characters or less.", "error"); return; }
-  const btn = document.getElementById('confirm-decline-btn'); loadBtn(btn, true);
-  const obj1 = (window.myTasks || []).find(t => t.id === pendingDeclineId);
-  if (obj1) { obj1.status = 'declined'; obj1.reason = reason; }
-  const obj2 = (window.assignedByMeTasks || []).find(t => t.id === pendingDeclineId);
-  if (obj2) { obj2.status = 'declined'; obj2.reason = reason; }
-  try {
-      await updateDoc(doc(db, 'tasks', pendingDeclineId), { status: 'declined', reason: reason });
-      window.updateAllStats(); window.renderTasksList(); window.renderRecentTasks();
-      if (obj1 && obj1.assignedBy) { await addDoc(collection(db, 'users', obj1.assignedBy, 'notifications'), { type: 'task_update', message: `${window.CU.name} declined task "${obj1.title}". Reason: ${reason}`, taskId: pendingDeclineId, createdAt: Date.now(), read: false, status: 'unread' }); }
-      const notifCard = document.querySelector(`.notif-card[data-task-id="${pendingDeclineId}"]`);
-      if (notifCard) { const notifId = notifCard.getAttribute('data-id'); if (notifId) { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId), { read: true, status: 'read' }); } }
-      window.closeModal('decline-modal'); window.showToast('Task declined.', 'success');
-  } catch (e) { window.showToast(e.message, 'error'); }
-  finally { loadBtn(btn, false, 'Confirm Decline'); }
+window.completeTask = async function(taskId) {
+    try {
+        window.showToast("Marking task as done...", "info");
+        const el = document.getElementById('task-' + taskId);
+        if (el) el.style.opacity = '0.5';
+        
+        // This triggers tasks.js -> properly updates DB & fires "Task Done" notification
+        await TasksModule.markTaskDone(taskId);
+        window.showToast("Task completed!", "success");
+    } catch(e) {
+        window.showToast(e.message, "error");
+    }
 };
 
-function buildAssignSelect(staff) { const sel = document.getElementById('assign-to'); if (!sel) return; sel.innerHTML = '<option value="" disabled selected>Select team member…</option>' + staff.filter(s => s.uid !== window.CU?.uid && s.role !== 'owner').map(s => `<option value="${s.uid}">${esc(s.name)}</option>`).join(''); }
+window.promptDeclineTask = function(taskId, title) {
+    window.pendingDeclineId = taskId;
+    const titleEl = document.getElementById('decline-task-title');
+    if (titleEl) titleEl.textContent = title;
+    document.getElementById('decline-reason').value = '';
+    window.openModal('decline-modal');
+};
 
+window.confirmDecline = async function() {
+    const reasonInput = document.getElementById('decline-reason');
+    const reason = reasonInput?.value.trim();
+    
+    // Reason boundary logic (Min 5 chars, max 120 chars)
+    if (!reason || reason.length < 5) { 
+        window.showToast("Please provide a reason (at least 5 characters).", "error"); 
+        reasonInput.focus(); 
+        return; 
+    }
+    if (reason.length > 120) { 
+        window.showToast("Reason must be 120 characters or less.", "error"); 
+        return; 
+    }
+    
+    const btn = document.getElementById('confirm-decline-btn'); 
+    loadBtn(btn, true);
+    
+    try {
+        // This triggers tasks.js -> properly updates DB & fires "Task Declined" notification
+        await TasksModule.markTaskDeclined(window.pendingDeclineId, reason);
+        window.closeModal('decline-modal'); 
+        window.showToast('Task declined.', 'success');
+    } catch (e) { 
+        window.showToast(e.message, 'error'); 
+    } finally { 
+        loadBtn(btn, false, 'Confirm Decline'); 
+    }
+};
+function buildAssignSelect(staff) { 
+    const sel = document.getElementById('assign-to'); 
+    if (!sel) return; 
+    // Allow anyone to assign tasks to anyone, including the owner and themselves.
+    sel.innerHTML = '<option value="" disabled selected>Select team member…</option>' + 
+        staff.map(s => `<option value="${s.uid}">${esc(s.name)} ${s.role === 'owner' ? '(Owner)' : (s.uid === window.CU?.uid ? '(You)' : '')}</option>`).join(''); 
+}
 window.quickAssign = function(uid) { window.openAssignModal(); setTimeout(() => { const s = document.getElementById('assign-to'); if (s) s.value = uid; }, 100); };
 
 window.openAssignModal = function() { window.openModal('assign-modal'); };
 
 window.handleAssign = async function() {
-  const to = document.getElementById('assign-to')?.value;
-  const title = document.getElementById('task-title')?.value.trim();
-  const desc = document.getElementById('task-desc')?.value.trim();
-  const date = document.getElementById('task-date')?.value;
-  const priority = document.getElementById('task-priority')?.value || 'Medium';
-  const err = document.getElementById('assign-error'); err.style.display = 'none';
-  if (!to || !title || !priority || !date) { err.textContent = 'Please fill all mandatory fields including Due Date.'; err.style.display = 'block'; return; }
-  const selectedDate = new Date(date); const today = new Date(); today.setHours(0,0,0,0);
-  if (selectedDate < today) { err.textContent = 'Due date cannot be in the past.'; err.style.display = 'block'; return; }
-  const btn = document.getElementById('assign-btn'); loadBtn(btn, true);
-  try {
-    const a = allStaff.find(s => s.uid === to) || {name: 'Team Member'};
-    const taskData = { title, description: desc, assignedTo: to, assignedToName: a.name, assignedBy: window.CU?.uid, assignedByName: window.CU?.name, companyId: window.CU?.companyId || 'default', dueDate: date || null, priority, status: 'pending', createdAt: Date.now() };
-    const docRef = await addDoc(collection(db, 'tasks'), taskData);
-    window.closeModal('assign-modal');
-    document.getElementById('assign-to').value = ''; document.getElementById('task-title').value = ''; document.getElementById('task-desc').value = ''; document.getElementById('task-date').value = '';
-    window.showToast(`Assigned to ${a.name}!`, 'success');
-    try { await addDoc(collection(db, 'users', to, 'notifications'), { type: 'task_received', message: `${window.CU?.name || 'Your manager'} assigned you a new task: "${title}"`, taskId: docRef.id, senderId: window.CU?.uid, createdAt: Date.now(), read: false, status: 'unread' }); } catch(e) { console.warn("Failed to notify user", e); }
-  } catch (e) { window.showToast(e.message, 'error'); }
-  finally { loadBtn(btn, false, 'Assign Task'); }
+    const to = document.getElementById('assign-to')?.value;
+    const title = document.getElementById('task-title')?.value.trim();
+    const desc = document.getElementById('task-desc')?.value.trim();
+    const date = document.getElementById('task-date')?.value;
+    const priority = document.getElementById('task-priority')?.value || 'Medium';
+    const err = document.getElementById('assign-error'); err.style.display = 'none';
+    
+    if (!to || !title || !priority || !date) { 
+        err.textContent = 'Please fill all mandatory fields including Due Date.'; 
+        err.style.display = 'block'; 
+        return; 
+    }
+    
+    const selectedDate = new Date(date); 
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (selectedDate < today) { 
+        err.textContent = 'Due date cannot be in the past.'; 
+        err.style.display = 'block'; 
+        return; 
+    }
+    
+    const btn = document.getElementById('assign-btn'); 
+    loadBtn(btn, true);
+    
+    try {
+        const a = allStaff.find(s => s.uid === to) || {name: 'Team Member', uid: to};
+        if (to === window.CU.uid) a.name = window.CU.name; // Self-assign case
+        
+        // This triggers tasks.js -> properly adds the DB doc & fires the Notification
+        await TasksModule.assignTask({
+            title: title,
+            description: desc,
+            assignedTo: to,
+            assignedToName: a.name,
+            assignedBy: window.CU.uid,
+            assignedByName: window.CU.name,
+            companyId: window.CU.companyId || 'default',
+            dueDate: date,
+            dueTime: '',
+            priority: priority
+        });
+        
+        window.closeModal('assign-modal');
+        document.getElementById('assign-to').value = ''; 
+        document.getElementById('task-title').value = ''; 
+        document.getElementById('task-desc').value = ''; 
+        document.getElementById('task-date').value = '';
+        
+        window.showToast(`Assigned to ${a.name}!`, 'success');
+    } catch (e) { 
+        window.showToast(e.message, 'error'); 
+    } finally { 
+        loadBtn(btn, false, 'Assign Task'); 
+    }
+};
+window.setTaskTab = function(tab, btnEl) {
+    window.taskTab = tab;
+    if (btnEl) {
+        document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
+        btnEl.classList.add('on');
+    } else {
+        document.querySelectorAll('.ftab').forEach(b => {
+            b.classList.toggle('on', b.getAttribute('data-tab') === tab);
+        });
+    }
+    window.renderTasksList();
+};
+function generateTaskCard(t, tab) {
+    const isOverdue = window.isOverdue(t.dueDate);
+    let statusBadge = '';
+    let actionButtons = '';
+    let dueStr = t.dueDate ? new Date(t.dueDate).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) : 'No Date';
+    
+    // I Assigned Tab: Shows detailed live status of tasks you gave out
+    if (tab === 'assigned-by-me') {
+        if (t.status === 'done') {
+            statusBadge = `<span style="color:var(--success); font-weight:800; font-size:0.8rem; background:var(--success-light); padding: 4px 8px; border-radius:6px;">Done by ${esc(t.assignedToName)}</span>`;
+        } else if (t.status === 'declined') {
+            statusBadge = `<span style="color:var(--danger); font-weight:800; font-size:0.8rem; background:var(--danger-light); padding: 4px 8px; border-radius:6px;">Declined: ${esc(t.declineReason || t.reason || 'No reason')}</span>`;
+        } else if (isOverdue) {
+            statusBadge = `<span style="color:var(--warning); font-weight:800; font-size:0.8rem; background:#FFFBEB; padding: 4px 8px; border-radius:6px;">Overdue with ${esc(t.assignedToName)}</span>`;
+        } else {
+            statusBadge = `<span style="color:var(--ac); font-weight:800; font-size:0.8rem; background:var(--ac-light); padding: 4px 8px; border-radius:6px;">Pending with ${esc(t.assignedToName)}</span>`;
+        }
+        actionButtons = `<button class="btn-icon-danger" onclick="window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`;
+    } 
+    // Assigned to Me Tab: Active tasks requiring your action
+    else if (tab === 'assigned-to-me') {
+        statusBadge = `<span style="color:var(--ac); font-weight:800; font-size:0.8rem; background:var(--ac-light); padding: 4px 8px; border-radius:6px;">From: ${esc(t.assignedByName)}</span>`;
+        actionButtons = `
+            <button class="btn btn-primary" style="padding:8px 16px; font-size:0.85rem;" onclick="window.completeTask('${t.id}')">Done</button>
+            <button class="btn btn-secondary" style="padding:8px 16px; font-size:0.85rem; color:var(--danger); border-color:rgba(255,59,48,0.2);" onclick="window.promptDeclineTask('${t.id}', '${esc(t.title)}')">Deny</button>
+        `;
+    }
+    // Done Tab
+    else if (tab === 'done') {
+        statusBadge = `<span style="color:var(--success); font-weight:800; font-size:0.8rem; background:var(--success-light); padding: 4px 8px; border-radius:6px;">Completed by you</span>`;
+    }
+    // Declined / Overdue Tab
+    else if (tab === 'declined') {
+        if (t.status === 'declined') {
+            statusBadge = `<span style="color:var(--danger); font-weight:800; font-size:0.8rem; background:var(--danger-light); padding: 4px 8px; border-radius:6px;">Declined by you: ${esc(t.declineReason || t.reason || '')}</span>`;
+        } else if (isOverdue) {
+            statusBadge = `<span style="color:var(--warning); font-weight:800; font-size:0.8rem; background:#FFFBEB; padding: 4px 8px; border-radius:6px;">Overdue (Deadline passed)</span>`;
+        }
+    }
+    
+    return \`
+    <div class="premium-task-card" id="task-\${t.id}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div style="flex:1;">
+                <h4 class="card-title \${t.status === 'done' ? 'done' : ''}">\${esc(t.title)}</h4>
+                \${t.description ? \`<p style="font-size:0.9rem; color:var(--tx-muted); margin-top:6px;">\${esc(t.description)}</p>\` : ''}
+                <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                    \${statusBadge}
+                    <span style="font-size:0.8rem; font-weight:700; color:var(--tx-muted); display:flex; align-items:center; gap:4px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        Due: \${dueStr}
+                    </span>
+                </div>
+            </div>
+            \${actionButtons ? \`<div style="display:flex; gap:8px; margin-left:12px;">\${actionButtons}</div>\` : ''}
+        </div>
+    </div>\`;
+}
+window.renderTasksList = function() {
+    const listEl = document.getElementById('tasks-list');
+    if (!listEl) return;
+    
+    let filtered = [];
+    const tab = window.taskTab || 'assigned-to-me';
+    
+    if (tab === 'assigned-to-me') {
+        filtered = (window.myTasks || []).filter(t => t.status === 'pending' && !window.isOverdue(t.dueDate));
+    } else if (tab === 'assigned-by-me') {
+        filtered = (window.assignedByMeTasks || []); 
+    } else if (tab === 'done') {
+        filtered = (window.myTasks || []).filter(t => t.status === 'done');
+    } else if (tab === 'declined') {
+        filtered = (window.myTasks || []).filter(t => t.status === 'declined' || (t.status === 'pending' && window.isOverdue(t.dueDate)));
+    }
+    
+    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    if (filtered.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--tx-muted); font-weight: 600;">No tasks found here.</div>';
+        return;
+    }
+    
+    listEl.innerHTML = filtered.map(t => generateTaskCard(t, tab)).join('');
+};
+window.renderRecentTasks = function() {
+    const el = document.getElementById('recent-tasks');
+    if (!el) return;
+    let recent = [];
+    
+    // Recent assigned by me for owners, or assigned to me for staff
+    if (window.CU?.role === 'owner') {
+         recent = (window.assignedByMeTasks || []).filter(t => t.status === 'pending').slice(0, 5);
+    } else {
+         recent = (window.myTasks || []).filter(t => t.status === 'pending' && !window.isOverdue(t.dueDate)).slice(0, 5);
+    }
+    
+    if (recent.length === 0) {
+        el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--tx-muted); font-weight: 600;">No recent active tasks.</div>';
+        return;
+    }
+    
+    el.innerHTML = recent.map(t => generateTaskCard(t, window.CU?.role === 'owner' ? 'assigned-by-me' : 'assigned-to-me')).join('');
 };
 
 window.openDeleteModal = function(uid, name, email, pwd) {
@@ -4948,8 +5132,14 @@ function setupUI() {
   
   const tr = document.getElementById('task-tab-row');
   if (tr) {
-    if (isOwner) { tr.innerHTML = `<button class="btn-ghost ftab on" data-tab="assigned-by-me" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn-ghost ftab" data-tab="done" onclick="window.setTaskTab('done',this)">Done</button><button class="btn-ghost ftab" data-tab="declined" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-by-me'; }
-    else { tr.innerHTML = `<button class="btn-ghost ftab on" data-tab="assigned-to-me" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button><button class="btn-ghost ftab" data-tab="assigned-by-me" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button><button class="btn-ghost ftab" data-tab="done" onclick="window.setTaskTab('done',this)">Done</button><button class="btn-ghost ftab" data-tab="declined" onclick="window.setTaskTab('declined',this)">Declined</button>`; window.taskTab = 'assigned-to-me'; }
+      // Everyone gets identical tabs.
+      tr.innerHTML = `
+          <button class="btn-ghost ftab on" data-tab="assigned-to-me" onclick="window.setTaskTab('assigned-to-me',this)">Assigned To Me</button>
+          <button class="btn-ghost ftab" data-tab="assigned-by-me" onclick="window.setTaskTab('assigned-by-me',this)">I Assigned</button>
+          <button class="btn-ghost ftab" data-tab="done" onclick="window.setTaskTab('done',this)">Done</button>
+          <button class="btn-ghost ftab" data-tab="declined" onclick="window.setTaskTab('declined',this)">Declined / Overdue</button>
+      `;
+      window.taskTab = 'assigned-to-me';
   }
   document.getElementById('nav-staff')?.classList.remove('hidden');
   document.getElementById('team-label')?.classList.remove('hidden');
