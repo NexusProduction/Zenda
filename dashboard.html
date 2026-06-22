@@ -4682,7 +4682,44 @@ window.checkDelConfirm = function() {
     if (window.CU && window.CU.role !== 'owner') { if (!reason || reason.length < 3) isMatch = false; }
     if (b) { b.disabled = !isMatch; b.style.opacity = isMatch ? '1' : '0.4'; b.style.cursor = isMatch ? 'pointer' : 'not-allowed'; }
 };
+window.sendDeleteRequest = async function() {
+    const reason = document.getElementById('del-reason-input').value.trim();
+    if (reason.length < 10) return;
 
+    const btn = document.getElementById('del-request-btn');
+    loadBtn(btn, true);
+
+    try {
+        const owner = window._allStaff.find(s => s.role === 'owner');
+        if (!owner) throw new Error("Owner not found");
+
+        const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        
+        await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
+            type: 'staff_delete_request',
+            message: `${window.CU.name} requested to remove ${window.deleteTargetName}.`,
+            reason: reason,
+            targetUid: window.deleteTargetUid,
+            targetEmail: window.deleteTargetEmail,
+            targetName: window.deleteTargetName,
+            targetPwd: btoa(window.deleteTargetPwd || ''),
+            targetJoined: window.deleteTargetJoined,
+            requesterId: window.CU.uid,
+            requesterName: window.CU.name,
+            createdAt: Date.now(),
+            read: false,
+            status: 'unread'
+        });
+
+        window.closeModal('delete-modal');
+        window.showToast("Removal request sent to owner.", "success");
+    } catch (e) {
+        console.error(e);
+        window.showToast("Failed to send request: " + e.message, "error");
+    } finally {
+        loadBtn(btn, false, "Send to Owner");
+    }
+};
 window.confirmDelete = async function() {
         const uid = window.deleteTargetUid;
         if (!uid) return;
@@ -4885,35 +4922,23 @@ window.renderStaffCards = function(staffList) {
         }
 
         return `
-        <div class="team-card" data-uid="${staff.uid}">
-            ${cornerBtnHtml}
-            
-            <div class="tc-top">
-                <div class="tc-av" style="background:${avColor}">${avatarHtml}</div>
-                <div class="tc-name" style="margin-bottom: 0;">${displayName}</div>
-            </div>
-            
-            <div class="tc-contact">
-                <div class="tc-contact-row">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(staff.email)}</span>
+    <div class="premium-task-card" id="task-${t.id}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div style="flex:1;">
+                <h4 class="card-title ${t.status === 'done' ? 'done' : ''}">${esc(t.title)}</h4>
+                ${t.description ? `<p style="font-size:0.9rem; color:var(--tx-muted); margin-top:6px;">${esc(t.description)}</p>` : ''}
+                <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                    ${statusBadge}
+                    <span style="font-size:0.8rem; font-weight:700; color:var(--tx-muted); display:flex; align-items:center; gap:4px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        Due: ${dueStr}
+                    </span>
                 </div>
             </div>
-
-            <div class="tc-bottom-grid">
-                <div class="tc-grid-col">
-                    <span class="tc-lbl">Designation</span>
-                    <span class="tc-val">${displayDesig}</span>
-                </div>
-                <div class="tc-grid-col" style="text-align: right;">
-                    <span class="tc-lbl">Date of Joining</span>
-                    <span class="tc-val">${joinedDate}</span>
-                </div>
-            </div>
+            ${actionButtons ? `<div style="display:flex; gap:8px; margin-left:12px;">${actionButtons}</div>` : ''}
         </div>
-        `;
-    }).join('');
-};
+    </div>`;
+}
 window.updateAllStats = function() {
     const combined = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])];
     const uniqueMap = new Map();
