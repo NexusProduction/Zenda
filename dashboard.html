@@ -5251,118 +5251,108 @@ window.escHtml = function(s) {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   STAFF DELETE SYSTEM
-   Owner  → sees confirmation checkbox  → deletes permanently
-   Staff  → sees reason textarea (10-50 chars) → sends request to owner
-══════════════════════════════════════════════════════════════ */
-window.prepDeleteStaff = function(uid, name, email) {
-    window.deleteTargetUid   = uid;
-    window.deleteTargetName  = name;
-    window.deleteTargetEmail = email;
+       STAFF DELETE SYSTEM
+       Owner  → direct deletion without checkbox
+       Staff  → sees reason textarea (10-50 chars) → sends request
+    ══════════════════════════════════════════════════════════════ */
+    window.prepDeleteStaff = function(uid, name, email) {
+        window.deleteTargetUid   = uid;
+        window.deleteTargetName  = name;
+        window.deleteTargetEmail = email;
 
-    const found = (window._allStaff || []).find(s => s.uid === uid);
-    window.deleteTargetPwd    = found ? (found.password || found.passwordHint || '') : '';
-    window.deleteTargetJoined = found && found.createdAt
-        ? new Date(found.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-        : 'Unknown';
+        const found = (window._allStaff || []).find(s => s.uid === uid);
+        window.deleteTargetPwd    = found ? (found.password || found.passwordHint || '') : '';
+        window.deleteTargetJoined = found && found.createdAt
+            ? new Date(found.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+            : 'Unknown';
 
-    const isOwner  = window.CU && window.CU.role === 'owner';
-    const content  = document.getElementById('del-modal-dynamic-content');
-    if (!content) return;
+        const isOwner  = window.CU && window.CU.role === 'owner';
+        const content  = document.getElementById('del-modal-dynamic-content');
+        if (!content) return;
 
-    if (isOwner) {
-        /* ── OWNER: direct deletion with acknowledgment checkbox ── */
-        content.innerHTML = `
-          <div style="text-align:center;margin-bottom:24px;">
-            <div style="width:64px;height:64px;background:#FEF2F2;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 4px 14px rgba(220,38,38,0.12);">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-            </div>
-            <h3 style="font-size:1.15rem;font-weight:800;color:#0F172A;margin-bottom:8px;letter-spacing:-0.01em;">
-              Remove ${window.escHtml(name)}?
-            </h3>
-            <p style="font-size:0.875rem;color:#64748B;line-height:1.6;max-width:280px;margin:0 auto;">
-              This will permanently revoke their access to Zenda. This action cannot be undone.
-            </p>
-          </div>
+        if (isOwner) {
+            /* ── OWNER: direct deletion without checkbox ── */
+            content.innerHTML = `
+              <div style="text-align:center;margin-bottom:32px;">
+                <div style="width:64px;height:64px;background:#FEF2F2;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 4px 14px rgba(220,38,38,0.12);">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+                  </svg>
+                </div>
+                <h3 style="font-size:1.15rem;font-weight:800;color:#0F172A;margin-bottom:8px;letter-spacing:-0.01em;">
+                  Remove ${window.escHtml(name)}?
+                </h3>
+                <p style="font-size:0.875rem;color:#64748B;line-height:1.6;max-width:280px;margin:0 auto;">
+                  This will permanently revoke their access to Zenda. This action cannot be undone.
+                </p>
+              </div>
 
-          <label style="display:flex;align-items:flex-start;gap:12px;background:#FEF2F2;border:1.5px solid rgba(220,38,38,0.25);border-radius:12px;padding:16px;cursor:pointer;margin-bottom:24px;transition:background 0.2s;"
-                 onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
-            <input type="checkbox" id="del-owner-check" onchange="window.toggleOwnerDelBtn()"
-                   style="width:18px;height:18px;margin-top:1px;accent-color:#DC2626;flex-shrink:0;cursor:pointer;">
-            <span style="font-size:0.875rem;color:#991B1B;font-weight:600;line-height:1.5;">
-              I confirm that <strong>${window.escHtml(name)}</strong> will permanently lose all
-              access to Zenda immediately.
-            </span>
-          </label>
+              <div style="display:flex;gap:12px;">
+                <button onclick="window.closeModal('delete-modal')"
+                        style="flex:1;padding:13px;background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;font-weight:700;font-size:0.875rem;cursor:pointer;font-family:inherit;color:#374151;transition:background 0.2s;"
+                        onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='#fff'">
+                  Cancel
+                </button>
+                <button id="del-confirm-btn" onclick="window.confirmDelete()"
+                        style="flex:1;padding:13px;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:0.875rem;cursor:pointer;font-family:inherit;transition:all 0.25s;box-shadow:0 4px 12px rgba(220,38,38,0.2);">
+                  Delete Forever
+                </button>
+              </div>`;
 
-          <div style="display:flex;gap:12px;">
-            <button onclick="window.closeModal('delete-modal')"
-                    style="flex:1;padding:13px;background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;font-weight:700;font-size:0.875rem;cursor:pointer;font-family:inherit;color:#374151;transition:background 0.2s;"
-                    onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='#fff'">
-              Cancel
-            </button>
-            <button id="del-confirm-btn" onclick="window.confirmDelete()" disabled
-                    style="flex:1;padding:13px;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:0.875rem;cursor:not-allowed;font-family:inherit;opacity:0.4;transition:all 0.25s;box-shadow:0 4px 12px rgba(220,38,38,0.2);">
-              Delete Forever
-            </button>
-          </div>`;
+        } else {
+            /* ── STAFF / MANAGER: send removal request to owner ── */
+            content.innerHTML = `
+              <div style="text-align:center;margin-bottom:24px;">
+                <div style="width:64px;height:64px;background:#FEF2F2;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 4px 14px rgba(220,38,38,0.12);">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+                  </svg>
+                </div>
+                <h3 style="font-size:1.15rem;font-weight:800;color:#0F172A;margin-bottom:8px;letter-spacing:-0.01em;">
+                  Request Removal
+                </h3>
+                <p style="font-size:0.875rem;color:#64748B;line-height:1.6;max-width:280px;margin:0 auto;">
+                  Submit a request to remove <strong style="color:#0F172A;">${window.escHtml(name)}</strong>.
+                  The owner will review it and decide.
+                </p>
+              </div>
 
-    } else {
-        /* ── STAFF / MANAGER: send removal request to owner ── */
-        content.innerHTML = `
-          <div style="text-align:center;margin-bottom:24px;">
-            <div style="width:64px;height:64px;background:#EEF2FF;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 4px 14px rgba(79,70,229,0.12);">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linecap="round">
-                <line x1="22" y1="2" x2="11" y2="13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/>
-              </svg>
-            </div>
-            <h3 style="font-size:1.15rem;font-weight:800;color:#0F172A;margin-bottom:8px;letter-spacing:-0.01em;">
-              Request Removal
-            </h3>
-            <p style="font-size:0.875rem;color:#64748B;line-height:1.6;max-width:280px;margin:0 auto;">
-              Submit a request to remove <strong style="color:#0F172A;">${window.escHtml(name)}</strong>.
-              The owner will review it and decide.
-            </p>
-          </div>
+              <div style="margin-bottom:8px;">
+                <label style="display:block;font-size:0.72rem;font-weight:800;color:#64748B;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;">
+                  Reason for Removal *
+                </label>
+                <textarea id="del-reason-input"
+                  placeholder="Provide a clear reason for removing this staff member… (10–50 characters)"
+                  style="width:100%;min-height:100px;padding:13px;border:1.5px solid #E2E8F0;border-radius:12px;font-family:inherit;font-size:0.875rem;color:#0F172A;resize:none;outline:none;transition:all 0.2s;background:#F8FAFC;box-sizing:border-box;line-height:1.6;"
+                  maxlength="50"
+                  onfocus="this.style.borderColor='#DC2626';this.style.background='#fff';this.style.boxShadow='0 0 0 3px rgba(220,38,38,0.1)'"
+                  onblur="this.style.borderColor='#E2E8F0';this.style.background='#F8FAFC';this.style.boxShadow='none'"
+                  oninput="window.checkDelRequestBtn(this)"></textarea>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px;">
+                  <span id="del-char-hint" style="font-size:0.72rem;color:#94A3B8;font-weight:600;transition:color 0.2s;">
+                    Minimum 10 characters
+                  </span>
+                  <span id="del-char-count" style="font-size:0.72rem;font-weight:700;color:#94A3B8;font-family:'DM Mono',monospace;transition:color 0.2s;">
+                    0 / 50
+                  </span>
+                </div>
+              </div>
 
-          <div style="margin-bottom:8px;">
-            <label style="display:block;font-size:0.72rem;font-weight:800;color:#64748B;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;">
-              Reason for Removal *
-            </label>
-            <textarea id="del-reason-input"
-              placeholder="Provide a clear reason for removing this staff member… (10–50 characters)"
-              style="width:100%;min-height:100px;padding:13px;border:1.5px solid #E2E8F0;border-radius:12px;font-family:inherit;font-size:0.875rem;color:#0F172A;resize:none;outline:none;transition:all 0.2s;background:#F8FAFC;box-sizing:border-box;line-height:1.6;"
-              maxlength="50"
-              onfocus="this.style.borderColor='#4F46E5';this.style.background='#fff';this.style.boxShadow='0 0 0 3px rgba(79,70,229,0.1)'"
-              onblur="this.style.borderColor='#E2E8F0';this.style.background='#F8FAFC';this.style.boxShadow='none'"
-              oninput="window.checkDelRequestBtn(this)"></textarea>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px;">
-              <span id="del-char-hint" style="font-size:0.72rem;color:#94A3B8;font-weight:600;transition:color 0.2s;">
-                Minimum 10 characters
-              </span>
-              <span id="del-char-count" style="font-size:0.72rem;font-weight:700;color:#94A3B8;font-family:'DM Mono',monospace;transition:color 0.2s;">
-                0 / 50
-              </span>
-            </div>
-          </div>
+              <div style="display:flex;gap:12px;margin-top:20px;">
+                <button onclick="window.closeModal('delete-modal')"
+                        style="flex:1;padding:13px;background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;font-weight:700;font-size:0.875rem;cursor:pointer;font-family:inherit;color:#374151;transition:background 0.2s;"
+                        onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='#fff'">
+                  Cancel
+                </button>
+                <button id="del-request-btn" onclick="window.sendDeleteRequest()" disabled
+                        style="flex:1;padding:13px;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:0.875rem;cursor:not-allowed;font-family:inherit;opacity:0.4;transition:all 0.25s;box-shadow:0 4px 12px rgba(220,38,38,0.2);">
+                  Send to Owner
+                </button>
+              </div>`;
+        }
 
-          <div style="display:flex;gap:12px;margin-top:20px;">
-            <button onclick="window.closeModal('delete-modal')"
-                    style="flex:1;padding:13px;background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;font-weight:700;font-size:0.875rem;cursor:pointer;font-family:inherit;color:#374151;transition:background 0.2s;"
-                    onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='#fff'">
-              Cancel
-            </button>
-            <button id="del-request-btn" onclick="window.sendDeleteRequest()" disabled
-                    style="flex:1;padding:13px;background:#4F46E5;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:0.875rem;cursor:not-allowed;font-family:inherit;opacity:0.4;transition:all 0.25s;box-shadow:0 4px 12px rgba(79,70,229,0.2);">
-              Send to Owner
-            </button>
-          </div>`;
-    }
-
-    window.openModal('delete-modal');
-};
+        window.openModal('delete-modal');
+    };
 
 /* ── Checkbox toggle (owner confirmation) ── */
 window.toggleOwnerDelBtn = function() {
