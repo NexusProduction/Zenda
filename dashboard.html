@@ -160,44 +160,21 @@
     .fp-ttl { font-size: 1.25rem; font-weight: 800; color: var(--tx-main); letter-spacing: -0.02em; text-align: center; }
     .fp-body { flex: 1; overflow-y: auto; background: var(--bg-page); }
 
-    /* --- NOTIFICATION PANEL PREMIUM REDESIGN --- */
-.notif-panel {
-    font-family: var(--font-main) !important; /* Premium Zenda Font */
-    background: #FFFFFF !important;
-    border-radius: var(--rad-outer) !important;
-    box-shadow: var(--shadow-float) !important;
-    border: 1px solid var(--bd-color) !important;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-/* Sticky Header */
-#notificationDropdown > div:first-child {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: #FFFFFF;
-}
-
-/* Scrollable List Body Only */
-#notif-body {
-    overflow-y: auto !important;
-}
-
-/* Fix Mobile Centering (No more clinging to the wall) */
-@media (max-width: 768px) {
+    /* ── Notification Panel Shell: uses sidebar-nav colour (#F3F7FC) as base ── */
     .notif-panel {
-        left: 50% !important;
-        right: auto !important;
-        transform-origin: top center !important;
-        transform: translateX(-50%) scale(0.95) !important;
-        width: 92% !important;
+        position: absolute; top: 76px; right: 24px; width: 400px;
+        height: auto; max-height: calc(100vh - 100px);
+        background: #F3F7FC;
+        border-radius: var(--rad-outer) !important;
+        box-shadow: var(--shadow-float);
+        border: 1.5px solid #D5E0EE;
+        z-index: 1000;
+        transform-origin: top right;
+        transform: scale(0.95); opacity: 0;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s;
+        display: flex; flex-direction: column; overflow: hidden;
     }
-    .notif-panel.open {
-        transform: translateX(-50%) scale(1) !important;
-    }
-}
+    .notif-panel.open { transform: scale(1); opacity: 1; }
 
     /* ── Each card is a floating white chip ── */
     .notif-card {
@@ -1492,17 +1469,18 @@
   </header>
 
  <div id="notificationDropdown" class="notif-panel">
-    <div style="padding:16px 20px; display:flex; align-items:center; justify-content:space-between; background:#FFFFFF; border-bottom:1px solid #D5E0EE; flex-shrink:0;">
-        <h4 style="margin:0; font-size:1.1rem; color:var(--tx-main); font-weight:800; letter-spacing:-0.01em;">Notifications</h4>
-        </div>
-    <div style="display:flex; gap:4px; padding:8px 12px; background:#F8FAFC; border-bottom:1px solid #D5E0EE; flex-shrink:0;" id="notif-tab-row">
-        <button class="ntab active" onclick="window.filterNotifTab('all',this)">All</button>
-        <button class="ntab" onclick="window.filterNotifTab('staff',this)">Staff</button>
-        <button class="ntab" onclick="window.filterNotifTab('task',this)">Tasks</button>
-        <button class="ntab" onclick="window.filterNotifTab('system',this)">System</button>
+    <div style="padding:14px 18px 12px; display:flex; align-items:center; gap:9px; background:#FFFFFF; border-bottom:1.5px solid #D5E0EE; flex-shrink:0; border-radius:24px 24px 0 0;">
+      <h4 style="margin:0; font-size:0.95rem; color:#0F172A; font-weight:800; letter-spacing:-0.01em;">Notifications</h4>
+      <span class="badge hidden" id="notif-count-badge" style="background:#0066CC; color:white; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800;">0</span>
+    </div>
+    <div style="display:flex; gap:4px; padding:8px 12px; background:#F3F7FC; border-bottom:1.5px solid #D5E0EE; flex-shrink:0;" id="notif-tab-row">
+      <button class="ntab active" onclick="window.filterNotifTab('all',this)">All</button>
+      <button class="ntab" onclick="window.filterNotifTab('staff',this)">Staff</button>
+      <button class="ntab" onclick="window.filterNotifTab('task',this)">Tasks</button>
+      <button class="ntab" onclick="window.filterNotifTab('system',this)">System</button>
     </div>
     <div class="sp-body" id="notif-body" style="max-height:430px; overflow-y:auto; padding-bottom:8px;"></div>
-</div>
+  </div>
 
   <div class="app-body">
     <aside class="sidebar" id="sidebar">
@@ -2468,8 +2446,9 @@ window.renderNotifs = function(items) {
   const innerBadge = document.getElementById('notif-count-badge');
   
   if (!activeNotifs.length) {
-    el.innerHTML = `<div style="text-align: center; color: #64748B; padding: 40px 20px; font-size: 0.95rem; font-weight: 600;">No notifications found here.</div>`;
+    el.innerHTML = `<div class="empty" style="padding:60px 20px;text-align:center;"><div style="margin-bottom:16px;display:flex;justify-content:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div style="color:var(--tx-main);font-size:1rem;font-weight:700;">You're all caught up!</div></div>`;
     if (topBadge) { topBadge.classList.add('hidden'); topBadge.textContent = '0'; }
+    if (innerBadge) { innerBadge.classList.add('hidden'); innerBadge.textContent = '0'; }
     return;
   }
   
@@ -3217,25 +3196,45 @@ window.openStaffRequestModal = function(btn) {
         
     } else {
         document.getElementById('sr-modal-title').textContent = 'Remove Staff Request';
+        
         const reason = btn.getAttribute('data-reason') || 'No reason provided';
         const tName = btn.getAttribute('data-target-name') || 'Unknown';
         const tEmail = btn.getAttribute('data-target-email') || 'Unknown';
+        const tJoined = btn.getAttribute('data-target-joined') || 'Unknown'; // <-- Fetches the Date
         
-        // Minimal, cleaner view with NO stars or SVGs on the text fields
         document.getElementById('sr-dynamic-details').innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.85rem; color:var(--tx-muted); font-weight:600;">Name</span>
-                <span style="font-size:0.95rem; color:var(--tx-main); font-weight:800;">${esc(tName)}</span>
+             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
+                <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M16 11l2 2 4-4"/></svg> Name
+                </span>
+                <span style="font-size:0.95rem; color:var(--tx-main); font-weight:800; text-align:right; word-break:break-word;">${esc(tName)}</span>
             </div>
-            <div style="height:1px; background:var(--bd-color); width:100%; margin: 8px 0;"></div>
+            <div style="height:1px; background:var(--bd-color); width:100%;"></div>
             
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.85rem; color:var(--tx-muted); font-weight:600;">Email</span>
-                <span style="font-size:0.9rem; color:var(--tx-main); font-weight:700;">${esc(tEmail)}</span>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
+                <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Joined
+                </span>
+                <span style="font-size:0.95rem; color:var(--tx-main); font-weight:700; text-align:right; word-break:break-word;">${esc(tJoined)}</span>
             </div>
-             <div style="margin-top: 16px; padding: 16px; background: var(--danger-light); border-radius: 12px; text-align: center;">
-                 <div style="font-size: 0.8rem; font-weight: 800; color: var(--danger); margin-bottom: 6px; text-transform: uppercase;">Reason for Removal</div>
-                 <div style="font-size: 0.95rem; color: var(--tx-main); font-weight: 600;">${esc(reason)}</div>
+            <div style="height:1px; background:var(--bd-color); width:100%;"></div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
+                <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Email
+                </span>
+                <span style="font-size:0.95rem; color:var(--tx-main); font-weight:700; text-align:right; word-break:break-word;">${esc(tEmail)}</span>
+            </div>
+            <div style="height:1px; background:var(--bd-color); width:100%;"></div>
+             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
+                <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> Action
+                </span>
+                <span style="font-size:0.95rem; color:var(--danger); font-weight:800; text-align:right; word-break:break-word;">Revoke Access</span>
+            </div>
+             <div style="margin-top: 12px; padding: 14px 16px; background: var(--danger-light); border-left: 3px solid var(--danger); border-radius: 8px;">
+                 <div style="font-size: 0.75rem; font-weight: 800; color: var(--danger); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Reason for Removal</div>
+                 <div style="font-size: 0.9rem; color: var(--tx-main); font-weight: 600; line-height: 1.4;">${esc(reason)}</div>
              </div>
         `;
         
@@ -3286,22 +3285,7 @@ window.deleteUserFromAuth = async function(email, pwd) {
         console.log("Firebase Auth Wipe Successful.");
     } catch (e) { console.warn("Silent wipe failed:", e); }
 };
-window.triggerGlobalTick = function(message) {
-    const overlay = document.createElement('div');
-    overlay.className = 'ppm-success-overlay active';
-    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(255,255,255,0.95); z-index:9999999; display:flex; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(4px);';
-    overlay.innerHTML = `
-        <div class="apple-tick" style="transform:scale(1); width: 88px; height: 88px; border-radius: 22px; background: #10B981; display:flex; align-items:center; justify-content:center;">
-            <svg width="40" height="40" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" style="stroke:#fff; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; fill:none;"></polyline></svg>
-        </div>
-        <div class="ppm-success-text" style="opacity:1; transform:translateY(0); margin-top:20px; font-weight:800; font-size:1.3rem; color:#111827;">${message}</div>
-    `;
-    document.body.appendChild(overlay);
-    setTimeout(() => {
-        overlay.style.opacity = '0';
-        setTimeout(() => overlay.remove(), 300);
-    }, 1800);
-};
+
 window.executeStaffRequest = async function(action) {
     const req = window.currentStaffRequest;
     const actionBtn = document.getElementById(action === 'approve' ? 'sr-btn-approve' : 'sr-btn-decline');
@@ -3388,9 +3372,22 @@ window.executeStaffRequest = async function(action) {
         if (actionBtn) loadBtn(actionBtn, false, action === 'approve' ? 'Approve' : 'Decline');
 
         if (action === 'approve') {
-            window.triggerGlobalTick(req.type === 'delete' ? 'Staff Removed' : 'Approved');
-            window.closeModal('staff-request-modal');
-            document.getElementById('panel-overlay')?.classList.remove('visible');
+            // ── Show green tick for 2s, then close ──
+            const tickEl = document.getElementById('staff-req-success-tick');
+            if (tickEl) {
+                tickEl.classList.add('active');
+                // Manually trigger the SVG draw (same as apple-tick pattern)
+                const svg = tickEl.querySelector('svg');
+                if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 400);
+                setTimeout(() => {
+                    tickEl.classList.remove('active');
+                    window.closeModal('staff-request-modal');
+                    document.getElementById('panel-overlay')?.classList.remove('visible');
+                }, 2000);
+            } else {
+                window.closeModal('staff-request-modal');
+                document.getElementById('panel-overlay')?.classList.remove('visible');
+            }
         } else {
             // ── Deny: close immediately ──
             const modalEl = document.getElementById('staff-request-modal');
@@ -3411,11 +3408,11 @@ window.downloadCardFromNotif = async function(btn, b64Data, notifId) {
         
         const canvas = document.createElement('canvas');
         canvas.width = 400;
-        canvas.height = 230; // Shorter height since password is removed
+        canvas.height = 280;
         const ctx = canvas.getContext('2d');
 
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, 400, 230);
+        ctx.fillRect(0, 0, 400, 280);
         ctx.fillStyle = '#34C759'; 
         ctx.fillRect(0, 0, 400, 10);
         ctx.fillStyle = '#1D1D1F';
@@ -3432,8 +3429,13 @@ window.downloadCardFromNotif = async function(btn, b64Data, notifId) {
         ctx.fillStyle = '#86868B';
         ctx.font = '16px -apple-system, sans-serif';
         ctx.fillText(data.email || '', 24, 175);
-
-        // Password section completely removed!
+        ctx.fillStyle = '#F5F5F7';
+        ctx.beginPath();
+        ctx.roundRect(24, 205, 352, 45, 8);
+        ctx.fill();
+        ctx.fillStyle = '#1D1D1F';
+        ctx.font = 'bold 15px monospace';
+        ctx.fillText('Password: ' + (data.password || '***'), 40, 233);
 
         setTimeout(() => {
             const link = document.createElement('a');
@@ -3441,10 +3443,12 @@ window.downloadCardFromNotif = async function(btn, b64Data, notifId) {
             link.href = canvas.toDataURL('image/png');
             link.click();
             
+            // Automatically dismiss the notification
             window.dismissAlert(btn);
         }, 300);
     } catch(e) {
         window.showToast("Error generating card.", "error");
+        console.error(e);
     }
 };
 
@@ -4849,9 +4853,6 @@ window.sendDeleteRequest = async function() {
             createdAt: Date.now(),
             read: false,
             status: 'unread'
-          // ... (inside sendDeleteRequest after addDoc)
-        window.closeModal('delete-modal');
-        window.triggerGlobalTick("Request Submitted"); // Replace window.showToast
         });
 
         window.closeModal('delete-modal');
@@ -5576,45 +5577,81 @@ window.escHtml = function(s) {
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 };
 window.prepDeleteStaff = function(uid, name, email) {
-    window.deleteTargetUid   = uid;
-    window.deleteTargetName  = name;
-    window.deleteTargetEmail = email;
+        window.deleteTargetUid   = uid;
+        window.deleteTargetName  = name;
+        window.deleteTargetEmail = email;
 
-    const found = (window._allStaff || []).find(s => s.uid === uid);
-    window.deleteTargetPwd    = found ? (found.password || found.passwordHint || '') : '';
-    window.deleteTargetJoined = found && found.createdAt
-        ? new Date(found.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-        : 'Unknown';
+        const found = (window._allStaff || []).find(s => s.uid === uid);
+        window.deleteTargetPwd    = found ? (found.password || found.passwordHint || '') : '';
+        window.deleteTargetJoined = found && found.createdAt
+            ? new Date(found.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+            : 'Unknown';
 
-    const isOwner  = window.CU && window.CU.role === 'owner';
-    const content  = document.getElementById('del-modal-dynamic-content');
-    if (!content) return;
+        const isOwner  = window.CU && window.CU.role === 'owner';
+        const content  = document.getElementById('del-modal-dynamic-content');
+        if (!content) return;
 
-    if (isOwner) {
-        content.innerHTML = `
-          <div style="text-align:center;margin-bottom:32px;">
-            <h3 style="font-family:var(--font-main);font-size:1.35rem;font-weight:800;color:var(--tx-main);margin-bottom:12px;">Remove ${window.escHtml(name)}?</h3>
-            <p style="font-size:0.95rem;color:var(--tx-muted);line-height:1.6;">This will permanently revoke their access. This cannot be undone.</p>
-          </div>
-          <div style="display:flex;">
-            <button id="del-confirm-btn" onclick="window.confirmDelete()" style="width:100%;padding:14px;background:var(--danger);color:#fff;border:none;border-radius:12px;font-weight:800;font-size:1rem;cursor:pointer;font-family:var(--font-main);">Delete Forever</button>
-          </div>`;
-    } else {
-        content.innerHTML = `
-          <div style="text-align:center;margin-bottom:20px;padding-top:8px;">
-            <h3 style="font-family:var(--font-main);font-size:1.25rem;font-weight:800;color:var(--tx-main);margin-bottom:12px;">Remove Staff Request</h3>
-            <hr style="border:0; height:1px; background-color:var(--bd-color); margin:0 0 16px 0;" />
-            <p style="font-size:0.95rem;color:var(--tx-muted);line-height:1.5;">Submit a request to remove <strong style="color:var(--tx-main);">${window.escHtml(name)}</strong>.</p>
-          </div>
-          <div style="margin-bottom:20px;">
-            <textarea id="del-reason-input" placeholder="Provide a reason..." style="width:100%;min-height:80px;padding:12px;border-radius:12px;font-family:var(--font-main);font-size:0.9rem;border:1px solid var(--bd-color);resize:none;outline:none;" maxlength="50" oninput="window.checkDelRequestBtn(this)"></textarea>
-          </div>
-          <div style="display:flex;">
-            <button id="del-request-btn" onclick="window.sendDeleteRequest()" disabled style="width:100%;padding:14px;background:var(--danger);color:#fff;border:none;border-radius:12px;font-weight:800;font-size:1rem;cursor:not-allowed;opacity:0.4;font-family:var(--font-main);">Submit Request</button>
-          </div>`;
-    }
-    window.openModal('delete-modal');
-};
+        if (isOwner) {
+            /* ── OWNER: direct deletion without checkbox and no icons ── */
+            content.innerHTML = `
+              <div style="text-align:center;margin-bottom:32px;">
+                <h3 style="font-size:1.35rem;font-weight:800;color:#0F172A;margin-bottom:12px;letter-spacing:-0.01em;">
+                  Remove ${window.escHtml(name)}?
+                </h3>
+                <p style="font-size:0.95rem;color:#64748B;line-height:1.6;max-width:280px;margin:0 auto;">
+                  This will permanently revoke their access to Zenda. This action cannot be undone.
+                </p>
+              </div>
+
+              <div style="display:flex;gap:12px;">
+                <button id="del-confirm-btn" onclick="window.confirmDelete()"
+                        style="width:100%;padding:14px;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:1rem;cursor:pointer;font-family:inherit;transition:all 0.25s;box-shadow:0 4px 12px rgba(220,38,38,0.2);">
+                  Delete Forever
+                </button>
+              </div>`;
+
+        } else {
+            /* ── STAFF / MANAGER: send removal request to owner without icons ── */
+            content.innerHTML = `
+              <div style="text-align:center;margin-bottom:24px;">
+                <h3 style="font-size:1.35rem;font-weight:800;color:#0F172A;margin-bottom:12px;letter-spacing:-0.01em;">
+                  Request Removal
+                </h3>
+                <p style="font-size:0.95rem;color:#64748B;line-height:1.6;max-width:280px;margin:0 auto;">
+                  Submit a request to remove <strong style="color:#0F172A;">${window.escHtml(name)}</strong>.
+                  The owner will review it and decide.
+                </p>
+              </div>
+
+              <div style="margin-bottom:24px;">
+                <label style="display:block;font-size:0.75rem;font-weight:800;color:#64748B;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;">
+                  Reason for Removal *
+                </label>
+                <textarea id="del-reason-input"
+                  placeholder="Provide a clear reason… (10–50 characters)"
+                  style="width:100%;min-height:100px;padding:14px;border-radius:12px;font-family:inherit;font-size:0.9rem;color:#0F172A;resize:none;outline:none;box-sizing:border-box;line-height:1.6;"
+                  maxlength="50"
+                  oninput="window.checkDelRequestBtn(this)"></textarea>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px;">
+                  <span id="del-char-hint" style="font-size:0.72rem;color:#94A3B8;font-weight:600;transition:color 0.2s;">
+                    Minimum 10 characters
+                  </span>
+                  <span id="del-char-count" style="font-size:0.72rem;font-weight:700;color:#94A3B8;font-family:'DM Mono',monospace;transition:color 0.2s;">
+                    0 / 50
+                  </span>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;">
+                <button id="del-request-btn" onclick="window.sendDeleteRequest()" disabled
+                        style="width:100%;padding:14px;background:#DC2626;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:1rem;cursor:not-allowed;font-family:inherit;opacity:0.4;transition:all 0.25s;box-shadow:0 4px 12px rgba(220,38,38,0.2);">
+                  Send to Owner
+                </button>
+              </div>`;
+        }
+
+        window.openModal('delete-modal');
+    };
 
 /* ── Checkbox toggle (owner confirmation) ── */
 window.toggleOwnerDelBtn = function() {
