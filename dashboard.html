@@ -202,9 +202,18 @@
         transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .notif-card:hover .notif-icon { transform: scale(1.1); }
-    .notif-icon.security { background: var(--danger-light); color: var(--danger); }
-    .notif-icon.task     { background: var(--ac-light);    color: var(--ac); }
-    .notif-icon.general  { background: #F1F5F9;            color: #64748B; }
+    .notif-icon.task      { background: #EFF6FF; color: #0066CC; }
+    .notif-icon.staff-add { background: #ECFDF5; color: #10B981; }
+    .notif-icon.staff-del { background: #FEF2F2; color: #EF4444; }
+    .notif-icon.approved  { background: #ECFDF5; color: #34C759; }
+    .notif-icon.security  { background: #FEF3C7; color: #D97706; }
+    .notif-icon.upgrade   { background: #FFF7ED; color: #F97316; }
+    .notif-icon.warehouse { background: #EEF2FF; color: #6366F1; }
+    .notif-icon.calendar  { background: #ECFDF5; color: #10B981; }
+    .notif-icon.general   { background: #F1F5F9; color: #64748B; }
+    /* Notif tab pills */
+    .ntab { padding:4px 12px; border-radius:99px; border:none; background:transparent; color:#64748B; font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s; }
+    .ntab.active { background:#0066CC; color:#ffffff; }
     .notif-content-wrap  { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
     .notif-header        { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
     .notif-title         { font-family: inherit; font-size: 0.875rem; color: var(--tx-main); font-weight: 800; margin: 0; line-height: 1.2; letter-spacing: -0.01em; }
@@ -1459,17 +1468,18 @@
     </div>
   </header>
 
-  <div id="notificationDropdown" class="notif-panel">
-    <div style="padding:14px 18px; display:flex; justify-content:space-between; align-items:center; background:#FFFFFF; border-bottom:1.5px solid #D5E0EE; flex-shrink:0; border-radius:24px 24px 0 0;">
-      <div style="display:flex; align-items:center; gap:9px;">
-        <h4 style="margin:0; font-size:0.95rem; color:#0F172A; font-weight:800; letter-spacing:-0.01em;">Notifications</h4>
-        <span class="badge hidden" id="notif-count-badge" style="background:#0066CC; color:white; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800;">0</span>
-      </div>
-      <button class="modal-close" style="width:28px; height:28px; background:#F3F7FC; border:1px solid #D5E0EE;" onclick="window.closeAllPanels()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+ <div id="notificationDropdown" class="notif-panel">
+    <div style="padding:14px 18px 12px; display:flex; align-items:center; gap:9px; background:#FFFFFF; border-bottom:1.5px solid #D5E0EE; flex-shrink:0; border-radius:24px 24px 0 0;">
+      <h4 style="margin:0; font-size:0.95rem; color:#0F172A; font-weight:800; letter-spacing:-0.01em;">Notifications</h4>
+      <span class="badge hidden" id="notif-count-badge" style="background:#0066CC; color:white; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800;">0</span>
     </div>
-    <div class="sp-body" id="notif-body" style="max-height:460px; overflow-y:auto; padding-bottom:8px;"></div>
+    <div style="display:flex; gap:4px; padding:8px 12px; background:#F3F7FC; border-bottom:1.5px solid #D5E0EE; flex-shrink:0;" id="notif-tab-row">
+      <button class="ntab active" onclick="window.filterNotifTab('all',this)">All</button>
+      <button class="ntab" onclick="window.filterNotifTab('staff',this)">Staff</button>
+      <button class="ntab" onclick="window.filterNotifTab('task',this)">Tasks</button>
+      <button class="ntab" onclick="window.filterNotifTab('system',this)">System</button>
+    </div>
+    <div class="sp-body" id="notif-body" style="max-height:430px; overflow-y:auto; padding-bottom:8px;"></div>
   </div>
 
   <div class="app-body">
@@ -1685,16 +1695,9 @@
   <div class="otp-inputs-wrap" id="otp-inputs-container" style="margin-bottom:28px; gap:10px;"></div>
 
   <!-- Buttons -->
-  <div style="display:flex; gap:12px;">
-    <button class="ppm-btn" id="ppm-cancel-otp-btn"
-      style="flex:1; background:#F8FAFC; border:1.5px solid #E2E8F0; color:#4B5563; font-weight:700; border-radius:12px; cursor:pointer; transition:all 0.2s;"
-      onmouseover="this.style.background='#F1F5F9'; this.style.borderColor='#CBD5E1';"
-      onmouseout="this.style.background='#F8FAFC'; this.style.borderColor='#E2E8F0';"
-      onclick="window.cancelOtpView()">
-      Cancel
-    </button>
+  <div>
     <button class="ppm-btn" id="ppm-verify-btn"
-      style="flex:1; background:#93C5FD; border:none; color:#FFFFFF; font-weight:700; border-radius:12px; cursor:not-allowed; opacity:1; box-shadow:none;"
+      style="width:100%; background:#93C5FD; border:none; color:#FFFFFF; font-weight:700; border-radius:12px; cursor:not-allowed; opacity:1; box-shadow:none;"
       onclick="window.verifyProfileOTP()" disabled>
       Verify Code
     </button>
@@ -1829,9 +1832,8 @@
         
         <div class="otp-inputs-wrap" id="cs-otp-boxes" style="margin-bottom: 32px;"></div>
         
-        <div style="max-width:340px; margin:0 auto; display:flex; gap:12px;">
-          <button class="btn btn-secondary" style="padding:14px; font-size:0.95rem; border-radius:12px; flex:1;" onclick="window.cancelCreateStaff()">Cancel</button>
-          <button class="btn btn-primary" id="verify-staff-btn" style="padding:14px; font-size:0.95rem; border-radius:12px; box-shadow:0 4px 12px rgba(0,102,204,0.2); flex:2;" onclick="window.finalizeCreateStaff()" disabled>Verify &amp; Create</button>
+        <div style="max-width:340px; margin:0 auto;">
+          <button class="btn btn-primary w-full" id="verify-staff-btn" style="padding:14px; font-size:0.95rem; border-radius:12px; box-shadow:0 4px 12px rgba(0,102,204,0.2);" onclick="window.finalizeCreateStaff()" disabled>Verify &amp; Create</button>
         </div>
       </div>
 
@@ -1986,15 +1988,13 @@
   <div class="modal-overlay" id="staff-request-modal" onclick="if(event.target === this) window.closeModal('staff-request-modal')" style="background: rgba(0, 0, 0, 0.2); z-index: 1005; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: auto !important;">
     <div class="modal" style="max-width: 400px; width: 95%; overflow: hidden; padding: 0; box-shadow: 0 32px 80px rgba(15, 23, 42, 0.15); border: 1px solid #D5E0EE; pointer-events: auto !important; position: relative;">
       
-      <button class="modal-close" style="position:absolute; top:16px; right:16px; background:rgba(0,0,0,0.05); color:var(--tx-muted); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:10; pointer-events: auto;" onclick="window.closeModal('staff-request-modal')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-
-      <div style="background: linear-gradient(135deg, #0066CC, #3B82F6); height: 75px; position: relative;"></div>
+      <div id="sr-color-bar" style="background:#0066CC; height:5px; width:100%;"></div>
 
       <div style="padding: 0 32px 32px; text-align: center; position: relative;">
-          <div id="sr-floating-icon" style="width: 64px; height: 64px; background: #fff; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: -32px auto 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.08); border: 4px solid var(--bg-surface); position: relative; z-index: 2; overflow: hidden;">👤</div>
-          
+
+        <div id="sr-floating-icon" style="width: 52px; height: 52px; background: #EFF6FF; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 20px auto 14px; border: 1.5px solid #D5E0EE; position: relative; z-index: 2; color: #0066CC;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
           <h3 id="sr-modal-title" style="margin:0 0 4px; font-size:1.35rem; color:var(--tx-main); font-weight:800; letter-spacing:-0.02em;">Staff Request</h3>
           <p style="margin:0 0 24px; color:var(--tx-muted); font-size:0.9rem; font-weight:600;">Requested by <span id="sr-requester-name" style="color:var(--tx-main);"></span></p>
 
@@ -2462,42 +2462,27 @@ window.renderNotifs = function(items) {
     let iconStyle = ''; 
     let actionsHtml = ''; // <--- MOVED TO THE TOP TO FIX THE CRASH
 
-    // 1. DETERMINE ICONS & COLORS
-    if (n.type === 'security_login' || n.type === 'security_alert') {
-      iconType = `<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>`;
-      iconBgClass = 'security';
-    } else if (n.type === 'task_received' || n.type === 'task_update') {
-      iconType = `<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>`;
-      iconBgClass = 'task';
-    } else if (n.type === 'warehouse_request') {
-      window.pendingWarehouses = window.pendingWarehouses || {};
-      window.pendingWarehouses[n.id] = n;
-      iconType = `<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>`;
-      iconStyle = 'background: #EFF6FF; color: #3B82F6;'; 
-    } else if (n.type === 'warehouse_delete_request') {
-      window.pendingWarehouses = window.pendingWarehouses || {};
-      window.pendingWarehouses[n.id] = n;
-      iconType = `<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>`;
-      iconStyle = 'background: #FEF2F2; color: #DC2626;';
-    } else if (n.type === 'plan_expiry_warning') {
-      iconType = `<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>`;
-      iconStyle = 'background: #FFFBEB; color: #F59E0B;';
-    } else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') {
-      iconType = `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>`;
-      iconStyle = n.type === 'calendar_event_all' ? 'background: var(--success-light); color: var(--success);' : 'background: #F5F3FF; color: #7C3AED;'; 
-    } else if (n.type === 'staff_add_approved') {
-      iconType = `<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>`;
-      iconStyle = 'background: #F2FDF4; color: #34C759;';
-    } else if (n.type === 'staff_login_blocked') {
-      iconType = `<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>`;
-      iconStyle = 'background: #FFFBEB; color: #D97706;';
-    } else if (n.type.includes('staff')) {
-      iconType = `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>`;
-      iconBgClass = 'general';
-    } else {
-      iconType = `<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>`;
-      iconBgClass = 'general';
-    }
+    // ── Icon lookup table — one entry per notification type ──
+    const _IC = {
+      security_login:           { cls:'security',  p:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>' },
+      security_alert:           { cls:'security',  p:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>' },
+      task_received:            { cls:'task',      p:'<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><polyline points="9 12 11 14 15 10"/>' },
+      task_update:              { cls:'task',      p:'<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/>' },
+      staff_add_request:        { cls:'staff-add', p:'<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/>' },
+      staff_delete_request:     { cls:'staff-del', p:'<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/>' },
+      staff_add_approved:       { cls:'approved',  p:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' },
+      staff_login_blocked:      { cls:'security',  p:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>' },
+      upgrade_request:          { cls:'upgrade',   p:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>' },
+      plan_expiry_warning:      { cls:'security',  p:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>' },
+      warehouse_request:        { cls:'warehouse', p:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+      warehouse_delete_request: { cls:'staff-del', p:'<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>' },
+      calendar_event_all:       { cls:'calendar',  p:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>' },
+      calendar_event_custom:    { cls:'general',   p:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>' },
+    };
+    const _ic = _IC[n.type] || { cls:'general', p:'<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>' };
+    iconType = _ic.p;
+    iconBgClass = _ic.cls;
+    iconStyle = '';
 
     if (n.type === 'security_alert') {
         actionsHtml = `<div style="display:flex;gap:10px;width:100%;margin-top:6px;">
@@ -2559,8 +2544,9 @@ window.renderNotifs = function(items) {
     else if (n.type.includes('staff'))                                          notifTitle = 'Staff Update';
     else if (n.type === 'general')                                              notifTitle = 'Info';
 
+    const _cat = ['task_received','task_update','calendar_event_all','calendar_event_custom'].includes(n.type) ? 'task' : ['staff_add_request','staff_delete_request','staff_add_approved','upgrade_request','warehouse_request','warehouse_delete_request'].includes(n.type) ? 'staff' : 'system';
     const html = `
-      <div class="notif-card" data-id="${n.id}" data-task-id="${n.taskId || ''}" data-sender-id="${n.senderId || ''}">
+      <div class="notif-card" data-id="${n.id}" data-task-id="${n.taskId || ''}" data-sender-id="${n.senderId || ''}" data-cat="${_cat}">
         <div class="notif-icon ${iconBgClass}" style="${iconStyle}">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${iconType}</svg>
         </div>
@@ -2583,7 +2569,13 @@ window.renderNotifs = function(items) {
     el.insertAdjacentHTML('beforeend', html);
   });
 };
-
+window.filterNotifTab = function(cat, btn) {
+    document.querySelectorAll('#notif-tab-row .ntab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#notif-body .notif-card').forEach(card => {
+        card.style.display = (cat === 'all' || card.dataset.cat === cat) ? 'flex' : 'none';
+    });
+};
 window.markNotifRead = async function(notifId) {
     const el = document.querySelector(`.notif-item[data-id="${notifId}"]`);
     if (el) el.style.display = 'none';
@@ -3149,6 +3141,19 @@ window.openStaffRequestModal = function(btn) {
     const reqName = btn.getAttribute('data-requester-name') || 'Staff Member';
     
     window.currentStaffRequest = { btn, type, notifId, reqId };
+
+    // Update top color bar and icon based on request type
+    const _bar = document.getElementById('sr-color-bar');
+    if (_bar) _bar.style.background = type === 'delete' ? '#DC2626' : '#0066CC';
+    const _ico = document.getElementById('sr-floating-icon');
+    if (_ico) {
+        _ico.style.background   = type === 'delete' ? '#FEF2F2' : '#EFF6FF';
+        _ico.style.color        = type === 'delete' ? '#DC2626' : '#0066CC';
+        _ico.style.borderColor  = type === 'delete' ? '#FECACA' : '#D5E0EE';
+        _ico.innerHTML = type === 'delete'
+            ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="17" y1="11" x2="23" y2="11"/></svg>'
+            : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>';
+    }
     
     const requesterUser = allStaff.find(s => s.uid === reqId) || {};
     const reqAvatarHtml = requesterUser.avatarData 
@@ -4533,8 +4538,18 @@ window.completeTask = async function(taskId) {
         const el = document.getElementById('task-' + taskId);
         if (el) el.style.opacity = '0.5';
         
-        // This triggers tasks.js -> properly updates DB & fires "Task Done" notification
-        await TasksModule.markTaskDone(taskId);
+        await updateDoc(doc(db, 'tasks', taskId), { status: 'done', completedAt: Date.now() });
+        const doneTask = (window.myTasks || []).find(t => t.id === taskId);
+        if (doneTask?.assignedBy && doneTask.assignedBy !== window.CU.uid) {
+            await addDoc(collection(db, 'users', doneTask.assignedBy, 'notifications'), {
+                type:      'task_update',
+                message:   `${window.CU.name} completed task "${doneTask.title}".`,
+                taskId,
+                createdAt: Date.now(),
+                read:      false,
+                status:    'unread'
+            });
+        }
         window.showToast("Task completed!", "success");
     } catch(e) {
         window.showToast(e.message, "error");
@@ -4568,8 +4583,19 @@ window.confirmDecline = async function() {
     loadBtn(btn, true);
     
     try {
-        // This triggers tasks.js -> properly updates DB & fires "Task Declined" notification
-        await TasksModule.markTaskDeclined(window.pendingDeclineId, reason);
+        const _decId = window.pendingDeclineId;
+        await updateDoc(doc(db, 'tasks', _decId), { status: 'declined', declineReason: reason, reason });
+        const decTask = (window.myTasks || []).find(t => t.id === _decId);
+        if (decTask?.assignedBy && decTask.assignedBy !== window.CU.uid) {
+            await addDoc(collection(db, 'users', decTask.assignedBy, 'notifications'), {
+                type:      'task_update',
+                message:   `${window.CU.name} declined task "${decTask.title}". Reason: ${reason}`,
+                taskId:    _decId,
+                createdAt: Date.now(),
+                read:      false,
+                status:    'unread'
+            });
+        }
         window.closeModal('decline-modal'); 
         window.showToast('Task declined.', 'success');
     } catch (e) { 
@@ -4618,41 +4644,41 @@ window.handleAssign = async function() {
         const a = allStaff.find(s => s.uid === to) || {name: 'Team Member', uid: to};
         if (to === window.CU.uid) a.name = window.CU.name;
         
-        // Bypass external modules to guarantee correct schema
+        // Write directly — guaranteed field schema, no tasks.js dependency
         const taskRef = await addDoc(collection(db, 'tasks'), {
-            title: title,
-            description: desc,
-            assignedTo: to,
+            title:          title,
+            description:    desc || '',
+            assignedTo:     to,
             assignedToName: a.name,
-            assignedBy: window.CU.uid,
+            assignedBy:     window.CU.uid,
             assignedByName: window.CU.name,
-            companyId: window.CU.companyId || 'default',
-            dueDate: date,
-            dueTime: '',
-            priority: priority,
-            status: 'pending',        
-            createdAt: Date.now()     
+            companyId:      window.CU.companyId || 'default',
+            dueDate:        date,
+            dueTime:        '',
+            priority:       priority,
+            status:         'pending',
+            createdAt:      Date.now()
         });
-        
-        // Fire exact notification type required for the Accept/Deny buttons
+
+        // Notify the assignee (skip if self-assigning)
         if (to !== window.CU.uid) {
             await addDoc(collection(db, 'users', to, 'notifications'), {
-                type: 'task_received',
-                message: `${window.CU.name} assigned you a new task: "${title}".`,
-                taskId: taskRef.id,
-                senderId: window.CU.uid,
+                type:      'task_received',
+                message:   `${window.CU.name} assigned you a new task: "${title}".`,
+                taskId:    taskRef.id,
+                senderId:  window.CU.uid,
                 createdAt: Date.now(),
-                read: false,
-                status: 'unread'
+                read:      false,
+                status:    'unread'
             });
         }
-        
+
         window.closeModal('assign-modal');
-        document.getElementById('assign-to').value = ''; 
-        document.getElementById('task-title').value = ''; 
-        document.getElementById('task-desc').value = ''; 
-        document.getElementById('task-date').value = '';
-        
+        document.getElementById('assign-to').value  = '';
+        document.getElementById('task-title').value  = '';
+        document.getElementById('task-desc').value   = '';
+        document.getElementById('task-date').value   = '';
+
         window.showToast(`Assigned to ${a.name}!`, 'success');
     } catch (e) { 
         window.showToast(e.message, 'error'); 
@@ -4748,9 +4774,8 @@ window.renderTasksList = function() {
     }
     
     filtered.sort((a, b) => {
-        const timeA = new Date(a.createdAt || 0).getTime();
-        const timeB = new Date(b.createdAt || 0).getTime();
-        return timeB - timeA;
+        const ts = v => v?.toDate ? v.toDate().getTime() : (typeof v === 'number' ? v : 0);
+        return ts(b.createdAt) - ts(a.createdAt);
     });
     
     if (filtered.length === 0) {
@@ -4912,24 +4937,30 @@ function subscribeAll() {
       window.renderNotifs(items); 
   }, (err) => console.warn('Notif listener error:', err)));
   
-  if (listenMyTasks) { 
-      unsubs.push(listenMyTasks(uid, tasks => { 
-          window.myTasks = tasks; 
-          window.updateAllStats(); 
-          if(window.renderRecentTasks) window.renderRecentTasks(); 
-          if(window.renderTasksList) window.renderTasksList(); 
-          if (role === 'owner') { updateCharts(tasks); } 
-      })); 
-  }
-  
-  if (ca && listenAssignedByMe) { 
-      unsubs.push(listenAssignedByMe(uid, tasks => { 
-          window.assignedByMeTasks = tasks; 
-          window.updateAllStats(); 
-          if(window.renderRecentTasks) window.renderRecentTasks(); 
-          if(window.renderTasksList) window.renderTasksList(); 
-      })); 
-  }
+  // Tasks assigned TO me — single where clause avoids composite index requirement
+  const _myTasksQ = query(collection(db, 'tasks'), where('assignedTo', '==', uid));
+  unsubs.push(onSnapshot(_myTasksQ, snap => {
+      const cid = companyId || 'default';
+      window.myTasks = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(t => (t.companyId || 'default') === cid);
+      window.updateAllStats();
+      if (window.renderRecentTasks) window.renderRecentTasks();
+      if (window.renderTasksList)   window.renderTasksList();
+      if (role === 'owner') updateCharts(window.myTasks);
+  }, err => console.warn('myTasks listener:', err)));
+
+  // Tasks assigned BY me
+  const _byMeQ = query(collection(db, 'tasks'), where('assignedBy', '==', uid));
+  unsubs.push(onSnapshot(_byMeQ, snap => {
+      const cid = companyId || 'default';
+      window.assignedByMeTasks = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(t => (t.companyId || 'default') === cid);
+      window.updateAllStats();
+      if (window.renderRecentTasks) window.renderRecentTasks();
+      if (window.renderTasksList)   window.renderTasksList();
+  }, err => console.warn('assignedByMe listener:', err)));
   
   if (companyId && listenCompanyStaff) {
         unsubs.push(listenCompanyStaff(companyId, staff => {
