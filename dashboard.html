@@ -4616,10 +4616,10 @@ window.handleAssign = async function() {
     
     try {
         const a = allStaff.find(s => s.uid === to) || {name: 'Team Member', uid: to};
-        if (to === window.CU.uid) a.name = window.CU.name; // Self-assign case
+        if (to === window.CU.uid) a.name = window.CU.name;
         
-        // This triggers tasks.js -> properly adds the DB doc & fires the Notification
-        await TasksModule.assignTask({
+        // Bypass external modules to guarantee correct schema
+        const taskRef = await addDoc(collection(db, 'tasks'), {
             title: title,
             description: desc,
             assignedTo: to,
@@ -4630,9 +4630,22 @@ window.handleAssign = async function() {
             dueDate: date,
             dueTime: '',
             priority: priority,
-            status: 'pending',        // <-- ADDED THIS: Fixes "Assigned To Me" missing bug
-            createdAt: Date.now()     // <-- ADDED THIS: Fixes sorting and "I Assigned" missing bug
+            status: 'pending',        
+            createdAt: Date.now()     
         });
+        
+        // Fire exact notification type required for the Accept/Deny buttons
+        if (to !== window.CU.uid) {
+            await addDoc(collection(db, 'users', to, 'notifications'), {
+                type: 'task_received',
+                message: `${window.CU.name} assigned you a new task: "${title}".`,
+                taskId: taskRef.id,
+                senderId: window.CU.uid,
+                createdAt: Date.now(),
+                read: false,
+                status: 'unread'
+            });
+        }
         
         window.closeModal('assign-modal');
         document.getElementById('assign-to').value = ''; 
@@ -4725,17 +4738,20 @@ window.renderTasksList = function() {
     const tab = window.taskTab || 'assigned-to-me';
     
     if (tab === 'assigned-to-me') {
-        filtered = (window.myTasks || []).filter(t => t.status === 'pending' && !window.isOverdue(t.dueDate));
+        filtered = (window.myTasks || []).filter(t => t.status !== 'done' && t.status !== 'declined' && !window.isOverdue(t.dueDate));
     } else if (tab === 'assigned-by-me') {
         filtered = (window.assignedByMeTasks || []); 
     } else if (tab === 'done') {
         filtered = (window.myTasks || []).filter(t => t.status === 'done');
     } else if (tab === 'declined') {
-        filtered = (window.myTasks || []).filter(t => t.status === 'declined' || (t.status === 'pending' && window.isOverdue(t.dueDate)));
+        filtered = (window.myTasks || []).filter(t => t.status === 'declined' || (t.status !== 'done' && t.status !== 'declined' && window.isOverdue(t.dueDate)));
     }
     
-    // <-- ADDED FALLBACK (|| 0) to prevent sorting crashes from older tasks missing dates
-    filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    filtered.sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        return timeB - timeA;
+    });
     
     if (filtered.length === 0) {
         listEl.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--tx-muted); font-weight: 600;">No tasks found here.</div>';
