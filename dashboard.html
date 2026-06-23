@@ -4629,7 +4629,9 @@ window.handleAssign = async function() {
             companyId: window.CU.companyId || 'default',
             dueDate: date,
             dueTime: '',
-            priority: priority
+            priority: priority,
+            status: 'pending',        // <-- ADDED THIS: Fixes "Assigned To Me" missing bug
+            createdAt: Date.now()     // <-- ADDED THIS: Fixes sorting and "I Assigned" missing bug
         });
         
         window.closeModal('assign-modal');
@@ -4732,7 +4734,8 @@ window.renderTasksList = function() {
         filtered = (window.myTasks || []).filter(t => t.status === 'declined' || (t.status === 'pending' && window.isOverdue(t.dueDate)));
     }
     
-    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // <-- ADDED FALLBACK (|| 0) to prevent sorting crashes from older tasks missing dates
+    filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     
     if (filtered.length === 0) {
         listEl.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--tx-muted); font-weight: 600;">No tasks found here.</div>';
