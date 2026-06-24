@@ -3165,22 +3165,25 @@ window.openStaffRequestModal = function(btn) {
         else { _bar.style.display = 'block'; _bar.style.background = '#0066CC'; }
     }
     const _ico = document.getElementById('sr-floating-icon');
+    const _titleEl = document.getElementById('sr-modal-title');
     if (_ico) {
-        _ico.style.background   = type === 'delete' ? '#FEF2F2' : '#EFF6FF';
-        _ico.style.color        = type === 'delete' ? '#DC2626' : '#0066CC';
-        _ico.style.borderColor  = type === 'delete' ? '#FECACA' : '#D5E0EE';
-        _ico.innerHTML = type === 'delete'
-            ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="17" y1="11" x2="23" y2="11"/></svg>'
-            : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>';
+        if (type === 'delete') {
+            // Hide the avatar bubble entirely for delete requests
+            _ico.style.display = 'none';
+            if (_titleEl) _titleEl.style.marginTop = '28px';
+        } else {
+            _ico.style.display = 'flex';
+            if (_titleEl) _titleEl.style.marginTop = '0';
+            _ico.style.background   = '#EFF6FF';
+            _ico.style.color        = '#0066CC';
+            _ico.style.borderColor  = '#D5E0EE';
+            const requesterUser = allStaff.find(s => s.uid === reqId) || {};
+            _ico.innerHTML = requesterUser.avatarData
+                ? `<img src="${requesterUser.avatarData}" style="width:100%;height:100%;object-fit:cover;">`
+                : `<span style="font-weight:800;color:var(--ac);">${reqName.charAt(0).toUpperCase()}</span>`;
+        }
     }
-    
-    const requesterUser = allStaff.find(s => s.uid === reqId) || {};
-    const reqAvatarHtml = requesterUser.avatarData 
-        ? `<img src="${requesterUser.avatarData}" style="width:100%;height:100%;object-fit:cover;">` 
-        : `<span style="font-weight:800;color:var(--ac);">${reqName.charAt(0).toUpperCase()}</span>`;
-    
     document.getElementById('sr-requester-name').textContent = reqName;
-    document.getElementById('sr-floating-icon').innerHTML = reqAvatarHtml;
     
     if (type === 'add') {
         document.getElementById('sr-modal-title').textContent = 'New Staff Request';
@@ -3400,32 +3403,56 @@ window.executeStaffRequest = async function(action) {
         if (actionBtn) loadBtn(actionBtn, false, action === 'approve' ? 'Approve' : 'Decline');
 
         if (action === 'approve') {
-            // ── Show green tick for 2s, then close ──
+            // ── Green tick: show "Staff Deleted" for delete type, "Approved!" otherwise ──
             const tickEl = document.getElementById('staff-req-success-tick');
+            const tickTextEl = tickEl ? tickEl.querySelector('.ppm-success-text') : null;
+            if (tickTextEl) {
+                tickTextEl.textContent = req.type === 'delete' ? 'Staff Deleted' : 'Approved!';
+                tickTextEl.style.color = '#10B981';
+            }
             if (tickEl) {
                 tickEl.classList.add('active');
-                // Manually trigger the SVG draw (same as apple-tick pattern)
                 const svg = tickEl.querySelector('svg');
                 if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 400);
                 setTimeout(() => {
                     tickEl.classList.remove('active');
                     window.closeModal('staff-request-modal');
                     document.getElementById('panel-overlay')?.classList.remove('visible');
+                    document.querySelector('.app-body')?.classList.remove('zoomed');
                 }, 2000);
             } else {
                 window.closeModal('staff-request-modal');
                 document.getElementById('panel-overlay')?.classList.remove('visible');
             }
         } else {
-            // ── Deny: close immediately ──
-            const modalEl = document.getElementById('staff-request-modal');
-            if (modalEl) {
-                modalEl.classList.remove('open');
-                modalEl.style.opacity = '0';
-                modalEl.style.visibility = 'hidden';
-                modalEl.style.pointerEvents = 'none';
+            // ── Decline: smooth pop-down slide + fade then close ──
+            const modalEl  = document.getElementById('staff-request-modal');
+            const innerModal = modalEl ? modalEl.querySelector('.modal') : null;
+            if (innerModal) {
+                innerModal.style.transition = 'transform 0.38s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease';
+                innerModal.style.transform  = 'translateY(72px) scale(0.96)';
+                innerModal.style.opacity    = '0';
             }
-            document.getElementById('panel-overlay')?.classList.remove('visible');
+            if (modalEl) {
+                modalEl.style.transition = 'opacity 0.38s ease';
+                modalEl.style.opacity    = '0';
+            }
+            setTimeout(() => {
+                if (modalEl) {
+                    modalEl.classList.remove('open');
+                    modalEl.style.opacity    = '';
+                    modalEl.style.transition = '';
+                    modalEl.style.visibility = 'hidden';
+                    modalEl.style.pointerEvents = 'none';
+                }
+                if (innerModal) {
+                    innerModal.style.transform  = '';
+                    innerModal.style.opacity    = '';
+                    innerModal.style.transition = '';
+                }
+                document.getElementById('panel-overlay')?.classList.remove('visible');
+                document.querySelector('.app-body')?.classList.remove('zoomed');
+            }, 400);
         }
     }
 };
