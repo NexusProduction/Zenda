@@ -3160,58 +3160,57 @@ window.openStaffRequestModal = function(btn) {
     window.currentStaffRequest = { btn, type, notifId, reqId };
 
     const _bar = document.getElementById('sr-color-bar');
-    if (_bar) {
-        if (type === 'delete') { _bar.style.display = 'none'; }
-        else { _bar.style.display = 'block'; _bar.style.background = '#0066CC'; }
-    }
+    if (_bar) _bar.style.display = 'none';
     const _ico = document.getElementById('sr-floating-icon');
     const _titleEl = document.getElementById('sr-modal-title');
     if (_ico) {
-        if (type === 'delete') {
-            // Hide the avatar bubble entirely for delete requests
-            _ico.style.display = 'none';
-            if (_titleEl) _titleEl.style.marginTop = '28px';
-        } else {
-            _ico.style.display = 'flex';
-            if (_titleEl) _titleEl.style.marginTop = '0';
-            _ico.style.background   = '#EFF6FF';
-            _ico.style.color        = '#0066CC';
-            _ico.style.borderColor  = '#D5E0EE';
-            const requesterUser = allStaff.find(s => s.uid === reqId) || {};
-            _ico.innerHTML = requesterUser.avatarData
-                ? `<img src="${requesterUser.avatarData}" style="width:100%;height:100%;object-fit:cover;">`
-                : `<span style="font-weight:800;color:var(--ac);">${reqName.charAt(0).toUpperCase()}</span>`;
-        }
+        _ico.style.display = 'none';
+        if (_titleEl) _titleEl.style.marginTop = '28px';
     }
     document.getElementById('sr-requester-name').textContent = reqName;
     
     if (type === 'add') {
-        document.getElementById('sr-modal-title').textContent = 'New Staff Request';
         const pendingData = JSON.parse(decodeURIComponent(escape(atob(btn.getAttribute('data-pending')))));
-        
+
+        document.getElementById('sr-modal-title').textContent = `Add New Staff ${pendingData.name} Request`;
+
+        const tAddEmail = pendingData.email || '';
+        const truncAddEmail = tAddEmail.length > 22 ? tAddEmail.slice(0, 20) + '..' : tAddEmail;
+
+        const detailsBoxAdd = document.getElementById('sr-dynamic-details');
+        if (detailsBoxAdd) {
+            detailsBoxAdd.style.background   = 'transparent';
+            detailsBoxAdd.style.border       = 'none';
+            detailsBoxAdd.style.borderRadius = '0';
+            detailsBoxAdd.style.padding      = '0';
+            detailsBoxAdd.style.gap          = '0';
+        }
+
         document.getElementById('sr-dynamic-details').innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
-                <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M16 11l2 2 4-4"/></svg> Name
+            <div style="height:1.5px; background:var(--bd-color); width:100%; margin-bottom:4px;"></div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:13px 0; border-bottom:1px solid var(--bd-color);">
+                <span style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Name
                 </span>
-                <span style="font-size:0.95rem; color:var(--tx-main); font-weight:800; text-align:right; word-break:break-word;">${esc(pendingData.name)}</span>
+                <span style="font-size:0.95rem; color:var(--tx-main); font-weight:800;">${esc(pendingData.name)}</span>
             </div>
-            <div style="height:1px; background:var(--bd-color); width:100%;"></div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
-                <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Email
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:13px 0; border-bottom:1px solid var(--bd-color);">
+                <span style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Email
                 </span>
-                <span style="font-size:0.95rem; color:var(--tx-main); font-weight:700; text-align:right; word-break:break-word;">${esc(pendingData.email)}</span>
+                <span style="font-size:0.9rem; color:var(--tx-main); font-weight:700;" title="${esc(tAddEmail)}">${esc(truncAddEmail)}</span>
             </div>
-            <div style="height:1px; background:var(--bd-color); width:100%;"></div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
-                <span style="font-size:0.8rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; flex-shrink:0; display:flex; align-items:center; gap:6px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> Role
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:13px 0;">
+                <span style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> Role
                 </span>
-                <span style="font-size:0.95rem; color:var(--tx-main); font-weight:700; text-align:right; word-break:break-word;">${esc(pendingData.designation || 'Staff')}</span>
+                <span style="font-size:0.95rem; color:var(--tx-main); font-weight:700;">${esc(pendingData.designation || 'Staff')}</span>
             </div>
-            `;
-        
+        `;
+
         window.currentStaffRequest.payload = pendingData;
         document.getElementById('sr-btn-approve').textContent = 'Approve';
         document.getElementById('sr-btn-decline').textContent = 'Decline';
@@ -3407,7 +3406,7 @@ window.executeStaffRequest = async function(action) {
             const tickEl = document.getElementById('staff-req-success-tick');
             const tickTextEl = tickEl ? tickEl.querySelector('.ppm-success-text') : null;
             if (tickTextEl) {
-                tickTextEl.textContent = req.type === 'delete' ? 'Staff Deleted' : 'Approved!';
+                tickTextEl.textContent = req.type === 'delete' ? 'Staff Deleted' : 'New Staff Added';
                 tickTextEl.style.color = '#10B981';
             }
             if (tickEl) {
