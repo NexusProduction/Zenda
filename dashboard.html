@@ -5109,18 +5109,6 @@ function subscribeAll() {
       if (typeof window.renderRecentTasks === 'function') window.renderRecentTasks();
       if (typeof window.renderTasksList === 'function')   window.renderTasksList();
   }, err => console.warn('assignedByMe listener:', err)));
-
-  // Tasks assigned BY me
-  const _byMeQ = query(collection(db, 'tasks'), where('assignedBy', '==', uid));
-  unsubs.push(onSnapshot(_byMeQ, snap => {
-      const cid = companyId || 'default';
-      window.assignedByMeTasks = snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .filter(t => (t.companyId || 'default') === cid);
-      window.updateAllStats();
-      if (window.renderRecentTasks) window.renderRecentTasks();
-      if (window.renderTasksList)   window.renderTasksList();
-  }, err => console.warn('assignedByMe listener:', err)));
   
   if (companyId && listenCompanyStaff) {
         unsubs.push(listenCompanyStaff(companyId, staff => {
@@ -5152,7 +5140,6 @@ function subscribeAll() {
       unsubs.push(listenInstalledApps(uid, ids => buildAppsGrid(ids))); 
   }
 }
-
 window.renderStaffCards = function(staffList) {
     const container = document.getElementById('staff-cards-list');
     
