@@ -1441,15 +1441,24 @@
     /* --- MOBILE NOTIFICATION PANEL FIX --- */
     @media (max-width: 768px) {
         .notif-panel {
-            position: fixed !important; /* Detaches it from the scrollable background */
-            top: 72px !important; /* Sits perfectly below the mobile header */
-            left: 16px !important;
-            right: 16px !important;
-            width: calc(100% - 32px) !important; /* Fits to screen with 16px margins */
+            position: fixed !important; 
+            top: 72px !important; /* Locks right below the header */
+            left: 12px !important;
+            right: 12px !important;
+            width: calc(100% - 24px) !important; 
             max-width: none !important;
-            max-height: calc(100vh - 170px) !important; /* Leaves room for the bottom nav */
-            transform-origin: top center !important; /* Smoother opening animation for mobile */
-            z-index: 99999 !important; /* Ensures it sits above everything */
+            max-height: calc(100vh - 160px) !important; /* Leaves room for bottom nav */
+            transform-origin: top center !important; 
+            z-index: 100000 !important; /* Always on top */
+            border-radius: 20px !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        #notif-body {
+            flex: 1 !important;
+            max-height: none !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
         }
     }
   </style>
@@ -4870,9 +4879,17 @@ window.renderTasksList = function() {
     } else if (tab === 'assigned-by-me') {
         filtered = (window.assignedByMeTasks || []); 
     } else if (tab === 'done') {
-        filtered = (window.myTasks || []).filter(t => t.status === 'done');
+        // Fix: Combine both lists so you see tasks YOU completed AND tasks you assigned that OTHERS completed.
+        const combined = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])];
+        const uniqueMap = new Map();
+        combined.forEach(t => uniqueMap.set(t.id, t));
+        filtered = Array.from(uniqueMap.values()).filter(t => t.status === 'done');
     } else if (tab === 'declined') {
-        filtered = (window.myTasks || []).filter(t => t.status === 'declined' || (t.status !== 'done' && t.status !== 'declined' && window.isOverdue(t.dueDate)));
+        // Fix: Combine both lists for declines/overdues
+        const combined = [...(window.myTasks || []), ...(window.assignedByMeTasks || [])];
+        const uniqueMap = new Map();
+        combined.forEach(t => uniqueMap.set(t.id, t));
+        filtered = Array.from(uniqueMap.values()).filter(t => t.status === 'declined' || (t.status !== 'done' && t.status !== 'declined' && window.isOverdue(t.dueDate)));
     }
     
     filtered.sort((a, b) => {
@@ -4881,7 +4898,7 @@ window.renderTasksList = function() {
     });
     
     if (filtered.length === 0) {
-        listEl.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--tx-muted); font-weight: 600;">No tasks found here.</div>';
+        listEl.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--tx-muted); font-weight: 600; font-family: var(--font-main);">No tasks found here.</div>';
         return;
     }
     
@@ -5068,18 +5085,30 @@ function subscribeAll() {
       window.renderNotifs(items); 
   }, (err) => console.warn('Notif listener error:', err)));
   
-  // Tasks assigned TO me — single where clause avoids composite index requirement
+  // Tasks assigned TO me
   const _myTasksQ = query(collection(db, 'tasks'), where('assignedTo', '==', uid));
   unsubs.push(onSnapshot(_myTasksQ, snap => {
-      const cid = companyId || 'default';
+      const cid = window.CU?.companyId || 'default'; // Dynamically read ID to prevent stale closures
       window.myTasks = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .filter(t => (t.companyId || 'default') === cid);
       window.updateAllStats();
-      if (window.renderRecentTasks) window.renderRecentTasks();
-      if (window.renderTasksList)   window.renderTasksList();
-      if (role === 'owner') updateCharts(window.myTasks);
+      if (typeof window.renderRecentTasks === 'function') window.renderRecentTasks();
+      if (typeof window.renderTasksList === 'function')   window.renderTasksList();
+      if (window.CU?.role === 'owner') updateCharts(window.myTasks);
   }, err => console.warn('myTasks listener:', err)));
+
+  // Tasks assigned BY me
+  const _byMeQ = query(collection(db, 'tasks'), where('assignedBy', '==', uid));
+  unsubs.push(onSnapshot(_byMeQ, snap => {
+      const cid = window.CU?.companyId || 'default'; // Dynamically read ID to prevent stale closures
+      window.assignedByMeTasks = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(t => (t.companyId || 'default') === cid);
+      window.updateAllStats();
+      if (typeof window.renderRecentTasks === 'function') window.renderRecentTasks();
+      if (typeof window.renderTasksList === 'function')   window.renderTasksList();
+  }, err => console.warn('assignedByMe listener:', err)));
 
   // Tasks assigned BY me
   const _byMeQ = query(collection(db, 'tasks'), where('assignedBy', '==', uid));
