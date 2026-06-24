@@ -1540,6 +1540,78 @@
         .mob-task-filters { display: block !important; }
         #task-tab-row { margin-bottom: 0 !important; padding-right: 0 !important; mask-image: none !important; -webkit-mask-image: none !important; }
     }
+    /* 1. Hide Overdue text below 1098px */
+    @media (max-width: 1098px) {
+        .hide-overdue { display: none; }
+    }
+
+    /* 2. New Creative Mobile Filters UI (Replaces the native Dropdown) */
+    .mob-scope-toggle {
+        display: flex;
+        position: relative;
+        background: var(--bg-page);
+        border: 1.5px solid var(--bd-color);
+        border-radius: 14px;
+        padding: 4px;
+        margin-bottom: 12px;
+    }
+    
+    .mst-btn {
+        flex: 1;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--tx-muted);
+        background: transparent;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        z-index: 2;
+        transition: color 0.3s ease;
+    }
+    
+    .mst-btn.active {
+        color: var(--ac);
+    }
+    
+    .mst-indicator {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        left: 4px;
+        width: calc(50% - 4px);
+        background: var(--bg-surface);
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        z-index: 1;
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    
+    .mob-status-toggle {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .mst-status {
+        flex: 1;
+        padding: 10px 4px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--tx-muted);
+        background: var(--bg-surface);
+        border: 1.5px solid var(--bd-color);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    
+    .mst-status.active {
+        background: var(--ac-light);
+        color: var(--ac);
+        border-color: var(--ac);
+        box-shadow: 0 4px 12px rgba(0,102,204,0.1);
+    }
   </style>
 </head>
 <body>
@@ -4877,20 +4949,65 @@ window.handleAssign = async function() {
         loadBtn(btn, false, 'Assign Task'); 
     }
 };
+window.mobScope = 'my';
+window.mobStatus = 'pending';
+
+window.setMobScope = function(scope) {
+    window.mobScope = scope;
+    
+    // Switch the text bolding
+    document.querySelectorAll('.mst-btn').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.querySelector(`.mst-btn[data-scope="${scope}"]`);
+    if(activeBtn) activeBtn.classList.add('active');
+
+    // Slide the white pill visually
+    const ind = document.querySelector('.mst-indicator');
+    if(ind) ind.style.transform = scope === 'my' ? 'translateX(0)' : 'translateX(100%)';
+
+    // Trigger standard logic
+    window.setTaskTab(window.mobScope + '-' + window.mobStatus);
+};
+
+window.setMobStatus = function(status) {
+    window.mobStatus = status;
+    
+    // Switch active chip style
+    document.querySelectorAll('.mst-status').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.querySelector(`.mst-status[data-status="${status}"]`);
+    if(activeBtn) activeBtn.classList.add('active');
+
+    window.setTaskTab(window.mobScope + '-' + window.mobStatus);
+};
+
 window.setTaskTab = function(tab) {
     window.taskTab = tab;
     
-    // Update Desktop Tabs
+    // 1. Update Desktop Tabs
     document.querySelectorAll('.ftab').forEach(b => {
         b.classList.toggle('on', b.getAttribute('data-tab') === tab);
     });
 
-    // Update Mobile Dropdown (syncs if clicked on desktop)
-    const mobSelect = document.getElementById('mobile-task-select');
-    if (mobSelect && mobSelect.value !== tab) {
-        mobSelect.value = tab;
+    // 2. Synchronize the Mobile Custom Controls (if you clicked from desktop view)
+    const parts = tab.split('-');
+    if(parts.length === 2) {
+        window.mobScope = parts[0];
+        window.mobStatus = parts[1];
+
+        // Sync slider
+        document.querySelectorAll('.mst-btn').forEach(b => b.classList.remove('active'));
+        const scopeBtn = document.querySelector(`.mst-btn[data-scope="${parts[0]}"]`);
+        if(scopeBtn) scopeBtn.classList.add('active');
+
+        const ind = document.querySelector('.mst-indicator');
+        if(ind) ind.style.transform = parts[0] === 'my' ? 'translateX(0)' : 'translateX(100%)';
+
+        // Sync chips
+        document.querySelectorAll('.mst-status').forEach(b => b.classList.remove('active'));
+        const statusBtn = document.querySelector(`.mst-status[data-status="${parts[1]}"]`);
+        if(statusBtn) statusBtn.classList.add('active');
     }
 
+    // 3. Render
     window.renderTasksList();
 };
 function generateTaskCard(t, tab) {
@@ -5550,7 +5667,6 @@ function setupUI() {
   if (tr) {
       tr.innerHTML = `
           <div class="desk-task-filters">
-              
               <div class="task-filter-box">
                   <div class="tf-title">
                       <span class="tf-label-full">
@@ -5565,10 +5681,10 @@ function setupUI() {
                   <div class="tf-buttons">
                       <button class="btn-ghost ftab on" data-tab="my-pending" onclick="window.setTaskTab('my-pending')">Pending</button>
                       <button class="btn-ghost ftab" data-tab="my-done" onclick="window.setTaskTab('my-done')">Done</button>
-                      <button class="btn-ghost ftab" data-tab="my-declined" onclick="window.setTaskTab('my-declined')">Declined / Overdue</button>
+                      <button class="btn-ghost ftab" data-tab="my-declined" onclick="window.setTaskTab('my-declined')">Declined<span class="hide-overdue"> / Overdue</span></button>
                   </div>
               </div>
-              
+
               <div class="task-filter-box">
                   <div class="tf-title">
                       <span class="tf-label-full">
@@ -5583,29 +5699,21 @@ function setupUI() {
                   <div class="tf-buttons">
                       <button class="btn-ghost ftab" data-tab="del-pending" onclick="window.setTaskTab('del-pending')">Pending</button>
                       <button class="btn-ghost ftab" data-tab="del-done" onclick="window.setTaskTab('del-done')">Done</button>
-                      <button class="btn-ghost ftab" data-tab="del-declined" onclick="window.setTaskTab('del-declined')">Declined / Overdue</button>
+                      <button class="btn-ghost ftab" data-tab="del-declined" onclick="window.setTaskTab('del-declined')">Declined<span class="hide-overdue"> / Overdue</span></button>
                   </div>
               </div>
-              
           </div>
 
           <div class="mob-task-filters">
-              <div style="position: relative;">
-                  <select id="mobile-task-select" class="form-input" style="appearance: none; font-weight: 800; color: var(--ac); background: #EFF6FF; border-color: #0066CC; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(0,102,204,0.15); border-radius: 14px;" onchange="window.setTaskTab(this.value)">
-                      <optgroup label="My Work (Assigned to Me)">
-                          <option value="my-pending">↳ Pending</option>
-                          <option value="my-done">↳ Done</option>
-                          <option value="my-declined">↳ Declined / Overdue</option>
-                      </optgroup>
-                      <optgroup label="Delegated (I Assigned)">
-                          <option value="del-pending">↳ Pending</option>
-                          <option value="del-done">↳ Done</option>
-                          <option value="del-declined">↳ Declined / Overdue</option>
-                      </optgroup>
-                  </select>
-                  <div style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--ac);">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                  </div>
+              <div class="mob-scope-toggle">
+                  <button class="mst-btn active" data-scope="my" onclick="window.setMobScope('my')">My Work</button>
+                  <button class="mst-btn" data-scope="del" onclick="window.setMobScope('del')">Delegated</button>
+                  <div class="mst-indicator"></div>
+              </div>
+              <div class="mob-status-toggle">
+                  <button class="mst-status active" data-status="pending" onclick="window.setMobStatus('pending')">Pending</button>
+                  <button class="mst-status" data-status="done" onclick="window.setMobStatus('done')">Done</button>
+                  <button class="mst-status" data-status="declined" onclick="window.setMobStatus('declined')">Declined</button>
               </div>
           </div>
       `;
