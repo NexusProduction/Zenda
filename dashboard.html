@@ -1534,15 +1534,135 @@
         .tf-label-short { display: flex; }
     }
 
-    /* MOBILE (< 768px): Hide desktop boxes entirely, show dropdown */
-    @media (max-width: 768px) {
-        .desk-task-filters { display: none !important; }
-        .mob-task-filters { display: block !important; }
-        #task-tab-row { margin-bottom: 0 !important; padding-right: 0 !important; mask-image: none !important; -webkit-mask-image: none !important; }
-    }
     /* 1. Hide Overdue text below 1098px */
     @media (max-width: 1098px) {
         .hide-overdue { display: none; }
+    }
+
+    /* 2. Premium Mobile Task Layout (Kole Jain / Linear Style) */
+    .mob-task-filters-v2 {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        /* Override inline styles on the container */
+        #task-tab-row {
+            display: block !important;
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        .mob-task-filters-v2 {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 0;
+        }
+
+        /* --- THE TOP SCOPE BOX (50/50 Split) --- */
+        .mob-scope-split {
+            display: flex;
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 6px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+            border: 1px solid #E2E8F0;
+            margin-bottom: 24px;
+            gap: 6px;
+        }
+
+        .ms-btn {
+            flex: 1;
+            padding: 12px 0;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            border: none;
+            background: transparent;
+            color: #64748B;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* The Custom Colors you requested */
+        .ms-btn.ms-blue.active {
+            background: #0066FF;
+            color: #FFFFFF;
+            box-shadow: 0 4px 12px rgba(0, 102, 255, 0.25);
+        }
+
+        .ms-btn.ms-green.active {
+            background: #10B981;
+            color: #FFFFFF;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        }
+
+        /* --- THE MASTER TASK BOX (Fuses Header & List) --- */
+        .mob-master-header {
+            display: flex;
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-bottom: 1px solid #F1F5F9; /* The dividing line */
+            border-radius: 20px 20px 0 0; /* Top rounding only */
+            padding: 4px 8px 0;
+        }
+
+        .mm-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 16px 0;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #94A3B8;
+            position: relative;
+            transition: color 0.2s;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .mm-tab.active {
+            color: #0F172A;
+            font-weight: 800;
+        }
+
+        /* Clean active indicator line on the tab */
+        .mm-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; left: 25%; right: 25%;
+            height: 3px;
+            background: #0F172A;
+            border-radius: 3px 3px 0 0;
+        }
+
+        /* Fuse the actual task list to the header */
+        #tasks-list {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-top: none;
+            border-radius: 0 0 20px 20px; /* Bottom rounding only */
+            padding: 16px;
+            gap: 12px !important;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.04);
+            min-height: 200px;
+        }
+
+        /* Flatten the task cards inside the Master Box so it looks unified */
+        .premium-task-card {
+            padding: 16px !important;
+            border-radius: 14px !important;
+            border: 1px solid #F1F5F9 !important;
+            background: #F8FAFC !important;
+            box-shadow: none !important;
+            margin-bottom: 0 !important;
+            transition: transform 0.15s ease, background 0.15s ease;
+        }
+
+        .premium-task-card:active {
+            transform: scale(0.98);
+            background: #F1F5F9 !important;
+        }
     }
 
     /* 2. Ultra-Premium Mobile Filters UI */
@@ -4978,61 +5098,49 @@ window.mobStatus = 'pending';
 
 window.setMobScope = function(scope) {
     window.mobScope = scope;
-    
-    // Switch the text bolding
-    document.querySelectorAll('.mst-btn').forEach(b => b.classList.remove('active'));
-    const activeBtn = document.querySelector(`.mst-btn[data-scope="${scope}"]`);
+    // Toggle active state on the 50/50 buttons
+    document.querySelectorAll('.ms-btn').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.querySelector(`.ms-btn[data-scope="${scope}"]`);
     if(activeBtn) activeBtn.classList.add('active');
-
-    // Slide the white pill visually
-    const ind = document.querySelector('.mst-indicator');
-    if(ind) ind.style.transform = scope === 'my' ? 'translateX(0)' : 'translateX(100%)';
-
-    // Trigger standard logic
+    
     window.setTaskTab(window.mobScope + '-' + window.mobStatus);
 };
 
 window.setMobStatus = function(status) {
     window.mobStatus = status;
-    
-    // Switch active chip style
-    document.querySelectorAll('.mst-status').forEach(b => b.classList.remove('active'));
-    const activeBtn = document.querySelector(`.mst-status[data-status="${status}"]`);
+    // Toggle active state on the Master Box tabs
+    document.querySelectorAll('.mm-tab').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.querySelector(`.mm-tab[data-status="${status}"]`);
     if(activeBtn) activeBtn.classList.add('active');
-
+    
     window.setTaskTab(window.mobScope + '-' + window.mobStatus);
 };
 
 window.setTaskTab = function(tab) {
     window.taskTab = tab;
     
-    // 1. Update Desktop Tabs
+    // 1. Sync Desktop Tabs
     document.querySelectorAll('.ftab').forEach(b => {
         b.classList.toggle('on', b.getAttribute('data-tab') === tab);
     });
 
-    // 2. Synchronize the Mobile Custom Controls (if you clicked from desktop view)
+    // 2. Sync Mobile Tabs (in case clicked from desktop view)
     const parts = tab.split('-');
     if(parts.length === 2) {
         window.mobScope = parts[0];
         window.mobStatus = parts[1];
 
-        // Sync slider
-        document.querySelectorAll('.mst-btn').forEach(b => b.classList.remove('active'));
-        const scopeBtn = document.querySelector(`.mst-btn[data-scope="${parts[0]}"]`);
+        document.querySelectorAll('.ms-btn').forEach(b => b.classList.remove('active'));
+        const scopeBtn = document.querySelector(`.ms-btn[data-scope="${parts[0]}"]`);
         if(scopeBtn) scopeBtn.classList.add('active');
 
-        const ind = document.querySelector('.mst-indicator');
-        if(ind) ind.style.transform = parts[0] === 'my' ? 'translateX(0)' : 'translateX(100%)';
-
-        // Sync chips
-        document.querySelectorAll('.mst-status').forEach(b => b.classList.remove('active'));
-        const statusBtn = document.querySelector(`.mst-status[data-status="${parts[1]}"]`);
+        document.querySelectorAll('.mm-tab').forEach(b => b.classList.remove('active'));
+        const statusBtn = document.querySelector(`.mm-tab[data-status="${parts[1]}"]`);
         if(statusBtn) statusBtn.classList.add('active');
     }
 
-    // 3. Render
-    window.renderTasksList();
+    // 3. Render Tasks
+    if (window.renderTasksList) window.renderTasksList();
 };
 function generateTaskCard(t, tab) {
     const isOverdue = window.isOverdue(t.dueDate);
@@ -5728,16 +5836,19 @@ function setupUI() {
               </div>
           </div>
 
-          <div class="mob-task-filters">
-              <div class="mob-scope-toggle">
-                  <button class="mst-btn active" data-scope="my" onclick="window.setMobScope('my')">My Work</button>
-                  <button class="mst-btn" data-scope="del" onclick="window.setMobScope('del')">Delegated</button>
-                  <div class="mst-indicator"></div>
+          <!-- THE NEW MOBILE MASTER BOX LAYOUT -->
+          <div class="mob-task-filters-v2">
+              <!-- Top Box: 50/50 Split (Blue & Green) -->
+              <div class="mob-scope-split">
+                  <button class="ms-btn ms-blue active" data-scope="my" onclick="window.setMobScope('my')">Assigned to Me</button>
+                  <button class="ms-btn ms-green" data-scope="del" onclick="window.setMobScope('del')">I Assigned</button>
               </div>
-              <div class="mob-status-toggle">
-                  <button class="mst-status active" data-status="pending" onclick="window.setMobStatus('pending')">Pending</button>
-                  <button class="mst-status" data-status="done" onclick="window.setMobStatus('done')">Done</button>
-                  <button class="mst-status" data-status="declined" onclick="window.setMobStatus('declined')">Declined</button>
+
+              <!-- Top of Master Box: Status Tabs & Divider -->
+              <div class="mob-master-header">
+                  <button class="mm-tab active" data-status="pending" onclick="window.setMobStatus('pending')">Pending</button>
+                  <button class="mm-tab" data-status="done" onclick="window.setMobStatus('done')">Done</button>
+                  <button class="mm-tab" data-status="declined" onclick="window.setMobStatus('declined')">Declined</button>
               </div>
           </div>
       `;
