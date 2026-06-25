@@ -2549,18 +2549,25 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="delete-task-modal" onclick="if(event.target === this) window.closeModal('delete-task-modal')">
-    <div class="modal" style="max-width:440px;">
-      <div class="modal-hdr">
-        <div class="modal-ttl" style="color:var(--danger);display:flex;align-items:center;gap:10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Delete Task</div>
-        <button class="modal-close" onclick="window.closeModal('delete-task-modal')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-      </div>
-      <div style="padding:32px;">
-        <p style="font-size:1.05rem;color:var(--tx-muted);margin-bottom:32px;font-weight:500;line-height:1.5;">Delete <strong id="del-task-name-display" style="color:var(--tx-main);"></strong>?<br>This action cannot be undone.</p>
-        <div style="display:flex;gap:16px;">
-          <button class="btn btn-ghost w-full" style="padding:14px;border-radius:14px;" onclick="window.closeModal('delete-task-modal')">Cancel</button>
-          <button class="btn btn-danger w-full" style="padding:14px;border-radius:14px;" id="del-task-confirm-btn" onclick="window.executeTaskDelete()">Delete Task</button>
+  <div class="modal-overlay" id="delete-task-modal" onclick="if(event.target === this) window.closeModal('delete-task-modal')" style="align-items: center !important; justify-content: center !important; padding: 20px; z-index: 999999;">
+    <div class="modal" style="max-width: 320px; width: 100%; margin: auto !important; padding: 0; border-radius: 16px !important; background: #FFFFFF !important; position: relative !important; bottom: auto !important; top: auto !important; transform: none !important; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+      <div style="padding: 24px 20px 20px; text-align: center; display: flex; flex-direction: column; align-items: center;">
+        
+        <div style="color: #0F172A; font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; font-family: 'Plus Jakarta Sans', sans-serif;">
+          Delete Task
         </div>
+        
+        <hr style="width: 100%; border: none; border-top: 1px solid #E2E8F0; margin: 0 0 16px 0;">
+        
+        <p style="color: #475569; font-size: 0.95rem; font-weight: 500; line-height: 1.5; margin-bottom: 24px; text-align: center;">
+          Are you sure you want to delete <strong id="del-task-name-display" style="color: #0F172A;"></strong>? This cannot be undone.
+        </p>
+        
+        <div style="display: flex; gap: 12px; width: 100%;">
+          <button class="btn btn-ghost w-full" style="padding: 10px 16px; border-radius: 10px; justify-content: center; font-size: 0.95rem; font-weight: 600;" onclick="window.closeModal('delete-task-modal')">Cancel</button>
+          <button class="btn btn-danger w-full" style="padding: 10px 16px; border-radius: 10px; justify-content: center; font-size: 0.95rem; font-weight: 600; background: #EF4444; color: #FFFFFF;" id="del-task-confirm-btn" onclick="window.executeTaskDelete()">Delete</button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -5457,54 +5464,49 @@ function generateTaskCard(t, tab) {
 
     const reason = t.declineReason || t.reason || '';
 
-    // Build action buttons — PENDING tasks only
+    // Title formatting (Injects Decline Reason directly into title line)
+    let displayTitle = esc(t.title);
+    if (isDeclined && reason) {
+        displayTitle += ` <span style="color:#EF4444; font-weight:700; font-size:0.85rem;">(${esc(reason)})</span>`;
+    }
+
+    // Action Buttons inside accordion (for Pending tasks so you can still mark as Done)
     let actionsBtns = '';
     if (tab === 'assigned-by-me' && !isDone && !isDeclined) {
         actionsBtns = `
-        <button class="ztc-action-btn ztc-btn-delete"
-            onclick="event.stopPropagation(); window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
-            Delete Task
+        <button class="ztc-action-btn ztc-btn-delete" onclick="event.stopPropagation(); window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg> Delete
         </button>`;
     } else if (tab === 'assigned-to-me' && !isDone && !isDeclined) {
         actionsBtns = `
-        <button class="ztc-action-btn ztc-btn-done"
-            onclick="event.stopPropagation(); window.completeTask('${t.id}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-            Mark Done
+        <button class="ztc-action-btn ztc-btn-done" onclick="event.stopPropagation(); window.completeTask('${t.id}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Mark Done
         </button>
-        <button class="ztc-action-btn ztc-btn-decline"
-            onclick="event.stopPropagation(); window.promptDeclineTask('${t.id}', '${esc(t.title)}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            Decline
-        </button>
-        <button class="ztc-action-btn ztc-btn-delete"
-            onclick="event.stopPropagation(); window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
-            Delete
+        <button class="ztc-action-btn ztc-btn-decline" onclick="event.stopPropagation(); window.promptDeclineTask('${t.id}', '${esc(t.title)}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Decline
         </button>`;
     }
-
     const hasActions = actionsBtns.length > 0;
 
-    // Build the Right-Side Layout (Perfectly Vertically Centered)
+    // Right-Side Layout (Perfectly vertically centered)
     let rightSideHtml = '';
     
     if (isDone) {
-        rightSideHtml = `<div style="font-size:0.85rem; font-weight:700; color:#FFFFFF; background:#10B981; padding:8px 20px; border-radius:10px; box-shadow:0 4px 12px rgba(16,185,129,0.2); white-space:nowrap;">Done</div>`;
+        rightSideHtml = `<div style="font-size:0.9rem; font-weight:800; color:#FFFFFF; background:#10B981; padding:8px 24px; border-radius:10px; box-shadow:0 4px 12px rgba(16,185,129,0.25); white-space:nowrap;">Done</div>`;
     } else if (isDeclined) {
-        rightSideHtml = `
-            <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px;">
-                <div style="font-size:0.75rem; font-weight:800; color:#EF4444; background:#FEF2F2; padding:4px 12px; border-radius:8px; white-space:nowrap;">Declined</div>
-                ${reason ? `<div style="font-size:0.75rem; color:#EF4444; font-weight:600; font-style:italic; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">"${esc(reason)}"</div>` : ''}
-            </div>
-        `;
+        rightSideHtml = `<div style="font-size:0.9rem; font-weight:800; color:#EF4444; background:#FEF2F2; border: 1.5px solid #FECACA; padding:8px 20px; border-radius:10px; white-space:nowrap;">Declined</div>`;
     } else {
-        let overdueBadge = isOverdue ? `<span class="ztc-overdue-tag" style="background:#FEF3C7; color:#D97706; font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:0.02em; margin-right:8px;">Overdue</span>` : '';
+        let overdueBadge = isOverdue ? `<div style="font-size:0.75rem; font-weight:800; color:#D97706; background:#FEF3C7; padding:8px 16px; border-radius:8px; text-transform:uppercase; letter-spacing:0.02em; white-space:nowrap;">Overdue</div>` : '';
+        
+        let deleteIcon = `
+        <button onclick="event.stopPropagation(); window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')" style="background: #FEF2F2; color: #EF4444; border: none; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+        </button>`;
+
         rightSideHtml = `
-            <div style="display: flex; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
                 ${overdueBadge}
-                <button class="ztc-manage-btn">Manage</button>
+                ${deleteIcon}
             </div>
         `;
     }
@@ -5514,25 +5516,20 @@ function generateTaskCard(t, tab) {
         <div class="ztc-main-row" ${hasActions ? `onclick="window.toggleTaskActions('${t.id}')"` : 'style="cursor:default;"'}>
             <div class="ztc-left-bar" style="background:${leftColor};"></div>
             
-            <!-- Flex Container for Vertically Centered Content -->
-            <div style="flex: 1; min-width: 0; padding: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
-                
-                <!-- Left Side: Title & Meta -->
+            <div style="flex: 1; min-width: 0; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
                 <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; flex: 1;">
-                    <div class="ztc-title${isDone ? ' ztc-done' : ''}" style="margin: 0; font-size: 0.95rem;">${esc(t.title)}</div>
+                    <div class="ztc-title${isDone ? ' ztc-done' : ''}" style="margin: 0; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayTitle}</div>
                     <div class="ztc-meta" style="margin: 0; font-size: 0.8rem;">
                         <span>${preposition} ${esc(personName)}</span>
                         <span class="ztc-mdot"></span>
                         <span>${dueStr}</span>
                     </div>
                 </div>
-
-                <!-- Right Side: Status Badges & Buttons -->
-                <div style="flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end;">
+                <div style="flex-shrink: 0; display: flex; align-items: center;">
                     ${rightSideHtml}
                 </div>
-
             </div>
+            
         </div>
         ${hasActions ? `
         <div class="ztc-actions" id="ztc-actions-${t.id}">
