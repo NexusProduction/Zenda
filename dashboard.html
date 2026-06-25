@@ -5288,16 +5288,17 @@ window.promptDeclineTask = function(taskId, title) {
 // Actively counts words and enforces a strict 20-word max limit
 window.checkDeclineReason = function(textarea) {
     let text = textarea.value;
-    let words = text.match(/\S+/g) || []; // Matches non-whitespace blocks (words)
     
-    // If they type more than 20 words, slice the array and stop them
+    // Split by spaces to count actual words, filtering out blanks
+    let words = text.split(/\s+/).filter(w => w.length > 0);
+    
+    // If they try to type a 21st word, immediately stop them and slice it off
     if (words.length > 20) {
         textarea.value = words.slice(0, 20).join(' ') + ' ';
-        words = words.slice(0, 20);
     }
     
-    // Activate button only if there's at least 1 valid word
-    const ok = words.length >= 1; 
+    // Activate button only if there's at least some valid text
+    const ok = textarea.value.trim().length > 0; 
     const btn = document.getElementById('confirm-decline-btn');
     
     if (btn) {
@@ -5311,16 +5312,11 @@ window.checkDeclineReason = function(textarea) {
 window.confirmDecline = async function() {
     const reasonInput = document.getElementById('decline-reason');
     const reason = reasonInput?.value.trim();
-    const words = reason ? reason.match(/\S+/g) || [] : [];
     
-    // Final safety validation
-    if (words.length === 0) { 
+    // Safety validation
+    if (!reason || reason.length === 0) { 
         window.showToast("Please provide a reason.", "error"); 
         reasonInput.focus(); 
-        return; 
-    }
-    if (words.length > 20) { 
-        window.showToast("Reason must be 20 words or less.", "error"); 
         return; 
     }
     
