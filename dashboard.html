@@ -1872,6 +1872,132 @@
             background: #F1F5F9 !important;
         }
     }
+    /* ── ZENDA CLEAN TASK CARDS ─────────────────────────── */
+.zenda-task-card {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 14px;
+    overflow: hidden;
+    font-family: var(--font-main);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+.zenda-task-card.ztc-expanded {
+    border-color: #D1D5DB;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.ztc-main-row {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.1s;
+}
+.ztc-main-row:active { background: #F9FAFB; }
+.ztc-left-bar {
+    width: 3px;
+    align-self: stretch;
+    flex-shrink: 0;
+    min-height: 50px;
+}
+.ztc-body {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 10px 12px 14px;
+}
+.ztc-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #111827;
+    letter-spacing: -0.01em;
+    margin: 0 0 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ztc-title.ztc-done {
+    text-decoration: line-through;
+    color: #9CA3AF;
+    font-weight: 500;
+}
+.ztc-meta {
+    font-size: 0.78rem;
+    color: #6B7280;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    overflow: hidden;
+}
+.ztc-meta > span { white-space: nowrap; }
+.ztc-mdot {
+    width: 3px; height: 3px;
+    background: #D1D5DB;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+}
+.ztc-overdue-tag {
+    background: #FEF3C7; color: #D97706;
+    font-size: 0.68rem; font-weight: 800;
+    padding: 1px 5px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: 0.02em;
+    flex-shrink: 0;
+}
+.ztc-chevron {
+    padding: 0 14px;
+    display: flex; align-items: center;
+    flex-shrink: 0;
+}
+.ztc-chevron svg { transition: transform 0.25s cubic-bezier(0.16,1,0.3,1); }
+.zenda-task-card.ztc-expanded .ztc-chevron svg {
+    transform: rotate(180deg);
+    stroke: #0066CC;
+}
+.ztc-spacer { width: 14px; flex-shrink: 0; }
+.ztc-actions { display: none; padding: 0 12px 11px 17px; }
+.ztc-actions.ztc-open {
+    display: block;
+    animation: ztcReveal 0.2s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes ztcReveal {
+    from { opacity:0; transform:translateY(-5px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+.ztc-adivider { height:1px; background:#F3F4F6; margin-bottom:10px; }
+.ztc-btn-row { display:flex; gap:8px; }
+.ztc-action-btn {
+    flex: 1;
+    padding: 9px 10px;
+    border-radius: 9px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-family: var(--font-main);
+    display: flex; align-items: center; justify-content: center;
+    gap: 5px; border: none;
+    transition: transform 0.12s, opacity 0.12s;
+    -webkit-tap-highlight-color: transparent;
+}
+.ztc-action-btn:active { transform: scale(0.95); }
+.ztc-btn-done    { background: #ECFDF5; color: #10B981; }
+.ztc-btn-decline { background: #F9FAFB; color: #6B7280; border: 1px solid #E5E7EB !important; }
+.ztc-btn-delete  { background: #FEF2F2; color: #EF4444; width: 100%; }
+
+@media (max-width: 768px) {
+    #tasks-list .zenda-task-card {
+        border-color: #F1F5F9;
+        background: #F8FAFC;
+        border-radius: 10px;
+    }
+    #tasks-list .zenda-task-card.ztc-expanded {
+        background: #FFFFFF;
+        border-color: #E2E8F0;
+    }
+    .ztc-body { padding: 11px 8px 11px 12px; }
+    .ztc-chevron { padding: 0 10px; }
+}
   </style>
 </head>
 <body>
@@ -5297,68 +5423,108 @@ window.renderTasksList = function() {
     listEl.innerHTML = filtered.map(t => generateTaskCard(t, visualCategory)).join('');
 };
 function generateTaskCard(t, tab) {
-    const isOverdue = window.isOverdue(t.dueDate);
-    let statusBadge = '';
-    let actionButtons = '';
-    let dueStr = t.dueDate ? new Date(t.dueDate).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) : 'No Date';
-    
-    // Responsive text-wrapping utility styles for the badges
-    const badgeStyleBase = "font-weight:800; font-size:0.75rem; padding: 6px 10px; border-radius:8px; display:inline-block; max-width:100%; word-break:break-word; line-height:1.3; white-space:normal;";
+    const isOverdue  = window.isOverdue(t.dueDate);
+    const isDone     = t.status === 'done';
+    const isDeclined = t.status === 'declined';
+
+    const dueStr = t.dueDate
+        ? new Date(t.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+        : 'No date';
+
+    let leftColor, personName, preposition;
 
     if (tab === 'assigned-by-me') {
-        if (t.status === 'done') {
-            statusBadge = `<span style="color:var(--success); background:var(--success-light); ${badgeStyleBase}">Done by ${esc(t.assignedToName)}</span>`;
-        } else if (t.status === 'declined') {
-            statusBadge = `<span style="color:var(--danger); background:var(--danger-light); ${badgeStyleBase}">Declined: ${esc(t.declineReason || t.reason || 'No reason')}</span>`;
-        } else if (isOverdue) {
-            statusBadge = `<span style="color:var(--warning); background:#FFFBEB; ${badgeStyleBase}">Overdue with ${esc(t.assignedToName)}</span>`;
-        } else {
-            statusBadge = `<span style="color:var(--ac); background:var(--ac-light); ${badgeStyleBase}">Pending with ${esc(t.assignedToName)}</span>`;
-        }
-        actionButtons = `<button class="btn-icon-danger" onclick="window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`;
-    } 
-    else if (tab === 'assigned-to-me') {
-        statusBadge = `<span style="color:var(--ac); background:var(--ac-light); ${badgeStyleBase}">From: ${esc(t.assignedByName)}</span>`;
-        // Stack the action buttons dynamically
-        actionButtons = `
-            <button class="btn btn-primary" style="padding:8px 14px; font-size:0.8rem; border-radius:10px; width:100%; justify-content:center;" onclick="window.completeTask('${t.id}')">Done</button>
-            <button class="btn btn-secondary" style="padding:8px 14px; font-size:0.8rem; color:var(--danger); border-color:rgba(255,59,48,0.2); border-radius:10px; width:100%; justify-content:center;" onclick="window.promptDeclineTask('${t.id}', '${esc(t.title)}')">Deny</button>
-        `;
+        personName  = t.assignedToName || 'Team Member';
+        preposition = 'For';
+        leftColor   = isDone ? '#10B981' : isDeclined ? '#EF4444' : isOverdue ? '#F59E0B' : '#0066CC';
+    } else {
+        personName  = t.assignedByName || 'Owner';
+        preposition = 'From';
+        leftColor   = isDone ? '#10B981' : isDeclined ? '#EF4444' : '#0066CC';
     }
-    else if (tab === 'done') {
-        statusBadge = `<span style="color:var(--success); background:var(--success-light); ${badgeStyleBase}">Completed by you</span>`;
+
+    const reason = t.declineReason || t.reason || '';
+
+    // Build action buttons
+    let actionsBtns = '';
+    if (tab === 'assigned-by-me') {
+        actionsBtns = `
+        <button class="ztc-action-btn ztc-btn-delete"
+            onclick="event.stopPropagation(); window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+            </svg>
+            Delete Task
+        </button>`;
+    } else if (!isDone && !isDeclined) {
+        actionsBtns = `
+        <button class="ztc-action-btn ztc-btn-done"
+            onclick="event.stopPropagation(); window.completeTask('${t.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Mark Done
+        </button>
+        <button class="ztc-action-btn ztc-btn-decline"
+            onclick="event.stopPropagation(); window.promptDeclineTask('${t.id}', '${esc(t.title)}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+            Decline
+        </button>`;
     }
-    else if (tab === 'declined') {
-        if (t.status === 'declined') {
-            statusBadge = `<span style="color:var(--danger); background:var(--danger-light); ${badgeStyleBase}">Declined: ${esc(t.declineReason || t.reason || '')}</span>`;
-        } else if (isOverdue) {
-            statusBadge = `<span style="color:var(--warning); background:#FFFBEB; ${badgeStyleBase}">Overdue (Deadline passed)</span>`;
-        }
-    }
-    
+
+    const hasActions = actionsBtns.length > 0;
+
     return `
-    <div class="premium-task-card" id="task-${t.id}">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 12px; width: 100%;">
-            
-            <!-- min-width: 0 ensures flexbox allows the text to wrap instead of overflowing -->
-            <div style="flex:1; min-width:0;"> 
-                <h4 class="card-title ${t.status === 'done' ? 'done' : ''}" style="word-break: break-word; line-height: 1.3; font-size: 1.05rem; margin: 0 0 4px 0;">${esc(t.title)}</h4>
-                ${t.description ? `<p style="font-size:0.85rem; color:var(--tx-muted); margin: 0; word-break: break-word; line-height: 1.4;">${esc(t.description)}</p>` : ''}
-                
-                <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-                    ${statusBadge}
-                    <span style="font-size:0.75rem; font-weight:700; color:var(--tx-muted); display:flex; align-items:center; gap:4px; white-space: nowrap;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        ${dueStr}
-                    </span>
+    <div class="zenda-task-card" id="task-${t.id}">
+        <div class="ztc-main-row" ${hasActions ? `onclick="window.toggleTaskActions('${t.id}')"` : ''}>
+            <div class="ztc-left-bar" style="background:${leftColor};"></div>
+            <div class="ztc-body">
+                <div class="ztc-title${isDone ? ' ztc-done' : ''}">${esc(t.title)}</div>
+                <div class="ztc-meta">
+                    <span>${preposition} ${esc(personName)}</span>
+                    <span class="ztc-mdot"></span>
+                    <span>${dueStr}</span>
+                    ${isOverdue && !isDone && !isDeclined
+                        ? `<span class="ztc-mdot"></span><span class="ztc-overdue-tag">Overdue</span>`
+                        : ''}
+                    ${isDeclined && reason
+                        ? `<span class="ztc-mdot"></span><span style="color:#EF4444;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;">${esc(reason.slice(0, 30))}${reason.length > 30 ? '…' : ''}</span>`
+                        : ''}
                 </div>
             </div>
-
-            <!-- flex-shrink: 0 ensures the buttons never get squished by the text -->
-            ${actionButtons ? `<div style="display:flex; flex-direction:column; gap:8px; flex-shrink:0; min-width: 80px;">${actionButtons}</div>` : ''}
+            ${hasActions
+                ? `<div class="ztc-chevron"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C4C9D4" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>`
+                : `<div class="ztc-spacer"></div>`}
         </div>
+        ${hasActions ? `
+        <div class="ztc-actions" id="ztc-actions-${t.id}">
+            <div class="ztc-adivider"></div>
+            <div class="ztc-btn-row">${actionsBtns}</div>
+        </div>` : ''}
     </div>`;
 }
+window.toggleTaskActions = function(taskId) {
+    const card    = document.getElementById('task-' + taskId);
+    const actions = document.getElementById('ztc-actions-' + taskId);
+    if (!card || !actions) return;
+
+    const isOpen = card.classList.contains('ztc-expanded');
+
+    // Collapse all other open cards
+    document.querySelectorAll('.zenda-task-card.ztc-expanded').forEach(c => {
+        c.classList.remove('ztc-expanded');
+        const a = c.querySelector('.ztc-actions');
+        if (a) a.classList.remove('ztc-open');
+    });
+
+    // Toggle this one
+    if (!isOpen) {
+        card.classList.add('ztc-expanded');
+        actions.classList.add('ztc-open');
+    }
+};
 window.renderRecentTasks = function() {
     const el = document.getElementById('recent-tasks');
     if (!el) return;
