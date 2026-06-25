@@ -5459,20 +5459,20 @@ function generateTaskCard(t, tab) {
 
     let leftColor, personName, preposition;
 
-    // Use a distinct Slate-Grey color (#94A3B8) for Deleted tasks to differentiate from Red Declined tasks
+    // Premium indicator colors mapping exactly to your screenshots
     if (tab === 'assigned-by-me') {
         personName  = t.assignedToName || 'Team Member';
         preposition = 'For';
-        leftColor   = isDone ? '#10B981' : isDeleted ? '#94A3B8' : isDeclined ? '#EF4444' : isOverdue ? '#F59E0B' : '#0066CC';
+        leftColor   = isDone ? '#10B981' : isDeleted ? '#94A3B8' : isDeclined ? '#EF4444' : isOverdue ? '#F59E0B' : '#3B82F6';
     } else {
         personName  = t.assignedByName || 'Owner';
         preposition = 'From';
-        leftColor   = isDone ? '#10B981' : isDeleted ? '#94A3B8' : isDeclined ? '#EF4444' : isOverdue ? '#F59E0B' : '#0066CC';
+        leftColor   = isDone ? '#10B981' : isDeleted ? '#94A3B8' : isDeclined ? '#EF4444' : isOverdue ? '#F59E0B' : '#3B82F6';
     }
 
     const reason = t.declineReason || t.reason || '';
 
-    // Inject Decline Reason in red directly into title line
+    // Inject Decline Reason in red directly into the title line
     let displayTitle = esc(t.title);
     if (isDeclined && reason) {
         displayTitle += ` <span style="color:#EF4444; font-weight:700; font-size:0.85rem;">(${esc(reason)})</span>`;
@@ -5494,31 +5494,30 @@ function generateTaskCard(t, tab) {
     // Build the Right-Side UI (Trash Cans, Badges)
     let rightSideHtml = '';
     
-    // Shared Trash Icon Button (Only used for active Pending tasks now)
+    // Shared Trash Icon Button (Exactly matching your screenshot)
     let deleteIconHtml = `
-    <button onclick="event.stopPropagation(); window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')" style="background: #FEF2F2; color: #EF4444; border: none; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+    <button onclick="event.stopPropagation(); window.openDeleteTaskModal('${t.id}', '${esc(t.title)}')" style="background: #FEF2F2; color: #EF4444; border: 1px solid #FEE2E2; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0;" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
     </button>`;
 
     if (isDone) {
-        rightSideHtml = `<div style="font-size:0.9rem; font-weight:800; color:#FFFFFF; background:#10B981; padding:8px 24px; border-radius:10px; box-shadow:0 4px 12px rgba(16,185,129,0.25); white-space:nowrap;">Done</div>`;
+        rightSideHtml = `<div style="font-size:0.85rem; font-weight:800; color:#FFFFFF; background:#10B981; padding:6px 16px; border-radius:8px; white-space:nowrap; letter-spacing:0.3px;">Done</div>`;
     } else if (isDeclined) {
-        rightSideHtml = `<div style="font-size:0.85rem; font-weight:800; color:#EF4444; background:#FEF2F2; border: 1.5px solid #FECACA; padding:6px 16px; border-radius:10px; white-space:nowrap;">Declined</div>`;
+        rightSideHtml = `<div style="font-size:0.85rem; font-weight:800; color:#EF4444; background:#FEF2F2; border: 1.5px solid #FECACA; padding:5px 14px; border-radius:8px; white-space:nowrap;">Declined</div>`;
     } else if (isDeleted) {
-        // Distinct grey style for Deleted
-        rightSideHtml = `<div style="font-size:0.85rem; font-weight:800; color:#475569; background:#F1F5F9; border: 1.5px solid #CBD5E1; padding:6px 16px; border-radius:10px; white-space:nowrap;">Deleted</div>`;
+        rightSideHtml = `<div style="font-size:0.85rem; font-weight:800; color:#475569; background:#F1F5F9; border: 1.5px solid #CBD5E1; padding:5px 14px; border-radius:8px; white-space:nowrap;">Deleted</div>`;
     } else if (isOverdue) {
-        // Just the overdue badge, no delete icon
         rightSideHtml = `
-            <div style="display: flex; align-items: center;">
-                <div style="font-size:0.75rem; font-weight:800; color:#D97706; background:#FEF3C7; padding:6px 12px; border-radius:8px; text-transform:uppercase; letter-spacing:0.02em; white-space:nowrap;">Overdue</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="font-size:0.75rem; font-weight:800; color:#D97706; background:#FEF3C7; border: 1px solid #FDE68A; padding:5px 10px; border-radius:8px; text-transform:uppercase; letter-spacing:0.02em; white-space:nowrap;">Overdue</div>
+                ${tab === 'assigned-by-me' ? deleteIconHtml : ''}
             </div>
         `;
     } else {
-        // Pending task gets the Trash Can
+        // Pending task
         rightSideHtml = `
             <div style="display: flex; align-items: center;">
-                ${deleteIconHtml}
+                ${tab === 'assigned-by-me' ? deleteIconHtml : ''}
             </div>
         `;
     }
