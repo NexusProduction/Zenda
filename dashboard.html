@@ -2533,7 +2533,7 @@
         <p style="color: #475569; font-size: 0.9rem; font-weight: 500; line-height: 1.5; margin-bottom: 20px;">Do you want to decline <strong id="decline-task-title" style="color: #0F172A;"></strong>?</p>
         
         <div style="width: 100%; margin-bottom: 24px; text-align: left;">
-            <textarea class="form-input" id="decline-reason" placeholder="Briefly explain why..." oninput="window.checkDeclineReason(this)" style="min-height: 80px; height: 80px; resize: none; background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px; font-size: 0.9rem; padding: 12px; transition: all 0.2s;" maxlength="10"></textarea>
+            <textarea class="form-input" id="decline-reason" placeholder="Briefly explain why..." oninput="window.checkDeclineReason(this)" style="min-height: 80px; height: 80px; resize: none; background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px; font-size: 0.9rem; padding: 12px; transition: all 0.2s;"></textarea>
         </div>
         
         <div style="display: flex; gap: 12px; width: 100%;">
@@ -5285,12 +5285,13 @@ window.promptDeclineTask = function(taskId, title) {
     
     window.openModal('decline-modal');
 };
-
 // Triggers actively while typing to colorize button
 window.checkDeclineReason = function(textarea) {
-    const len = textarea.value.trim().length;
-    // Activates when it hits 6 characters
-    const ok = len >= 6; 
+    const text = textarea.value.trim();
+    const wordCount = text ? text.split(/\s+/).length : 0;
+    
+    // Activates when there is at least 1 word and no more than 20 words
+    const ok = wordCount > 0 && wordCount <= 20; 
     const btn = document.getElementById('confirm-decline-btn');
     
     if (btn) {
@@ -5304,15 +5305,16 @@ window.checkDeclineReason = function(textarea) {
 window.confirmDecline = async function() {
     const reasonInput = document.getElementById('decline-reason');
     const reason = reasonInput?.value.trim();
+    const wordCount = reason ? reason.split(/\s+/).length : 0;
     
-    // Safety boundary validation
-    if (!reason || reason.length < 6) { 
-        window.showToast("Please provide a reason (at least 6 characters).", "error"); 
+    // Safety boundary validation for words
+    if (wordCount === 0) { 
+        window.showToast("Please provide a reason.", "error"); 
         reasonInput.focus(); 
         return; 
     }
-    if (reason.length > 10) { 
-        window.showToast("Reason must be 10 characters or less.", "error"); 
+    if (wordCount > 20) { 
+        window.showToast("Reason must be 20 words or less.", "error"); 
         return; 
     }
     
