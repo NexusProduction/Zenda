@@ -1953,19 +1953,19 @@
     background: #F1F5F9;
     color: #0F172A;
     border: none;
-    padding: 6px 14px;
+    padding: 6px 16px;
     border-radius: 8px;
     font-weight: 800;
     font-size: 0.75rem;
     cursor: pointer;
     font-family: var(--font-main);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    pointer-events: none; /* Passes click through to the main row instantly */
+    pointer-events: none; /* Passes click through to the main row */
 }
 .zenda-task-card.ztc-expanded .ztc-manage-btn {
-    background: #0066CC !important;
+    background: #0F172A !important;
     color: #FFFFFF !important;
-    box-shadow: 0 4px 10px rgba(0, 102, 204, 0.25);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
 }
 .ztc-spacer { width: 14px; flex-shrink: 0; }
 .ztc-actions { display: none; padding: 0 12px 11px 17px; }
@@ -5487,48 +5487,52 @@ function generateTaskCard(t, tab) {
 
     const hasActions = actionsBtns.length > 0;
 
-    // Right-side status badges
-    let rightBadge = '';
+    // Build the Right-Side Layout (Perfectly Vertically Centered)
+    let rightSideHtml = '';
+    
     if (isDone) {
-        // Big, premium "Done" button style (without tick)
-        rightBadge = `<div style="font-size:0.85rem; font-weight:800; color:#FFFFFF; background:linear-gradient(135deg, #10B981, #059669); padding:6px 18px; border-radius:10px; box-shadow:0 4px 12px rgba(16,185,129,0.25); white-space:nowrap; flex-shrink:0;">Done</div>`;
+        rightSideHtml = `<div style="font-size:0.85rem; font-weight:700; color:#FFFFFF; background:#10B981; padding:8px 20px; border-radius:10px; box-shadow:0 4px 12px rgba(16,185,129,0.2); white-space:nowrap;">Done</div>`;
     } else if (isDeclined) {
-        // Clean, premium "Declined" tag
-        rightBadge = `<div style="font-size:0.75rem; font-weight:800; color:#DC2626; background:#FEF2F2; border: 1.5px solid #FECACA; padding:4px 12px; border-radius:8px; white-space:nowrap; flex-shrink:0;">Declined</div>`;
-    } else if (isOverdue) {
-        rightBadge = `<span class="ztc-overdue-tag" style="background:#FEF3C7; color:#D97706; font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:0.02em; flex-shrink:0; margin-right:8px;">Overdue</span>`;
+        rightSideHtml = `
+            <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px;">
+                <div style="font-size:0.75rem; font-weight:800; color:#EF4444; background:#FEF2F2; padding:4px 12px; border-radius:8px; white-space:nowrap;">Declined</div>
+                ${reason ? `<div style="font-size:0.75rem; color:#EF4444; font-weight:600; font-style:italic; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">"${esc(reason)}"</div>` : ''}
+            </div>
+        `;
+    } else {
+        let overdueBadge = isOverdue ? `<span class="ztc-overdue-tag" style="background:#FEF3C7; color:#D97706; font-size:0.68rem; font-weight:800; padding:4px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:0.02em; margin-right:8px;">Overdue</span>` : '';
+        rightSideHtml = `
+            <div style="display: flex; align-items: center;">
+                ${overdueBadge}
+                <button class="ztc-manage-btn">Manage</button>
+            </div>
+        `;
     }
-
-    // Replace the old chevron dropdown icon with the new Manage button
-    const manageHtml = hasActions ? `
-        <div style="padding:0 14px; display:flex; align-items:center; flex-shrink:0;">
-            <button class="ztc-manage-btn">Manage</button>
-        </div>
-    ` : `<div class="ztc-spacer" style="width:14px; flex-shrink:0;"></div>`;
 
     return `
     <div class="zenda-task-card" id="task-${t.id}">
         <div class="ztc-main-row" ${hasActions ? `onclick="window.toggleTaskActions('${t.id}')"` : 'style="cursor:default;"'}>
             <div class="ztc-left-bar" style="background:${leftColor};"></div>
-            <div class="ztc-body">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px;">
-                    <div class="ztc-title${isDone ? ' ztc-done' : ''}" style="flex:1;min-width:0;">${esc(t.title)}</div>
-                    <div style="display:flex; align-items:center;">
-                        ${rightBadge}
-                    </div>
-                </div>
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-                    <div class="ztc-meta" style="flex:1;min-width:0;">
+            
+            <!-- Flex Container for Vertically Centered Content -->
+            <div style="flex: 1; min-width: 0; padding: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                
+                <!-- Left Side: Title & Meta -->
+                <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; flex: 1;">
+                    <div class="ztc-title${isDone ? ' ztc-done' : ''}" style="margin: 0; font-size: 0.95rem;">${esc(t.title)}</div>
+                    <div class="ztc-meta" style="margin: 0; font-size: 0.8rem;">
                         <span>${preposition} ${esc(personName)}</span>
                         <span class="ztc-mdot"></span>
                         <span>${dueStr}</span>
                     </div>
-                    ${isDeclined && reason
-                        ? `<span style="font-size:0.72rem;color:#EF4444;font-weight:600;font-style:italic;flex-shrink:0;max-width:50%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">"${esc(reason.slice(0, 35))}${reason.length > 35 ? '…' : ''}"</span>`
-                        : ''}
                 </div>
+
+                <!-- Right Side: Status Badges & Buttons -->
+                <div style="flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end;">
+                    ${rightSideHtml}
+                </div>
+
             </div>
-            ${manageHtml}
         </div>
         ${hasActions ? `
         <div class="ztc-actions" id="ztc-actions-${t.id}">
