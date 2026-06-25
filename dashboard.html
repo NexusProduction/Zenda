@@ -2533,7 +2533,7 @@
         <p style="color: #475569; font-size: 0.9rem; font-weight: 500; line-height: 1.5; margin-bottom: 20px;">Do you want to decline <strong id="decline-task-title" style="color: #0F172A;"></strong>?</p>
         
         <div style="width: 100%; margin-bottom: 24px; text-align: left;">
-            <textarea class="form-input" id="decline-reason" placeholder="Briefly explain why..." oninput="window.checkDeclineReason(this)" style="min-height: 80px; height: 80px; resize: none; background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px; font-size: 0.9rem; padding: 12px; transition: all 0.2s;" maxlength="150"></textarea>
+            <textarea class="form-input" id="decline-reason" placeholder="Briefly explain why..." oninput="window.checkDeclineReason(this)" style="min-height: 80px; height: 80px; resize: none; background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px; font-size: 0.9rem; padding: 12px; transition: all 0.2s;" maxlength="20"></textarea>
         </div>
         
         <div style="display: flex; gap: 12px; width: 100%;">
@@ -5285,20 +5285,18 @@ window.promptDeclineTask = function(taskId, title) {
     
     window.openModal('decline-modal');
 };
-// Actively counts words and enforces a strict 20-word max limit
+// Actively counts characters and enforces a strict 20-character max limit
 window.checkDeclineReason = function(textarea) {
     let text = textarea.value;
     
-    // Split by spaces to count actual words, filtering out blanks
-    let words = text.split(/\s+/).filter(w => w.length > 0);
-    
-    // If they try to type a 21st word, immediately stop them and slice it off
-    if (words.length > 20) {
-        textarea.value = words.slice(0, 20).join(' ') + ' ';
+    // If they try to type a 21st character, immediately stop them and slice it off
+    if (text.length > 20) {
+        textarea.value = text.slice(0, 20);
+        text = textarea.value;
     }
     
     // Activate button only if there's at least some valid text
-    const ok = textarea.value.trim().length > 0; 
+    const ok = text.trim().length > 0; 
     const btn = document.getElementById('confirm-decline-btn');
     
     if (btn) {
@@ -5313,10 +5311,14 @@ window.confirmDecline = async function() {
     const reasonInput = document.getElementById('decline-reason');
     const reason = reasonInput?.value.trim();
     
-    // Safety validation
+    // Safety validation for characters
     if (!reason || reason.length === 0) { 
         window.showToast("Please provide a reason.", "error"); 
         reasonInput.focus(); 
+        return; 
+    }
+    if (reason.length > 20) { 
+        window.showToast("Reason must be 20 characters or less.", "error"); 
         return; 
     }
     
