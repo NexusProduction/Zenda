@@ -2533,7 +2533,7 @@
         <p style="color: #475569; font-size: 0.9rem; font-weight: 500; line-height: 1.5; margin-bottom: 20px;">Do you want to decline <strong id="decline-task-title" style="color: #0F172A;"></strong>?</p>
         
         <div style="width: 100%; margin-bottom: 24px; text-align: left;">
-            <textarea class="form-input" id="decline-reason" placeholder="Briefly explain why..." oninput="window.checkDeclineReason(this)" style="min-height: 80px; height: 80px; resize: none; background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px; font-size: 0.9rem; padding: 12px; transition: all 0.2s;"></textarea>
+            <textarea class="form-input" id="decline-reason" placeholder="Briefly explain why..." oninput="window.checkDeclineReason(this)" style="min-height: 80px; height: 80px; resize: none; background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px; font-size: 0.9rem; padding: 12px; transition: all 0.2s;" maxlength="150"></textarea>
         </div>
         
         <div style="display: flex; gap: 12px; width: 100%;">
@@ -5285,13 +5285,19 @@ window.promptDeclineTask = function(taskId, title) {
     
     window.openModal('decline-modal');
 };
-// Triggers actively while typing to colorize button
+// Actively counts words and enforces a strict 20-word max limit
 window.checkDeclineReason = function(textarea) {
-    const text = textarea.value.trim();
-    const wordCount = text ? text.split(/\s+/).length : 0;
+    let text = textarea.value;
+    let words = text.match(/\S+/g) || []; // Matches non-whitespace blocks (words)
     
-    // Activates when there is at least 1 word and no more than 20 words
-    const ok = wordCount > 0 && wordCount <= 20; 
+    // If they type more than 20 words, slice the array and stop them
+    if (words.length > 20) {
+        textarea.value = words.slice(0, 20).join(' ') + ' ';
+        words = words.slice(0, 20);
+    }
+    
+    // Activate button only if there's at least 1 valid word
+    const ok = words.length >= 1; 
     const btn = document.getElementById('confirm-decline-btn');
     
     if (btn) {
@@ -5305,15 +5311,15 @@ window.checkDeclineReason = function(textarea) {
 window.confirmDecline = async function() {
     const reasonInput = document.getElementById('decline-reason');
     const reason = reasonInput?.value.trim();
-    const wordCount = reason ? reason.split(/\s+/).length : 0;
+    const words = reason ? reason.match(/\S+/g) || [] : [];
     
-    // Safety boundary validation for words
-    if (wordCount === 0) { 
+    // Final safety validation
+    if (words.length === 0) { 
         window.showToast("Please provide a reason.", "error"); 
         reasonInput.focus(); 
         return; 
     }
-    if (wordCount > 20) { 
+    if (words.length > 20) { 
         window.showToast("Reason must be 20 words or less.", "error"); 
         return; 
     }
@@ -5325,6 +5331,7 @@ window.confirmDecline = async function() {
         const _decId = window.pendingDeclineId;
         await updateDoc(doc(db, 'tasks', _decId), { status: 'declined', declineReason: reason, reason });
         const decTask = (window.myTasks || []).find(t => t.id === _decId);
+        
         if (decTask?.assignedBy && decTask.assignedBy !== window.CU.uid) {
             await addDoc(collection(db, 'users', decTask.assignedBy, 'notifications'), {
                 type:      'task_update',
@@ -5335,6 +5342,7 @@ window.confirmDecline = async function() {
                 status:    'unread'
             });
         }
+        
         window.closeModal('decline-modal'); 
         window.showToast('Task declined.', 'success');
     } catch (e) { 
