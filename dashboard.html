@@ -2081,12 +2081,11 @@
     .ztc-body { padding: 12px 8px 12px 14px; }
     .ztc-right { padding: 0 12px 0 6px; }
 }
-/* ── CUSTOM TOASTS ── */
 #custom-toast-container {
     position: fixed;
     bottom: 32px; left: 50%;
     transform: translateX(-50%);
-    z-index: 999999;
+    z-index: 99999999; /* ← was 999999, now always above every modal */
     display: flex; flex-direction: column-reverse; gap: 8px;
     pointer-events: none; align-items: center;
 }
@@ -4119,41 +4118,72 @@ window.finalizeCreateStaff = async function() {
     }
 
     if (window.CU.role !== 'owner') {
-        const staffList = typeof allStaff !== 'undefined' ? allStaff : (window._allStaff || []);
-        const owner = staffList.find(s => s.role === 'owner');
-        if (!owner) { window.showToast('Owner not found.', 'error'); loadBtn(btn, false, 'Verify & Create'); return; }
-        const pendingData = {
-            name: window.tempStaffData.name,
-            email: window.tempStaffData.email,
-            password: window.tempStaffData.pwd,
-            role: 'staff',
-            designation: window.tempStaffData.desig,
-            companyId: window.CU.companyId || 'default'
-        };
-        try {
-            const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-            await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
-    type: 'staff_delete_request',
-    message: `${window.CU.name} requested to remove ${window.deleteTargetName}.`,
-    reason: reason,
-    targetUid: window.deleteTargetUid,
-    targetEmail: window.deleteTargetEmail,
-    targetName: window.deleteTargetName,
-    targetPwd: window.deleteTargetPwd || '',          // ← FIX: store plain text
-    targetJoined: window.deleteTargetJoined,
-    requesterId: window.CU.uid,
-    requesterName: window.CU.name,
-    createdAt: Date.now(),
-    read: false,
-    status: 'unread'
-});
-            window.triggerStaffSuccess(window.tempStaffData.name, true);
-        } catch(e) {
-            window.showToast('Failed to send request.', 'error');
+    // Always-visible inline error — renders INSIDE the modal, never hidden
+    const showInlineErr = (msg) => {
+        let el = document.getElementById('staff-otp-inline-err');
+        if (!el) {
+            el = document.createElement('p');
+            el.id = 'staff-otp-inline-err';
+            el.style.cssText = 'color:#EF4444;font-size:0.85rem;font-weight:700;text-align:center;margin:10px 0 0;font-family:var(--font-main);';
+            document.getElementById('verify-staff-btn')?.insertAdjacentElement('beforebegin', el);
         }
+        el.textContent = msg;
+        el.style.display = 'block';
+    };
+
+    // Try local list first, then fall back to a live Firestore query
+    let owner = [...(window._allStaff || []), ...allStaff].find(s => s.role === 'owner');
+    if (!owner) {
+        try {
+            const ownerSnap = await getDocs(query(
+                collection(db, 'users'),
+                where('companyId', '==', window.CU.companyId),
+                where('role', '==', 'owner')
+            ));
+            if (!ownerSnap.empty) {
+                owner = { uid: ownerSnap.docs[0].id, ...ownerSnap.docs[0].data() };
+            }
+        } catch (e) { /* fall through to error */ }
+    }
+
+    if (!owner) {
+        showInlineErr('Owner not found. Please wait a moment and try again.');
         if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify & Create');
         return;
     }
+
+    const pendingData = {
+        name: window.tempStaffData.name,
+        email: window.tempStaffData.email,
+        password: window.tempStaffData.pwd,
+        role: 'staff',
+        designation: window.tempStaffData.desig,
+        companyId: window.CU.companyId || 'default'
+    };
+
+    try {
+        // Use already-imported addDoc/collection — no dynamic import needed
+        await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
+            type: 'staff_add_request',
+            message: `${window.CU.name} requested to add a new staff member: ${window.tempStaffData.name}`,
+            pendingData,
+            requesterId: window.CU.uid || '',
+            requesterName: window.CU.name || '',
+            createdAt: Date.now(),
+            read: false,
+            status: 'unread'
+        });
+        const prevErr = document.getElementById('staff-otp-inline-err');
+        if (prevErr) prevErr.style.display = 'none';
+        window.triggerStaffSuccess(window.tempStaffData.name, true);
+    } catch (e) {
+        console.error('Staff add request failed:', e);
+        showInlineErr('Failed: ' + (e.code || e.message || 'Check your connection'));
+    } finally {
+        if (typeof loadBtn === 'function') loadBtn(btn, false, 'Verify & Create');
+    }
+    return;
+}
 
     try {
         // --- THE ULTIMATE BYPASS HACK ---
