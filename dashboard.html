@@ -4480,21 +4480,34 @@ window.openStaffRequestModal = function(btn) {
     
     window.openModal('staff-request-modal');
 };
-
-// Universal completely silent background deleter 
 window.deleteUserFromAuth = async function(email, pwd) {
-    if (!email || !pwd) return;
+    if (!email || !pwd) {
+        console.warn("deleteUserFromAuth: email or password missing — skipping");
+        return false;
+    }
+    let tempApp = null;
     try {
-        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+        const { initializeApp, deleteApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
         const { getAuth, signInWithEmailAndPassword, deleteUser } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-        const tempApp = initializeApp(auth.app.options, "TempApp_" + Date.now());
+        tempApp = initializeApp(auth.app.options, "TempDel_" + Date.now());
         const tempAuth = getAuth(tempApp);
         const userCred = await signInWithEmailAndPassword(tempAuth, email, pwd);
         await deleteUser(userCred.user);
-        console.log("Firebase Auth Wipe Successful.");
-    } catch (e) { console.warn("Silent wipe failed:", e); }
+        console.log("Firebase Auth deletion successful for:", email);
+        return true;
+    } catch (e) {
+        console.error("Auth deletion FAILED:", e.code, e.message);
+        window.showToast("Auth removal failed: " + (e.code || e.message), "error");
+        return false;
+    } finally {
+        if (tempApp) {
+            try {
+                const { deleteApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+                await deleteApp(tempApp);
+            } catch (_) {}
+        }
+    }
 };
-// Universal Helper Function to auto-decline tasks when staff is removed
 window.cleanupStaffTasks = async function(staffUid) {
     try {
         // REMOVED the dynamic import here. We use the global writeBatch and collection.
@@ -4636,18 +4649,29 @@ window.executeStaffRequest = async function(action) {
                     }
                 }
             } else if (req.type === 'delete') {
-                try { await deleteDoc(doc(db, 'users', req.targetUid)); } catch(err) { console.warn(err); }
-                
-                // WIPE FROM FIREBASE AUTH
-                await window.deleteUserFromAuth(req.targetEmail, req.targetPwd);
-                
-                // --- UNIVERSAL TASK AUTO-DECLINE ---
-                await window.cleanupStaffTasks(req.targetUid);
-                
-                if (typeof deleteStaffMember === 'function') {
-                    try { await deleteStaffMember(req.targetUid, req.targetEmail, req.targetPwd); } catch(err) { console.warn(err); }
-                }
-            }
+    // 1. Fetch the freshest password BEFORE the Firestore doc is deleted
+    let pwdToUse = req.targetPwd || '';
+    try {
+        const freshSnap = await getDoc(doc(db, 'users', req.targetUid));
+        if (freshSnap.exists()) {
+            const d = freshSnap.data();
+            pwdToUse = d.passwordHint || d.password || pwdToUse;
+        }
+    } catch (e) { /* use the stored password from notification */ }
+
+    // 2. Wipe from Firebase Auth FIRST (critical — prevents re-login)
+    await window.deleteUserFromAuth(req.targetEmail, pwdToUse);
+
+    // 3. Delete Firestore doc AFTER Auth is wiped
+    try { await deleteDoc(doc(db, 'users', req.targetUid)); } catch(err) { console.warn(err); }
+
+    // 4. Universal Task Auto-Decline
+    await window.cleanupStaffTasks(req.targetUid);
+
+    if (typeof deleteStaffMember === 'function') {
+        try { await deleteStaffMember(req.targetUid, req.targetEmail, pwdToUse); } catch(err) { console.warn(err); }
+    }
+}
         }
         
         // Mark owner notification as read
@@ -6760,10 +6784,18 @@ window.sendDeleteRequest = async function() {
 
     try {
         const owner = window._allStaff.find(s => s.role === 'owner');
-        if (!owner) throw new Error("Owner not found");
+        if (!owner) { window.showToast('Could not find owner.', 'error'); return; }
 
-        const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        
+        // Always re-fetch the LIVE password from Firestore before the doc is gone
+        let freshPwd = window.deleteTargetPwd || '';
+        try {
+            const staffSnap = await getDoc(doc(db, 'users', window.deleteTargetUid));
+            if (staffSnap.exists()) {
+                const d = staffSnap.data();
+                freshPwd = d.passwordHint || d.password || freshPwd;
+            }
+        } catch (e) { /* fall back to cached value */ }
+
         await addDoc(collection(db, 'users', owner.uid, 'notifications'), {
             type: 'staff_delete_request',
             message: `${window.CU.name} requested to remove ${window.deleteTargetName}.`,
@@ -6771,7 +6803,7 @@ window.sendDeleteRequest = async function() {
             targetUid: window.deleteTargetUid,
             targetEmail: window.deleteTargetEmail,
             targetName: window.deleteTargetName,
-            targetPwd: btoa(window.deleteTargetPwd || ''),
+            targetPwd: freshPwd,      // plain text — NO btoa
             targetJoined: window.deleteTargetJoined,
             requesterId: window.CU.uid,
             requesterName: window.CU.name,
