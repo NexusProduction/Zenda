@@ -6710,10 +6710,30 @@ window.confirmDelete = async function() {
             try { await deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd); } catch(e) { console.warn("deleteStaffMember err:", e); }
         }
 
-        // 4. Safely clean up pending notifications 
+        // 4. Safely clean up pending notifications AND assigned tasks
         if (window.CU && window.CU.uid) {
             try {
                 const batch = writeBatch(db);
+
+                // --- NEW LOGIC: AUTO-DECLINE PENDING TASKS ---
+                // Query only tasks assigned to this user that are currently 'pending'
+                const tasksSnap = await getDocs(query(collection(db, 'tasks'), where('assignedTo', '==', uid), where('status', '==', 'pending')));
+                
+                tasksSnap.docs.forEach(taskDoc => {
+                    const tData = taskDoc.data();
+                    
+                    // Only process tasks that are NOT overdue
+                    if (!window.isOverdue(tData.dueDate)) {
+                        batch.update(taskDoc.ref, { 
+                            status: 'declined', 
+                            reason: '(Staff Deleted)',
+                            declineReason: '(Staff Deleted)'
+                        });
+                    }
+                });
+                // ----------------------------------------------
+
+                // Cleanup notifications
                 const reqSnap = await getDocs(query(collection(db, 'users', window.CU.uid, 'notifications'), where('type', '==', 'staff_delete_request'), where('targetUid', '==', uid)));
 
                 reqSnap.docs.forEach(d => {
@@ -6730,9 +6750,11 @@ window.confirmDelete = async function() {
                         });
                     }
                 });
+                
+                // Commit all task updates and notification deletions in one go
                 await batch.commit(); 
             } catch(e) {
-                console.warn("Notification cleanup failed:", e);
+                console.warn("Notification/Task cleanup failed:", e);
             }
         }
 
