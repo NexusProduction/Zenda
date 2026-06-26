@@ -4540,34 +4540,42 @@ window.deleteUserFromAuth = async function(email, pwd) {
 };
 window.cleanupStaffTasks = async function(staffUid) {
     try {
-        // REMOVED the dynamic import here. We use the global writeBatch and collection.
         const batch = writeBatch(db);
-        
-        // Query ONLY by assignedTo to bypass strict Firebase indexing requirements
-        const tasksSnap = await getDocs(query(collection(db, 'tasks'), where('assignedTo', '==', staffUid)));
-        
-        let updates = 0;
-        tasksSnap.docs.forEach(taskDoc => {
+
+        // 1. Tasks assigned TO the deleted staff
+        //    → Only decline PENDING tasks (skip done / already declined / overdue / deleted)
+        const assignedToSnap = await getDocs(
+            query(collection(db, 'tasks'), where('assignedTo', '==', staffUid))
+        );
+        assignedToSnap.docs.forEach(taskDoc => {
             const tData = taskDoc.data();
-            // Check if it is currently 'pending' AND not overdue
-            if (tData.status === 'pending' && !window.isOverdue(tData.dueDate)) {
-                batch.update(taskDoc.ref, { 
-                    status: 'declined', 
+            if (
+                tData.status === 'pending' &&
+                !window.isOverdue(tData.dueDate)
+            ) {
+                batch.update(taskDoc.ref, {
+                    status: 'declined',
                     reason: '(Staff Deleted)',
                     declineReason: '(Staff Deleted)'
                 });
-                updates++;
             }
+            // done / declined / overdue / deleted tasks are left untouched
         });
-        
-        if (updates > 0) {
-            await batch.commit();
-        }
+
+        // 2. Tasks assigned BY the deleted staff to others
+        //    → Hard-delete them entirely (assigner no longer exists in company)
+        const assignedBySnap = await getDocs(
+            query(collection(db, 'tasks'), where('assignedBy', '==', staffUid))
+        );
+        assignedBySnap.docs.forEach(taskDoc => {
+            batch.delete(taskDoc.ref);
+        });
+
+        await batch.commit();
     } catch(e) {
         console.warn("Task cleanup failed:", e);
     }
 };
-
 window.confirmDelete = async function() {
     const uid = window.deleteTargetUid;
     if (!uid) return;
