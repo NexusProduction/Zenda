@@ -5537,7 +5537,7 @@ window.verifyProfileOTP = async function() {
             });
         }, 250);
 
-    // --- STEP 2: New Email Verified -> Update Database & FORCE LOGOUT ---
+// --- STEP 2: New Email Verified -> Update Database & FORCE LOGOUT ---
     } else if (window.profileState.step === 2) {
         try {
             const newEmail = window.profileState.newEmail;
@@ -5567,11 +5567,31 @@ window.verifyProfileOTP = async function() {
             await updateDoc(doc(db, 'users', window.CU.uid), { email: newEmail });
 
             // ---------------------------------------------------------
-            // THE NEW FIX: COMPLETELY LOG OUT & CLEAR CACHE ON SUCCESS
+            // THE NEW FIX: PLAY TICK ANIMATION, WAIT, THEN SILENTLY LOG OUT
             // ---------------------------------------------------------
-            window.showToast("Email changed successfully. Logging out...", "success");
             
-            // Give the toast 1.5 seconds to show, then wipe everything and redirect
+            // 1. Show the Green Tick Overlay
+            const tick = document.getElementById('ppm-success-tick');
+            if (tick) {
+                const textEl = tick.querySelector('.ppm-success-text');
+                if (textEl) textEl.textContent = "Email Updated";
+                
+                tick.classList.add('active');
+                
+                // Animate the SVG checkmark smoothly
+                const svg = tick.querySelector('svg');
+                if (svg) {
+                    svg.style.transition = 'none';
+                    svg.style.strokeDasharray = '50';
+                    svg.style.strokeDashoffset = '50';
+                    setTimeout(() => {
+                        svg.style.transition = 'stroke-dashoffset 0.4s ease';
+                        svg.style.strokeDashoffset = '0';
+                    }, 50);
+                }
+            }
+
+            // 2. Wait 2.5 seconds for the user to see the success animation, then wipe and redirect
             setTimeout(async () => {
                 try {
                     await auth.signOut();
@@ -5583,7 +5603,7 @@ window.verifyProfileOTP = async function() {
                     sessionStorage.clear();
                     window.location.replace('login.html');
                 }
-            }, 1500);
+            }, 2500);
 
             return; // Stop any further UI updates since we are leaving the page
 
