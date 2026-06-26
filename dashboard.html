@@ -6384,19 +6384,21 @@ window.renderTasksList = function() {
     const tab = window.taskTab || 'my-pending';
     
     if (tab === 'my-pending') {
+        // Show pending tasks that are NOT overdue
         filtered = (window.myTasks || []).filter(t => t.status !== 'done' && t.status !== 'declined' && t.status !== 'deleted' && !window.isOverdue(t.dueDate));
     } else if (tab === 'my-done') {
         filtered = (window.myTasks || []).filter(t => t.status === 'done');
     } else if (tab === 'my-declined') {
-        // Excludes 'deleted' status so it hides entirely from the assignee's view
+        // ASSIGNEE: Sees Declined AND Overdue tasks. (Deleted tasks are completely hidden)
         filtered = (window.myTasks || []).filter(t => t.status === 'declined' || (t.status !== 'done' && t.status !== 'declined' && t.status !== 'deleted' && window.isOverdue(t.dueDate)));
     } 
     else if (tab === 'del-pending') {
+        // Show pending assigned tasks that are NOT overdue
         filtered = (window.assignedByMeTasks || []).filter(t => t.status !== 'done' && t.status !== 'declined' && t.status !== 'deleted' && !window.isOverdue(t.dueDate));
     } else if (tab === 'del-done') {
         filtered = (window.assignedByMeTasks || []).filter(t => t.status === 'done');
     } else if (tab === 'del-declined') {
-        // Keeps 'deleted' status so the assigner can still see what was deleted
+        // ASSIGNER (OWNER): Sees Declined, Overdue, AND Deleted tasks
         filtered = (window.assignedByMeTasks || []).filter(t => t.status === 'declined' || t.status === 'deleted' || (t.status !== 'done' && t.status !== 'declined' && t.status !== 'deleted' && window.isOverdue(t.dueDate)));
     }
     
@@ -6409,10 +6411,10 @@ window.renderTasksList = function() {
         const msgs = {
             'my-pending':  ['All clear',        'No pending tasks right now.'],
             'my-done':     ['Nothing here yet',  'Completed tasks will show up here.'],
-            'my-declined': ['All good',          'No declined tasks.'],
+            'my-declined': ['All good',          'No declined or overdue tasks.'],
             'del-pending': ['Nothing assigned',  'Tasks you assign will appear here.'],
             'del-done':    ['No completions yet','Assigned tasks show here once done.'],
-            'del-declined':['Clean slate',       'No declined or deleted tasks.'],
+            'del-declined':['Clean slate',       'No declined, overdue, or deleted tasks.'],
         };
         const [ttl, sub] = msgs[tab] || ['No tasks', ''];
         listEl.innerHTML = `
