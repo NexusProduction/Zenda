@@ -5537,62 +5537,63 @@ window.verifyProfileOTP = async function() {
             });
         }, 250);
 
-    // --- STEP 2: New Email Verified -> Update Database ---
+    // --- STEP 2: New Email Verified -> Update Database & FORCE LOGOUT ---
     } else if (window.profileState.step === 2) {
         try {
             const newEmail = window.profileState.newEmail;
             const pwd = window.CU.passwordHint || window.CU.password;
             if (!pwd) throw new Error('Missing account credential. Please contact support.');
 
-            // --- DUPLICATE EMAIL CHECK (cross-company) ---
-            // Looks across the ENTIRE 'users' collection, not just this company's
-            // staff. A staff member that was actually deleted (deleteDoc) leaves
-            // zero trace here, so this only blocks emails that are genuinely
-            // still attached to a live account somewhere — never a cleanly
-            // deleted one.
+            // --- DUPLICATE EMAIL CHECK ---
             const dupSnap = await getDocs(query(collection(db, 'users'), where('email', '==', newEmail)));
             const takenByOther = dupSnap.docs.some(d => d.id !== window.CU.uid);
             if (takenByOther) {
                 window.showToast('That email is already used by another account.', 'error');
-                window.cancelOtpView(); // back out cleanly, like hitting Cancel
+                window.cancelOtpView(); 
                 return;
             }
 
-            // Sign in on a fresh secondary Auth instance — guarantees a recent
-            // login so updateEmail() won't get rejected, and means we never
-            // touch Firestore unless the Auth side actually succeeded first.
-            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-            const { getAuth, signInWithEmailAndPassword, updateEmail: updateEmailFn, signOut } =
+            // Safely apply the new email using Re-authentication
+            const { EmailAuthProvider, reauthenticateWithCredential, updateEmail: updateEmailFn } =
                 await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
 
-            const tempApp  = initializeApp(auth.app.options, "TempApp_EmailChange_" + Date.now());
-            const tempAuth = getAuth(tempApp);
+            const credential = EmailAuthProvider.credential(window.CU.email, pwd);
+            await reauthenticateWithCredential(auth.currentUser, credential);
+            
+            // Update Auth Email
+            await updateEmailFn(auth.currentUser, newEmail);
 
-            const cred = await signInWithEmailAndPassword(tempAuth, window.CU.email, pwd);
-            await updateEmailFn(cred.user, newEmail);
-            await signOut(tempAuth);
-
-            // Only now — Auth side is confirmed updated — do we touch Firestore.
+            // Update Firestore
             await updateDoc(doc(db, 'users', window.CU.uid), { email: newEmail });
 
-            window.CU.email = newEmail;
-            window.showProfileSuccess("Change Completed!");
+            // ---------------------------------------------------------
+            // THE NEW FIX: COMPLETELY LOG OUT & CLEAR CACHE ON SUCCESS
+            // ---------------------------------------------------------
+            window.showToast("Email changed successfully. Logging out...", "success");
+            
+            // Give the toast 1.5 seconds to show, then wipe everything and redirect
+            setTimeout(async () => {
+                try {
+                    await auth.signOut();
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.replace('login.html');
+                } catch (logoutErr) {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.replace('login.html');
+                }
+            }, 1500);
 
-            const emailInput = document.getElementById('ppm-email');
-            if (emailInput) emailInput.value = newEmail;
+            return; // Stop any further UI updates since we are leaving the page
 
         } catch(e) {
             console.error('Email change failed:', e);
-            // Backstop: even if our Firestore check above somehow misses it
-            // (e.g. an orphaned Auth account whose Firestore doc never got
-            // cleaned up), Firebase Auth itself still refuses the change here.
             if (e.code === 'auth/email-already-in-use') {
                 window.showToast('That email is already used by another account.', 'error');
                 window.cancelOtpView();
             } else if (e.message && e.message.includes('requires-recent-login')) {
-                window.showToast('Please sign out and sign back in to change your email.', 'error');
-            } else if (e.code === 'auth/operation-not-allowed') {
-                window.showToast('Email changes are blocked by your Firebase project settings (Email Enumeration Protection). Use verifyBeforeUpdateEmail instead, or disable that setting in Firebase Console → Authentication → Settings.', 'error');
+                window.showToast('Security timeout: Please log out and log back in to change your email.', 'error');
             } else {
                 window.showToast('Failed to update email: ' + e.message, 'error');
             }
