@@ -4512,22 +4512,26 @@ window.openStaffRequestModal = function(btn) {
 };
 window.deleteUserFromAuth = async function(email, pwd) {
     if (!email || !pwd) {
-        console.warn("deleteUserFromAuth: email or password missing — skipping");
+        console.warn("deleteUserFromAuth: missing email or password — skipping auth wipe.");
         return false;
     }
     let tempApp = null;
     try {
-        const { initializeApp, deleteApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-        const { getAuth, signInWithEmailAndPassword, deleteUser } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+        const { getAuth, signInWithEmailAndPassword, deleteUser, setPersistence, inMemoryPersistence } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+        
         tempApp = initializeApp(auth.app.options, "TempDel_" + Date.now());
         const tempAuth = getAuth(tempApp);
+        
+        // CRITICAL FIX: Forces the deletion session into memory so it doesn't log you out!
+        await setPersistence(tempAuth, inMemoryPersistence);
+        
         const userCred = await signInWithEmailAndPassword(tempAuth, email, pwd);
         await deleteUser(userCred.user);
-        console.log("Firebase Auth deletion successful for:", email);
+        console.log("Firebase Auth Wipe Successful for:", email);
         return true;
-    } catch (e) {
-        console.error("Auth deletion FAILED:", e.code, e.message);
-        window.showToast("Auth removal failed: " + (e.code || e.message), "error");
+    } catch (e) { 
+        console.warn("Silent wipe failed:", e); 
         return false;
     } finally {
         if (tempApp) {
@@ -4588,25 +4592,34 @@ window.confirmDelete = async function() {
         .forEach(c => { c.style.opacity = '0.4'; c.style.pointerEvents = 'none'; });
 
     try {
-        // REMOVED the dynamic import here. Using global Firebase methods directly.
-
-        // 1. Safely delete main user document
-        try { await deleteDoc(doc(db, 'users', uid)); } catch(err) { console.warn("Doc delete err:", err); }
+        // 1. Fetch exact email & password directly from the DB BEFORE deleting it
+        let targetEmail = window.deleteTargetEmail;
+        let targetPwd = window.deleteTargetPwd;
         
-        // 2. Safely wipe from Auth
-        if (typeof window.deleteUserFromAuth === 'function') {
-            try { await window.deleteUserFromAuth(window.deleteTargetEmail, window.deleteTargetPwd); } catch(e) { console.warn("Auth delete err:", e); }
+        const freshSnap = await getDoc(doc(db, 'users', uid));
+        if (freshSnap.exists()) {
+            const data = freshSnap.data();
+            targetEmail = data.email || targetEmail;
+            targetPwd = data.passwordHint || data.password || targetPwd;
         }
+
+        // 2. Wipe from Firebase Auth FIRST (Critical order of operations)
+        if (typeof window.deleteUserFromAuth === 'function') {
+            await window.deleteUserFromAuth(targetEmail, targetPwd);
+        }
+
+        // 3. Delete from Firestore Database
+        await deleteDoc(doc(db, 'users', uid));
         
-        // --- UNIVERSAL TASK AUTO-DECLINE ---
+        // 4. Auto-Decline all pending tasks currently assigned to this user
         await window.cleanupStaffTasks(uid);
 
-        // 3. Safely delete from custom backend (if applicable)
+        // 5. Safely delete from custom backend (if applicable)
         if (typeof deleteStaffMember === 'function') {
-            try { await deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd); } catch(e) { console.warn("deleteStaffMember err:", e); }
+            try { await deleteStaffMember(uid, targetEmail, targetPwd); } catch(e) { console.warn(e); }
         }
 
-        // 4. Safely clean up pending notifications 
+        // 6. Safely clean up pending notifications 
         if (window.CU && window.CU.uid) {
             try {
                 const batch = writeBatch(db);
@@ -4632,7 +4645,7 @@ window.confirmDelete = async function() {
             }
         }
 
-        // 5. TRIGGER SUCCESS OVERLAY & CLOSE MODAL
+        // 7. TRIGGER SUCCESS OVERLAY & CLOSE MODAL
         const tick = document.getElementById('delete-staff-success-tick');
         const textEl = document.getElementById('delete-staff-success-text');
         
