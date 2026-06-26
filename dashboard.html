@@ -4703,10 +4703,57 @@ window.executeStaffRequest = async function(action) {
     }
 }
         }
-        
-        // Mark owner notification as read
+       // Mark THIS notification as read
         if (req.notifId) {
             try { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', req.notifId), { read: true, status: 'read' }); } catch(e) { console.warn(e); }
+        }
+
+        // ── DEDUP CLEANUP: When acting on any delete request, wipe ALL other
+        //    pending delete requests for the same target from owner's inbox,
+        //    and tell each of those requesters the account is already gone. ──
+        if (req.type === 'delete') {
+            try {
+                const dupSnap = await getDocs(query(
+                    collection(db, 'users', window.CU.uid, 'notifications'),
+                    where('type', '==', 'staff_delete_request'),
+                    where('targetUid', '==', req.targetUid),
+                    where('status', '==', 'unread')
+                ));
+                if (!dupSnap.empty) {
+                    const batch = writeBatch(db);
+                    dupSnap.docs.forEach(d => {
+                        // Skip the one we just processed
+                        if (d.id === req.notifId) return;
+                        const nData = d.data();
+                        // Mark the owner's duplicate notification as read
+                        batch.update(d.ref, { read: true, status: 'read' });
+                        // Notify the duplicate requester
+                        if (nData.requesterId) {
+                            const staffNotifRef = doc(collection(db, 'users', nData.requesterId, 'notifications'));
+                            batch.set(staffNotifRef, {
+                                type: 'general',
+                                message: action === 'approve'
+                                    ? `Your request to remove "${nData.targetName || 'Staff'}" has been processed — the account was already deleted.`
+                                    : `Your request to remove "${nData.targetName || 'Staff'}" was dismissed by the owner.`,
+                                read: false,
+                                status: 'unread',
+                                createdAt: Date.now()
+                            });
+                        }
+                    });
+                    await batch.commit();
+                    // Slide duplicate cards out of the visible notification panel
+                    dupSnap.docs.forEach(d => {
+                        if (d.id === req.notifId) return;
+                        const card = document.querySelector(`.notif-card[data-id="${d.id}"]`);
+                        if (card) {
+                            card.style.overflow = 'hidden';
+                            card.classList.add('slide-left-out');
+                            setTimeout(() => card.remove(), 380);
+                        }
+                    });
+                }
+            } catch (e) { console.warn('Duplicate delete request cleanup failed:', e); }
         }
         
         // SEND RESPONSE NOTIFICATION TO STAFF
@@ -6805,16 +6852,39 @@ window.checkDelConfirm = function() {
     if (window.CU && window.CU.role !== 'owner') { if (!reason || reason.length < 3) isMatch = false; }
     if (b) { b.disabled = !isMatch; b.style.opacity = isMatch ? '1' : '0.4'; b.style.cursor = isMatch ? 'pointer' : 'not-allowed'; }
 };
+window._deleteRequestPending = false; // global submission lock
+
 window.sendDeleteRequest = async function() {
+    if (window._deleteRequestPending) return; // prevent double-submit
     const reason = document.getElementById('del-reason-input').value.trim();
     if (reason.length < 10) return;
 
     const btn = document.getElementById('del-request-btn');
+    
+    // Hard-lock the button and ALL textarea input during submission
+    window._deleteRequestPending = true;
+    const textarea = document.getElementById('del-reason-input');
+    if (textarea) textarea.setAttribute('readonly', 'true');
     loadBtn(btn, true);
 
     try {
-        const owner = window._allStaff.find(s => s.role === 'owner');
+        const owner = (window._allStaff || []).find(s => s.role === 'owner');
         if (!owner) { window.showToast('Could not find owner.', 'error'); return; }
+
+        // DEDUP CHECK: Block if a pending request already exists for this target
+        try {
+            const existingSnap = await getDocs(query(
+                collection(db, 'users', owner.uid, 'notifications'),
+                where('type', '==', 'staff_delete_request'),
+                where('targetUid', '==', window.deleteTargetUid),
+                where('status', '==', 'unread')
+            ));
+            if (!existingSnap.empty) {
+                window.showToast('A delete request for this staff is already pending with the owner.', 'info');
+                window.closeModal('delete-modal');
+                return;
+            }
+        } catch (e) { /* dedup check failed, proceed anyway */ }
 
         // Always re-fetch the LIVE password from Firestore before the doc is gone
         let freshPwd = window.deleteTargetPwd || '';
@@ -6858,6 +6928,9 @@ window.sendDeleteRequest = async function() {
         console.error(e);
         window.showToast("Failed to send request: " + e.message, "error");
     } finally {
+        window._deleteRequestPending = false;
+        const ta = document.getElementById('del-reason-input');
+        if (ta) ta.removeAttribute('readonly');
         loadBtn(btn, false, "Send to Owner");
     }
 };
