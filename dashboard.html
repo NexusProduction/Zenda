@@ -4490,6 +4490,37 @@ window.deleteUserFromAuth = async function(email, pwd) {
     } catch (e) { console.warn("Silent wipe failed:", e); }
 };
 
+// Universal Helper Function to auto-decline tasks when staff is removed
+window.cleanupStaffTasks = async function(staffUid) {
+    try {
+        const { collection, query, where, getDocs, writeBatch } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const batch = writeBatch(db);
+        
+        // Query ONLY by assignedTo to bypass strict Firebase indexing requirements
+        const tasksSnap = await getDocs(query(collection(db, 'tasks'), where('assignedTo', '==', staffUid)));
+        
+        let updates = 0;
+        tasksSnap.docs.forEach(taskDoc => {
+            const tData = taskDoc.data();
+            // Check if it is currently 'pending' AND not overdue
+            if (tData.status === 'pending' && !window.isOverdue(tData.dueDate)) {
+                batch.update(taskDoc.ref, { 
+                    status: 'declined', 
+                    reason: '(Staff Deleted)',
+                    declineReason: '(Staff Deleted)'
+                });
+                updates++;
+            }
+        });
+        
+        if (updates > 0) {
+            await batch.commit();
+        }
+    } catch(e) {
+        console.warn("Task cleanup failed:", e);
+    }
+};
+
 window.executeStaffRequest = async function(action) {
     const req = window.currentStaffRequest;
     const actionBtn = document.getElementById(action === 'approve' ? 'sr-btn-approve' : 'sr-btn-decline');
@@ -4524,8 +4555,11 @@ window.executeStaffRequest = async function(action) {
             } else if (req.type === 'delete') {
                 try { await deleteDoc(doc(db, 'users', req.targetUid)); } catch(err) { console.warn(err); }
                 
-                // COMPLETELY WIPE FROM FIREBASE AUTH
+                // WIPE FROM FIREBASE AUTH
                 await window.deleteUserFromAuth(req.targetEmail, req.targetPwd);
+                
+                // --- UNIVERSAL TASK AUTO-DECLINE ---
+                await window.cleanupStaffTasks(req.targetUid);
                 
                 if (typeof deleteStaffMember === 'function') {
                     try { await deleteStaffMember(req.targetUid, req.targetEmail, req.targetPwd); } catch(err) { console.warn(err); }
@@ -4538,14 +4572,13 @@ window.executeStaffRequest = async function(action) {
             try { await updateDoc(doc(db, 'users', window.CU.uid, 'notifications', req.notifId), { read: true, status: 'read' }); } catch(e) { console.warn(e); }
         }
         
-        // --- SEND RESPONSE NOTIFICATION TO STAFF ---
+        // SEND RESPONSE NOTIFICATION TO STAFF
         if (req.reqId && req.reqId.trim() !== '' && req.reqId !== 'undefined' && req.reqId !== 'null') {
             const actionText = action === 'approve' ? 'approved' : 'declined';
             const typeText = req.type === 'add' ? `add a new staff member` : `remove a staff member`;
             
             try {
                 await addDoc(collection(db, 'users', req.reqId, 'notifications'), {
-                    // Send special 'staff_add_approved' type ONLY if ADD request was APPROVED
                     type: (req.type === 'add' && action === 'approve' && staffCreatedSuccessfully) ? 'staff_add_approved' : 'general',
                     message: `Owner ${actionText} your request to ${typeText}.`,
                     pendingData: (req.type === 'add' && action === 'approve' && staffCreatedSuccessfully) ? req.payload : null,
@@ -4627,6 +4660,86 @@ window.executeStaffRequest = async function(action) {
                 document.querySelector('.app-body')?.classList.remove('zoomed');
             }, 400);
         }
+    }
+};
+
+window.confirmDelete = async function() {
+    const uid = window.deleteTargetUid;
+    if (!uid) return;
+
+    const btn = document.getElementById('del-confirm-btn');
+    if (btn) { btn.textContent = 'Removing…'; btn.disabled = true; }
+
+    // Visually dim the card in the background immediately
+    document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
+        .forEach(c => { c.style.opacity = '0.4'; c.style.pointerEvents = 'none'; });
+
+    try {
+        const { doc, deleteDoc, collection, query, where, getDocs, writeBatch } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+
+        // 1. Safely delete main user document
+        try { await deleteDoc(doc(db, 'users', uid)); } catch(err) { console.warn("Doc delete err:", err); }
+        
+        // 2. Safely wipe from Auth
+        if (typeof window.deleteUserFromAuth === 'function') {
+            try { await window.deleteUserFromAuth(window.deleteTargetEmail, window.deleteTargetPwd); } catch(e) { console.warn("Auth delete err:", e); }
+        }
+        
+        // --- UNIVERSAL TASK AUTO-DECLINE ---
+        await window.cleanupStaffTasks(uid);
+
+        // 3. Safely delete from custom backend (if applicable)
+        if (typeof deleteStaffMember === 'function') {
+            try { await deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd); } catch(e) { console.warn("deleteStaffMember err:", e); }
+        }
+
+        // 4. Safely clean up pending notifications 
+        if (window.CU && window.CU.uid) {
+            try {
+                const batch = writeBatch(db);
+                const reqSnap = await getDocs(query(collection(db, 'users', window.CU.uid, 'notifications'), where('type', '==', 'staff_delete_request'), where('targetUid', '==', uid)));
+
+                reqSnap.docs.forEach(d => {
+                    const nData = d.data();
+                    batch.delete(d.ref); 
+                    if (nData.requesterId) {
+                        const staffNotifRef = doc(collection(db, 'users', nData.requesterId, 'notifications'));
+                        batch.set(staffNotifRef, {
+                            type: 'system',
+                            message: `Your request to remove "${nData.targetName || window.deleteTargetName}" was dismissed because they were already removed from the team by the owner.`,
+                            read: false,
+                            createdAt: Date.now(),
+                            status: 'unread'
+                        });
+                    }
+                });
+                await batch.commit(); 
+            } catch(e) {
+                console.warn("Notification cleanup failed:", e);
+            }
+        }
+
+        // 5. TRIGGER SUCCESS OVERLAY & CLOSE MODAL
+        const tick = document.getElementById('delete-staff-success-tick');
+        const textEl = document.getElementById('delete-staff-success-text');
+        
+        if (tick && textEl) {
+            textEl.textContent = "Staff Deleted";
+            tick.classList.add('active');
+            setTimeout(() => {
+                tick.classList.remove('active');
+                window.closeModal('delete-modal');
+            }, 2000);
+        } else {
+            window.closeModal('delete-modal');
+        }
+
+    } catch(e) {
+        document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
+            .forEach(c => { c.style.opacity = '1'; c.style.pointerEvents = 'auto'; });
+        window.showToast('Failed to remove: ' + (e.message || 'Unknown error'), 'error');
+        console.error('confirmDelete error:', e);
+        if (btn) { btn.textContent = 'Delete Forever'; btn.disabled = false; }
     }
 };
 window.downloadCardFromNotif = async function(btn, b64Data, notifId) {
@@ -6681,110 +6794,6 @@ window.sendDeleteRequest = async function() {
         window.showToast("Failed to send request: " + e.message, "error");
     } finally {
         loadBtn(btn, false, "Send to Owner");
-    }
-};
-window.confirmDelete = async function() {
-    const uid = window.deleteTargetUid;
-    if (!uid) return;
-
-    const btn = document.getElementById('del-confirm-btn');
-    if (btn) { btn.textContent = 'Removing…'; btn.disabled = true; }
-
-    // Visually dim the card in the background immediately
-    document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
-        .forEach(c => { c.style.opacity = '0.4'; c.style.pointerEvents = 'none'; });
-
-    try {
-        const { doc, deleteDoc, collection, query, where, getDocs, writeBatch } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-
-        // 1. Safely delete main user document
-        try { await deleteDoc(doc(db, 'users', uid)); } catch(err) { console.warn("Doc delete err:", err); }
-        
-        // 2. Safely wipe from Auth
-        if (typeof window.deleteUserFromAuth === 'function') {
-            try { await window.deleteUserFromAuth(window.deleteTargetEmail, window.deleteTargetPwd); } catch(e) { console.warn("Auth delete err:", e); }
-        }
-        
-        // 3. Safely delete from custom backend (if applicable)
-        if (typeof deleteStaffMember === 'function') {
-            try { await deleteStaffMember(uid, window.deleteTargetEmail, window.deleteTargetPwd); } catch(e) { console.warn("deleteStaffMember err:", e); }
-        }
-
-        // 4. Safely clean up pending notifications AND assigned tasks
-        if (window.CU && window.CU.uid) {
-            try {
-                const batch = writeBatch(db);
-
-                // --- NEW LOGIC: AUTO-DECLINE PENDING TASKS ---
-                // Query only tasks assigned to this user that are currently 'pending'
-                const tasksSnap = await getDocs(query(collection(db, 'tasks'), where('assignedTo', '==', uid), where('status', '==', 'pending')));
-                
-                tasksSnap.docs.forEach(taskDoc => {
-                    const tData = taskDoc.data();
-                    
-                    // Only process tasks that are NOT overdue
-                    if (!window.isOverdue(tData.dueDate)) {
-                        batch.update(taskDoc.ref, { 
-                            status: 'declined', 
-                            reason: '(Staff Deleted)',
-                            declineReason: '(Staff Deleted)'
-                        });
-                    }
-                });
-                // ----------------------------------------------
-
-                // Cleanup notifications
-                const reqSnap = await getDocs(query(collection(db, 'users', window.CU.uid, 'notifications'), where('type', '==', 'staff_delete_request'), where('targetUid', '==', uid)));
-
-                reqSnap.docs.forEach(d => {
-                    const nData = d.data();
-                    batch.delete(d.ref); 
-                    if (nData.requesterId) {
-                        const staffNotifRef = doc(collection(db, 'users', nData.requesterId, 'notifications'));
-                        batch.set(staffNotifRef, {
-                            type: 'system',
-                            message: `Your request to remove "${nData.targetName || window.deleteTargetName}" was dismissed because they were already removed from the team by the owner.`,
-                            read: false,
-                            createdAt: Date.now(),
-                            status: 'unread'
-                        });
-                    }
-                });
-                
-                // Commit all task updates and notification deletions in one go
-                await batch.commit(); 
-            } catch(e) {
-                console.warn("Notification/Task cleanup failed:", e);
-            }
-        }
-
-        // 5. TRIGGER SUCCESS OVERLAY & CLOSE MODAL
-        const tick = document.getElementById('delete-staff-success-tick');
-        const textEl = document.getElementById('delete-staff-success-text');
-        
-        if (tick && textEl) {
-            // Set exact text requested
-            textEl.textContent = "Staff Deleted";
-            
-            // Pop the checkmark
-            tick.classList.add('active');
-            
-            // Wait 2 seconds for the animation, then close everything
-            setTimeout(() => {
-                tick.classList.remove('active');
-                window.closeModal('delete-modal');
-            }, 2000);
-        } else {
-            window.closeModal('delete-modal');
-        }
-
-    } catch(e) {
-        // If a fatal crash occurs, unlock the UI so the user can try again
-        document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
-            .forEach(c => { c.style.opacity = '1'; c.style.pointerEvents = 'auto'; });
-        window.showToast('Failed to remove: ' + (e.message || 'Unknown error'), 'error');
-        console.error('confirmDelete error:', e);
-        if (btn) { btn.textContent = 'Delete Forever'; btn.disabled = false; }
     }
 };
 function subscribeAll() {
