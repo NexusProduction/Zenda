@@ -6746,7 +6746,7 @@ function generateTaskCard(t, tab, idx = 0) {
     const personName  = tab === 'assigned-by-me' ? (t.assignedToName || 'Team') : (t.assignedByName || 'Owner');
     const preposition = tab === 'assigned-by-me' ? 'For' : 'From';
 
-    // Left bar: status first, then priority for pending
+    // Left bar color
     let leftColor;
     if      (isDone)     leftColor = '#10B981';
     else if (isDeclined) leftColor = '#EF4444';
@@ -6766,7 +6766,7 @@ function generateTaskCard(t, tab, idx = 0) {
     }
     titleHtml += `</div>`;
 
-    // Right side
+    // Right side (Icons or Pills)
     let rightHtml = '';
     if (isDone) {
         rightHtml = `<span class="ztc-pill ztc-pill-done">Done</span>`;
@@ -6802,24 +6802,10 @@ function generateTaskCard(t, tab, idx = 0) {
         </div>`;
     }
 
-    // Accordion for assigner's pending tasks
-    const hasAccordion = tab === 'assigned-by-me' && isPending;
-    const accordionHtml = hasAccordion ? `
-        <div class="ztc-actions" id="ztc-actions-${t.id}">
-            <div class="ztc-adivider"></div>
-            <div class="ztc-btn-row">
-                <button class="ztc-action-btn ztc-btn-delete"
-                        onclick="event.stopPropagation(); window.openDeleteTaskModal('${t.id}','${esc(t.title)}')">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
-                    Delete Task
-                </button>
-            </div>
-        </div>` : '';
-
+    // Cleaned up output (No accordion, no onclick expansion)
     return `
-    <div class="zenda-task-card" id="task-${t.id}" style="animation-delay:${idx * 0.045}s"
-         ${hasAccordion ? `onclick="window.toggleTaskActions('${t.id}')"` : ''}>
-        <div class="ztc-main-row" style="${!hasAccordion ? 'cursor:default;' : ''}">
+    <div class="zenda-task-card" id="task-${t.id}" style="animation-delay:${idx * 0.045}s">
+        <div class="ztc-main-row" style="cursor:default;">
             <div class="ztc-left-bar" style="background:${leftColor};"></div>
             <div class="ztc-body">
                 ${titleHtml}
@@ -6831,9 +6817,11 @@ function generateTaskCard(t, tab, idx = 0) {
             </div>
             <div class="ztc-right">${rightHtml}</div>
         </div>
-        ${accordionHtml}
     </div>`;
 }
+
+// Ensure toggleTaskActions is safely emptied in case it's still being called anywhere
+window.toggleTaskActions = function(taskId) { return; };
 window.toggleTaskActions = function(taskId) {
     const card    = document.getElementById('task-' + taskId);
     const actions = document.getElementById('ztc-actions-' + taskId);
