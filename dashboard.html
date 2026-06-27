@@ -2593,9 +2593,9 @@
           <div class="content-card recent-wrap-order">
             <div class="content-hdr" style="padding: 24px 32px;">
               <div class="content-ttl" id="recent-ttl">Recent Tasks</div>
-              <button class="btn-outline" onclick="window.setTaskTab(window.CU.role === 'owner' ? 'assigned-by-me' : 'assigned-to-me');window.showView('tasks')">View All</button>
+              <button class="btn-outline" onclick="window.setMobScope('my'); window.setTaskTab('my-pending'); window.showView('tasks')">View All</button>
             </div>
-            <div id="recent-tasks" class="task-list-wrapper" style="padding:24px 32px;"></div>
+            <div id="recent-tasks" class="task-list-wrapper" style="padding:24px 32px; display:flex; flex-direction:column; gap:8px;"></div>
           </div>
         </div>
       </div>
@@ -6857,23 +6857,48 @@ window.toggleTaskActions = function(taskId) {
 window.renderRecentTasks = function() {
     const el = document.getElementById('recent-tasks');
     if (!el) return;
-    let recent = [];
     
-    // Recent assigned by me for owners, or assigned to me for staff
-    if (window.CU?.role === 'owner') {
-         recent = (window.assignedByMeTasks || []).filter(t => t.status === 'pending').slice(0, 5);
-    } else {
-         recent = (window.myTasks || []).filter(t => t.status === 'pending' && !window.isOverdue(t.dueDate)).slice(0, 5);
+    // 1. Get "My Work" (Pending & Not Overdue)
+    // We attach a hidden _listType so generateTaskCard knows to render the Tick/Cross
+    const myPending = (window.myTasks || [])
+        .filter(t => t.status === 'pending' && !window.isOverdue(t.dueDate))
+        .map(t => ({...t, _listType: 'assigned-to-me'}));
+        
+    // 2. Get "I Assigned" (Pending)
+    // We attach _listType so generateTaskCard knows to render the Trash icon
+    const assignedPending = (window.assignedByMeTasks || [])
+        .filter(t => t.status === 'pending')
+        .map(t => ({...t, _listType: 'assigned-by-me'}));
+        
+    // 3. Combine both lists
+    const combined = [...myPending, ...assignedPending];
+    
+    // 4. Remove duplicates (If you assign a task to YOURSELF, prioritize showing it as "My Work" so you can complete it)
+    const uniqueTasks = [];
+    const seenIds = new Set();
+    for (const t of combined) {
+        if (!seenIds.has(t.id)) {
+            seenIds.add(t.id);
+            uniqueTasks.push(t);
+        } else if (t._listType === 'assigned-to-me') {
+            const existingIdx = uniqueTasks.findIndex(x => x.id === t.id);
+            if (existingIdx !== -1) uniqueTasks[existingIdx] = t;
+        }
     }
     
+    // 5. Sort by Newest First and take EXACTLY the latest 4 tasks
+    uniqueTasks.sort((a, b) => b.createdAt - a.createdAt);
+    const recent = uniqueTasks.slice(0, 4);
+    
+    // Render Empty State if nothing is pending
     if (recent.length === 0) {
         el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--tx-muted); font-weight: 600;">No recent active tasks.</div>';
         return;
     }
     
-    el.innerHTML = recent.map((t, i) => generateTaskCard(t, window.CU?.role === 'owner' ? 'assigned-by-me' : 'assigned-to-me', i)).join('');
+    // Render the cards using their specific listType to enforce the correct hover actions!
+    el.innerHTML = recent.map((t, i) => generateTaskCard(t, t._listType, i)).join('');
 };
-
 window.openDeleteModal = function(uid, name, email, pwd) {
     deleteTargetUid = uid; deleteConfirmStr = name; deleteTargetEmail = email; deleteTargetPwd = pwd;
     const dn = document.getElementById('del-name-display'); if (dn) dn.textContent = name;
