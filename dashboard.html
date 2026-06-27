@@ -6846,19 +6846,17 @@ window.renderRecentTasks = function() {
     const el = document.getElementById('recent-tasks');
     if (!el) return;
     
-    // 1. Get "My Work" (Pending & Not Overdue)
-    // We attach a hidden _listType so generateTaskCard knows to render the Tick/Cross
+    // 1. Get "My Work" (Strictly Pending Tasks)
     const myPending = (window.myTasks || [])
-        .filter(t => t.status === 'pending' && !window.isOverdue(t.dueDate))
+        .filter(t => t.status === 'pending')
         .map(t => ({...t, _listType: 'assigned-to-me'}));
         
-    // 2. Get "I Assigned" (Pending)
-    // We attach _listType so generateTaskCard knows to render the Trash icon
+    // 2. Get "I Assigned" (Strictly Pending Tasks)
     const assignedPending = (window.assignedByMeTasks || [])
         .filter(t => t.status === 'pending')
         .map(t => ({...t, _listType: 'assigned-by-me'}));
         
-    // 3. Combine both lists
+    // 3. Combine both lists into one pool
     const combined = [...myPending, ...assignedPending];
     
     // 4. Remove duplicates (If you assign a task to YOURSELF, prioritize showing it as "My Work" so you can complete it)
@@ -6874,7 +6872,7 @@ window.renderRecentTasks = function() {
         }
     }
     
-    // 5. Sort by Newest First and take EXACTLY the latest 4 tasks
+    // 5. Sort by Newest First and grab exactly the latest 4 tasks
     uniqueTasks.sort((a, b) => b.createdAt - a.createdAt);
     const recent = uniqueTasks.slice(0, 4);
     
@@ -6884,7 +6882,7 @@ window.renderRecentTasks = function() {
         return;
     }
     
-    // Render the cards using their specific listType to enforce the correct hover actions!
+    // Map through the array and render each card using its mapped _listType
     el.innerHTML = recent.map((t, i) => generateTaskCard(t, t._listType, i)).join('');
 };
 window.openDeleteModal = function(uid, name, email, pwd) {
