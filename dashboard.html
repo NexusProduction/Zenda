@@ -4553,41 +4553,46 @@ window.deleteUserFromAuth = async function(email, pwd) {
     }
 };
 window.cleanupStaffTasks = async function(staffUid) {
-    try {
-        const batch = writeBatch(db);
+    if (!staffUid) {
+        console.error('[Zenda] cleanupStaffTasks called with no staffUid — skipping.');
+        return;
+    }
 
-        // 1. Tasks assigned TO the deleted staff
-        //    → Only decline PENDING tasks (skip done / already declined / overdue / deleted)
-        const assignedToSnap = await getDocs(
+    try {
+        // ── 1. Decline PENDING tasks assigned TO the deleted staff ──
+        // Skips: done, already declined, overdue, deleted
+        const toSnap = await getDocs(
             query(collection(db, 'tasks'), where('assignedTo', '==', staffUid))
         );
-        assignedToSnap.docs.forEach(taskDoc => {
-            const tData = taskDoc.data();
-            if (
-                tData.status === 'pending' &&
-                !window.isOverdue(tData.dueDate)
-            ) {
-                batch.update(taskDoc.ref, {
-                    status: 'declined',
-                    reason: '(Staff Deleted)',
+
+        for (const taskDoc of toSnap.docs) {
+            const t = taskDoc.data();
+            const overdue = typeof window.isOverdue === 'function'
+                ? window.isOverdue(t.dueDate)
+                : false;
+
+            if (t.status === 'pending' && !overdue) {
+                await updateDoc(taskDoc.ref, {
+                    status:        'declined',
+                    reason:        '(Staff Deleted)',
                     declineReason: '(Staff Deleted)'
                 });
             }
-            // done / declined / overdue / deleted tasks are left untouched
-        });
+        }
 
-        // 2. Tasks assigned BY the deleted staff to others
-        //    → Hard-delete them entirely (assigner no longer exists in company)
-        const assignedBySnap = await getDocs(
+        // ── 2. Hard-delete ALL tasks assigned BY the deleted staff ──
+        // (Their assignments to others become orphaned; remove them entirely)
+        const bySnap = await getDocs(
             query(collection(db, 'tasks'), where('assignedBy', '==', staffUid))
         );
-        assignedBySnap.docs.forEach(taskDoc => {
-            batch.delete(taskDoc.ref);
-        });
 
-        await batch.commit();
-    } catch(e) {
-        console.warn("Task cleanup failed:", e);
+        for (const taskDoc of bySnap.docs) {
+            await deleteDoc(taskDoc.ref);
+        }
+
+    } catch (e) {
+        console.error('[Zenda] cleanupStaffTasks FAILED:', e);
+        window.showToast('Warning: Task cleanup failed — ' + (e.message || 'check console'), 'error');
     }
 };
 window.confirmDelete = async function() {
