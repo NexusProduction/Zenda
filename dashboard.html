@@ -496,8 +496,9 @@
     #assign-tasks-btn-full:hover, #add-staff-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 102, 204, 0.35); }
 
     .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-    .sc-ico { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0 !important; }
-    .sc-ico svg { flex-shrink: 0 !important; min-width: 24px; min-height: 24px; }
+    .sc-ico { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0 !important; }
+.sc-ico svg { flex-shrink: 0 !important; width: 26px; height: 26px; }
+.sc-val { color: var(--tx-main); line-height: 1.05; }
     .sc-info { flex: 1; min-width: 0; }
     .sc-info .sc-lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; color: var(--tx-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
 
@@ -7130,36 +7131,84 @@ window.renderStaffCards = function(staffList) {
     }).join('');
 }
 window.updateAllStats = function() {
-    const combined = [...(window.myTasks||[]), ...(window.assignedByMeTasks||[])];
-    const uniqueMap = new Map();
-    combined.forEach(t => uniqueMap.set(t.id, t));
-    const unique = Array.from(uniqueMap.values());
-    
-    const p = unique.filter(t => t.status !== 'done' && t.status !== 'declined' && !window.isOverdue(t.dueDate)).length;
-    const d = unique.filter(t => t.status === 'done').length;
-    
-    if (window.CU?.role === 'owner') renderOwnerStats(p, d);
-    else renderNonOwnerStats(p, d);
+    const myWork = (window.myTasks || []).filter(t =>
+        t.status !== 'done' && t.status !== 'declined' && t.status !== 'deleted' && !window.isOverdue(t.dueDate)
+    ).length;
+    const iAssigned = (window.assignedByMeTasks || []).filter(t =>
+        t.status !== 'done' && t.status !== 'declined' && t.status !== 'deleted' && !window.isOverdue(t.dueDate)
+    ).length;
+    if (window.CU?.role === 'owner') renderOwnerStats(myWork, iAssigned);
+    else renderNonOwnerStats(myWork, iAssigned);
 };
 
-function sIco(bg, c, p) { return `<div style="background:${bg};color:${c};border-radius:18px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${p}</svg></div>`; }
+function sIco(bg, c, p) { return `<div class="sc-ico" style="background:${bg};color:${c};"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${p}</svg></div>`; }
 
-function renderOwnerStats(p = 0, d = 0) {
-  const staff = allStaff.filter(s => s.role !== 'owner');
-  const el = document.getElementById('stats-grid'); if (!el) return;
-  el.innerHTML = `<div class="stat-card" onclick="window.showView('staff')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${staff.length}</div></div>${sIco('#EEF2FF','#0066CC','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div>
-    <div class="stat-card" onclick="window.setTaskTab('assigned-by-me');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${p}</div></div>${sIco('#FFFBEB','#FF9500','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div>
-    <div class="stat-card" onclick="window.setTaskTab('done');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${d}</div></div>${sIco('#ECFDF5','#34C759','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
+function renderOwnerStats(myWork = 0, iAssigned = 0) {
+    const staffCount = (allStaff || []).length;
+    const el = document.getElementById('stats-grid');
+    if (!el) return;
+    el.innerHTML = `
+        <div class="stat-card" onclick="window.showView('staff')">
+            <div class="sc-top" style="display:flex;width:100%;align-items:flex-start;justify-content:space-between;gap:16px;">
+                <div class="sc-info">
+                    <div class="sc-lbl">Total Staff</div>
+                    <div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${staffCount}</div>
+                </div>
+                ${sIco('#EEF2FF','#0066CC','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}
+            </div>
+        </div>
+        <div class="stat-card" onclick="window.setTaskTab('my-pending');window.showView('tasks')">
+            <div class="sc-top" style="display:flex;width:100%;align-items:flex-start;justify-content:space-between;gap:16px;">
+                <div class="sc-info">
+                    <div class="sc-lbl">My Work</div>
+                    <div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${myWork}</div>
+                </div>
+                ${sIco('#FFFBEB','#FF9500','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}
+            </div>
+        </div>
+        <div class="stat-card" onclick="window.setTaskTab('del-pending');window.showView('tasks')">
+            <div class="sc-top" style="display:flex;width:100%;align-items:flex-start;justify-content:space-between;gap:16px;">
+                <div class="sc-info">
+                    <div class="sc-lbl">I Assigned</div>
+                    <div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${iAssigned}</div>
+                </div>
+                ${sIco('#F5F3FF','#7C3AED','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}
+            </div>
+        </div>`;
 }
-
-function renderNonOwnerStats(p = 0, d = 0) {
-  const isMgr = window.CU.role === 'manager'; const el = document.getElementById('stats-grid'); if (!el) return;
-  const staffCount = allStaff.filter(s => s.role !== 'owner').length;
-  el.innerHTML = isMgr
-    ? `<div class="stat-card" onclick="window.showView('staff')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${staffCount}</div></div>${sIco('#EEF2FF','#0066CC','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('assigned-to-me');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">My Pending</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${p}</div></div>${sIco('#FFFBEB','#FF9500','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('done');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${d}</div></div>${sIco('#ECFDF5','#34C759','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`
-    : `<div class="stat-card" onclick="window.showView('staff')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Total Staff</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${staffCount}</div></div>${sIco('#EEF2FF','#0066CC','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('assigned-to-me');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Pending</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${p}</div></div>${sIco('#FFFBEB','#FF9500','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}</div></div><div class="stat-card" onclick="window.setTaskTab('done');window.showView('tasks')"><div class="sc-top" style="display:flex;width:100%;align-items:center;"><div class="sc-info"><div class="sc-lbl">Completed</div><div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${d}</div></div>${sIco('#ECFDF5','#34C759','<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/>')}</div></div>`;
+function renderNonOwnerStats(myWork = 0, iAssigned = 0) {
+    const el = document.getElementById('stats-grid');
+    if (!el) return;
+    const staffCount = (allStaff || []).length;
+    el.innerHTML = `
+        <div class="stat-card" onclick="window.showView('staff')">
+            <div class="sc-top" style="display:flex;width:100%;align-items:flex-start;justify-content:space-between;gap:16px;">
+                <div class="sc-info">
+                    <div class="sc-lbl">Total Staff</div>
+                    <div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${staffCount}</div>
+                </div>
+                ${sIco('#EEF2FF','#0066CC','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>')}
+            </div>
+        </div>
+        <div class="stat-card" onclick="window.setTaskTab('my-pending');window.showView('tasks')">
+            <div class="sc-top" style="display:flex;width:100%;align-items:flex-start;justify-content:space-between;gap:16px;">
+                <div class="sc-info">
+                    <div class="sc-lbl">My Work</div>
+                    <div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${myWork}</div>
+                </div>
+                ${sIco('#FFFBEB','#FF9500','<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')}
+            </div>
+        </div>
+        <div class="stat-card" onclick="window.setTaskTab('del-pending');window.showView('tasks')">
+            <div class="sc-top" style="display:flex;width:100%;align-items:flex-start;justify-content:space-between;gap:16px;">
+                <div class="sc-info">
+                    <div class="sc-lbl">I Assigned</div>
+                    <div class="sc-val" style="font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;">${iAssigned}</div>
+                </div>
+                ${sIco('#F5F3FF','#7C3AED','<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>')}
+            </div>
+        </div>`;
 }
-
 function initCharts() { 
     const cv = document.getElementById('main-area-chart'); if (!cv) return; const c = cv.getContext('2d'); 
     const gr = c.createLinearGradient(0, 0, 0, 240); gr.addColorStop(0, 'rgba(0,102,204,.25)'); gr.addColorStop(1, 'rgba(0,102,204,0)'); 
