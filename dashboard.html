@@ -4496,46 +4496,60 @@ window.deleteUserFromAuth = async function(email, pwd) {
     }
 };
 window.cleanupStaffTasks = async function(staffUid) {
-    if (!staffUid) {
-        console.error('[Zenda] cleanupStaffTasks called with no staffUid — skipping.');
-        return;
-    }
+    if (!staffUid) return;
 
     try {
         // ── 1. Decline PENDING tasks assigned TO the deleted staff ──
-        // Skips: done, already declined, overdue, deleted
         const toSnap = await getDocs(
             query(collection(db, 'tasks'), where('assignedTo', '==', staffUid))
         );
 
         for (const taskDoc of toSnap.docs) {
             const t = taskDoc.data();
-            const overdue = typeof window.isOverdue === 'function'
-                ? window.isOverdue(t.dueDate)
-                : false;
+            if (t.status === 'pending' && !window.isOverdue(t.dueDate)) {
 
-            if (t.status === 'pending' && !overdue) {
+                // Write to Firestore
                 await updateDoc(taskDoc.ref, {
                     status:        'declined',
                     reason:        '(Staff Deleted)',
                     declineReason: '(Staff Deleted)'
                 });
+
+                // Also patch the in-memory arrays right now — don't wait for listener
+                for (const arr of ['assignedByMeTasks', 'myTasks']) {
+                    const local = (window[arr] || []).find(x => x.id === taskDoc.id);
+                    if (local) {
+                        local.status        = 'declined';
+                        local.reason        = '(Staff Deleted)';
+                        local.declineReason = '(Staff Deleted)';
+                    }
+                }
             }
         }
 
-        // ── 2. Hard-delete ALL tasks assigned BY the deleted staff ──
-        // (Their assignments to others become orphaned; remove them entirely)
+        // ── 2. Delete ALL tasks assigned BY the deleted staff ──
         const bySnap = await getDocs(
             query(collection(db, 'tasks'), where('assignedBy', '==', staffUid))
         );
 
         for (const taskDoc of bySnap.docs) {
             await deleteDoc(taskDoc.ref);
+
+            // Remove from in-memory arrays immediately
+            window.assignedByMeTasks = (window.assignedByMeTasks || [])
+                .filter(x => x.id !== taskDoc.id);
+            window.myTasks = (window.myTasks || [])
+                .filter(x => x.id !== taskDoc.id);
         }
+
+        // ── Force the UI to redraw right now ──
+        if (typeof window.renderTasksList  === 'function') window.renderTasksList();
+        if (typeof window.updateAllStats   === 'function') window.updateAllStats();
+        if (typeof window.renderRecentTasks === 'function') window.renderRecentTasks();
 
     } catch (e) {
         console.error('[Zenda] cleanupStaffTasks FAILED:', e);
-        window.showToast('Warning: Task cleanup failed — ' + (e.message || 'check console'), 'error');
+        window.showToast('Task cleanup failed: ' + (e.message || e), 'error');
     }
 };
 window.confirmDelete = async function() {
