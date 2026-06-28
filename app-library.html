@@ -624,66 +624,64 @@ window.openApp = function(id) {
 window.doUninstall = async function(id, btnElement) { 
     if(id === 'calendar') return; 
 
-    // 1. INSTANT UI UPDATE (Optimistic)
-    installedIds = installedIds.filter(x => x !== id); 
-    render(); 
-    window.showToast("App removed successfully.");
-
-    // 2. BACKGROUND SYNC
-    if(CU) {
-        try { 
-            if(typeof uninstallApp === 'function') await uninstallApp(CU.uid, id); 
-            Object.keys(localStorage).forEach(key => {
-                if(key.includes('app') || key.includes('zenda') || key.includes('install')) localStorage.removeItem(key);
-            });
-        } catch(e) { 
-            console.error("Firebase Uninstall Failed", e); 
-            installedIds.push(id); // Rollback on fail
-            render();
-            window.showToast("Uninstall failed. Please check connection.");
-        }
-    }
-};
-window.doUninstall = async function(id, btnElement) { 
-    if(id === 'calendar') return; // <-- Allowed inventory to be removed
-
-    // Optimistic UI: Immediately fade and hide card locally
+    // 1. ANIMATE & DESTROY (True Optimistic UI)
     const card = document.getElementById('app-card-' + id);
-    if(card) {
+    if (card) {
+        // Lock the card so it can't be clicked multiple times
+        card.style.pointerEvents = 'none';
+        
+        // Trigger the buttery fade-out and scale-down animation
         card.style.transition = 'all 0.3s cubic-bezier(0.22, 1, 0.36, 1)';
         card.style.opacity = '0.5';
         card.style.transform = 'scale(0.95)';
-        setTimeout(() => { card.style.display = 'none'; }, 300);
+        
+        // Wait for the animation to finish, then hide it from the grid
+        setTimeout(() => { 
+            card.style.display = 'none'; 
+            
+            // Update internal state without violently re-rendering the whole page
+            installedIds = installedIds.filter(x => x !== id);
+            
+            // Keep the big hero banner at the top synced!
+            const heroBtn = document.getElementById('fs-btn-' + id);
+            if(heroBtn) {
+                heroBtn.textContent = 'Install App';
+                heroBtn.onclick = function() { window.doInstall(id, this); };
+            }
+        }, 300);
+    } else {
+        // Fallback state
+        installedIds = installedIds.filter(x => x !== id);
     }
 
-    // Instantly trigger toast
+    // Fire the non-intrusive toast notification
     window.showToast("App removed successfully. (Undo)");
-    
-    if(CU) {
-        try { 
-            if(typeof uninstallApp === 'function') await uninstallApp(CU.uid, id); 
 
+    // 2. SILENT BACKGROUND SYNC
+    if (CU) {
+        try { 
+            if (typeof uninstallApp === 'function') await uninstallApp(CU.uid, id); 
+            
             // Clear caching aggressive bugs that trick the Dashboard
             Object.keys(localStorage).forEach(key => {
                 if(key.includes('app') || key.includes('zenda') || key.includes('install')) localStorage.removeItem(key);
             });
-
-            installedIds = installedIds.filter(x => x !== id); 
-        } catch(e) { 
+        } catch (e) { 
             console.error("Firebase Uninstall Failed", e); 
-            // Revert optimistic UI on failure
-            if(card) {
+            
+            // Rollback UI if the database connection fails
+            installedIds.push(id);
+            if (card) {
                 card.style.display = 'flex';
+                card.style.pointerEvents = 'auto';
                 setTimeout(() => {
                     card.style.opacity = '1';
                     card.style.transform = 'scale(1)';
-                }, 10);
+                }, 50);
             }
+            window.showToast("Uninstall failed. Please check connection.");
         }
     }
-    
-    // Re-render silently in the background
-    setTimeout(() => { render(); }, 800);
 };
 window.toggleNotify = async function(id, btnElement) {
     // 1. INSTANT UI UPDATE (Optimistic)
