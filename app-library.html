@@ -172,6 +172,12 @@ a { text-decoration: none; color: inherit; }
   display: flex; flex-direction: column; position: relative;
   transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease, border-color 0.3s ease;
 }
+
+/* We move the animation here so it ONLY runs on the first page load */
+.animate-init {
+  opacity: 0;
+  animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
 .app-card:hover { transform: translateY(-4px); box-shadow: 0 16px 32px rgba(0,0,0,0.06); border-color: var(--bd2); }
 
 @keyframes pulseHighlight {
@@ -387,7 +393,7 @@ const COMING_SOON = [
 let CU = null;
 let installedIds = ['calendar']; // Removed 'inventory' so it starts modular
 let notifyList = [];
-
+let isInitialRender = true;
 async function init() {
   let uid = null;
   try {
@@ -426,8 +432,11 @@ function render() {
   const igrid = document.getElementById('installed-grid');
   igrid.innerHTML = APPS.map((app, index) => {
     const inst = installedIds.includes(app.id);
+    const animClass = isInitialRender ? "animate-init" : "";
+    const animDelay = isInitialRender ? `style="animation-delay: ${index * 0.05}s"` : "";
+    
     return `
-      <div class="app-card" id="app-card-${app.id}" style="animation-delay: ${index * 0.05}s">
+      <div class="app-card ${animClass}" id="app-card-${app.id}" ${animDelay}>
         <div class="ac-top">
           <div class="ac-icon" style="background:${app.bg}">${app.icon}</div>
           <div class="ac-text">
@@ -440,7 +449,7 @@ function render() {
         <div class="ac-footer-min">
           <div class="ac-btns">
             ${inst
-              ? (app.id === 'calendar' || app.default // <-- Inventory constraint removed here
+              ? (app.id === 'calendar' || app.default
                   ? `<button class="btn-built-in" disabled><span>Built-in</span></button>`
                   : `<button class="btn-open" onclick="openApp('${app.id}')"><span>Open</span></button>
                      <button class="btn-remove" onclick="doUninstall('${app.id}', this)"><span>Remove</span><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>`)
@@ -453,8 +462,11 @@ function render() {
   const cgrid = document.getElementById('coming-grid');
   cgrid.innerHTML = COMING_SOON.map((app, index) => {
     const noted = notifyList.includes(app.id);
+    const animClass = isInitialRender ? "animate-init" : "";
+    const animDelay = isInitialRender ? `style="animation-delay: ${(APPS.length + index) * 0.05}s"` : "";
+    
     return `
-      <div class="app-card" id="app-card-${app.id}" style="animation-delay: ${(APPS.length + index) * 0.05}s">
+      <div class="app-card ${animClass}" id="app-card-${app.id}" ${animDelay}>
         <div class="ac-top">
           <div class="ac-icon" style="background:${app.bg}">${app.icon}</div>
           <div class="ac-text">
@@ -491,6 +503,9 @@ function render() {
       }
     }
   }
+  
+  // Disable animation for all future clicks
+  isInitialRender = false;
 }
 const searchContainer = document.getElementById('ab-search');
 const searchInput = document.getElementById('global-search');
@@ -606,37 +621,28 @@ window.showToast = function(msg) {
 window.openApp = function(id) { 
     window.location.href = `${id}.html`; 
 };
+window.doUninstall = async function(id, btnElement) { 
+    if(id === 'calendar') return; 
 
-window.doInstall = async function(id, btnElement) { 
-    // Hard Lock the UI
-    document.body.style.pointerEvents = 'none';
-    document.body.style.cursor = 'wait';
+    // 1. INSTANT UI UPDATE (Optimistic)
+    installedIds = installedIds.filter(x => x !== id); 
+    render(); 
+    window.showToast("App removed successfully.");
 
-    if(btnElement) {
-        btnElement.innerHTML = '<span>Installing...</span>';
-        btnElement.style.opacity = '0.5';
-    }
-    
+    // 2. BACKGROUND SYNC
     if(CU) {
         try { 
-            if(typeof installApp === 'function') await installApp(CU.uid, id); 
-            
-            // Clear caching aggressive bugs
+            if(typeof uninstallApp === 'function') await uninstallApp(CU.uid, id); 
             Object.keys(localStorage).forEach(key => {
                 if(key.includes('app') || key.includes('zenda') || key.includes('install')) localStorage.removeItem(key);
             });
-
-            installedIds = [...new Set([...installedIds, id])];
-            window.showToast("App Successfully Installed!");
-        } catch(e) { console.error("Firebase Install Failed", e); }
+        } catch(e) { 
+            console.error("Firebase Uninstall Failed", e); 
+            installedIds.push(id); // Rollback on fail
+            render();
+            window.showToast("Uninstall failed. Please check connection.");
+        }
     }
-    
-    // Force a delay to let Firebase packets finish before freeing UI
-    setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.cursor = 'default';
-        render(); 
-    }, 800);
 };
 window.doUninstall = async function(id, btnElement) { 
     if(id === 'calendar') return; // <-- Allowed inventory to be removed
@@ -680,22 +686,18 @@ window.doUninstall = async function(id, btnElement) {
     setTimeout(() => { render(); }, 800);
 };
 window.toggleNotify = async function(id, btnElement) {
-    if(btnElement) {
-        btnElement.style.pointerEvents = 'none';
-        btnElement.style.opacity = '0.7';
-    }
-    
+    // 1. INSTANT UI UPDATE (Optimistic)
     const noted = notifyList.includes(id);
     if(noted) notifyList = notifyList.filter(x => x !== id);
     else notifyList.push(id);
-    
+    render();
+
+    // 2. BACKGROUND SYNC
     if(CU) {
         try { await updateDoc(doc(db,'users',CU.uid), { notifyApps: notifyList }); }
         catch(e) { console.error(e); }
     }
-    render();
 };
-
 init();
 </script>
 </body>
