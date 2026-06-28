@@ -4523,7 +4523,7 @@ window.renderNotifs = function(items) {
   const innerBadge = document.getElementById('notif-count-badge');
   
   if (!activeNotifs.length) {
-    el.innerHTML = `<div class="empty" style="padding:60px 20px;text-align:center;"><div style="margin-bottom:16px;display:flex;justify-content:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div style="color:var(--tx-main);font-size:1rem;font-weight:700;">You're all caught up!</div></div>`;
+    el.innerHTML = `<div class="empty" id="tab-empty-state" style="padding:60px 20px;text-align:center;"><div style="margin-bottom:16px;display:flex;justify-content:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div style="color:var(--tx-main);font-size:1rem;font-weight:700;">You're all caught up!</div></div>`;
     if (topBadge) { topBadge.classList.add('hidden'); topBadge.textContent = '0'; }
     if (innerBadge) { innerBadge.classList.add('hidden'); innerBadge.textContent = '0'; }
     return;
@@ -4651,30 +4651,44 @@ window.renderNotifs = function(items) {
       }
     };
     window.filterNotifTab = function(cat, btn) {
-        document.querySelectorAll('#notif-tab-row .ntab').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
-        
-        let visibleCount = 0;
-        document.querySelectorAll('#notif-body .notif-card').forEach(card => {
-            if (cat === 'all' || card.dataset.cat === cat) {
-                card.style.display = 'flex';
-                visibleCount++;
-            } else {
-                card.style.display = 'none';
-            }
-        });
-        
-        // Handle empty state independently per tab
-        let emptyState = document.getElementById('tab-empty-state');
-        if (!emptyState) {
-            emptyState = document.createElement('div');
-            emptyState.id = 'tab-empty-state';
-            emptyState.className = 'empty';
-            emptyState.innerHTML = `<div style="padding:60px 20px;text-align:center;animation:fadeIn 0.3s ease;"><div style="margin-bottom:16px;display:flex;justify-content:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div style="color:var(--tx-main);font-size:1rem;font-weight:700;">You're all caught up!</div></div>`;
-            document.getElementById('notif-body').appendChild(emptyState);
+    document.querySelectorAll('#notif-tab-row .ntab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    
+    let visibleCount = 0;
+    document.querySelectorAll('#notif-body .notif-card').forEach(card => {
+        if (cat === 'all' || card.dataset.cat === cat) {
+            card.style.display = 'flex';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
         }
-        emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
-    };
+    });
+    
+    // --- BUG FIX: Prevent duplicate empty states ---
+    
+    // 1. Look for any existing empty state (by ID OR by class)
+    let emptyState = document.getElementById('tab-empty-state') || document.querySelector('#notif-body .empty');
+    
+    // 2. Clear out any accidental duplicates that might already exist
+    document.querySelectorAll('#notif-body .empty').forEach(el => {
+        if (el !== emptyState) el.remove();
+    });
+
+    // 3. Create it only if it truly doesn't exist
+    if (!emptyState) {
+        emptyState = document.createElement('div');
+        emptyState.id = 'tab-empty-state';
+        emptyState.className = 'empty';
+        emptyState.innerHTML = `<div style="padding:60px 20px;text-align:center;animation:fadeIn 0.3s ease;"><div style="margin-bottom:16px;display:flex;justify-content:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--tx-muted)" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div style="color:var(--tx-main);font-size:1rem;font-weight:700;">You're all caught up!</div></div>`;
+        document.getElementById('notif-body').appendChild(emptyState);
+    } else {
+        // Ensure the ID is firmly attached to the initial div so it's always tracked
+        emptyState.id = 'tab-empty-state';
+    }
+    
+    // 4. Toggle visibility based on notification count
+    emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+};
 window.markNotifRead = async function(notifId) {
     const el = document.querySelector(`.notif-item[data-id="${notifId}"]`);
     if (el) el.style.display = 'none';
