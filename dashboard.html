@@ -8159,12 +8159,19 @@ const APPS = {
   inventory:  { label: 'Inventory',  icon: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>', bg: 'linear-gradient(135deg,#FF9500,#E68600)' },
   expenses:   { label: 'Expenses',   icon: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', bg: 'linear-gradient(135deg,#FF3B30,#E3342B)' }
 };
-
 function buildAppsGrid(ids) {
   const el = document.getElementById('apps-grid'); if (!el) return;
-  const all = ['calendar', 'inventory', ...(ids || []).filter(i => i !== 'calendar' && i !== 'inventory')];
+  
+  // THE FIX: We removed 'inventory' from this hardcoded array. 
+  // Now, Calendar is the ONLY native app. Everything else obeys Firebase.
+  const all = ['calendar', ...(ids || []).filter(i => i !== 'calendar')];
+  
   const vis = all.slice(0, 15), hm = all.length > 15;
-  el.innerHTML = vis.map(id => { const a = APPS[id]; if (!a) return ''; return `<div class="app-squircle-wrap" onclick="window.openApp('${id}')"><div class="app-squircle" style="background:${a.bg};">${a.icon}</div><span class="app-name">${a.label}</span></div>`; }).join('') + `<div class="app-squircle-wrap" onclick="window.openAppLib()"><div class="app-viewall-tile"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div><span class="app-name" style="color:var(--ac);font-weight:800;">${hm ? '+' + (all.length - 15) + ' More' : 'View All'}</span></div>`;
+  el.innerHTML = vis.map(id => { 
+      const a = APPS[id]; 
+      if (!a) return ''; 
+      return `<div class="app-squircle-wrap" onclick="window.openApp('${id}')"><div class="app-squircle" style="background:${a.bg};">${a.icon}</div><span class="app-name">${a.label}</span></div>`; 
+  }).join('') + `<div class="app-squircle-wrap" onclick="window.openAppLib()"><div class="app-viewall-tile"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div><span class="app-name" style="color:var(--ac);font-weight:800;">${hm ? '+' + (all.length - 15) + ' More' : 'View All'}</span></div>`;
 }
 
 window.openApp = function(id) { const m = {calendar: 'calendar.html', inventory: 'inventory.html', expenses: 'expenses.html'}; const f = m[id]; if (f) location.href = f + (window.CU?.uid ? '?uid=' + window.CU.uid : ''); else window.showToast('App not found!', 'error'); };
