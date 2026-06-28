@@ -5458,56 +5458,39 @@ window.deleteUserFromAuth = async function(email, pwd) {
 };
 window.cleanupStaffTasks = async function(staffUid) {
     if (!staffUid) return;
-
+    console.log('[Zenda] cleanupStaffTasks called for:', staffUid);
     try {
-        // ── 1. Decline PENDING tasks assigned TO the deleted staff ──
         const toSnap = await getDocs(
             query(collection(db, 'tasks'), where('assignedTo', '==', staffUid))
         );
-
+        console.log('[Zenda] Tasks assigned TO staff:', toSnap.size);
         for (const taskDoc of toSnap.docs) {
             const t = taskDoc.data();
-            if (t.status === 'pending' && !window.isOverdue(t.dueDate)) {
-
-                // Write to Firestore
+            if (t.status === 'pending') {
                 await updateDoc(taskDoc.ref, {
-                    status:        'declined',
-                    reason:        '(Staff Deleted)',
+                    status: 'declined',
+                    reason: '(Staff Deleted)',
                     declineReason: '(Staff Deleted)'
                 });
-
-                // Also patch the in-memory arrays right now — don't wait for listener
-                for (const arr of ['assignedByMeTasks', 'myTasks']) {
-                    const local = (window[arr] || []).find(x => x.id === taskDoc.id);
-                    if (local) {
-                        local.status        = 'declined';
-                        local.reason        = '(Staff Deleted)';
-                        local.declineReason = '(Staff Deleted)';
-                    }
-                }
+                ['assignedByMeTasks','myTasks'].forEach(arr => {
+                    const local = (window[arr]||[]).find(x => x.id === taskDoc.id);
+                    if (local) { local.status='declined'; local.reason='(Staff Deleted)'; local.declineReason='(Staff Deleted)'; }
+                });
             }
         }
-
-        // ── 2. Delete ALL tasks assigned BY the deleted staff ──
         const bySnap = await getDocs(
             query(collection(db, 'tasks'), where('assignedBy', '==', staffUid))
         );
-
+        console.log('[Zenda] Tasks assigned BY staff:', bySnap.size);
         for (const taskDoc of bySnap.docs) {
             await deleteDoc(taskDoc.ref);
-
-            // Remove from in-memory arrays immediately
-            window.assignedByMeTasks = (window.assignedByMeTasks || [])
-                .filter(x => x.id !== taskDoc.id);
-            window.myTasks = (window.myTasks || [])
-                .filter(x => x.id !== taskDoc.id);
+            window.assignedByMeTasks = (window.assignedByMeTasks||[]).filter(x => x.id !== taskDoc.id);
+            window.myTasks = (window.myTasks||[]).filter(x => x.id !== taskDoc.id);
         }
-
-        // ── Force the UI to redraw right now ──
-        if (typeof window.renderTasksList  === 'function') window.renderTasksList();
-        if (typeof window.updateAllStats   === 'function') window.updateAllStats();
+        if (typeof window.renderTasksList === 'function') window.renderTasksList();
+        if (typeof window.updateAllStats === 'function') window.updateAllStats();
         if (typeof window.renderRecentTasks === 'function') window.renderRecentTasks();
-
+        console.log('[Zenda] Task cleanup complete.');
     } catch (e) {
         console.error('[Zenda] cleanupStaffTasks FAILED:', e);
         window.showToast('Task cleanup failed: ' + (e.message || e), 'error');
@@ -5520,107 +5503,69 @@ window.confirmDelete = async function() {
     const btn = document.getElementById('del-confirm-btn');
     if (btn) { btn.textContent = 'Removing…'; btn.disabled = true; }
 
-    // Visually dim the card in the background immediately
     document.querySelectorAll(`.team-card[data-uid="${uid}"]`)
         .forEach(c => { c.style.opacity = '0.4'; c.style.pointerEvents = 'none'; });
 
     try {
-        // 1. Fetch exact email & password directly from the DB BEFORE deleting it
+        // 1. Fetch fresh credentials before deleting
         let targetEmail = window.deleteTargetEmail;
-        let targetPwd = window.deleteTargetPwd;
-        
-        const freshSnap = await getDoc(doc(db, 'users', uid));
-        if (freshSnap.exists()) {
-            const data = freshSnap.data();
-            targetEmail = data.email || targetEmail;
-            targetPwd = data.passwordHint || data.password || targetPwd;
-        }
+        let targetPwd   = window.deleteTargetPwd;
+        try {
+            const freshSnap = await getDoc(doc(db, 'users', uid));
+            if (freshSnap.exists()) {
+                const d = freshSnap.data();
+                targetEmail = d.email       || targetEmail;
+                targetPwd   = d.passwordHint || d.password || targetPwd;
+            }
+        } catch(e) { console.warn('Fresh fetch failed:', e); }
 
-        // 2. Wipe from Firebase Auth FIRST (Critical order of operations)
+        // 2. Delete Firebase Auth user
         if (typeof window.deleteUserFromAuth === 'function') {
             await window.deleteUserFromAuth(targetEmail, targetPwd);
         }
 
-        // 3. Delete from Firestore Database
+        // 3. Delete Firestore user document
         await deleteDoc(doc(db, 'users', uid));
-        
-        // 4. Move pending tasks to Declined + delete tasks Ram assigned to others
-        try {
-            // Tasks assigned TO the deleted staff → decline if pending
-            const toSnap = await getDocs(
-                query(collection(db, 'tasks'), where('assignedTo', '==', uid))
-            );
-            for (const t of toSnap.docs) {
-                if (t.data().status === 'pending') {
-                    await updateDoc(t.ref, {
-                        status: 'declined',
-                        reason: '(Staff Deleted)',
-                        declineReason: '(Staff Deleted)'
-                    });
-                    // Update local array instantly — no waiting for listener
-                    const local = (window.assignedByMeTasks || []).find(x => x.id === t.id);
-                    if (local) { local.status = 'declined'; local.reason = '(Staff Deleted)'; local.declineReason = '(Staff Deleted)'; }
-                }
-            }
-            // Tasks assigned BY the deleted staff to others → hard delete
-            const bySnap = await getDocs(
-                query(collection(db, 'tasks'), where('assignedBy', '==', uid))
-            );
-            for (const t of bySnap.docs) {
-                await deleteDoc(t.ref);
-                window.assignedByMeTasks = (window.assignedByMeTasks||[]).filter(x => x.id !== t.id);
-                window.myTasks = (window.myTasks||[]).filter(x => x.id !== t.id);
-            }
-            // Force UI to show the changes immediately
-            if (typeof window.renderTasksList === 'function') window.renderTasksList();
-            if (typeof window.updateAllStats === 'function') window.updateAllStats();
-        } catch (taskErr) {
-            console.error('Task cleanup error:', taskErr);
-            window.showToast('Task cleanup failed: ' + taskErr.message, 'error');
-        }
 
-        // 5. Safely delete from custom backend (if applicable)
+        // 4. Run staff.js custom deletion (if any)
         if (typeof deleteStaffMember === 'function') {
-            try { await deleteStaffMember(uid, targetEmail, targetPwd); } catch(e) { console.warn(e); }
+            try { await deleteStaffMember(uid, targetEmail, targetPwd); } catch(e) { console.warn('deleteStaffMember:', e); }
         }
 
-        // 6. Safely clean up pending notifications 
+        // 5. ── TASK CLEANUP (runs LAST so nothing can overwrite it) ──
+        await window.cleanupStaffTasks(uid);
+
+        // 6. Clean up pending delete-request notifications
         if (window.CU && window.CU.uid) {
             try {
                 const batch = writeBatch(db);
-                const reqSnap = await getDocs(query(collection(db, 'users', window.CU.uid, 'notifications'), where('type', '==', 'staff_delete_request'), where('targetUid', '==', uid)));
-
+                const reqSnap = await getDocs(query(
+                    collection(db, 'users', window.CU.uid, 'notifications'),
+                    where('type', '==', 'staff_delete_request'),
+                    where('targetUid', '==', uid)
+                ));
                 reqSnap.docs.forEach(d => {
                     const nData = d.data();
-                    batch.delete(d.ref); 
+                    batch.delete(d.ref);
                     if (nData.requesterId) {
-                        const staffNotifRef = doc(collection(db, 'users', nData.requesterId, 'notifications'));
-                        batch.set(staffNotifRef, {
+                        batch.set(doc(collection(db, 'users', nData.requesterId, 'notifications')), {
                             type: 'system',
-                            message: `Your request to remove "${nData.targetName || window.deleteTargetName}" was dismissed because they were already removed from the team by the owner.`,
-                            read: false,
-                            createdAt: Date.now(),
-                            status: 'unread'
+                            message: `"${nData.targetName || window.deleteTargetName}" was already removed from the team.`,
+                            read: false, createdAt: Date.now(), status: 'unread'
                         });
                     }
                 });
-                await batch.commit(); 
-            } catch(e) {
-                console.warn("Notification cleanup failed:", e);
-            }
+                await batch.commit();
+            } catch(e) { console.warn('Notification cleanup:', e); }
         }
 
-        // 7. TRIGGER SUCCESS OVERLAY & CLOSE MODAL
-        const tick = document.getElementById('delete-staff-success-tick');
+        // 7. Show success tick and close
+        const tick   = document.getElementById('delete-staff-success-tick');
         const textEl = document.getElementById('delete-staff-success-text');
-        
         if (tick && textEl) {
-            textEl.textContent = "Staff Deleted";
+            textEl.textContent = 'Staff Deleted';
             tick.classList.add('active');
-            setTimeout(() => {
-                tick.classList.remove('active');
-                window.closeModal('delete-modal');
-            }, 2000);
+            setTimeout(() => { tick.classList.remove('active'); window.closeModal('delete-modal'); }, 2000);
         } else {
             window.closeModal('delete-modal');
         }
