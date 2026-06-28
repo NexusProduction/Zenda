@@ -1,74 +1,44 @@
-// =============================================
-//  ZENDA — Mini Apps System
-// =============================================
-
 import { db } from './firebase-config.js';
-import {
-  doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ---- App Registry ----
-export const APP_REGISTRY = {
-  inventory: {
-    id: 'inventory',
-    name: 'Inventory',
-    icon: '📦',
-    path: 'inventory.html',
-    desc: 'Track stock, warehouses, and product movement.',
-    bgColor: '#FFFBEB',
-    default: true
-  },
-  calendar: {
-    id: 'calendar',
-    name: 'Calendar',
-    icon: '📅',
-    path: 'calendar.html',
-    desc: 'Schedule events, view tasks, and team timelines.',
-    bgColor: '#ECFDF5',
-    default: false
-  },
-  // ADD THIS EXPENSES BLOCK:
-  expenses: {
-    id: 'expenses',
-    name: 'Expenses',
-    icon: '💳',
-    path: 'expenses.html',
-    desc: 'Track costs, categorize spending, and sync inventory purchases.',
-    bgColor: '#FEF2F2',
-    default: false
-  }
+export const getInstalledApps = async (uid) => {
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (snap.exists() && snap.data().installedApps) {
+        let apps = snap.data().installedApps;
+        // Master Override: Force core apps to always exist
+        if (!apps.includes('inventory')) apps.push('inventory');
+        if (!apps.includes('calendar')) apps.push('calendar');
+        return apps;
+    }
+    return ['calendar', 'inventory'];
 };
 
-// ---- Get installed apps for a user ----
-export async function getInstalledApps(uid) {
-  const snap = await getDoc(doc(db, 'installedApps', uid));
-  if (snap.exists()) {
-    return snap.data().apps || ['calendar'];
-  }
-  // Initialize with default
-  await setDoc(doc(db, 'installedApps', uid), { apps: ['calendar', 'inventory'] });
-  return ['calendar'];
-}
+export const listenInstalledApps = (uid, callback) => {
+    return onSnapshot(doc(db, 'users', uid), (snap) => {
+        if (snap.exists() && snap.data().installedApps) {
+            let apps = snap.data().installedApps;
+            // Master Override: Force core apps to always exist
+            if (!apps.includes('inventory')) apps.push('inventory');
+            if (!apps.includes('calendar')) apps.push('calendar');
+            callback(apps);
+        } else {
+            callback(['calendar', 'inventory']);
+        }
+    });
+};
 
-// ---- Listen to installed apps (real-time) ----
-export function listenInstalledApps(uid, onUpdate) {
-  return onSnapshot(doc(db, 'installedApps', uid), snap => {
-    const apps = snap.exists() ? (snap.data().apps || ['calendar', 'inventory']) : ['calendar', 'inventory'];
-    onUpdate(apps);
-  });
-}
+export const installApp = async (uid, appId) => {
+    await updateDoc(doc(db, 'users', uid), {
+        installedApps: arrayUnion(appId)
+    });
+};
 
-// ---- Install an app ----
-export async function installApp(uid, appId) {
-  await setDoc(doc(db, 'installedApps', uid), { apps: arrayUnion(appId) }, { merge: true });
-}
-
-// ---- Uninstall an app ----
-export async function uninstallApp(uid, appId) {
-  if (APP_REGISTRY[appId]?.default) return; // Can't uninstall defaults
-  await updateDoc(doc(db, 'installedApps', uid), { apps: arrayRemove(appId) });
-}
-
+export const uninstallApp = async (uid, appId) => {
+    if (appId === 'calendar' || appId === 'inventory') return; // Database protection
+    await updateDoc(doc(db, 'users', uid), {
+        installedApps: arrayRemove(appId)
+    });
+};
 // ---- Render home apps grid ----
 export function renderAppsGrid(installedAppIds, container, onAppClick, onLibraryClick) {
   if (!container) return;
