@@ -8,11 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text x='16' y='23' font-size='22' font-family='sans-serif' font-weight='900' fill='white' text-anchor='middle'>Z</text></svg>">
 <style>
-/* ─────────────────────────────────────────
-   DESIGN TOKENS — Clean White Enterprise
-───────────────────────────────────────── */
 :root {
-  --bg:   #FFFFFF;
+  --bg:   #F3F4F6; /* Changed from #FFFFFF to light cool-gray */
   --sf:   #FFFFFF;
   --sf2:  #F9FAFB;
   --sf3:  #F3F4F6;
@@ -33,7 +30,6 @@
   --slide-c-bg: linear-gradient(135deg, #34C759 0%, #28A745 100%);
   --slide-d-bg: linear-gradient(135deg, #FF3B30 0%, #E3342B 100%);
 }
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -240,7 +236,37 @@ a { text-decoration: none; color: inherit; }
 .btn-notify.notified { background: transparent; color: var(--red); border-color: var(--red); box-shadow: none; transform: translateY(0); }
 .btn-notify.notified:hover { background: var(--red); color: white; border-color: var(--red); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,0.25); }
 .btn-notify.notified:active { transform: scale(0.94); background: #991B1B; color: white; border-color: #991B1B; box-shadow: inset 0 3px 6px rgba(0,0,0,0.2); }
+/* ─────────────────────────────────────────
+   POLISH: CASCADING LOAD & DOODLES
+───────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
+.featured-wrap {
+  opacity: 0;
+  animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.app-card {
+  opacity: 0;
+  animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.twinkle-deco {
+  position: absolute;
+  color: var(--ac);
+  opacity: 0.15;
+  pointer-events: none;
+  animation: floatTwinkle 4s ease-in-out infinite;
+  z-index: -1;
+}
+
+@keyframes floatTwinkle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(5deg); }
+}
 </style>
 </head>
 <body>
@@ -300,14 +326,16 @@ a { text-decoration: none; color: inherit; }
   </div>
 
   <div class="section" id="section-installed">
-    <div class="section-hdr">
+    <div class="section-hdr" style="position: relative;">
+      <svg class="twinkle-deco" style="left: -30px; top: -15px; width: 40px; height: 40px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5l-10 14M6.5 6.5l11 11M2 12h20M5 17l14-10M6.5 17.5l11-11"/></svg>
       <div class="section-ttl">My Apps</div>
     </div>
     <div class="app-grid" id="installed-grid"></div>
   </div>
 
   <div class="section" id="section-coming">
-    <div class="section-hdr">
+    <div class="section-hdr" style="position: relative;">
+      <svg class="twinkle-deco" style="right: -20px; top: -10px; width: 32px; height: 32px; transform: scaleX(-1);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/></svg>
       <div class="section-ttl">Coming Soon</div>
     </div>
     <div class="app-grid" id="coming-grid"></div>
@@ -356,9 +384,8 @@ const COMING_SOON = [
   { id:'chat',      name:'Team Chat',   icon:SVGS.chat,      cat:'Comms',   desc:'Because emails are so 2010. Real-time banter & GIF sharing.', bg:'linear-gradient(135deg,#EC4899,#BE185D)' },
   { id:'analytics', name:'Analytics',   icon:SVGS.analytics, cat:'Data',    desc:'Beautiful pie charts that make you look exceptionally smart.', bg:'linear-gradient(135deg,#06B6D4,#0369A1)' }
 ];
-
 let CU = null;
-let installedIds = ['calendar', 'inventory'];
+let installedIds = ['calendar']; // Removed 'inventory' so it starts modular
 let notifyList = [];
 
 async function init() {
@@ -375,11 +402,10 @@ async function init() {
     });
   }
   
-  // SECURITY GUARD: If still no user, wipe dead data and redirect
   if(!uid) {
     sessionStorage.removeItem('zenda_user');
     window.location.replace('login.html');
-    return; // Stops the rest of the page from loading
+    return; 
   }
   
   if(uid) {
@@ -389,19 +415,19 @@ async function init() {
       if(snap.exists()) { notifyList = snap.data().notifyApps || []; }
     } catch(e) {}
     
-    installedIds = await getInstalledApps(uid).catch(()=>['calendar', 'inventory']);
+    // Removed 'inventory' from fallback so it can be natively installed/uninstalled
+    installedIds = await getInstalledApps(uid).catch(()=>['calendar']);
   }
   
   render();
   startAuto();
 }
-
 function render() {
   const igrid = document.getElementById('installed-grid');
-  igrid.innerHTML = APPS.map(app => {
+  igrid.innerHTML = APPS.map((app, index) => {
     const inst = installedIds.includes(app.id);
     return `
-      <div class="app-card" id="app-card-${app.id}">
+      <div class="app-card" id="app-card-${app.id}" style="animation-delay: ${index * 0.05}s">
         <div class="ac-top">
           <div class="ac-icon" style="background:${app.bg}">${app.icon}</div>
           <div class="ac-text">
@@ -414,7 +440,7 @@ function render() {
         <div class="ac-footer-min">
           <div class="ac-btns">
             ${inst
-              ? (app.id === 'calendar' || app.id === 'inventory' || app.default
+              ? (app.id === 'calendar' || app.default // <-- Inventory constraint removed here
                   ? `<button class="btn-built-in" disabled><span>Built-in</span></button>`
                   : `<button class="btn-open" onclick="openApp('${app.id}')"><span>Open</span></button>
                      <button class="btn-remove" onclick="doUninstall('${app.id}', this)"><span>Remove</span><svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>`)
@@ -425,10 +451,10 @@ function render() {
   }).join('');
 
   const cgrid = document.getElementById('coming-grid');
-  cgrid.innerHTML = COMING_SOON.map(app => {
+  cgrid.innerHTML = COMING_SOON.map((app, index) => {
     const noted = notifyList.includes(app.id);
     return `
-      <div class="app-card" id="app-card-${app.id}">
+      <div class="app-card" id="app-card-${app.id}" style="animation-delay: ${(APPS.length + index) * 0.05}s">
         <div class="ac-top">
           <div class="ac-icon" style="background:${app.bg}">${app.icon}</div>
           <div class="ac-text">
@@ -452,12 +478,7 @@ function render() {
   }).join('');
 
   // CAROUSEL BUTTON SYNC
-  const featuredData = {
-    'inventory': 'Open Workspace',
-    'calendar': 'View Schedule',
-    'expenses': 'Manage Costs'
-  };
-
+  const featuredData = { 'inventory': 'Open Workspace', 'calendar': 'View Schedule', 'expenses': 'Manage Costs' };
   for (const [id, defaultText] of Object.entries(featuredData)) {
     const btn = document.getElementById('fs-btn-' + id);
     if (btn) {
@@ -471,10 +492,6 @@ function render() {
     }
   }
 }
-
-// ─────────────────────────────────────────────────
-// DESKTOP SEARCH LOGIC
-// ─────────────────────────────────────────────────
 const searchContainer = document.getElementById('ab-search');
 const searchInput = document.getElementById('global-search');
 const searchDropdown = document.getElementById('search-dropdown');
@@ -621,18 +638,20 @@ window.doInstall = async function(id, btnElement) {
         render(); 
     }, 800);
 };
-
 window.doUninstall = async function(id, btnElement) { 
-    if(id === 'calendar' || id === 'inventory') return; // <-- ADD THIS LINE
+    if(id === 'calendar') return; // <-- Allowed inventory to be removed
 
-    // Hard Lock the UI
-    document.body.style.pointerEvents = 'none';
-    document.body.style.cursor = 'wait';
-
-    if(btnElement) {
-        btnElement.innerHTML = '<span>Removing...</span>';
-        btnElement.style.opacity = '0.5';
+    // Optimistic UI: Immediately fade and hide card locally
+    const card = document.getElementById('app-card-' + id);
+    if(card) {
+        card.style.transition = 'all 0.3s cubic-bezier(0.22, 1, 0.36, 1)';
+        card.style.opacity = '0.5';
+        card.style.transform = 'scale(0.95)';
+        setTimeout(() => { card.style.display = 'none'; }, 300);
     }
+
+    // Instantly trigger toast
+    window.showToast("App removed successfully. (Undo)");
     
     if(CU) {
         try { 
@@ -644,18 +663,22 @@ window.doUninstall = async function(id, btnElement) {
             });
 
             installedIds = installedIds.filter(x => x !== id); 
-            window.showToast("App Successfully Removed!");
-        } catch(e) { console.error("Firebase Uninstall Failed", e); }
+        } catch(e) { 
+            console.error("Firebase Uninstall Failed", e); 
+            // Revert optimistic UI on failure
+            if(card) {
+                card.style.display = 'flex';
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'scale(1)';
+                }, 10);
+            }
+        }
     }
     
-    // Force a delay to let Firebase packets finish before freeing UI
-    setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.cursor = 'default';
-        render(); 
-    }, 800);
+    // Re-render silently in the background
+    setTimeout(() => { render(); }, 800);
 };
-
 window.toggleNotify = async function(id, btnElement) {
     if(btnElement) {
         btnElement.style.pointerEvents = 'none';
