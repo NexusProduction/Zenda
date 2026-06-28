@@ -43,11 +43,11 @@ export const APP_REGISTRY = {
 export async function getInstalledApps(uid) {
   const snap = await getDoc(doc(db, 'installedApps', uid));
   if (snap.exists()) {
-    return snap.data().apps || ['calendar', 'inventory'];
+    return snap.data().apps || ['calendar'];
   }
   // Initialize with default
   await setDoc(doc(db, 'installedApps', uid), { apps: ['calendar', 'inventory'] });
-  return ['calendar', 'inventory'];
+  return ['calendar'];
 }
 
 // ---- Listen to installed apps (real-time) ----
