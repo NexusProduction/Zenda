@@ -2758,8 +2758,6 @@ document.addEventListener('click', e => {
     wrap.querySelector('.cat-picker-trigger')?.classList.remove('open');
   }
 });
-
-// ── INIT ──
 async function init(){
   const urlUid=new URLSearchParams(location.search).get('uid');
   const rawSession=sessionStorage.getItem('zenda_user');
@@ -2819,14 +2817,16 @@ async function init(){
     if (modalBtn) modalBtn.textContent = 'Request';
     if (modalSub) modalSub.textContent = 'Send creation request to owner';
   }
-  if (reviewCreateTarget) {
+
+  // FIX: Added typeof check to prevent strict-mode ReferenceError crashes
+  if (typeof reviewCreateTarget !== 'undefined' && reviewCreateTarget) {
     getDoc(doc(db, 'users', CU.uid, 'notifications', reviewCreateTarget)).then(snap => {
       if (snap.exists()) {
         const nd = snap.data();
         if (nd.status === 'pending' && nd.warehouseData) {
-          currentReviewType = 'create';
-          pendingCreateData = nd.warehouseData; 
-          currentReviewNotificationId = snap.id;
+          window.currentReviewType = 'create';
+          window.pendingCreateData = nd.warehouseData; 
+          window.currentReviewNotificationId = snap.id;
           
           const titleEl = document.getElementById('reviewTitle');
           const btnContainer = document.getElementById('reviewActionButtons');
