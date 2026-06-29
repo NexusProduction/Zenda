@@ -615,7 +615,7 @@ function startListeners() {
   unsubs = [];
   setSyncStatus('connecting', 'Connecting…');
 
-  // Listen to the user's private appData document
+  // 1. Listen for Personal Events (from your private file)
   const docRef = doc(db, 'appData', CU.uid, 'apps', 'calendar');
   unsubs.push(onSnapshot(docRef, snap => {
     if (snap.exists() && snap.data().events) {
@@ -623,13 +623,23 @@ function startListeners() {
     } else {
       personalEvents = [];
     }
-    // Clear company arrays as events are now purely personal
-    companyEvents = []; 
-    taskEvents = [];
     mergeAndRender();
   }, e => {
-    console.error(e);
+    console.error("Personal sync error:", e);
     setSyncStatus('err', 'Sync Error');
+  }));
+
+  // 2. Listen for Company Events (from the public collection)
+  const compQ = query(collection(db, 'calendar'), where('visibility', '==', 'company'));
+  unsubs.push(onSnapshot(compQ, snap => {
+    companyEvents = [];
+    snap.forEach(d => {
+      companyEvents.push({ id: d.id, _src: 'company', ...d.data() });
+    });
+    mergeAndRender();
+    setSyncStatus('connected', 'Connected');
+  }, e => {
+    console.error("Company sync error (likely permission missing):", e);
   }));
 }
 function mergeAndRender() {
@@ -954,7 +964,10 @@ function renderForms() {
 window.addEvent = async function(btn) {
   const form = btn.closest('.add-form');
   const titleEl = form.querySelector('.ae-title');
+  const visEl = form.querySelector('select'); // Grabs the visibility dropdown
+  
   const title = titleEl?.value.trim();
+  const visibility = visEl ? visEl.value : 'company'; 
 
   if (!title) { 
     const errEl = form.querySelector('#title-err');
@@ -967,26 +980,39 @@ window.addEvent = async function(btn) {
   allBtns.forEach(b => { b.disabled = true; b.innerHTML = '<span class="spin"></span>'; });
 
   try {
-    // Structure the event with a unique ID
-    const newEv = {
-      id: Date.now().toString(),
-      title,
-      date: dk(selDay),
-      visibility: 'self', // Forced to private
-      type: 'event',
-      uid: CU.uid,
-      _fromName: CU.name || 'User',
-      createdAt: Date.now()
-    };
+    if (visibility === 'self' || visibility === 'personal') {
+      // 1. SAVE PERSONAL EVENT (to your private appData array)
+      const newEv = {
+        id: Date.now().toString(),
+        title,
+        date: dk(selDay),
+        visibility: 'self',
+        type: 'event',
+        uid: CU.uid,
+        _fromName: CU.name || 'User',
+        createdAt: Date.now()
+      };
+      const updatedEvents = [...personalEvents, newEv];
+      await setDoc(doc(db, 'appData', CU.uid, 'apps', 'calendar'), {
+        events: updatedEvents,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
 
-    // Grab current events and append the new one
-    const updatedEvents = [...personalEvents, newEv];
-    
-    // Save to the apps.js document structure
-    await setDoc(doc(db, 'appData', CU.uid, 'apps', 'calendar'), {
-      events: updatedEvents,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
+    } else {
+      // 2. SAVE COMPANY EVENT (to the shared calendar collection)
+      const newEv = {
+        title,
+        date: dk(selDay),
+        visibility: 'company',
+        type: 'event',
+        uid: CU.uid,
+        companyId: CU.companyId, // <-- CRITICAL: You must send this so Firestore rules allow the save!
+        _fromName: CU.name || 'User',
+        createdAt: serverTimestamp() 
+      };
+      // Save to the public calendar collection
+      await addDoc(collection(db, 'calendar'), newEv); 
+    }
 
     // Success Animation
     btn.classList.add('success-state');
@@ -1008,7 +1034,7 @@ window.addEvent = async function(btn) {
 
   } catch(e) {
     console.error(e);
-    if (window.toast) window.toast('Failed to add event.', 'error');
+    if (window.toast) window.toast('Failed to add company event. Check Firebase Rules!', 'error');
     allBtns.forEach(b => { 
       b.classList.remove('success-state');
       b.disabled = false; 
