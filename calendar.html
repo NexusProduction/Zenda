@@ -508,7 +508,7 @@ import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, collection, query, where, onSnapshot,
-  addDoc, deleteDoc, doc, getDoc, getDocs, serverTimestamp, orderBy
+  addDoc, deleteDoc, doc, getDoc, getDocs, serverTimestamp, orderBy, setDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /* ── FIREBASE INIT (Optimized & Instant) ── */
@@ -609,35 +609,29 @@ async function loadCompanyStaff() {
     companyStaff = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
   } catch(e) { console.warn('Staff load failed:', e); }
 }
-
 /* ── REALTIME LISTENERS ── */
 function startListeners() {
   unsubs.forEach(u => u());
   unsubs = [];
   setSyncStatus('connecting', 'Connecting…');
 
-  const q1 = query(collection(db, 'calendar'), where('uid', '==', CU.uid));
-  unsubs.push(onSnapshot(q1, snap => {
-    personalEvents = snap.docs.map(d => ({ id: d.id, _src: 'personal', ...d.data() }));
+  // Listen to the user's private appData document
+  const docRef = doc(db, 'appData', CU.uid, 'apps', 'calendar');
+  unsubs.push(onSnapshot(docRef, snap => {
+    if (snap.exists() && snap.data().events) {
+      personalEvents = snap.data().events.map(e => ({ _src: 'personal', ...e }));
+    } else {
+      personalEvents = [];
+    }
+    // Clear company arrays as events are now purely personal
+    companyEvents = []; 
+    taskEvents = [];
     mergeAndRender();
-  }, e => setSyncStatus('err', 'Sync Error')));
-
-  if (CU.companyId) {
-    const q2 = query(collection(db, 'calendar'), where('companyId', '==', CU.companyId));
-    unsubs.push(onSnapshot(q2, snap => {
-      const raw = snap.docs.map(d => ({ id: d.id, _src: 'company', ...d.data() }));
-      companyEvents = raw.filter(ev => {
-        if (ev.uid === CU.uid) return false; 
-        if (ev.visibility === 'all') return true;
-        if (ev.visibility === 'custom') return Array.isArray(ev.visibleToUIDs) && ev.visibleToUIDs.includes(CU.uid);
-        return false;
-      });
-      mergeAndRender();
-    }));
-  }
+  }, e => {
+    console.error(e);
+    setSyncStatus('err', 'Sync Error');
+  }));
 }
-
-/* ── MERGE & RENDER ── */
 function mergeAndRender() {
   const seen = new Set();
   allEvents = [...personalEvents, ...companyEvents, ...taskEvents].filter(e => {
@@ -893,7 +887,6 @@ window.closeConfirmDel = () => {
   deleteTargetId = null;
   deleteTargetBtn = null;
 };
-
 window.executeDelete = async function() {
   if (!deleteTargetId) return;
   const id = deleteTargetId;
@@ -907,12 +900,21 @@ window.executeDelete = async function() {
   
   setTimeout(async () => {
     try {
-      await deleteDoc(doc(db, 'calendar', id));
+      // Filter out the deleted event ID
+      const updatedEvents = personalEvents.filter(e => e.id !== id);
+      
+      // Resave the array without the deleted event
+      await setDoc(doc(db, 'appData', CU.uid, 'apps', 'calendar'), {
+        events: updatedEvents,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      
       toast('Event deleted', 'success');
-    } catch(e) { toast('Error: ' + e.message, 'error'); }
+    } catch(e) { 
+      toast('Error: ' + e.message, 'error'); 
+    }
   }, 280);
 };
-
 window.showCannotDelete = function(ownerName, event) {
   if (event) event.stopPropagation();
   pEl('cannot-del-msg').textContent = `This is assigned by ${ownerName}. You can't delete it.`;
@@ -949,14 +951,10 @@ function renderForms() {
   `;
   const univForm = pEl('add-form-univ'); if (univForm) univForm.innerHTML = formHtml;
 }
-
 window.addEvent = async function(btn) {
   const form = btn.closest('.add-form');
   const titleEl = form.querySelector('.ae-title');
-  const visEl = form.querySelector('.ae-visibility');
-
   const title = titleEl?.value.trim();
-  const visibility = visEl?.value || 'self';
 
   if (!title) { 
     const errEl = form.querySelector('#title-err');
@@ -964,56 +962,42 @@ window.addEvent = async function(btn) {
     if (titleEl) titleEl.style.borderColor = 'var(--red)';
     return; 
   }
-  if (visibility === 'custom' && selectedStaffUIDs.size <= 1) { 
-    if (window.toast) window.toast('Select at least one staff member', 'error'); 
-    return; 
-  }
 
   const allBtns = document.querySelectorAll('.add-btn');
   allBtns.forEach(b => { b.disabled = true; b.innerHTML = '<span class="spin"></span>'; });
 
   try {
+    // Structure the event with a unique ID
     const newEv = {
+      id: Date.now().toString(),
       title,
       date: dk(selDay),
-      visibility,
+      visibility: 'self', // Forced to private
       type: 'event',
       uid: CU.uid,
-      companyId: CU.companyId || null,
-      _fromName: CU.name || 'Team Member',
+      _fromName: CU.name || 'User',
       createdAt: Date.now()
     };
 
-    if (visibility === 'custom') newEv.visibleToUIDs = Array.from(selectedStaffUIDs);
+    // Grab current events and append the new one
+    const updatedEvents = [...personalEvents, newEv];
+    
+    // Save to the apps.js document structure
+    await setDoc(doc(db, 'appData', CU.uid, 'apps', 'calendar'), {
+      events: updatedEvents,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
 
-    const ref = await addDoc(collection(db, 'calendar'), newEv);
-
-    if (visibility === 'all' && CU.companyId) {
-      await sendCompanyNotification(ref.id, title, dk(selDay), 'all');
-    } else if (visibility === 'custom') {
-      await sendCustomNotification(ref.id, title, dk(selDay), Array.from(selectedStaffUIDs));
-    }
-
-    // Success Animation!
+    // Success Animation
     btn.classList.add('success-state');
     btn.innerHTML = 'Added!';
     if (window.toast) window.toast(`Event added! 📅`, 'success');
 
-    // Wait exactly 500ms (0.5 seconds), then animate close and reset
+    // Reset and close
     setTimeout(() => {
-      // 1. Force close the modal using our new animated function
-      if (typeof window.closeAddModal === 'function') {
-        window.closeAddModal();
-      }
-
-      // 2. Reset fields slightly delayed so user doesn't see them vanish during fade out
+      if (typeof window.closeAddModal === 'function') window.closeAddModal();
       setTimeout(() => {
         if (titleEl) titleEl.value = '';
-        document.querySelectorAll('.ae-visibility').forEach(s => s.value = 'self');
-        document.querySelectorAll('.custom-staff-row').forEach(r => r.classList.add('hidden'));
-
-        // 3. Reset button back to normal state (NO SVG TICK!)
-        // 3. Reset button back to normal state WITH original SVG
         allBtns.forEach(b => { 
           b.classList.remove('success-state'); 
           b.disabled = false; 
@@ -1032,8 +1016,6 @@ window.addEvent = async function(btn) {
     });
   }
 };
-
-/* ── SEND NOTIFICATIONS ── */
 async function sendCompanyNotification(eventId, title, date, type) {
   if (!companyStaff.length) await loadCompanyStaff();
   const others = companyStaff.filter(s => s.uid !== CU.uid);
