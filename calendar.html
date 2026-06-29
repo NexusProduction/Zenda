@@ -539,7 +539,7 @@ let taskEvents = [];
 let companyStaff = [];
 let selectedStaffUIDs = new Set();
 let unsubs = [];
-
+let staffMap = {};
 /* ── HELPERS ── */
 const dk = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const isToday = d => { const n=new Date(); return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); };
@@ -578,7 +578,6 @@ window.toast = function(msg, type = 'success') {
     setTimeout(() => t.remove(), 300);
   }, 3000);
 };
-
 /* ── AUTH GUARD ── */
 onAuthStateChanged(auth, async user => {
   if (!user) { window.location.replace('login.html'); return; }
@@ -588,7 +587,9 @@ onAuthStateChanged(auth, async user => {
     else { CU = { uid: user.uid, role: 'staff', companyId: null, name: user.email }; }
     
     selectedStaffUIDs.add(CU.uid);
-    if (CU.companyId) await loadCompanyStaff();
+    
+    // CHANGED: Start the real-time staff listener instead of the one-time load
+    if (CU.companyId) window.startStaffListener();
 
     startListeners();
     renderForms();
@@ -600,16 +601,28 @@ onAuthStateChanged(auth, async user => {
     setSyncStatus('err', 'Error');
   }
 });
-
-/* ── LOAD COMPANY STAFF ── */
-async function loadCompanyStaff() {
+/* ── LOAD COMPANY STAFF (REAL-TIME) ── */
+window.startStaffListener = function() {
   if (!CU?.companyId) return;
-  try {
-    const snap = await getDocs(query(collection(db, 'users'), where('companyId', '==', CU.companyId)));
-    companyStaff = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-  } catch(e) { console.warn('Staff load failed:', e); }
-}
-/* ── REALTIME LISTENERS ── */
+  
+  const qStaff = query(collection(db, 'users'), where('companyId', '==', CU.companyId));
+  
+  unsubs.push(onSnapshot(qStaff, snap => {
+    staffMap = {}; // Clear old map
+    companyStaff = []; // Clear old array
+    
+    snap.forEach(d => { 
+      const data = d.data();
+      staffMap[d.id] = data; 
+      companyStaff.push({ uid: d.id, ...data });
+    });
+    
+    // Force the calendar to redraw using the new real-time names
+    if (typeof mergeAndRender === 'function') mergeAndRender(); 
+  }, e => {
+    console.warn('Staff load failed:', e);
+  }));
+};
 function startListeners() {
   unsubs.forEach(u => u());
   unsubs = [];
@@ -832,12 +845,27 @@ function renderEventItem(ev, idx) {
   if (visCls === 'task') badgeTxt = 'Task';
 
   const canDel = (ev.uid === CU.uid);
-  const ownerNameStr = esc(ev._fromName || 'Team');
-  const fromTxt = ev.uid !== CU.uid ? 
-    `<span style="font-weight:600; color:var(--tx2);">From: ${ownerNameStr}</span>` : 
-    `<span style="font-weight:600; color:var(--tx2);">From: Myself</span>`;
+  // 1. Determine who created the item (handles both Tasks and Events)
+    const creatorId = ev._src === 'task' ? ev.assignedBy : ev.uid;
     
-  let delBtn = '';
+    let fromText = '';
+    
+    if (creatorId === CU.uid) {
+      fromText = 'Myself';
+    } else {
+      // 2. Look up their real-time name in the live staff list
+      const liveUser = (typeof staffMap !== 'undefined' && staffMap[creatorId]) ? staffMap[creatorId] : null;
+      
+      // 3. Fallback to the saved _fromName ONLY if they were deleted from the database
+  fromText = (liveUser && liveUser.name) ? liveUser.name : (ev._fromName || 'Colleague');
+}
+
+// FIX: Change ownerNameStr to esc(fromText) so it prints the real-time name safely!
+const fromTxt = ev.uid !== CU.uid ? 
+  `<span style="font-weight:600; color:var(--tx2);">From: ${esc(fromText)}</span>` : 
+  `<span style="font-weight:600; color:var(--tx2);">From: Myself</span>`;
+    
+let delBtn = '';
   if (canDel) {
       delBtn = `<button class="ev-del" onclick="confirmDelete('${ev.id}', '${visCls}', this, event)" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>`;
   } else {
