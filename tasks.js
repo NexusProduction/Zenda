@@ -3,7 +3,6 @@ import { collection, addDoc, query, where, orderBy, onSnapshot, doc, updateDoc, 
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { addNotification } from './notifications.js';
 import { formatTime } from './utils.js';
-import { addCalendarEvent } from './apps.js';
 
 export async function assignTask({ title, description, assignedTo, assignedToName, assignedBy, assignedByName, companyId, dueDate, dueTime, priority }) { // Added priority here
   const ref = await addDoc(collection(db, 'tasks'), {
