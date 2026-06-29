@@ -410,7 +410,7 @@ let unsubs = [];
 let deleteTargetId = null;
 let deleteTargetSrc = null;
 let deleteTargetBtn = null;
-let _resolvedCreators = {};
+
 const dk = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const isToday = d => { const n = new Date(); return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); };
 const sameDay = (a,b) => a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
@@ -445,15 +445,6 @@ onAuthStateChanged(auth, async user => {
     selectedStaffUIDs.add(CU.uid);
     if (CU.companyId) startStaffListener();
     startListeners();
-    unsubs.push(onSnapshot(doc(db, 'users', CU.uid), snap => {
-      if (snap.exists()) {
-        CU.name = snap.data().name || CU.name;
-        staffMap[CU.uid] = snap.data();
-        _resolvedCreators[CU.uid] = snap.data();
-        mergeAndRender();
-      }
-    }));
-    
     renderForms();
     renderCalendar();
     showDayEvents(selDay);
@@ -654,31 +645,14 @@ function renderEventItem(ev) {
   const canDel = ev.uid === CU.uid;
   const creatorId = ev._src === 'task' ? ev.assignedBy : ev.uid;
 
-  let fromText;
-if (creatorId === CU.uid) {
-  // Always "Myself" for your own events
-  fromText = 'Myself';
-} else {
-  const live = staffMap[creatorId] || _resolvedCreators[creatorId];
-  if (live && live.name) {
-    // Live name from Firestore listener
-    fromText = live.name;
+  let fromText = 'Colleague';
+  if (creatorId === CU.uid) {
+    fromText = 'Myself';
   } else {
-    // Fallback: stored name at creation time
-    fromText = ev._fromName || 'Former Staff';
-    // Async-fetch live name once and re-render
-    if (creatorId && !_resolvedCreators[creatorId]) {
-      _resolvedCreators[creatorId] = { name: fromText }; // placeholder
-      getDoc(doc(db, 'users', creatorId)).then(snap => {
-        if (snap.exists()) {
-          _resolvedCreators[creatorId] = snap.data();
-          staffMap[creatorId] = snap.data(); // cache into staffMap too
-        }
-        showDayEvents(selDay); // re-render with live name
-      }).catch(() => {});
-    }
+    const live = staffMap[creatorId];
+    fromText = (live && live.name) ? live.name : (ev._fromName || 'Colleague');
   }
-}
+
   const fromTxt = `<span style="font-weight:600;color:var(--tx2);">From: ${esc(fromText)}</span>`;
   const src = ev._src || 'personal';
   const trashIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`;
