@@ -410,7 +410,7 @@ let unsubs = [];
 let deleteTargetId = null;
 let deleteTargetSrc = null;
 let deleteTargetBtn = null;
-
+let _resolvedCreators = {};
 const dk = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const isToday = d => { const n = new Date(); return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); };
 const sameDay = (a,b) => a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
@@ -445,6 +445,15 @@ onAuthStateChanged(auth, async user => {
     selectedStaffUIDs.add(CU.uid);
     if (CU.companyId) startStaffListener();
     startListeners();
+    unsubs.push(onSnapshot(doc(db, 'users', CU.uid), snap => {
+      if (snap.exists()) {
+        CU.name = snap.data().name || CU.name;
+        staffMap[CU.uid] = snap.data();
+        _resolvedCreators[CU.uid] = snap.data();
+        mergeAndRender();
+      }
+    }));
+    
     renderForms();
     renderCalendar();
     showDayEvents(selDay);
@@ -647,13 +656,27 @@ function renderEventItem(ev) {
 
   let fromText;
 if (creatorId === CU.uid) {
-  fromText = CU.name || 'Me';
+  // Always "Myself" for your own events
+  fromText = 'Myself';
 } else {
-  const liveStaff = staffMap[creatorId];
-  if (liveStaff && liveStaff.name) {
-    fromText = liveStaff.name;
+  const live = staffMap[creatorId] || _resolvedCreators[creatorId];
+  if (live && live.name) {
+    // Live name from Firestore listener
+    fromText = live.name;
   } else {
+    // Fallback: stored name at creation time
     fromText = ev._fromName || 'Former Staff';
+    // Async-fetch live name once and re-render
+    if (creatorId && !_resolvedCreators[creatorId]) {
+      _resolvedCreators[creatorId] = { name: fromText }; // placeholder
+      getDoc(doc(db, 'users', creatorId)).then(snap => {
+        if (snap.exists()) {
+          _resolvedCreators[creatorId] = snap.data();
+          staffMap[creatorId] = snap.data(); // cache into staffMap too
+        }
+        showDayEvents(selDay); // re-render with live name
+      }).catch(() => {});
+    }
   }
 }
   const fromTxt = `<span style="font-weight:600;color:var(--tx2);">From: ${esc(fromText)}</span>`;
