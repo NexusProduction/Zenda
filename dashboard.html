@@ -519,7 +519,7 @@
     .app-viewall-tile { width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; background: linear-gradient(135deg,#EEF2FF,#E0E7FF); border: 1px dashed var(--ac); transition: all .2s; }
     .app-squircle-wrap:hover .app-viewall-tile { background: linear-gradient(135deg,#E0E7FF,#C7D2FE); transform: translateY(-4px); }
 
-    @media (min-width: 769px) and (max-width: 1024px) {
+    @media (min-width: 769px) and (max-width: 1116px) {
       .stats-grid { grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; box-sizing: border-box; }
       .stats-grid .stat-card:first-child { grid-column: 1 / -1; }
       .content-row { flex-direction: column; flex-wrap: wrap; }
@@ -3013,22 +3013,24 @@ textarea.form-input:focus {
   .btn      { min-height: 44px !important; }
   .sidebar-item { min-height: 44px !important; }
 
-  /* Bottom nav */
+  /* Bottom nav - Changed to Blue Box */
   .bottom-nav {
-    background:              rgba(238,245,252,0.97) !important;
-    border:                  1px solid rgba(160,190,218,0.40) !important;
-    box-shadow:
-      0 -1px 0  rgba(0,0,0,0.04),
-      0 8px 32px rgba(15,23,42,0.11)             !important;
+    background:              var(--ac) !important; /* Blue background */
+    border:                  none !important;
+    box-shadow:              0 10px 32px rgba(17, 98, 204, 0.4) !important;
   }
 
   .sliding-indicator {
-    background: rgba(17,98,204,0.10) !important;
-    box-shadow: none                 !important;
+    background:              rgba(255, 255, 255, 0.25) !important; /* White translucent active pill */
+    box-shadow:              none !important;
+  }
+
+  .bn-icon-wrap {
+    color:                   rgba(255, 255, 255, 0.6) !important; /* Inactive icons faded white */
   }
 
   .bn-item.active .bn-icon-wrap {
-    color: var(--ac) !important;
+    color:                   #FFFFFF !important; /* Active icon bright white */
   }
 
   /* Stat cards on mobile */
@@ -7773,9 +7775,12 @@ window.renderRecentTasks = function() {
         }
     }
     
-    // 5. Sort by Newest First and grab exactly the latest 4 tasks
+    // 5. Sort by Newest First and grab tasks dynamically based on screen width
     uniqueTasks.sort((a, b) => b.createdAt - a.createdAt);
-    const recent = uniqueTasks.slice(0, 4);
+    
+    // Shows 3 tasks if Side-by-Side (>1116px), 4 tasks if Stacked (<=1116px)
+    const taskLimit = window.innerWidth > 1116 ? 3 : 4;
+    const recent = uniqueTasks.slice(0, taskLimit);
     
     // Render Empty State if nothing is pending
     if (recent.length === 0) {
@@ -8574,7 +8579,11 @@ window.triggerDeletionOverlay = function() {
         }
     }, 1000);
 };
-
+window.addEventListener('resize', () => {
+    if (window.renderRecentTasks) {
+        window.renderRecentTasks();
+    }
+});
 init();
 
 </script>
