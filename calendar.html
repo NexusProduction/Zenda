@@ -124,20 +124,26 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
 .ae-inp{width:100%;padding:12px 14px;border:1.5px solid var(--bd);border-radius:10px;font-family:var(--fb);font-size:.95rem;outline:none;transition:all .2s;background:var(--sf);color:var(--tx1)}
 .ae-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acs)}
 
-.vis-options{display:flex;flex-direction:column;gap:8px;}
-.vis-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--bd);border-radius:12px;cursor:pointer;transition:all .2s;background:var(--sf);}
-.vis-opt:hover{border-color:var(--bd2);background:var(--sf2);}
-.vis-opt.active{border-color:var(--ac);background:var(--acs);box-shadow:0 4px 12px rgba(79,70,229,.08);}
-.vis-opt-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.vis-opt.self .vis-opt-icon{background:var(--blue-s);color:var(--blue);}
-.vis-opt.all .vis-opt-icon{background:var(--green-s);color:var(--green);}
-.vis-opt.custom .vis-opt-icon{background:var(--purple-s);color:var(--purple);}
-.vis-opt-txt{flex:1;display:flex;flex-direction:column;text-align:left;}
-.vis-opt-title{font-size:.9rem;font-weight:700;color:var(--tx1);}
-.vis-opt-sub{font-size:.75rem;font-weight:500;color:var(--tx3);}
-.vis-opt-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--bd2);display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;}
-.vis-opt.active .vis-opt-check{border-color:var(--ac);background:var(--ac);}
-.vis-opt.active .vis-opt-check::after{content:'';width:8px;height:8px;background:#fff;border-radius:50%;}
+/* ── CUSTOM DROPDOWN ── */
+.custom-select-wrapper { position:relative; width:100%; user-select:none; }
+.custom-select-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; padding:12px 14px; border:1.5px solid var(--bd); border-radius:10px; background:var(--sf); cursor:pointer; transition:all .2s; }
+.custom-select-trigger:hover { border-color:var(--bd2); }
+.custom-select-trigger.open { border-color:var(--ac); box-shadow:0 0 0 3px var(--acs); }
+.custom-select-value { display:flex; align-items:center; gap:10px; font-weight:600; font-size:.95rem; color:var(--tx1); }
+.cs-icon { display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px; flex-shrink:0; }
+.cs-icon.self { background:var(--blue-s); color:var(--blue); }
+.cs-icon.all { background:var(--green-s); color:var(--green); }
+.cs-icon.custom { background:var(--purple-s); color:var(--purple); }
+.custom-select-options { position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--sf); border:1px solid var(--bd); border-radius:12px; box-shadow:var(--sh-md); z-index:100; display:none; flex-direction:column; padding:6px; }
+.custom-select-options.open { display:flex; animation:slideDown 0.2s ease; }
+.cs-opt { display:flex; align-items:center; gap:12px; padding:10px; border-radius:8px; cursor:pointer; transition:background 0.15s; }
+.cs-opt:hover { background:var(--sf2); }
+.cs-opt.selected { background:var(--acs); }
+.cs-opt-txt { display:flex; flex-direction:column; flex:1; text-align:left; }
+.cs-opt-title { font-size:.9rem; font-weight:700; color:var(--tx1); }
+.cs-opt-sub { font-size:.75rem; font-weight:500; color:var(--tx3); }
+.cs-arrow { transition:transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); color:var(--tx4); }
+.custom-select-trigger.open .cs-arrow { transform:rotate(180deg); }
 
 /* ── NORMAL CENTERED MODAL BOX ── */
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); z-index:9999; display:none; align-items:center; justify-content:center; padding:16px; opacity:0; transition:opacity .2s; }
@@ -733,9 +739,6 @@ window.showCannotDelete = function(ownerName, event) {
   pEl('cannot-del-modal').classList.add('open');
 };
 window.closeCannotDel = () => pEl('cannot-del-modal').classList.remove('open');
-
-
-/* ── RENDER NEW ADD FORM ── */
 function renderForms() {
   const univForm = pEl('add-form-univ');
   if (!univForm) return;
@@ -751,38 +754,37 @@ function renderForms() {
       <div>
         <span class="ae-lbl" style="margin-bottom:10px;">Visible To</span>
         
-        <div class="vis-options">
-          <div class="vis-opt self active" onclick="selectVisibility('self')">
-            <div class="vis-opt-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-            <div class="vis-opt-txt">
-              <div class="vis-opt-title">Only Me</div>
-              <div class="vis-opt-sub">Private event for your calendar</div>
+        <div class="custom-select-wrapper" id="vis-dropdown">
+          <div class="custom-select-trigger" onclick="toggleDropdown()">
+            <div class="custom-select-value" id="vis-selected">
+              <div class="cs-icon self"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+              Only Me
             </div>
-            <div class="vis-opt-check"></div>
+            <svg class="cs-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           
-          <div class="vis-opt all" onclick="selectVisibility('all')">
-            <div class="vis-opt-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-            <div class="vis-opt-txt">
-              <div class="vis-opt-title">Everyone</div>
-              <div class="vis-opt-sub">Public to the whole company</div>
+          <div class="custom-select-options" id="vis-options-menu">
+            <div class="cs-opt selected" onclick="selectVisibility('self', this)">
+              <div class="cs-icon self"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+              <div class="cs-opt-txt"><div class="cs-opt-title">Only Me</div><div class="cs-opt-sub">Private event for your calendar</div></div>
             </div>
-            <div class="vis-opt-check"></div>
-          </div>
+            
+            <div class="cs-opt" onclick="selectVisibility('all', this)">
+              <div class="cs-icon all"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+              <div class="cs-opt-txt"><div class="cs-opt-title">Everyone</div><div class="cs-opt-sub">Public to the whole company</div></div>
+            </div>
 
-          <div class="vis-opt custom" onclick="selectVisibility('custom')">
-            <div class="vis-opt-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
-            <div class="vis-opt-txt">
-              <div class="vis-opt-title">Custom Staff</div>
-              <div class="vis-opt-sub">Select specific team members</div>
+            <div class="cs-opt" onclick="selectVisibility('custom', this)">
+              <div class="cs-icon custom"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
+              <div class="cs-opt-txt"><div class="cs-opt-title">Custom Staff</div><div class="cs-opt-sub">Select specific team members</div></div>
             </div>
-            <div class="vis-opt-check"></div>
           </div>
         </div>
 
         <div class="inline-staff-wrap" id="inline-staff-wrap">
           <div class="inline-staff-list custom-scroll" id="inline-staff-list">
-            </div>
+            <!-- JS Populates this -->
+          </div>
         </div>
 
       </div>
@@ -790,13 +792,41 @@ function renderForms() {
     </div>
   `;
 }
-
 /* ── VISIBILITY HANDLERS (FIREBASE CONNECTED) ── */
-window.selectVisibility = async function(val) {
-  currentVisibility = val;
-  document.querySelectorAll('.vis-opt').forEach(el => el.classList.remove('active'));
-  document.querySelector(`.vis-opt.${val}`).classList.add('active');
 
+window.toggleDropdown = function() {
+  pEl('vis-options-menu')?.classList.toggle('open');
+  document.querySelector('.custom-select-trigger')?.classList.toggle('open');
+};
+
+// Listen for clicks outside to auto-close the custom dropdown
+document.addEventListener('click', function(e) {
+  const wrapper = pEl('vis-dropdown');
+  if (wrapper && !wrapper.contains(e.target)) {
+    pEl('vis-options-menu')?.classList.remove('open');
+    document.querySelector('.custom-select-trigger')?.classList.remove('open');
+  }
+});
+
+window.selectVisibility = async function(val, optElement) {
+  currentVisibility = val;
+  
+  // 1. Update the UI to reflect the selected option
+  if (optElement) {
+    document.querySelectorAll('.cs-opt').forEach(el => el.classList.remove('selected'));
+    optElement.classList.add('selected');
+    
+    // Copy the icon and title to the main header
+    const iconHtml = optElement.querySelector('.cs-icon').outerHTML;
+    const titleText = optElement.querySelector('.cs-opt-title').innerText;
+    pEl('vis-selected').innerHTML = `${iconHtml} ${titleText}`;
+  }
+
+  // 2. Close the dropdown
+  pEl('vis-options-menu')?.classList.remove('open');
+  document.querySelector('.custom-select-trigger')?.classList.remove('open');
+
+  // 3. Handle opening the staff list if "custom" is selected
   const wrap = pEl('inline-staff-wrap');
   if (val === 'custom') {
     wrap.classList.add('open');
@@ -813,13 +843,30 @@ window.selectVisibility = async function(val) {
             return;
         }
     }
-    
     renderInlineStaff();
   } else {
     wrap.classList.remove('open');
   }
 };
 
+window.openAddModal = () => {
+  pEl('add-modal').classList.add('open');
+  const fab = pEl('mob-fab-btn'); if (fab) fab.style.display = 'none';
+  
+  // Reset form silently to "Only Me" when opening
+  currentVisibility = 'self';
+  pEl('inline-staff-wrap')?.classList.remove('open');
+  pEl('vis-options-menu')?.classList.remove('open');
+  document.querySelector('.custom-select-trigger')?.classList.remove('open');
+  
+  const defaultOpt = document.querySelector('.cs-opt[onclick*="self"]');
+  if (defaultOpt) {
+    document.querySelectorAll('.cs-opt').forEach(el => el.classList.remove('selected'));
+    defaultOpt.classList.add('selected');
+    const iconHtml = defaultOpt.querySelector('.cs-icon').outerHTML;
+    pEl('vis-selected').innerHTML = `${iconHtml} Only Me`;
+  }
+};
 window.renderInlineStaff = function() {
   const list = pEl('inline-staff-list');
   if (!list) return;
@@ -864,17 +911,6 @@ window.toggleStaff = function(uid) {
   if (card) card.classList.toggle('selected', isNowSelected);
   if (chk) { chk.classList.toggle('checked', isNowSelected); chk.innerHTML = isNowSelected ? checkSvg : ''; }
 };
-
-window.openAddModal = () => {
-  pEl('add-modal').classList.add('open');
-  const fab = pEl('mob-fab-btn'); if (fab) fab.style.display = 'none';
-  
-  currentVisibility = 'self';
-  document.querySelectorAll('.vis-opt').forEach(el => el.classList.remove('active'));
-  document.querySelector('.vis-opt.self')?.classList.add('active');
-  pEl('inline-staff-wrap')?.classList.remove('open');
-};
-
 window.closeAddModal = () => {
   const m = pEl('add-modal');
   if (!m) return;
