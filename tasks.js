@@ -1,9 +1,7 @@
 import { db } from './firebase-config.js';
-import { collection, addDoc, query, where, orderBy, onSnapshot, doc, updateDoc, getDoc } from
+import { collection, addDoc, query, where, onSnapshot, doc, updateDoc, getDoc } from
   "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { addNotification } from './notifications.js';
-import { formatTime } from './utils.js';
-
 export async function assignTask({ title, description, assignedTo, assignedToName, assignedBy, assignedByName, companyId, dueDate, dueTime, priority }) { // Added priority here
   const ref = await addDoc(collection(db, 'tasks'), {
     title, description: description || '',
@@ -23,17 +21,6 @@ export async function assignTask({ title, description, assignedTo, assignedToNam
     message: `${assignedByName} assigned you: "${title}"${dueDate ? ` · Due: ${formatDueDate(dueDate, dueTime)}` : ''}`,
     actorId: assignedBy, actorName: assignedByName, relatedId: ref.id
   });
-
-  if (dueDate && assignedTo) {
-    try {
-      await addCalendarEvent(assignedTo, {
-        title: `Task: ${title}`,
-        date: dueDate, time: dueTime || '',
-        priority: 'high', visibility: 'self',
-        type: 'task', taskId: ref.id, companyId
-      });
-    } catch(e) { console.warn('Calendar sync failed:', e); }
-  }
   return ref.id;
 }
 
