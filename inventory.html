@@ -2449,43 +2449,44 @@ function renderWhCatDropdown() {
     `).join('');
   }
 }
-function handleWhCatScroll(e) {
-  const dd = document.getElementById('wh-cat-dd');
-  // If the user is scrolling inside the dropdown itself, don't close it
-  if (e.target === dd || (dd && dd.contains(e.target))) {
-    return;
-  }
-  closeWhCatDD();
-}
-
-function closeWhCatDD(){
+// 1. Safe closer function
+window.closeWhCatDD = function() {
   const dd = document.getElementById('wh-cat-dd');
   const trigger = document.querySelector('#wh-cat-wrap .cat-picker-trigger');
+  
   if (dd) {
     dd.style.display = 'none';
     dd.classList.remove('dd-fixed');
   }
-  trigger?.classList.remove('open');
-  window.removeEventListener('scroll', handleWhCatScroll, true);
-}
+  if (trigger) trigger.classList.remove('open');
+};
+
+// 2. Clean toggle function
 window.toggleWhCat = function() {
   const trigger = document.querySelector('#wh-cat-wrap .cat-picker-trigger');
   const dd = document.getElementById('wh-cat-dd');
   
-  if(dd.style.display === 'block') {
-    closeWhCatDD();
+  if (dd.style.display === 'block') {
+    window.closeWhCatDD();
   } else {
     renderWhCatDropdown();
     
-    // Remove the fixed positioning overrides so your mobile CSS handles it cleanly!
-    dd.classList.remove('dd-fixed'); 
-    dd.style.left = '';
-    dd.style.width = '';
+    // CRITICAL FIX: Erase all lingering JS positioning so your standard CSS takes over completely!
+    // This guarantees it perfectly drops down from the bottom of the input.
+    dd.style.top = '';
     dd.style.bottom = '';
+    dd.style.left = '';
+    dd.style.right = '';
+    dd.style.width = '';
+    dd.style.position = '';
+    dd.style.margin = '';
+    dd.classList.remove('dd-fixed');
     
     dd.style.display = 'block';
-    trigger.classList.add('open');
-    window.addEventListener('scroll', handleWhCatScroll, true); 
+    if(trigger) trigger.classList.add('open');
+    
+    // Note: We purposefully removed the 'scroll' listener here.
+    // Now you can safely scroll down inside the modal without the menu suddenly closing!
   }
 };
 window.selectWhCat = function(val) {
