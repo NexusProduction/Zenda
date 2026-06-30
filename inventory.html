@@ -3600,6 +3600,8 @@ window.checkProdDelRequestBtn = function(textarea) {
         btn.style.transform = ok ? 'translateY(-1px)' : 'none';
     }
 };
+
+// Sends the notification to the Owner
 window.sendProdDeleteRequest = async function() {
     if (window._prodDeleteRequestPending) return;
     const reason = document.getElementById('prod-del-reason-input').value.trim();
@@ -3618,14 +3620,9 @@ window.sendProdDeleteRequest = async function() {
         if (ownerSnap.empty) throw new Error("Owner not found.");
         const ownerId = ownerSnap.docs[0].id;
 
-        // Send a specific product_delete_request with the payload attached
         await addDoc(collection(db, 'users', ownerId, 'notifications'), {
-            type: 'product_delete_request', 
-            message: `${CU.name} requested to delete product "${curProd.name}".`,
-            productData: { id: curProd.id, name: curProd.name, warehouseId: curWH, reason: reason },
-            requesterId: CU.uid,
-            actorId: CU.uid,
-            actorName: CU.name,
+            type: 'system', // General notification type
+            message: `${CU.name} requested to delete product "${curProd.name}". Reason: ${reason}`,
             createdAt: Date.now(),
             read: false,
             status: 'unread'
@@ -3636,7 +3633,7 @@ window.sendProdDeleteRequest = async function() {
         
         if (tick && textEl) {
             textEl.textContent = "Request Sent";
-            textEl.style.color = "#10B981"; 
+            textEl.style.color = "#10B981"; // Turn text green
             tick.classList.add('active');
             const svg = tick.querySelector('svg');
             if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
@@ -3658,6 +3655,8 @@ window.sendProdDeleteRequest = async function() {
         if (textarea) textarea.removeAttribute('readonly');
     }
 };
+
+// Owner Deletion
 window.confirmDelProd = async function() {
   const btn = document.getElementById('delProdBtn');
   btn.disabled = true; btn.textContent = 'Deleting...';
