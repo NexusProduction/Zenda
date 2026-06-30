@@ -3903,21 +3903,50 @@ window.createWH = async function() {
   const btn = document.getElementById('btn-create-wh');
   
   btn.disabled = true;
-  btn.innerHTML = 'Saving...';
+  btn.innerHTML = CU.role === 'owner' ? 'Saving...' : 'Sending Request...';
   
   try {
-    await addDoc(collection(db, 'godowns'), {
+    // 1. Prepare the warehouse data payload
+    const whData = {
       name: nameInp.value.trim(),
       location: locInp.value.trim(),
       category: catInp.value || 'General Storage',
       companyId: CU.companyId,
       createdBy: CU.uid,
-      createdAt: serverTimestamp()
-    });
+      createdAt: Date.now() // Use Date.now() so it safely transfers through notifications
+    };
+
+    if (CU.role === 'owner') {
+        // 2a. OWNER: Write directly to the database
+        await addDoc(collection(db, 'godowns'), whData);
+    } else {
+        // 2b. STAFF: Find the owner and send a notification request
+        const ownerSnap = await getDocs(query(collection(db, 'users'), where('companyId', '==', CU.companyId), where('role', '==', 'owner')));
+        if (ownerSnap.empty) throw new Error("Owner not found.");
+        const ownerId = ownerSnap.docs[0].id;
+
+        await addDoc(collection(db, 'users', ownerId, 'notifications'), {
+            type: 'warehouse_request',
+            message: `${CU.name} requested to add warehouse "${whData.name}".`,
+            warehouseData: whData,
+            requesterId: CU.uid,
+            actorId: CU.uid,
+            actorName: CU.name,
+            createdAt: Date.now(),
+            read: false,
+            status: 'unread'
+        });
+    }
     
-    // Trigger Success Animation (Mutes the Toast)
+    // 3. Trigger Success Animation and dynamically change text
     const tick = document.getElementById('add-wh-success-tick');
-    if (tick) {
+    const textEl = tick ? tick.querySelector('.ppm-success-text') : null;
+    
+    if (tick && textEl) {
+        // Change text based on action
+        textEl.textContent = CU.role === 'owner' ? 'Warehouse Added' : 'Request Sent';
+        textEl.style.color = CU.role === 'owner' ? '#111827' : '#10B981'; 
+
         tick.classList.add('active');
         const svg = tick.querySelector('svg');
         if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
@@ -3928,20 +3957,27 @@ window.createWH = async function() {
             nameInp.value = ''; 
             locInp.value = '';
             btn.disabled = false;
-            btn.innerHTML = 'Save Record';
+            btn.innerHTML = CU.role === 'owner' ? 'Save Record' : 'Request';
         }, 1800);
     } else {
         window.closeM('m-wh');
         nameInp.value = ''; 
         locInp.value = '';
         btn.disabled = false;
-        btn.innerHTML = 'Save Record';
+        btn.innerHTML = CU.role === 'owner' ? 'Save Record' : 'Request';
     }
 
   } catch(e) {
-    window.showToast('Error: ' + e.message, 'error');
+    console.error(e);
+    const errEl = document.getElementById('whMsg');
+    if (errEl) {
+        errEl.style.display = 'block';
+        errEl.textContent = 'Error: ' + e.message;
+    } else if (window.showToast) {
+        window.showToast('Error: ' + e.message, 'error');
+    }
     btn.disabled = false;
-    btn.innerHTML = 'Save Record';
+    btn.innerHTML = CU.role === 'owner' ? 'Save Record' : 'Request';
   }
 };
 window.openEntry = function(type) {
