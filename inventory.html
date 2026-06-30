@@ -2675,35 +2675,6 @@ window.validateAndSaveWH = function() {
     window.createWH(); 
   }
 };
-window.createWH = async function() {
-  const nameInp = document.getElementById('wn');
-  const locInp = document.getElementById('wl');
-  const catInp = document.getElementById('wc');
-  const btn = document.getElementById('btn-create-wh');
-  
-  btn.disabled = true;
-  btn.innerHTML = 'Saving...';
-  
-  try {
-    await addDoc(collection(db, 'godowns'), {
-      name: nameInp.value.trim(),
-      location: locInp.value.trim(),
-      category: catInp.value || 'General Storage',
-      companyId: CU.companyId,
-      createdBy: CU.uid,
-      createdAt: serverTimestamp()
-    });
-    window.showToast('Warehouse created successfully', 'success');
-    window.closeM('m-wh');
-    nameInp.value = ''; 
-    locInp.value = '';
-  } catch(e) {
-    window.showToast('Error: ' + e.message, 'error');
-  }
-  btn.disabled = false;
-  btn.innerHTML = 'Save Record';
-};
-
 window.getExtIcon = function(name) {
   const icon = name || 'package';
   return `<img src="https://api.iconify.design/lucide/${icon}.svg?color=%230D0F14&stroke-width=2" style="width:1em; height:1em; object-fit:contain; opacity:0.85; display:inline-block; vertical-align:middle;" />`;
@@ -3791,6 +3762,7 @@ window.openAddProd = function() {
   setMM('prodMsg', '', '');
   window.openM('m-prod');
 };
+// Replace your window.addProduct function with this:
 window.addProduct = async function() {
   if (!curWH) { window.showToast('No warehouse selected.', 'error'); return; }
   if (CU.role !== 'owner' && CU.role !== 'manager') {
@@ -3882,22 +3854,86 @@ window.addProduct = async function() {
       });
     }
 
-    btn.textContent = 'Added!';
-    window.showToast('Product added successfully ✓', 'success');
-
-    setTimeout(() => {
-      window.closeM('m-prod');
-      setTimeout(async () => {
-        btn.disabled = false;
-        btn.textContent = 'Add Product';
-        await loadProds(curWH);
-      }, 250);
-    }, 400);
+    // Trigger Success Animation
+    const tick = document.getElementById('add-prod-success-tick');
+    if (tick) {
+        tick.classList.add('active');
+        const svg = tick.querySelector('svg');
+        if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
+        
+        setTimeout(() => {
+            tick.classList.remove('active');
+            window.closeM('m-prod');
+            setTimeout(async () => {
+                btn.disabled = false;
+                btn.textContent = 'Add Product';
+                await loadProds(curWH);
+            }, 250);
+        }, 1800);
+    } else {
+        window.closeM('m-prod');
+        setTimeout(async () => {
+            btn.disabled = false;
+            btn.textContent = 'Add Product';
+            await loadProds(curWH);
+        }, 250);
+    }
 
   } catch (e) {
     setMM('prodMsg', '❌ Failed: ' + e.message, 'err');
     btn.disabled = false;
     btn.textContent = 'Add Product';
+  }
+};
+
+
+// Replace your window.createWH function with this:
+window.createWH = async function() {
+  const nameInp = document.getElementById('wn');
+  const locInp = document.getElementById('wl');
+  const catInp = document.getElementById('wc');
+  const btn = document.getElementById('btn-create-wh');
+  
+  btn.disabled = true;
+  btn.innerHTML = 'Saving...';
+  
+  try {
+    await addDoc(collection(db, 'godowns'), {
+      name: nameInp.value.trim(),
+      location: locInp.value.trim(),
+      category: catInp.value || 'General Storage',
+      companyId: CU.companyId,
+      createdBy: CU.uid,
+      createdAt: serverTimestamp()
+    });
+    
+    // Trigger Success Animation
+    const tick = document.getElementById('add-wh-success-tick');
+    if (tick) {
+        tick.classList.add('active');
+        const svg = tick.querySelector('svg');
+        if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
+        
+        setTimeout(() => {
+            tick.classList.remove('active');
+            window.closeM('m-wh');
+            nameInp.value = ''; 
+            locInp.value = '';
+            btn.disabled = false;
+            btn.innerHTML = 'Save Record';
+        }, 1800);
+    } else {
+        window.closeM('m-wh');
+        nameInp.value = ''; 
+        locInp.value = '';
+        btn.disabled = false;
+        btn.innerHTML = 'Save Record';
+    }
+
+  } catch(e) {
+    window.showToast('Error: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'Save Record';
   }
 };
 window.openEntry = function(type) {
