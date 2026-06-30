@@ -219,19 +219,13 @@ body { padding-top: 60px; }
 .sc-premium.lo .scp-val > span:first-child { color: #fff !important; }
 .sc-premium.lo .scp-text { color: rgba(255,255,255,0.9); }
 .sc-premium.lo .sc-massive-ico { color: #fff; opacity: 0.12; }
-
-
-/* ----------------------------------- */
-/* MOBILE STACK ANIMATION (APPLE-STYLE)*/
-/* ----------------------------------- */
-.mobile-stack-wrap { display: block; position: relative; height: 145px; margin-bottom: 24px; touch-action: pan-y; }
+.mobile-stack-wrap { display:block; position:relative; height:165px; margin-bottom:24px; touch-action:pan-y; }
 @media(min-width: 900px) { .mobile-stack-wrap { display: none; } }
 @media(max-width: 899px) { .stats-grid { display: none !important; } }
 
 .mobile-card {
-  position: absolute; top: 0; left: 0; right: 0; height: 135px; 
-  border-radius: 24px; 
-  padding: 20px 24px; 
+  position:absolute; top:0; left:0; right:0; height:155px; 
+  border-radius:24px; padding:22px 24px;
   will-change: transform; user-select: none; 
   cursor: pointer; background: var(--white-pure);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, background 0.4s ease, box-shadow 0.4s ease;
@@ -919,14 +913,17 @@ input[type=number] { -moz-appearance: textfield; }
   flex-direction: row !important; /* Forces side-by-side layout */
   align-items: center !important;
   justify-content: flex-start !important; 
-  padding: 16px 20px !important;
+  padding: 20px 16px !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
-  gap: 16px !important;
+  gap: 14px !important;
+  min-height: 62px;
 }
 
 .whr-info {
   text-align: left !important; /* Forces text to the left */
   flex: 1 !important;
+  width: 48px !important;
+  height: 48px !important;
 }
 
 .whr-loc {
@@ -940,7 +937,9 @@ input[type=number] { -moz-appearance: textfield; }
   gap: 8px !important;
   align-items: center !important;
 }
-
+.whr-name {
+  font-size: 16px !important;
+}
 .whr-arrow {
   display: none !important; /* Permanently hides the > arrow on PC and Mobile */
 }
@@ -2858,8 +2857,45 @@ async function init(){
   }
 
   loadWHs();
+  startDashboardStatsListener();
 }
+function startDashboardStatsListener() {
+  if (!CU.companyId) return;
 
+  const prodQ = query(collection(db, 'products'), where('companyId', '==', CU.companyId));
+  onSnapshot(prodQ, snap => {
+    const all = snap.docs.map(d => d.data());
+    const total = all.length;
+    const lowList = all.filter(p => p.minStock != null ? p.stock <= p.minStock : p.stock <= 0);
+    const lowCount = lowList.length;
+
+    document.getElementById('sProds').textContent = total;
+    document.getElementById('sProdsm').textContent = total;
+    document.getElementById('sLow').textContent = lowCount;
+    document.getElementById('sLowm').textContent = lowCount;
+
+    const alertEl = document.getElementById('lowAlert');
+    if (lowCount > 0) {
+      alertEl.classList.add('show');
+      document.getElementById('lowTxtDesk').textContent = `${lowCount} product${lowCount > 1 ? 's' : ''} below minimum stock.`;
+      document.getElementById('lowTxtMob').textContent = `${lowCount} minimum Product${lowCount > 1 ? 's' : ''}`;
+    } else {
+      alertEl.classList.remove('show');
+    }
+  }, e => console.error('Product stats error:', e));
+
+  const entQ = query(collection(db, 'entries'), where('companyId', '==', CU.companyId));
+  onSnapshot(entQ, snap => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const count = snap.docs.map(d => d.data()).filter(e => {
+      if (e.deleted || e.type === 'LOG') return false;
+      const ts = e.createdAt?.toDate ? e.createdAt.toDate() : new Date(e.createdAt || 0);
+      return ts >= today;
+    }).length;
+    document.getElementById('sEnt').textContent = count;
+    document.getElementById('sEntm').textContent = count;
+  }, e => console.error('Entries stats error:', e));
+}
 function setSyncBadge(type,text){
   syncEl.className='sync-badge '+type;
   syncEl.innerHTML=text;
@@ -3435,7 +3471,42 @@ window.confirmDelWH = async function() {
   btn.disabled = false; 
   btn.textContent = 'Delete';
 };
+window.openLowStockModal = async function() {
+  const listEl = document.getElementById('lowStockList');
+  listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-4);">Loading…</div>';
+  window.openM('m-low-stock');
+  try {
+    const snap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId)));
+    const lowProds = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => p.minStock != null ? p.stock <= p.minStock : p.stock <= 0);
 
+    if (!lowProds.length) {
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-4);">No low stock items 🎉</div>';
+      return;
+    }
+    listEl.innerHTML = lowProds.map(p => `
+      <div class="low-stock-item" onclick="window.closeM('m-low-stock');window.jumpToLowStockProduct('${p.id}','${p.godownId}')">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--white-pure);border:1px solid var(--red-border);display:flex;align-items:center;justify-content:center;">${window.getExtIcon(p.emoji)}</div>
+          <div>
+            <div style="font-weight:800;font-size:14px;color:var(--text-1);">${esc(p.name)}</div>
+            <div style="font-size:12px;color:var(--text-3);">Stock: ${p.stock||0} ${esc(p.unit||'')}</div>
+          </div>
+        </div>
+        <div style="font-weight:800;color:var(--red);font-size:13px;">Min: ${p.minStock ?? 0}</div>
+      </div>
+    `).join('');
+  } catch(e) {
+    listEl.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;">${e.message}</div>`;
+  }
+};
+
+window.jumpToLowStockProduct = async function(pId, whId) {
+  const wh = WHs.find(w => w.id === whId);
+  if (!wh) { window.showToast('Warehouse not found.', 'error'); return; }
+  await window.openWH(wh);
+  window.openProd(pId, true);
+};
 window.currentEntries = [];
 window.entryCurrentPage = 1;
 const ENTRY_PER_PAGE = 10;
