@@ -3313,28 +3313,41 @@ window.prepDelProd=function(){
   document.getElementById('delProdSub').textContent=`Delete "${curProd.name}"?`;
   window.openM('m-del-prod');
 };
-
-window.confirmDelProd=async function(){
-  const btn=document.getElementById('delProdBtn');
-  btn.disabled=true; btn.textContent='Deleting...';
-  try{
-    const batch=writeBatch(db);
-    const snap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));
-    snap.docs.forEach(d=>batch.delete(d.ref));
+window.confirmDelProd = async function() {
+  const btn = document.getElementById('delProdBtn');
+  btn.disabled = true; btn.textContent = 'Deleting...';
+  try {
+    const batch = writeBatch(db);
+    const snap = await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));
+    snap.docs.forEach(d => batch.delete(d.ref));
     
-    const rl=CU.role.charAt(0).toUpperCase()+CU.role.slice(1);
-    const logRef=doc(collection(db,'entries'));
-    batch.set(logRef,{type:'LOG',qty:0,qtyBase:0,unit:'',entryUnit:'',note:`${rl} (${CU.name}) deleted product: "${curProd.name}"`,productId:'DELETED',godownId:curWH,companyId:CU.companyId,who:CU.name||'Owner',createdBy:CU.uid,deleted:false,isActivity:true,createdAt:serverTimestamp()});
+    const rl = CU.role.charAt(0).toUpperCase() + CU.role.slice(1);
+    const logRef = doc(collection(db,'entries'));
+    batch.set(logRef, {type:'LOG', qty:0, qtyBase:0, unit:'', entryUnit:'', note:`${rl} (${CU.name}) deleted product: "${curProd.name}"`, productId:'DELETED', godownId:curWH, companyId:CU.companyId, who:CU.name||'Owner', createdBy:CU.uid, deleted:false, isActivity:true, createdAt:serverTimestamp()});
     batch.delete(doc(db,'products',curProd.id));
     await batch.commit();
-    window.closeM('m-del-prod'); showView('wh'); await loadProds(curWH);
-    window.showToast(`Product deleted.`,'s');
-  }catch(e){
-    window.showToast('Failed to delete: ' + e.message,'e');
+    
+    // Trigger Success Animation (Mutes the Toast)
+    const tick = document.getElementById('del-prod-success-tick');
+    if (tick) {
+        tick.classList.add('active');
+        const svg = tick.querySelector('svg');
+        if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
+        
+        setTimeout(async () => {
+            tick.classList.remove('active');
+            window.closeM('m-del-prod');
+            showView('wh'); 
+            await loadProds(curWH);
+        }, 1800);
+    } else {
+        window.closeM('m-del-prod'); showView('wh'); await loadProds(curWH);
+    }
+  } catch(e) {
+    window.showToast('Failed to delete: ' + e.message, 'error');
   }
-  btn.disabled=false; btn.textContent='Delete Forever';
+  btn.disabled = false; btn.textContent = 'Delete Forever';
 };
-
 window.confirmDelWH = async function() {
   const btn = document.getElementById('delWhBtn');
   btn.disabled = true; 
@@ -3353,10 +3366,24 @@ window.confirmDelWH = async function() {
     
     await batch.commit();
     
-    window.closeM('m-del-wh'); 
-    showView('dash'); 
-    window.showToast('Warehouse deleted successfully.', 'success');
-    curWH = null;
+    // Trigger Success Animation (Mutes the Toast)
+    const tick = document.getElementById('del-wh-success-tick');
+    if (tick) {
+        tick.classList.add('active');
+        const svg = tick.querySelector('svg');
+        if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
+        
+        setTimeout(() => {
+            tick.classList.remove('active');
+            window.closeM('m-del-wh');
+            showView('dash'); 
+            curWH = null;
+        }, 1800);
+    } else {
+        window.closeM('m-del-wh'); 
+        showView('dash'); 
+        curWH = null;
+    }
   } catch(e) {
     const errEl = document.getElementById('delWhErr');
     if (errEl) errEl.textContent = 'Failed: ' + e.message;
@@ -3601,7 +3628,6 @@ window.openAddProd = function() {
   setMM('prodMsg', '', '');
   window.openM('m-prod');
 };
-// Replace your window.addProduct function with this:
 window.addProduct = async function() {
   if (!curWH) { window.showToast('No warehouse selected.', 'error'); return; }
   if (CU.role !== 'owner' && CU.role !== 'manager') {
@@ -3693,7 +3719,7 @@ window.addProduct = async function() {
       });
     }
 
-    // Trigger Success Animation
+    // Trigger Success Animation (Mutes the Toast)
     const tick = document.getElementById('add-prod-success-tick');
     if (tick) {
         tick.classList.add('active');
@@ -3724,9 +3750,6 @@ window.addProduct = async function() {
     btn.textContent = 'Add Product';
   }
 };
-
-
-// Replace your window.createWH function with this:
 window.createWH = async function() {
   const nameInp = document.getElementById('wn');
   const locInp = document.getElementById('wl');
@@ -3746,7 +3769,7 @@ window.createWH = async function() {
       createdAt: serverTimestamp()
     });
     
-    // Trigger Success Animation
+    // Trigger Success Animation (Mutes the Toast)
     const tick = document.getElementById('add-wh-success-tick');
     if (tick) {
         tick.classList.add('active');
