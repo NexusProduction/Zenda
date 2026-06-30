@@ -2073,37 +2073,16 @@ body.is-premium .premium-lock-overlay {
 
   </div>
 </div>
-
 <div class="mo" id="m-del-wh" onclick="if(event.target===this) window.closeM('m-del-wh')" style="align-items: center !important; padding: 16px !important;">
   <div class="mbox" style="width: 100%; max-width: 420px; padding: 0; border-radius: 20px !important; margin: auto; position: relative; overflow: hidden;">
-
-    <div class="mbox-scrollarea">
-
-    <div style="padding: 22px 24px; border-bottom: 1px solid var(--border-faint);">
-      <div style="font-family: var(--f-display); font-size: 1.2rem; font-weight: 800; color: var(--red); text-align: center; letter-spacing: -0.01em;">Delete Warehouse</div>
-    </div>
     
-    <div style="padding: 24px; display: flex; flex-direction: column; align-items: center;">
-      <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-2); text-align: center; margin-bottom: 24px; line-height: 1.5;">
-        Are you sure? All products, stock entries, and associated data will be permanently removed.
-      </div>
-      
-      <input type="hidden" id="delWhExpSyncToggle" checked>
-
-      <div id="delWhErr" style="font-size:13px; font-weight:700; color:var(--red); text-align:center; margin-bottom: 8px; min-height: 0;"></div>
-      
-      <div style="display: flex; gap: 12px; width: 100%;">
-        <button onclick="window.closeM('m-del-wh')" class="btn-ghost-red" style="flex: 1; padding: 12px; border-radius: 12px; font-family: var(--f-display); font-size: 0.95rem; font-weight: 700; cursor: pointer;">Cancel</button>
-        <!-- NEW -->
-        <button id="delWhBtn" onclick="window.confirmDelWH()" class="btn-black-red" style="flex: 1; padding: 12px; border: none; font-family: var(--f-display); font-size: 0.95rem; font-weight: 700; cursor: pointer;">Delete</button>
-      </div>
-    </div>
+    <div class="mbox-scrollarea" id="del-wh-dynamic-content">
 
     </div>
 
     <div class="ppm-success-overlay" id="del-wh-success-tick">
       <div class="apple-tick"><svg width="34" height="34" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-      <div class="ppm-success-text">Warehouse Deleted</div>
+      <div class="ppm-success-text" id="del-wh-success-text">Warehouse Deleted</div>
     </div>
 
   </div>
@@ -2989,43 +2968,209 @@ function renderWHs() {
     pcList.appendChild(pcPag);
   }
 }
-
-window.openWH=async function(wh){
-  curWH=wh.id||wh;
-  const whObj=WHs.find(w=>w.id===curWH)||wh;
-  document.getElementById('whName').textContent=whObj.name||'Warehouse';
-  document.getElementById('whLoc').textContent=whObj.location||'—';
+window.openWH = async function(wh) {
+  curWH = wh.id || wh;
+  const whObj = WHs.find(w => w.id === curWH) || wh;
+  document.getElementById('whName').textContent = whObj.name || 'Warehouse';
+  document.getElementById('whLoc').textContent = whObj.location || '—';
   
   const globalIndex = WHs.findIndex(w => w.id === curWH);
   const iconIndex = globalIndex !== -1 ? globalIndex : 0;
   const matchedIcon = ICONS[iconIndex % ICONS.length];
   document.getElementById('whDetailIcon').innerHTML = matchedIcon;
   
-  const isOwner=CU.role==='owner';
-  const isManager=CU.role==='manager';
-  
+  const isOwner = CU.role === 'owner';
   const btnDel = document.getElementById('btnDelWH');
-const trashIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
   
-  btnDel.innerHTML = `${trashIcon} <span>Delete</span>`;
-  btnDel.onclick = () => {
-  const errEl = document.getElementById('delWhErr');
-  if (errEl) errEl.innerHTML = '';
-  const syncTgl = document.getElementById('delWhExpSyncToggle');
-  if (syncTgl) syncTgl.checked = true;
-  window.openM('m-del-wh');
-};
+  const trashIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
+  const reqIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`;
+  
+  // Alter UI based on Role
+  if (isOwner) {
+      btnDel.innerHTML = `${trashIcon} <span>Delete</span>`;
+      btnDel.style.background = 'rgba(255, 255, 255, 0.15)';
+      btnDel.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+      btnDel.style.color = '#fff';
+      btnDel.onclick = () => window.prepDeleteWH(whObj);
+  } else {
+      btnDel.innerHTML = `${reqIcon} <span>Delete Request</span>`;
+      btnDel.style.background = 'rgba(245, 158, 11, 0.2)'; // Amber tint
+      btnDel.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+      btnDel.style.color = '#FDE68A';
+      btnDel.onclick = () => window.prepDeleteWH(whObj);
+  }
+  
   const canAdd = true; 
   const btnPC = document.getElementById('btnAddProdPC'); if(btnPC) btnPC.classList.toggle('hidden', !canAdd);
   const btnMob = document.getElementById('btnAddProdMobile'); if(btnMob) btnMob.classList.toggle('hidden', !canAdd);
-  
-  const searchBar = document.getElementById('pSrch');
-  if (searchBar) searchBar.value = '';
   
   showView('wh');
   await loadProds(curWH);
 };
 
+// Generates the correct Modal UI based on the user's role
+window.prepDeleteWH = function(whObj) {
+    const isOwner = CU.role === 'owner';
+    const content = document.getElementById('del-wh-dynamic-content');
+    
+    if (isOwner) {
+        content.innerHTML = `
+        <div style="padding: 22px 24px; border-bottom: 1px solid var(--border-faint);">
+          <div style="font-family: var(--f-display); font-size: 1.2rem; font-weight: 800; color: var(--red); text-align: center; letter-spacing: -0.01em;">Delete Warehouse</div>
+        </div>
+        <div style="padding: 24px; display: flex; flex-direction: column; align-items: center;">
+          <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-2); text-align: center; margin-bottom: 24px; line-height: 1.5;">
+            Are you sure? All products, stock entries, and associated data will be permanently removed.
+          </div>
+          <div style="display: flex; gap: 12px; width: 100%;">
+            <button onclick="window.closeM('m-del-wh')" class="btn-ghost-red" style="flex: 1; padding: 12px; border-radius: 12px; font-family: var(--f-display); font-size: 0.95rem; font-weight: 700; cursor: pointer;">Cancel</button>
+            <button id="delWhBtn" onclick="window.confirmDelWH()" class="btn-black-red" style="flex: 1; padding: 12px; border: none; font-family: var(--f-display); font-size: 0.95rem; font-weight: 700; cursor: pointer;">Delete</button>
+          </div>
+        </div>`;
+    } else {
+        content.innerHTML = `
+        <div style="padding: 22px 24px; border-bottom: 1px solid var(--border-faint);">
+          <div style="font-family: var(--f-display); font-size: 1.2rem; font-weight: 800; color: var(--amber); text-align: center; letter-spacing: -0.01em;">Request Deletion</div>
+        </div>
+        <div style="padding: 24px; display: flex; flex-direction: column; align-items: center;">
+          <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-2); text-align: center; margin-bottom: 16px; line-height: 1.5;">
+            Submit a request to the owner to permanently delete <strong style="color:var(--text-1);">${esc(whObj.name)}</strong>.
+          </div>
+          <div style="width: 100%; margin-bottom: 20px; text-align: left;">
+            <label style="display:block; font-size:11px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">Reason (10-20 chars)</label>
+            <textarea id="wh-del-reason-input" class="finp" placeholder="Provide a reason..." maxlength="20" oninput="window.checkWhDelRequestBtn(this)" style="width: 100%; padding: 12px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--white-cool); color: var(--text-1); font-family: var(--f-body); font-size: 14px; min-height: 80px; resize: none; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='var(--amber)'; this.style.backgroundColor='#fff'; this.style.boxShadow='0 0 0 3px rgba(217, 119, 6, 0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.backgroundColor='var(--white-cool)'; this.style.boxShadow='none'"></textarea>
+          </div>
+          <div style="display: flex; gap: 12px; width: 100%;">
+            <button onclick="window.closeM('m-del-wh')" class="btn-ghost" style="flex: 1; padding: 12px; border-radius: 12px; font-weight: 700; cursor: pointer; border-color: var(--border-strong);">Cancel</button>
+            <button id="wh-del-request-btn" onclick="window.sendWhDeleteRequest()" disabled style="flex: 1; padding: 12px; border: none; font-weight: 700; cursor: not-allowed; background: var(--amber); color: #fff; border-radius: 12px; opacity: 0.4; transition: all 0.3s;">Send Request</button>
+          </div>
+        </div>`;
+    }
+    window.openM('m-del-wh');
+};
+
+// Staff Validation: Enforces 10 to 20 characters
+window.checkWhDelRequestBtn = function(textarea) {
+    const len = textarea.value.trim().length;
+    const ok = len >= 10 && len <= 20;
+    const btn = document.getElementById('wh-del-request-btn');
+    if (btn) {
+        btn.disabled = !ok;
+        btn.style.opacity = ok ? '1' : '0.4';
+        btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+        btn.style.boxShadow = ok ? '0 4px 12px rgba(217, 119, 6, 0.35)' : 'none';
+        btn.style.transform = ok ? 'translateY(-1px)' : 'none';
+    }
+};
+
+// Staff Action: Submits Request to Owner
+window.sendWhDeleteRequest = async function() {
+    if (window._whDeleteRequestPending) return;
+    const reason = document.getElementById('wh-del-reason-input').value.trim();
+    if (reason.length < 10 || reason.length > 20) return;
+
+    const btn = document.getElementById('wh-del-request-btn');
+    window._whDeleteRequestPending = true;
+    
+    // Lock textarea and button
+    const textarea = document.getElementById('wh-del-reason-input');
+    if (textarea) textarea.setAttribute('readonly', 'true');
+    btn.textContent = "Sending...";
+    btn.style.opacity = "0.7";
+
+    try {
+        const ownerSnap = await getDocs(query(collection(db, 'users'), where('companyId', '==', CU.companyId), where('role', '==', 'owner')));
+        if (ownerSnap.empty) throw new Error("Owner not found.");
+        const ownerId = ownerSnap.docs[0].id;
+
+        const whObj = WHs.find(w => w.id === curWH);
+        const prodCount = prods.length; // From globally loaded products for this WH
+
+        await addDoc(collection(db, 'users', ownerId, 'notifications'), {
+            type: 'warehouse_delete_request',
+            message: `${CU.name} requested to delete warehouse "${whObj.name}".`,
+            warehouseData: { id: whObj.id, name: whObj.name, location: whObj.location, productCount: prodCount, reason: reason },
+            requesterId: CU.uid,
+            actorId: CU.uid,
+            actorName: CU.name,
+            createdAt: Date.now(),
+            read: false,
+            status: 'unread'
+        });
+
+        const tick = document.getElementById('del-wh-success-tick');
+        const textEl = document.getElementById('del-wh-success-text');
+        
+        if (tick && textEl) {
+            textEl.textContent = "Request Sent";
+            textEl.style.color = "#10B981"; // Green tick text
+            tick.classList.add('active');
+            const svg = tick.querySelector('svg');
+            if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
+            
+            setTimeout(() => {
+                tick.classList.remove('active');
+                window.closeM('m-del-wh');
+            }, 2000);
+        } else {
+            window.closeM('m-del-wh');
+        }
+
+    } catch (e) {
+        console.error(e);
+        window.showToast("Failed to send request: " + e.message, "error");
+        btn.textContent = "Send Request";
+        btn.style.opacity = "1";
+    } finally {
+        window._whDeleteRequestPending = false;
+        if (textarea) textarea.removeAttribute('readonly');
+    }
+};
+
+// Owner Action: Directly Deletes Warehouse
+window.confirmDelWH = async function() {
+  const btn = document.getElementById('delWhBtn');
+  if(btn) { btn.disabled = true; btn.textContent = 'Deleting...'; }
+  
+  try {
+    const batch = writeBatch(db);
+    
+    const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('godownId', '==', curWH)));
+    entSnap.docs.forEach(d => batch.delete(d.ref));
+    
+    const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', curWH)));
+    prodSnap.docs.forEach(d => batch.delete(d.ref));
+    
+    batch.delete(doc(db, 'godowns', curWH));
+    await batch.commit();
+    
+    // Trigger Success Animation
+    const tick = document.getElementById('del-wh-success-tick');
+    const textEl = document.getElementById('del-wh-success-text');
+    
+    if (tick && textEl) {
+        textEl.textContent = "Warehouse Deleted";
+        textEl.style.color = "#111827"; // Standard text color
+        tick.classList.add('active');
+        const svg = tick.querySelector('svg');
+        if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
+        
+        setTimeout(() => {
+            tick.classList.remove('active');
+            window.closeM('m-del-wh');
+            showView('dash'); 
+            curWH = null;
+        }, 1800);
+    } else {
+        window.closeM('m-del-wh'); 
+        showView('dash'); 
+        curWH = null;
+    }
+  } catch(e) {
+    if(btn) { btn.disabled = false; btn.textContent = 'Delete'; }
+    window.showToast('Failed: ' + e.message, 'error');
+  }
+};
 async function loadWHStats(whId){
   if(!whId)return;
   const today=new Date();today.setHours(0,0,0,0);
@@ -3392,50 +3537,6 @@ window.confirmDelProd = async function() {
     window.showToast('Failed to delete: ' + e.message, 'error');
   }
   btn.disabled = false; btn.textContent = 'Delete Forever';
-};
-window.confirmDelWH = async function() {
-  const btn = document.getElementById('delWhBtn');
-  btn.disabled = true; 
-  btn.textContent = 'Deleting...';
-  
-  try {
-    const batch = writeBatch(db);
-    
-    const entSnap = await getDocs(query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('godownId', '==', curWH)));
-    entSnap.docs.forEach(d => batch.delete(d.ref));
-    
-    const prodSnap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', curWH)));
-    prodSnap.docs.forEach(d => batch.delete(d.ref));
-    
-    batch.delete(doc(db, 'godowns', curWH));
-    
-    await batch.commit();
-    
-    // Trigger Success Animation (Mutes the Toast)
-    const tick = document.getElementById('del-wh-success-tick');
-    if (tick) {
-        tick.classList.add('active');
-        const svg = tick.querySelector('svg');
-        if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
-        
-        setTimeout(() => {
-            tick.classList.remove('active');
-            window.closeM('m-del-wh');
-            showView('dash'); 
-            curWH = null;
-        }, 1800);
-    } else {
-        window.closeM('m-del-wh'); 
-        showView('dash'); 
-        curWH = null;
-    }
-  } catch(e) {
-    const errEl = document.getElementById('delWhErr');
-    if (errEl) errEl.textContent = 'Failed: ' + e.message;
-  }
-  
-  btn.disabled = false; 
-  btn.textContent = 'Delete';
 };
 window.openLowStockModal = async function() {
   const listEl = document.getElementById('lowStockList');
