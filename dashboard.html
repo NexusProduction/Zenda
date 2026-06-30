@@ -4175,7 +4175,6 @@ window.tempStaffOTP = '';
 
 // Warehouse specific variables
 window.pendingWarehouses = window.pendingWarehouses || {};
-window.pendingProducts = window.pendingProducts || {};
 let currentReviewNotificationId = null;
 let currentReviewWarehouseId = null;
 let currentReviewType = ''; 
@@ -4551,9 +4550,7 @@ window.renderNotifs = function(items) {
 
   activeNotifs.forEach(n => {
     
-    if (n.type === 'product_delete_request') {
-    window.pendingProducts[n.id] = n;
-}
+    // 👉 ADD THIS BLOCK: Save the warehouse request data into memory so the button can use it
     if (n.type === 'warehouse_request' || n.type === 'warehouse_delete_request') {
         window.pendingWarehouses[n.id] = n;
     }
@@ -4565,7 +4562,6 @@ window.renderNotifs = function(items) {
 
     // ── Icon lookup table — one entry per notification type ──
     const _IC = {
-      product_delete_request: { cls:'staff-del', p:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line>' },
       security_login:           { cls:'security',  p:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>' },
       security_alert:           { cls:'security',  p:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>' },
       task_received:            { cls:'task',      p:'<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><polyline points="9 12 11 14 15 10"/>' },
@@ -4624,8 +4620,6 @@ window.renderNotifs = function(items) {
           <button class="btn btn-primary" style="padding:8px 16px;font-size:0.85rem; width: fit-content; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';" onclick="window.openCalendarApp(this, '${n.id}', '${n.eventDate || ''}')">Open in app</button>
           <button class="btn btn-secondary" style="padding:8px 16px;font-size:0.85rem; font-weight:700; border-radius: 8px; width: fit-content; border: 2px solid var(--bd-color); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='var(--tx-muted)'; this.style.backgroundColor='#E2E3E9';" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--bd-color)'; this.style.backgroundColor='';" onclick="window.dismissAlert(this)">Dismiss</button>
         `;
-    } else if (n.type === 'product_delete_request') {
-    actionsHtml = `<button class="btn w-full" style="padding:10px 16px;font-size:0.9rem;background:var(--danger);color:white;border:none;border-radius:10px;font-weight:800;box-shadow:0 4px 12px rgba(255,59,48,0.25);width:100%;justify-content:center;margin-top:6px;" onclick="window.viewProductDeleteReq('${n.id}')">Review Request</button>`;
     } else {
         actionsHtml = `<button class="btn btn-secondary" style="padding:7px 14px; font-size:0.82rem; border-radius:8px; width:fit-content;" onclick="window.dismissAlert(this)">Dismiss</button>`;
     }
@@ -4638,7 +4632,6 @@ window.renderNotifs = function(items) {
     else if (n.type === 'warehouse_request')                                    notifTitle = 'Warehouse Request';
     else if (n.type === 'warehouse_delete_request')                             notifTitle = 'Delete Request';
     else if (n.type === 'plan_expiry_warning')                                  notifTitle = 'Plan Expiry';
-      else if (n.type === 'product_delete_request') notifTitle = 'Delete Request';
     else if (n.type === 'calendar_event_all' || n.type === 'calendar_event_custom') notifTitle = 'Calendar Event';
     else if (n.type === 'staff_add_approved')                                   notifTitle = 'Request Approved';
     else if (n.type === 'staff_login_blocked')                                  notifTitle = 'Login Blocked';
@@ -6150,168 +6143,7 @@ window.declineWarehouseDeleteReq = async function(notifId) {
         if (window.showToast) window.showToast("Delete request declined.", "info");
     } catch(e) { console.error(e); }
 };
-window.viewProductDeleteReq = function(notifId) {
-    window.closeAllPanels();
 
-    try {
-        const notif = window.pendingProducts[notifId];
-        if(!notif || !notif.productData) {
-            alert("Error: Product data is missing from this request.");
-            return;
-        }
-        const data = notif.productData;
-        const safeName = data.name ? String(data.name).replace(/</g, "&lt;").replace(/>/g, "&gt;") : "Unknown";
-        const safeReason = data.reason ? String(data.reason).replace(/</g, "&lt;").replace(/>/g, "&gt;") : "No reason provided";
-        const requesterName = notif.actorName ? String(notif.actorName).replace(/</g, "&lt;").replace(/>/g, "&gt;") : 'Staff Member';
-
-        const overlay = document.createElement('div');
-        overlay.id = `prod-del-modal-${notifId}`;
-        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0, 0, 0, 0.4); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; z-index:99999; animation: fadeIn 0.2s ease-out; padding: 16px; transition: opacity 0.25s ease;';
-        
-        overlay.innerHTML = `
-            <div class="wh-modal-content" style="background:var(--bg-surface); border-radius:24px; width:100%; max-width:400px; box-shadow:0 32px 80px rgba(15, 23, 42, 0.15); border:1px solid var(--bd-color); overflow:hidden; transform: scale(0.95); animation: toastIn 0.3s forwards; transition: transform 0.25s ease, opacity 0.25s ease;">
-                <div style="background: linear-gradient(135deg, #EF4444, #B91C1C); height: 65px; position: relative;"></div>
-                <div style="padding: 0 32px 32px; text-align: center; position: relative;">
-                    <div style="width: 68px; height: 68px; background: #fff; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: -34px auto 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.08); border: 4px solid var(--bg-surface); position: relative; z-index: 2;">
-                        📦
-                    </div>
-                    <h3 style="margin:0 0 4px; font-size:1.35rem; color:var(--tx-main); font-weight:800; letter-spacing:-0.02em;">Delete Product</h3>
-                    <p style="margin:0 0 28px; color:var(--tx-muted); font-size:0.9rem; font-weight:600;">Requested by <span style="color:var(--tx-main);">${requesterName}</span></p>
-                    
-                    <div style="background: var(--bg-page); border-radius: 16px; padding: 12px 24px; border: 1px solid var(--bd-color); text-align: left; display: flex; flex-direction: column;">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0; border-bottom: 1px solid var(--bd-color);">
-                            <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Name</div>
-                            <div style="font-size:0.95rem; color:var(--tx-main); font-weight:800; text-align:right; max-width:65%; word-break:break-word;">${safeName}</div>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding: 14px 0;">
-                            <div style="font-size:0.75rem; color:var(--tx-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Reason</div>
-                            <div style="color:var(--tx-main); font-size:0.85rem; font-weight:600; text-align:right; max-width:65%; word-break:break-word;">
-                                "${safeReason}"
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div style="padding: 0 32px 32px; display:flex; gap:12px;">
-                    <button onclick="window.declineProductDeleteReq('${notifId}'); this.closest('#prod-del-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--bg-surface); color:var(--tx-main); border:1.5px solid var(--bd-color); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--bg-page)';" onmouseout="this.style.background='var(--bg-surface)';">Decline</button>
-                    <button onclick="window.approveProductDeleteReq('${notifId}'); this.closest('#prod-del-modal-${notifId}').remove();" style="flex:1; padding:12px; background:var(--danger); color:#fff; border:none; box-shadow:0 4px 12px rgba(239,68,68,0.3); border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">Approve</button>
-                </div>
-            </div>
-        `;
-        
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                overlay.style.opacity = '0';
-                const content = overlay.querySelector('.wh-modal-content');
-                if(content) {
-                    content.style.transform = 'scale(0.9)';
-                    content.style.opacity = '0';
-                }
-                setTimeout(() => overlay.remove(), 250);
-            }
-        });
-        
-        document.body.appendChild(overlay);
-    } catch(err) { alert("System error opening request: " + err.message); }
-};
-
-window.approveProductDeleteReq = async function(notifId) {
-    const notif = window.pendingProducts[notifId];
-    if(!notif || !notif.productData) return;
-    const pId = notif.productData.id;
-    const whId = notif.productData.warehouseId; 
-
-    const notifCard = document.querySelector(`.notif-card[data-id="${notifId}"]`);
-    if (notifCard) {
-        notifCard.classList.add('slide-left-out');
-        setTimeout(() => notifCard.remove(), 350);
-    }
-
-    try {
-        const batch = writeBatch(db);
-
-        // Delete all related stock entries
-        const entSnap = await getDocs(query(collection(db,'entries'), where('companyId', '==', window.CU.companyId), where('productId','==',pId)));
-        entSnap.docs.forEach(d => batch.delete(d.ref));
-
-        // Create log entry representing deletion
-        const logRef = doc(collection(db,'entries'));
-        batch.set(logRef, {
-            type:'LOG', qty:0, qtyBase:0, unit:'', entryUnit:'',
-            note:`Owner (${window.CU.name}) approved deletion of product: "${notif.productData.name}"`,
-            productId:'DELETED', godownId: whId || '', companyId:window.CU.companyId,
-            who:window.CU.name||'Owner', createdBy:window.CU.uid, deleted:false, isActivity:true, createdAt:Date.now()
-        });
-
-        // Delete product
-        batch.delete(doc(db,'products', pId));
-
-        if (window.CU && window.CU.uid) {
-            batch.delete(doc(db, 'users', window.CU.uid, 'notifications', notifId));
-
-            // Prevent duplicate notifications from showing up
-            const dupeSnap = await getDocs(query(collection(db, 'users', window.CU.uid, 'notifications'), where('type', '==', 'product_delete_request')));
-            dupeSnap.docs.forEach(d => {
-                const nData = d.data();
-                if (d.id !== notifId && nData.productData && nData.productData.id === pId) {
-                    batch.delete(d.ref);
-                    if (nData.actorId) {
-                        const staffNotifRef = doc(collection(db, 'users', nData.actorId, 'notifications'));
-                        batch.set(staffNotifRef, {
-                            type: 'system',
-                            message: `Your request to delete product "${nData.productData.name}" was dismissed because the product has already been deleted.`,
-                            read: false,
-                            createdAt: Date.now()
-                        });
-                    }
-                }
-            });
-        }
-
-        await batch.commit();
-
-        if (notif.actorId) {
-            await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
-                type: 'system',
-                message: `Your request to delete product "${notif.productData.name}" was approved and executed.`,
-                read: false,
-                createdAt: Date.now()
-            });
-        }
-
-        if (window.showToast) window.showToast("Product deleted successfully!", "success");
-    } catch(e) {
-        console.error(e);
-        if (window.showToast) window.showToast("Failed to delete product.", "error");
-    }
-};
-
-window.declineProductDeleteReq = async function(notifId) {
-    const notif = window.pendingProducts[notifId];
-    if(!notif) return;
-
-    const notifCard = document.querySelector(`.notif-card[data-id="${notifId}"]`);
-    if (notifCard) {
-        notifCard.classList.add('slide-left-out');
-        setTimeout(() => notifCard.remove(), 350);
-    }
-
-    try {
-        if (window.CU && window.CU.uid) {
-            await deleteDoc(doc(db, 'users', window.CU.uid, 'notifications', notifId));
-        }
-
-        if (notif.actorId && notif.productData) {
-            await addDoc(collection(db, 'users', notif.actorId, 'notifications'), {
-                type: 'system',
-                message: `Your request to delete product "${notif.productData.name}" was declined by the owner.`,
-                read: false,
-                createdAt: Date.now()
-            });
-        }
-
-        if (window.showToast) window.showToast("Delete request declined.", "info");
-    } catch(e) { console.error(e); }
-};
 // 10. Secondary Warehouse Review Modals 
 window.closeM = function(id) {
     const el = document.getElementById(id);
