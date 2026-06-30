@@ -1521,6 +1521,43 @@ body.is-premium .premium-lock-overlay {
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
 }
+  /* --- SUCCESS OVERLAY (Apple Pay Style) --- */
+.ppm-success-overlay { 
+  position: absolute; inset: 0; 
+  background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  border-radius: 20px; display: flex; flex-direction: column; 
+  align-items: center; justify-content: center; 
+  z-index: 1000 !important; 
+  opacity: 0; visibility: hidden; 
+  transition: opacity 0.3s ease; 
+}
+.ppm-success-overlay.active { opacity: 1; visibility: visible; }
+
+.apple-tick { 
+  width: 88px; height: 88px; 
+  border-radius: 22px; 
+  background: #10B981; 
+  border: 2px solid #E5E7EB; 
+  box-shadow: 0 8px 16px rgba(0,0,0,0.06) !important; 
+  display: flex; align-items: center; justify-content: center; 
+  transform: scale(0); transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s; 
+}
+.ppm-success-overlay.active .apple-tick { transform: scale(1); }
+
+.apple-tick svg { 
+  width: 40px; height: 40px; 
+  stroke-dasharray: 50; stroke-dashoffset: 50; stroke: #FFFFFF; 
+  stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; fill: none; 
+  transition: stroke-dashoffset 0.4s ease 0.4s; 
+}
+.ppm-success-overlay.active .apple-tick svg { stroke-dashoffset: 0; }
+
+.ppm-success-text {
+  margin-top: 20px; font-weight: 800; font-size: 1.3rem; color: #111827; 
+  letter-spacing: -0.02em; opacity: 0; transform: translateY(10px);
+  transition: all 0.4s ease 0.3s;
+}
+.ppm-success-overlay.active .ppm-success-text { opacity: 1; transform: translateY(0); }
 </style>
 </head>
 <body>
@@ -1800,18 +1837,24 @@ body.is-premium .premium-lock-overlay {
     </div>
   </div>
 </div>
-
 <div class="mo" id="m-wh" onclick="if(event.target===this) window.closeM('m-wh')">
-  <div class="mbox" style="max-width: 520px; padding: 0; border-radius: 20px; overflow: visible;">
+  <div class="mbox" style="max-width: 520px; padding: 0; border-radius: 20px; overflow: visible; position: relative;">
     
+    <div class="ppm-success-overlay" id="add-wh-success-tick">
+      <div class="apple-tick">
+        <svg width="34" height="34" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <div class="ppm-success-text">Warehouse Added</div>
+    </div>
+
     <div style="padding: 16px 24px; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.25);">
       <div style="display: flex; align-items: center; gap: 14px;">
         <div style="width: 44px; height: 44px; background: var(--accent-soft); color: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
         </div>
         <div>
-  <div style="font-size: 1.25rem; font-weight: 800; color: var(--text-1); font-family: var(--f-display); letter-spacing: -0.02em;">New Warehouse</div>
-</div>
+          <div style="font-size: 1.25rem; font-weight: 800; color: var(--text-1); font-family: var(--f-display); letter-spacing: -0.02em;">New Warehouse</div>
+        </div>
       </div>
     </div>
 
@@ -1825,7 +1868,7 @@ body.is-premium .premium-lock-overlay {
       <div class="fg" style="margin-bottom: 20px;">
         <label style="display: block; font-size: 0.75rem; font-weight: 800; color: var(--text-1); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Location</label>
         <input type="text" id="wl" class="finp" placeholder="e.g. Delhi, Sector 12" maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9,\s]/g, ''); if(this.value.trim().length >= 5) { this.classList.remove('err-border'); document.getElementById('err-wh-loc').style.display='none'; }" style="width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f-body); font-size: 0.95rem; font-weight: 600; background: var(--bg-canvas); color: var(--text-1); outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='var(--accent)'; this.style.backgroundColor='var(--white-pure)'; this.style.boxShadow='0 0 0 3px var(--accent-glow)';" onblur="this.style.borderColor='var(--border)'; this.style.backgroundColor='var(--bg-canvas)'; this.style.boxShadow='none';">
-        <div id="err-wh-loc" style="color: var(--red); font-size: 0.75rem; font-weight: 700; margin-top: 6px; display: none;">Location must be 5-20 characters (letters, numbers, commas).</div>
+        <div id="err-wh-loc" style="color: var(--red); font-size: 0.75rem; font-weight: 700; margin-top: 6px; display: none;">Location must be 5-20 characters.</div>
       </div>
 
       <div class="fg" style="margin-bottom: 4px;">
@@ -1844,10 +1887,10 @@ body.is-premium .premium-lock-overlay {
           </div>
           <div class="cat-picker-dropdown" id="wh-cat-dd"></div>
         </div>
-        <input type="text" id="wcc-custom" class="finp" style="display: none; margin-top: 12px; width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f-body); font-size: 0.95rem; font-weight: 600; background: var(--bg-canvas); color: var(--text-1); outline: none; transition: all 0.2s;" placeholder="Type category name (max 15 chars)" maxlength="15" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s]/g, '');" onfocus="this.style.borderColor='var(--accent)'; this.style.backgroundColor='var(--white-pure)'; this.style.boxShadow='0 0 0 3px var(--accent-glow)';" onblur="this.style.borderColor='var(--border)'; this.style.backgroundColor='var(--bg-canvas)'; this.style.boxShadow='none';">
+        <input type="text" id="wcc-custom" class="finp" style="display: none; margin-top: 12px; width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f-body); font-size: 0.95rem; font-weight: 600; background: var(--bg-canvas); color: var(--text-1); outline: none; transition: all 0.2s;" placeholder="Type category name (max 15 chars)" maxlength="15" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s]/g, '');">
       </div>
 
-      <div class="mmsg" id="whMsg" style="font-size: 0.8rem; font-weight: 700; color: var(--red); text-align: center; min-height: 1.2em; margin-bottom: 16px; transition: color 0.2s;"></div>
+      <div class="mmsg" id="whMsg" style="font-size: 0.8rem; font-weight: 700; color: var(--red); text-align: center; min-height: 1.2em; margin-bottom: 12px;"></div>
 
       <button class="btn-black" id="btn-create-wh" onclick="validateAndSaveWH()">Save Record</button>
     </div>
@@ -1855,7 +1898,15 @@ body.is-premium .premium-lock-overlay {
 </div>
 
 <div class="mo" id="m-prod" onclick="if(event.target===this) window.closeM('m-prod')">
-  <div class="mbox" style="max-width: 500px; padding: 0; border-radius: 20px; overflow-y: auto; overflow-x: hidden;">
+  <div class="mbox" style="max-width: 500px; padding: 0; border-radius: 20px; overflow-y: auto; overflow-x: hidden; position: relative;">
+    
+    <div class="ppm-success-overlay" id="add-prod-success-tick">
+      <div class="apple-tick">
+        <svg width="34" height="34" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <div class="ppm-success-text">Product Added</div>
+    </div>
+
     <div class="mhd" style="border-bottom: 3px solid var(--border-strong); padding: 24px 24px 10px; justify-content: center; position: sticky !important; top: 0 !important; background: var(--white-pure) !important; z-index: 200 !important;">
       <div class="mttl" style="color:var(--text-1); font-size: 1.25rem; font-weight: 800; text-align: center; width: 100%; font-family: var(--f-display); letter-spacing: -0.01em; margin-bottom: 0;">Add Product</div>
       <div id="prodModalSub" style="display:none;"></div>
@@ -1863,7 +1914,7 @@ body.is-premium .premium-lock-overlay {
     
     <div class="mbd" style="padding: 16px 24px 24px;">
       
-      <div class="mf">
+      <div class="mf" style="margin-bottom: 16px;">
         <label>Name</label>
         <div class="mfr">
           <span class="mico" id="nameEmojiIcon" style="font-style: normal; display:flex; align-items:center; top:12px;">
@@ -1873,7 +1924,7 @@ body.is-premium .premium-lock-overlay {
         </div>
       </div>
 
-      <div class="mf">
+      <div class="mf" style="margin-bottom: 16px;">
         <label>Description</label>
         <div class="mfr">
           <span class="mico" style="display:flex; align-items:center; top:12px;">
@@ -1883,8 +1934,8 @@ body.is-premium .premium-lock-overlay {
         </div>
       </div>
       
-      <div class="m2">
-        <div class="mf">
+      <div class="m2" style="margin-bottom: 8px;">
+        <div class="mf" style="margin-bottom: 0;">
           <label>Opening Stock</label>
           <div class="mfr">
             <span class="mico" style="display:flex; align-items:center; top:12px;">
@@ -1893,7 +1944,7 @@ body.is-premium .premium-lock-overlay {
               <input type="number" id="ps" placeholder="0" min="0" max="99999999" oninput="if(this.value.length > 8) this.value = this.value.slice(0, 8); window.toggleAddProdExpense(this.value)" style="padding-right: 60px !important;"/>
           </div>
         </div>
-        <div class="mf" style="position: relative; z-index: 100;">
+        <div class="mf" style="position: relative; z-index: 100; margin-bottom: 0;">
           <label>Unit</label>
           <div class="cat-picker-wrap" id="unit-wrap">
             <div class="cat-picker-trigger" onclick="window.toggleUnitDD()" style="padding: 14px 16px; border: 2px solid var(--border-strong); border-radius: 12px; height: 50px;">
@@ -1911,7 +1962,7 @@ body.is-premium .premium-lock-overlay {
         </div>
       </div>
 
-      <div id="addProdExpenseBlock" class="sync-block-wrapper" style="display:none; border: 2px solid var(--border-strong); border-radius: 14px; background: var(--white-pure); margin-bottom: 16px;">
+      <div id="addProdExpenseBlock" class="sync-block-wrapper" style="display:none; border: 2px solid var(--border-strong); border-radius: 14px; background: var(--white-pure); margin-bottom: 12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding: 14px 16px;">
           <label style="margin-bottom: 0; font-size: 0.8rem; font-weight: 800; color: var(--text-1); letter-spacing: 0.05em; text-transform: uppercase;">Log as Expense?</label>
           <label class="tgl"><input type="checkbox" id="addProdExpTgl" onchange="window.toggleExpFields(this)"><span class="tgl-sl"></span></label>
@@ -1954,7 +2005,7 @@ body.is-premium .premium-lock-overlay {
           </div>
       </div>
       
-      <div class="sync-block-wrapper" style="border: 2px solid var(--border-strong); border-radius: 14px; background: var(--white-pure); margin-bottom: 16px; position: relative; z-index: 10;">
+      <div class="sync-block-wrapper" style="border: 2px solid var(--border-strong); border-radius: 14px; background: var(--white-pure); margin-bottom: 8px; position: relative; z-index: 10;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding: 14px 16px;">
           <div>
             <label style="margin-bottom: 2px; font-size: 0.8rem; font-weight: 800; color: var(--text-1); letter-spacing: 0.05em; text-transform: uppercase;">Unit Conversions</label>
@@ -1969,7 +2020,7 @@ body.is-premium .premium-lock-overlay {
         </div>
       </div>
       
-      <div class="mmsg" id="prodMsg" style="margin-bottom: 16px; min-height: 18px;"></div>
+      <div class="mmsg" id="prodMsg" style="margin-bottom: 6px; min-height: 18px;"></div>
       
       <button class="btn-black" onclick="window.addProduct()">Add Product</button>
     </div>
