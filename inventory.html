@@ -3636,7 +3636,115 @@ window.openAddProd = function() {
   setMM('prodMsg', '', '');
   window.openM('m-prod');
 };
+window.addProduct = async function() {
+  if (!curWH) { window.showToast('No warehouse selected.', 'error'); return; }
+  if (CU.role !== 'owner' && CU.role !== 'manager') {
+    window.showToast('Only managers and owners can add products.', 'error');
+    return;
+  }
 
+  const nameInp = document.getElementById('pn');
+  const descInp = document.getElementById('pdesc');
+  const stockInp = document.getElementById('ps');
+  const unit = document.getElementById('pu_fixed').value || 'Piece';
+
+  const name = nameInp.value.trim();
+  const desc = descInp.value.trim();
+  const stock = parseFloat(stockInp.value) || 0;
+
+  if (!name) { setMM('prodMsg', '⚠ Enter a product name.', 'err'); return; }
+  if (stock < 0) { setMM('prodMsg', '⚠ Opening stock cannot be negative.', 'err'); return; }
+
+  const dup = prods.find(p => p.name.toLowerCase() === name.toLowerCase());
+  if (dup) { setMM('prodMsg', '⚠ A product with this name already exists here.', 'err'); return; }
+
+  let conversions = [];
+  if (document.getElementById('addProdConvTgl')?.checked) {
+    conversions = getConvRowsFixedData('addProdConvRows');
+    if (conversions === null) { setMM('prodMsg', '⚠ Check your unit conversion values.', 'err'); return; }
+  }
+
+  const logExpense = document.getElementById('addProdExpTgl')?.checked && stock >= 1;
+  const costPer = parseFloat(document.getElementById('addProdCost')?.value) || 0;
+  const payMethod = document.getElementById('addProdPayMethod')?.value || 'Cash';
+
+  if (logExpense && costPer <= 0) {
+    setMM('prodMsg', '⚠ Enter a valid price to log as expense.', 'err');
+    return;
+  }
+
+  const btn = document.querySelector('#m-prod .btn-black');
+  btn.disabled = true;
+  btn.textContent = 'Adding...';
+  setMM('prodMsg', '', '');
+
+  try {
+    const prodRef = await addDoc(collection(db, 'products'), {
+      name, desc, stock, unit,
+      emoji: window._aiEmoji || 'package',
+      minStock: null,
+      conversions,
+      godownId: curWH,
+      companyId: CU.companyId,
+      createdBy: CU.uid,
+      createdByName: CU.name || 'Owner',
+      createdAt: serverTimestamp()
+    });
+
+    let entryRef = null;
+    if (stock > 0) {
+      entryRef = await addDoc(collection(db, 'entries'), {
+        type: 'IN', qty: stock, qtyBase: stock, unit, entryUnit: unit,
+        note: 'Opening stock',
+        productId: prodRef.id,
+        godownId: curWH,
+        companyId: CU.companyId,
+        who: CU.name || 'Owner',
+        createdBy: CU.uid,
+        deleted: false,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    if (logExpense && entryRef) {
+      await addDoc(collection(db, 'expenses'), {
+        category: document.getElementById('addProdExpCat')?.value || 'Inventory Stock',
+        amount: +(stock * costPer).toFixed(2),
+        costPerUnit: costPer,
+        unit,
+        paymentMethod: payMethod,
+        note: `Opening stock — ${name}`,
+        productId: prodRef.id,
+        productName: name,
+        godownId: curWH,
+        relatedEntryId: entryRef.id,
+        companyId: CU.companyId,
+        createdBy: CU.uid,
+        createdByName: CU.name || 'Owner',
+        source: 'inventory',
+        isDeleted: false,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    btn.textContent = 'Added!';
+    window.showToast('Product added successfully ✓', 'success');
+
+    setTimeout(() => {
+      window.closeM('m-prod');
+      setTimeout(async () => {
+        btn.disabled = false;
+        btn.textContent = 'Add Product';
+        await loadProds(curWH);
+      }, 250);
+    }, 400);
+
+  } catch (e) {
+    setMM('prodMsg', '❌ Failed: ' + e.message, 'err');
+    btn.disabled = false;
+    btn.textContent = 'Add Product';
+  }
+};
 window.openEntry = function(type) {
   eType = type;
   document.getElementById('eq').value = '';
