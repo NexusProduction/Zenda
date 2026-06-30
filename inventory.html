@@ -2883,9 +2883,12 @@ async function init(){
 function startDashboardStatsListener() {
   if (!CU.companyId) return;
 
+  // NEW
   const prodQ = query(collection(db, 'products'), where('companyId', '==', CU.companyId));
   onSnapshot(prodQ, snap => {
-    const all = snap.docs.map(d => d.data());
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    window.allProducts = all;
+    if (WHs.length) renderWHs();
     const total = all.length;
     const lowList = all.filter(p => p.minStock != null ? p.stock <= p.minStock : p.stock <= 0);
     const lowCount = lowList.length;
@@ -3028,9 +3031,8 @@ function renderWHs() {
     const isLocked = !CU.isPremium && globalIndex > 0;
     const icon = ICONS[globalIndex % ICONS.length];
     const catLabel = CATS[wh.category] || wh.category || 'Warehouse';
-
-    const normalPcHtml = `<div class="whr-ico">${icon}</div><div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="whr-meta"><span class="wh-tag">${esc(catLabel)}</span><span class="wh-cnt" id="wc-${wh.id}">0 items</span></div><div class="whr-arrow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
-    
+    const itemCnt = (window.allProducts || []).filter(p => p.godownId === wh.id).length;
+    const normalPcHtml = `<div class="whr-ico">${icon}</div><div class="whr-info"><div class="whr-name">${esc(wh.name)}</div><div class="whr-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(wh.location||'—')}</div></div><div class="whr-meta"><span class="wh-tag">${esc(catLabel)}</span><span class="wh-cnt">${itemCnt} item${itemCnt===1?'':'s'}</span></div><div class="whr-arrow"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>`;
     if (isLocked) {
       hasLocked = true;
       lockedPcHtml += `<div class="whr" style="border-bottom: 1px solid rgba(0,0,0,0.08); pointer-events: none;">${normalPcHtml}</div>`;
@@ -3041,13 +3043,6 @@ function renderWHs() {
       row.onclick = () => window.openWH(wh);
       pcList.appendChild(row);
     }
-    getDocs(query(collection(db,'products'), where('companyId','==',CU.companyId), where('godownId','==',wh.id))).then(ps=>{
-      const cnt = ps.size;
-      const pc = document.getElementById(`wc-${wh.id}`);
-      if(pc) pc.textContent = cnt + ' items';
-    }).catch((e)=>{ 
-      console.error("Item Count Error for " + wh.name + ":", e); 
-    });
   });
   if (hasLocked) {
     const lockOverlay = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:10;"><button onclick="window.location.href='subscription.html'" style="background:var(--amber); color:white; padding:12px 24px; border:none; border-radius:24px; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow: 0 8px 30px rgba(217,119,6,0.3); cursor:pointer; transition: transform 0.2s;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Upgrade to Access All</button></div>`;
