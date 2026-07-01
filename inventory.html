@@ -2359,45 +2359,61 @@ function renderWhCatDropdown() {
     `).join('');
   }
 }
-// 1. Safe closer function
+window._whCatDDHome = null;
+
 window.closeWhCatDD = function() {
   const dd = document.getElementById('wh-cat-dd');
   const trigger = document.querySelector('#wh-cat-wrap .cat-picker-trigger');
-  
+
   if (dd) {
     dd.style.display = 'none';
     dd.classList.remove('dd-fixed');
+    if (window._whCatDDHome) {
+      const { parent, next } = window._whCatDDHome;
+      if (next) parent.insertBefore(dd, next);
+      else parent.appendChild(dd);
+    }
   }
   if (trigger) trigger.classList.remove('open');
 };
 
-// 2. Clean toggle function
 window.toggleWhCat = function() {
-  const trigger = document.querySelector('#wh-cat-wrap .cat-picker-trigger');
+  const wrap = document.getElementById('wh-cat-wrap');
+  const trigger = wrap.querySelector('.cat-picker-trigger');
   const dd = document.getElementById('wh-cat-dd');
-  
+
   if (dd.style.display === 'block') {
     window.closeWhCatDD();
-  } else {
-    renderWhCatDropdown();
-    
-    // CRITICAL FIX: Erase all lingering JS positioning so your standard CSS takes over completely!
-    // This guarantees it perfectly drops down from the bottom of the input.
-    dd.style.top = '';
-    dd.style.bottom = '';
-    dd.style.left = '';
-    dd.style.right = '';
-    dd.style.width = '';
-    dd.style.position = '';
-    dd.style.margin = '';
-    dd.classList.remove('dd-fixed');
-    
-    dd.style.display = 'block';
-    if(trigger) trigger.classList.add('open');
-    
-    // Note: We purposefully removed the 'scroll' listener here.
-    // Now you can safely scroll down inside the modal without the menu suddenly closing!
+    return;
   }
+
+  renderWhCatDropdown();
+
+  if (!window._whCatDDHome) {
+    window._whCatDDHome = { parent: dd.parentElement, next: dd.nextSibling };
+  }
+  document.body.appendChild(dd);
+
+  const rect = trigger.getBoundingClientRect();
+  dd.classList.add('dd-fixed');
+  dd.style.position = 'fixed';
+  dd.style.left = rect.left + 'px';
+  dd.style.width = rect.width + 'px';
+  dd.style.margin = '0';
+  dd.style.zIndex = '99999';
+
+  const maxDdHeight = 220;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  if (spaceBelow < maxDdHeight + 12 && rect.top > maxDdHeight) {
+    dd.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+    dd.style.top = 'auto';
+  } else {
+    dd.style.top = (rect.bottom + 8) + 'px';
+    dd.style.bottom = 'auto';
+  }
+
+  dd.style.display = 'block';
+  trigger.classList.add('open');
 };
 window.selectWhCat = function(val) {
   document.getElementById('wh-category').value = val;
@@ -2420,7 +2436,8 @@ window.selectWhCat = function(val) {
 };
 document.addEventListener('click', e => {
   const wrap = document.getElementById('wh-cat-wrap');
-  if(wrap && !wrap.contains(e.target)) {
+  const dd = document.getElementById('wh-cat-dd');
+  if(wrap && !wrap.contains(e.target) && !(dd && dd.contains(e.target))) {
     closeWhCatDD();
   }
 });
