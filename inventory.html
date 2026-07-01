@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0">
-<title>Inventory — Zenda</title>div.pd-entries div.entry-card
+<title>Inventory — Zenda</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text y='23' x='5' font-size='20'>📦</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2175,27 +2175,9 @@ window.renderEntries = function() {
   }
 };
 
-window.prepDelEntry = function(entId) {
-  const entry = window.currentEntries.find(e => e.id === entId);
-  if (!entry) return;
+</div>
+</div>
 
-  const isOwner = CU.role === 'owner';
-  const isOwnEntry = entry.createdBy === CU.uid;
-
-  // Role Validation Check
-  if (!isOwner && !isOwnEntry) {
-    document.getElementById('perm-denied-creator').textContent = entry.who || 'another user';
-    window.openM('m-perm-denied');
-    return;
-  }
-
-  // Permitted: Open Delete Modal
-  entToDelete = entId;
-  document.getElementById('delReason').value = '';
-  document.getElementById('delExpSyncToggle').checked = true;
-  document.getElementById('delEntMsg').textContent = '';
-  window.openM('m-del-entry');
-};
 <div id="custom-toast-container"></div>
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -3875,7 +3857,6 @@ window.changeEntryPage = function(dir) {
   window.entryCurrentPage += dir;
   window.renderEntries();
 };
-
 window.renderEntries = function() {
   const entries = window.currentEntries || [];
   const el = document.getElementById('eList');
@@ -3898,11 +3879,11 @@ window.renderEntries = function() {
       // 1. System Logs
       if(e.type==='LOG'||e.isActivity)return `<div class="erow"><div class="e-ind" style="background:var(--accent-soft);border:1px solid rgba(79,70,229,.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">System Log</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.note)} • ${ago(e.createdAt)}</div></div></div>`;
       
-      const canDel=!e.deleted&&(CU.role==='owner'||CU.role==='manager'||e.createdBy===CU.uid);
-      const delBtn=canDel?`<button style="background:var(--red-soft);border:1.5px solid var(--red-border);color:var(--red);width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s;" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`:'';
+      // ALWAYS show the delete button if row isn't deleted (logic checks permissions on click)
+      const delBtn = !e.deleted ? `<button style="background:var(--red-soft);border:1.5px solid var(--red-border);color:var(--red);width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s;" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>` : '';
       
-      // 2. Deleted Rows
-      if(e.deleted)return `<div class="erow del-row" style="opacity:.6;cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--white-dim);border:1px solid var(--border-strong);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em; text-decoration:line-through;">${esc(e.who||'Unknown')}</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.deleteMessage||'Deleted')} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
+      // 2. Deleted Rows (Styled perfectly faded out)
+      if(e.deleted)return `<div class="erow del-row" style="opacity:0.7;cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--white-muted);border:1px solid var(--border-strong); border-radius: 12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-3); letter-spacing:-0.01em; text-decoration:line-through;">${esc(e.who||'Unknown')}</div><div class="e-time" style="color:var(--text-4); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.deleteMessage||'Deleted')} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
       
       // 3. Active IN/OUT Rows
       const isInc = e.type === 'IN';
@@ -3938,6 +3919,27 @@ window.renderEntries = function() {
   }
 };
 
+window.prepDelEntry = function(entId) {
+  const entry = window.currentEntries.find(e => e.id === entId);
+  if (!entry) return;
+
+  const isOwner = CU.role === 'owner';
+  const isOwnEntry = entry.createdBy === CU.uid;
+
+  // Role Validation Check
+  if (!isOwner && !isOwnEntry) {
+    document.getElementById('perm-denied-creator').textContent = entry.who || 'another user';
+    window.openM('m-perm-denied');
+    return;
+  }
+
+  // Permitted: Open Delete Modal
+  entToDelete = entId;
+  document.getElementById('delReason').value = '';
+  document.getElementById('delExpSyncToggle').checked = true;
+  document.getElementById('delEntMsg').textContent = '';
+  window.openM('m-del-entry');
+};
 window.prepDelEntry=function(entId){entToDelete=entId;document.getElementById('delReason').value='';document.getElementById('delExpSyncToggle').checked=true;document.getElementById('delEntMsg').textContent='';window.openM('m-del-entry');};
 
 window.confirmDelEntry=async function(){
