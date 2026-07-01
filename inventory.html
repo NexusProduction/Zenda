@@ -2049,7 +2049,6 @@ body.is-premium .premium-lock-overlay {
 
   </div>
 </div>
-
 <div class="mo" id="m-edit-prod" onclick="if(event.target===this) window.closeM('m-edit-prod')">
   <div class="mbox" style="max-width: 500px; padding: 0; border-radius: 20px; overflow: hidden; position: relative;">
     <div class="mbox-scrollarea">
@@ -2057,7 +2056,8 @@ body.is-premium .premium-lock-overlay {
       <div class="mhd" style="border-bottom: 3px solid var(--border-strong); padding: 20px 24px 14px; display: flex; justify-content: space-between; align-items: center; position: sticky !important; top: 0 !important; background: var(--white-pure) !important; z-index: 200 !important;">
         <div class="mttl" id="editProdSub" style="color:var(--text-1); font-size: 1.25rem; font-weight: 800; font-family: var(--f-display); letter-spacing: -0.01em; margin-bottom: 0;">Edit Product</div>
         
-        <button class="btn-icon-danger" onclick="window.closeM('m-edit-prod'); window.prepDelProd();" style="width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid var(--red-border); background: var(--red-soft); color: var(--red); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" title="Delete Product">
+        <!-- Added ID to button for dynamic role styling -->
+        <button class="btn-icon-danger" id="editProdDelBtn" onclick="window.closeM('m-edit-prod'); window.prepDelProd();" style="width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid var(--red-border); background: var(--red-soft); color: var(--red); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" title="Delete Product">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
         </button>
       </div>
@@ -2106,6 +2106,13 @@ body.is-premium .premium-lock-overlay {
         
       </div>
     </div>
+    
+    <!-- ADDED: Success Overlay for Edit Product -->
+    <div class="ppm-success-overlay" id="edit-prod-success-tick">
+      <div class="apple-tick"><svg width="34" height="34" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+      <div class="ppm-success-text">Product Updated</div>
+    </div>
+    
   </div>
 </div>
 <div class="mo" id="m-del-wh" onclick="if(event.target===this) window.closeM('m-del-wh')" style="align-items: center !important; padding: 16px !important;">
@@ -3359,51 +3366,132 @@ function renderConversionsDetail(p){
   if(!convs.length){el.innerHTML='<div class="conv-empty">No conversions. Edit product to define relationships.</div>';return;}
   el.innerHTML='<div>'+convs.map(c=>`<div class="conv-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span style="margin-left:10px;font-weight:500">1 ${esc(curProd.unit||'units')}</span><span style="margin:0 10px;color:var(--border-strong)">=</span><span class="conv-eq">${Number(c.ratio.toFixed(4))} ${esc(c.name)}</span></div>`).join('')+'</div>';
 }
-
 // ── MERGED EDIT ──
-window.openMergedEdit=function(){
-  if(!curProd)return;setMM('editProdMsg','','');
-  document.getElementById('editProdSub').textContent=`Edit: ${curProd.name}`;
-  document.getElementById('editProdNameInp').value=curProd.name;
-  const mi=document.getElementById('editProdMinInp');if(mi){mi.value=curProd.minStock!==undefined?curProd.minStock:'';mi.type='number';mi.min='0';mi.step='any';}
-  document.getElementById('editProdBaseLabel').textContent=curProd.unit||'units';
-  const hasC=curProd.conversions&&curProd.conversions.length>0;
-  const tgl=document.getElementById('editConvTgl');if(tgl)tgl.checked=hasC;
-  const bldr=document.getElementById('editConvBuilderContainer');if(bldr)bldr.style.display=hasC?'block':'none';
-  const rows=document.getElementById('editConvRows');if(rows)rows.innerHTML='';
-  if(hasC)curProd.conversions.forEach(c=>appendConvFormulaRow(rows,c.name,Number(c.ratio.toFixed(4)),curProd.unit));
+window.openMergedEdit = function() {
+  if(!curProd) return;
+  setMM('editProdMsg', '', '');
+  document.getElementById('editProdSub').textContent = `Edit: ${curProd.name}`;
+  document.getElementById('editProdNameInp').value = curProd.name;
+  
+  const mi = document.getElementById('editProdMinInp');
+  if(mi) {
+      mi.value = curProd.minStock !== undefined ? curProd.minStock : '';
+      mi.type = 'number'; mi.min = '0'; mi.step = 'any';
+  }
+  
+  document.getElementById('editProdBaseLabel').textContent = curProd.unit || 'units';
+  const hasC = curProd.conversions && curProd.conversions.length > 0;
+  
+  const tgl = document.getElementById('editConvTgl');
+  if(tgl) tgl.checked = hasC;
+  
+  const bldr = document.getElementById('editConvBuilderContainer');
+  if(bldr) bldr.style.display = hasC ? 'block' : 'none';
+  
+  const rows = document.getElementById('editConvRows');
+  if(rows) rows.innerHTML = '';
+  
+  if(hasC) curProd.conversions.forEach(c => appendConvFormulaRow(rows, c.name, Number(c.ratio.toFixed(4)), curProd.unit));
+  
+  // Dynamic Role-Based Delete Icon
+  const delBtn = document.getElementById('editProdDelBtn');
+  if (delBtn) {
+      const isOwner = CU.role === 'owner';
+      if (isOwner) {
+          delBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
+          delBtn.style.background = 'var(--red-soft)';
+          delBtn.style.borderColor = 'var(--red-border)';
+          delBtn.style.color = 'var(--red)';
+      } else {
+          // Emotive Amber Icon for Staff (Request Deletion)
+          delBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`;
+          delBtn.style.background = 'rgba(245, 158, 11, 0.15)'; // Soft Amber
+          delBtn.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+          delBtn.style.color = '#D97706'; // Amber Text
+      }
+  }
+
   window.openM('m-edit-prod');
 };
-window.toggleEditConvBuilder=function(el){document.getElementById('editConvBuilderContainer').style.display=el.checked?'block':'none';const rows=document.getElementById('editConvRows');if(el.checked&&rows&&rows.children.length===0)window.addEditConvFormulaRow();};
 
-// Premium Responsive UI for the "Add Product" conversion row
-function appendFixedBaseConvRow(container,fixedBase){
-  const rowId = 'cr-' + Date.now() + Math.floor(Math.random()*1000);
-  const row=document.createElement('div');
-  row.className='conv-row-fixed';
-  row.innerHTML=`
-    <div class="conv-row-left">
-      1 <span class="fixed-b-dynamic">${esc(fixedBase)}</span> <span style="color:var(--text-4); margin:0 2px;">=</span>
-    </div>
-    <input type="number" step="any" min="0.0001" placeholder="Qty" class="mult-inp" required>
+window.saveMergedProd = async function() {
+  const newName = document.getElementById('editProdNameInp').value.trim();
+  if(!newName) { setMM('editProdMsg', '⚠ Enter product name.', 'err'); return; }
+  
+  const mi = document.getElementById('editProdMinInp');
+  const minStock = mi && mi.value !== '' ? parseFloat(mi.value) : null;
+  
+  let convs = [];
+  if(document.getElementById('editConvTgl')?.checked) {
+      convs = getConvRowsFixedData('editConvRows');
+      if(convs === null) { setMM('editProdMsg', '⚠ Check conversion values.', 'err'); return; }
+  }
+  
+  setMM('editProdMsg', '', '');
+  
+  const btn = document.querySelector('#m-edit-prod .btn-black');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  
+  try {
+    const updates = { name: newName, minStock: minStock, conversions: convs };
+    const logs = [];
     
-    <div class="cat-picker-wrap conv-wrap" id="wrap-${rowId}" style="width: 105px; flex-shrink: 1;">
-      <div class="cat-picker-trigger" onclick="window.toggleConvDD('${rowId}')" style="height: 38px; padding: 0 10px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 2px 4px rgba(0,0,0,0.02); border-radius: 8px; background: var(--white-pure); transition: all 0.2s;">
-        <span class="cpt-label" id="lbl-${rowId}" style="font-size: 13px; font-weight: 700; color: var(--text-1);">Unit</span>
-        <svg class="cpt-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </div>
-      <div class="cat-picker-dropdown" id="dd-${rowId}" style="max-height: 140px; top: calc(100% + 4px); padding: 4px 0; min-width: 110px;"></div>
-    </div>
-    <input type="hidden" class="alt-unit-sel" id="inp-${rowId}" value="">
+    if(newName !== curProd.name) logs.push(`Prod name changed from "${curProd.name}" to "${newName}"`);
+    if(JSON.stringify(convs) !== JSON.stringify(curProd.conversions || [])) logs.push('Product conversions updated.');
     
-    <button class="conv-rm" type="button" onclick="window.removeConvRow(this)">✕</button>
-  `;
-  container.appendChild(row);
-  window.populateAltUnitsCustom(rowId, fixedBase, '');
-  row.querySelector('.mult-inp').addEventListener('input', () => checkConvDuplicateCustom(container));
-}
-
-// Premium Responsive UI for the "Edit Product" conversion row
+    await updateDoc(doc(db, 'products', curProd.id), updates);
+    
+    if(logs.length > 0) {
+        await addDoc(collection(db, 'entries'), {
+            type: 'LOG', qty: 0, qtyBase: 0, unit: '', entryUnit: '', 
+            note: `${CU.role} (${CU.name}) made changes: ${logs.join('. ')}`, 
+            productId: curProd.id, godownId: curWH, companyId: CU.companyId, 
+            who: CU.name || 'Owner', createdBy: CU.uid, deleted: false, 
+            isActivity: true, createdAt: serverTimestamp()
+        });
+    }
+    
+    curProd.name = newName;
+    curProd.minStock = minStock;
+    curProd.conversions = convs;
+    
+    document.getElementById('pdName').textContent = newName;
+    document.getElementById('pdMin').textContent = minStock !== null ? minStock : '—';
+    
+    const idx = prods.findIndex(p => p.id === curProd.id);
+    if(idx > -1) prods[idx].name = newName;
+    
+    renderConversionsDetail(curProd);
+    
+    // Trigger Success Animation
+    const tick = document.getElementById('edit-prod-success-tick');
+    if (tick) {
+        tick.classList.add('active');
+        const svg = tick.querySelector('svg');
+        if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
+        
+        setTimeout(async () => {
+            tick.classList.remove('active');
+            window.closeM('m-edit-prod');
+            btn.disabled = false;
+            btn.textContent = originalText;
+            await loadEntries(curProd.id);
+        }, 1800);
+    } else {
+        window.closeM('m-edit-prod');
+        btn.disabled = false;
+        btn.textContent = originalText;
+        await loadEntries(curProd.id);
+    }
+    
+  } catch(e) {
+    setMM('editProdMsg', '❌ Failed: ' + e.message, 'err');
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+};
 function appendConvFormulaRow(container,name,ratioMult,baseUnit){
   const base=baseUnit||'KG';
   const rowId = 'cr-' + Date.now() + Math.floor(Math.random()*1000);
@@ -3528,26 +3616,6 @@ function checkConvDuplicateCustom(cont){
     else seen.add(val);
   });
 }
-
-window.saveMergedProd=async function(){
-  const newName=document.getElementById('editProdNameInp').value.trim();if(!newName){setMM('editProdMsg','⚠ Enter product name.','err');return;}
-  const mi=document.getElementById('editProdMinInp');const minStock=mi&&mi.value!==''?parseFloat(mi.value):null;
-  let convs=[];
-  if(document.getElementById('editConvTgl')?.checked){convs=getConvRowsFixedData('editConvRows');if(convs===null){setMM('editProdMsg','⚠ Check conversion values.','err');return;}}
-  setMM('editProdMsg','','');
-  try{
-    const updates={name:newName,minStock:minStock,conversions:convs};const logs=[];
-    if(newName!==curProd.name)logs.push(`Prod name changed from "${curProd.name}" to "${newName}"`);
-    if(JSON.stringify(convs)!==JSON.stringify(curProd.conversions||[]))logs.push('Product conversions updated.');
-    await updateDoc(doc(db,'products',curProd.id),updates);
-    if(logs.length>0)await addDoc(collection(db,'entries'),{type:'LOG',qty:0,qtyBase:0,unit:'',entryUnit:'',note:`${CU.role} (${CU.name}) made changes: ${logs.join('. ')}`,productId:curProd.id,godownId:curWH,companyId:CU.companyId,who:CU.name||'Owner',createdBy:CU.uid,deleted:false,isActivity:true,createdAt:serverTimestamp()});
-    curProd.name=newName;curProd.minStock=minStock;curProd.conversions=convs;
-    document.getElementById('pdName').textContent=newName;document.getElementById('pdMin').textContent=minStock!==null?minStock:'—';
-    const idx=prods.findIndex(p=>p.id===curProd.id);if(idx>-1)prods[idx].name=newName;
-    renderConversionsDetail(curProd);window.closeM('m-edit-prod');await loadEntries(curProd.id);window.showToast('Product updated ✓','s');
-  }catch(e){setMM('editProdMsg','❌ Failed: '+e.message,'err');}
-};
-
 function getConvRowsFixedData(containerId){const rows=document.querySelectorAll(`#${containerId} .conv-row-fixed`);const convs=[];const seen=new Set();for(const row of rows){const mult=parseFloat(row.querySelector('.mult-inp').value);const altUnit=row.querySelector('.alt-unit-sel').value;if(seen.has(altUnit)||!mult||mult<=0||!altUnit)return null;seen.add(altUnit);convs.push({name:altUnit,ratio:mult});}return convs;}
 window.prepDelProd = function() {
   const isOwner = CU.role === 'owner';
