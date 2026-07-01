@@ -492,7 +492,6 @@ onAuthStateChanged(auth, async user => {
     setSyncStatus('err');
   }
 });
-
 function startStaffListener() {
   if (!CU?.companyId) return;
   const q = query(collection(db, 'users'), where('companyId', '==', CU.companyId));
@@ -500,10 +499,9 @@ function startStaffListener() {
     staffMap = {};
     companyStaff = [];
     snap.forEach(d => { staffMap[d.id] = d.data(); companyStaff.push({ uid: d.id, ...d.data() }); });
-    mergeAndRender();
+    mergeAndRender();   // ← re-renders using fresh staffMap, this already exists
   }));
 }
-
 function startListeners() {
   unsubs.forEach(u => u());
   unsubs = [];
@@ -684,14 +682,14 @@ function renderEventItem(ev) {
   const canDel = ev.uid === CU.uid;
   const creatorId = ev._src === 'task' ? ev.assignedBy : ev.uid;
 
-  let fromText = 'Colleague';
+  // ── "Myself" for your own events, LIVE current name for everyone else ──
+  let fromText;
   if (creatorId === CU.uid) {
-    fromText = 'Myself';
+    fromText = 'Myself';                          // always "Myself" in your own view, name changes don't matter
   } else {
-    const live = staffMap[creatorId];
-    fromText = (live && live.name) ? live.name : (ev._fromName || 'Colleague');
+    const live = staffMap[creatorId];              // staffMap is kept live via onSnapshot in startStaffListener()
+    fromText = live?.name || ev._fromName || 'Colleague';  // fall back only if creator's doc is truly gone
   }
-
   const fromTxt = `<span style="font-weight:600;color:var(--tx2);">From: ${esc(fromText)}</span>`;
   const src = ev._src || 'personal';
   const trashIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`;
