@@ -1846,15 +1846,10 @@ body.is-premium .premium-lock-overlay {
 
       <div id="addProdExpenseBlock" class="sync-block-wrapper" style="display:none; border: 2px solid var(--border-strong); border-radius: 14px; background: var(--white-pure); margin-bottom: 12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding: 14px 16px;">
-          <label style="margin-bottom: 0; font-size: 0.8rem; font-weight: 800; color: var(--text-1); letter-spacing: 0.05em; text-transform: uppercase;">Log as Expense?</label>
-          <label class="tgl"><input type="checkbox" id="addProdExpTgl" onchange="window.toggleExpFields(this)"><span class="tgl-sl"></span></label>
+          <label style="margin-bottom: 0; font-size: 0.8rem; font-weight: 800; color: var(--text-1); letter-spacing: 0.05em; text-transform: uppercase;">Expense Details <span style="color:var(--red);">*</span></label>
         </div>
         
-        <div id="addProdExpFields" style="display:none; padding: 0 16px 16px 16px; position:relative;">
-          <div class="premium-lock-overlay" style="border-radius:12px;">
-            <button type="button" class="sync-upgrade-btn-large" onclick="window.location.href='subscription.html'">👑 Upgrade</button>
-          </div>
-
+        <div id="addProdExpFields" style="display:block; padding: 0 16px 16px 16px; position:relative;">
           <div style="height: 1.5px; background: var(--border-faint); margin-bottom: 16px;"></div> <div class="mf" style="margin-bottom:14px">
             <div style="display:flex; justify-content:space-between; align-items:flex-end;">
               <label>Price Per <span id="exp-unit-lbl" style="color:var(--accent);">Piece</span></label>
@@ -2035,13 +2030,9 @@ body.is-premium .premium-lock-overlay {
         </div>
         <div class="sync-block-wrapper" style="border: 2px solid var(--border-strong); border-radius: 14px; background: var(--white-pure); margin-bottom: 8px;">
           <div style="display:flex; justify-content:space-between; align-items:center; padding: 14px 16px;">
-            <label style="margin-bottom: 0; font-size: 0.8rem; font-weight: 800; color: var(--text-1); letter-spacing: 0.05em; text-transform: uppercase;">Log as Expense?</label>
-            <label class="tgl"><input type="checkbox" id="logExpenseTgl" onchange="window.toggleEntryExpFields(this)"><span class="tgl-sl"></span></label>
+            <label style="margin-bottom: 0; font-size: 0.8rem; font-weight: 800; color: var(--text-1); letter-spacing: 0.05em; text-transform: uppercase;">Expense Details <span style="color:var(--red);">*</span></label>
           </div>
-          <div id="expenseFields" style="display:none; padding: 0 16px 16px 16px; position:relative;">
-            <div class="premium-lock-overlay" style="border-radius:12px;">
-              <button type="button" class="sync-upgrade-btn-large" onclick="window.location.href='subscription.html'">👑 Upgrade</button>
-            </div>
+          <div id="expenseFields" style="display:block; padding: 0 16px 16px 16px; position:relative;">
             <div style="height: 1.5px; background: var(--border-faint); margin-bottom: 16px;"></div>
             <div class="mf" style="margin-bottom:14px">
               <div style="display:flex; justify-content:space-between; align-items:flex-end;">
@@ -2178,23 +2169,12 @@ body.is-premium .premium-lock-overlay {
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-// Shows block ONLY if Opening Stock >= 1
 window.toggleAddProdExpense = function(val) {
   const block = document.getElementById('addProdExpenseBlock');
   const qty = parseFloat(val) || 0;
-  if (qty >= 1) {
-    block.style.display = 'block';
-  } else {
-    block.style.display = 'none';
-    const tgl = document.getElementById('addProdExpTgl');
-    if(tgl) tgl.checked = false;
-    window.toggleExpFields({checked: false});
-  }
-  // Instantly updates the calculation as you type stock quantity
+  block.style.display = qty >= 1 ? 'block' : 'none';
   window.calcExpTotal();
 };
-
 window.toggleExpFields = function(el) {
   const fields = document.getElementById('addProdExpFields');
   if(fields) fields.style.display = el.checked ? 'block' : 'none';
@@ -4025,9 +4005,7 @@ window.openAddProd = function() {
   
   const expBlock = document.getElementById('addProdExpenseBlock');
   if (expBlock) expBlock.style.display = 'none';
-  const tgl = document.getElementById('addProdExpTgl');
-  if (tgl) tgl.checked = false;
-  window.toggleExpFields(tgl || {checked: false});
+  document.getElementById('addProdCost').value = '';
   
   const convTgl = document.getElementById('addProdConvTgl');
   if (convTgl) convTgl.checked = false;
@@ -4064,12 +4042,12 @@ const name = nameInp.value.trim();
     if (conversions === null) { setMM('prodMsg', '⚠ Check your unit conversion values.', 'err'); return; }
   }
 
-  const logExpense = document.getElementById('addProdExpTgl')?.checked && stock >= 1;
+  const logExpense = stock >= 1;
   const costPer = parseFloat(document.getElementById('addProdCost')?.value) || 0;
   const payMethod = document.getElementById('addProdPayMethod')?.value || 'Cash';
 
   if (logExpense && costPer <= 0) {
-    setMM('prodMsg', '⚠ Enter a valid price to log as expense.', 'err');
+    setMM('prodMsg', '⚠ Enter price per ' + unit + ' for opening stock.', 'err');
     return;
   }
 
@@ -4253,9 +4231,7 @@ window.openEntry = function(type) {
   document.getElementById('ettIn').classList.toggle('on', type === 'IN');
   document.getElementById('ettOut').classList.toggle('on', type === 'OUT');
   
-  const tgl = document.getElementById('logExpenseTgl');
-  if (tgl) tgl.checked = false;
-  document.getElementById('expenseFields').style.display = 'none';
+  document.getElementById('expenseFields').style.display = 'block';
   
   selUnit = curProd.unit || 'Piece';
   document.getElementById('entry-unit-lbl').textContent = selUnit;
@@ -4354,12 +4330,12 @@ window.saveEntry = async function() {
     return;
   }
 
-  const logExpense = document.getElementById('logExpenseTgl')?.checked;
+  const logExpense = true;
   const costPer = parseFloat(document.getElementById('entryCost')?.value) || 0;
   const payMethod = document.getElementById('entryPayMethod')?.value || 'Cash';
 
-  if (logExpense && costPer <= 0) {
-    setMM('entryMsg', '⚠ Enter a valid price to log as expense.', 'err');
+  if (costPer <= 0) {
+    setMM('entryMsg', '⚠ Enter price per ' + (selUnit || baseUnit) + '.', 'err');
     return;
   }
 
