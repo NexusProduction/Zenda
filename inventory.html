@@ -2865,25 +2865,6 @@ async function init(){
   loadWHs();
   startDashboardStatsListener();
 }
-  function startDashboardStatsListener() {
-  if (!CU.companyId) return;
-
-  // --- NEW: LIVE USER CACHE ---
-  // Listens to user profile changes and updates names in real-time
-  const usersQ = query(collection(db, 'users'), where('companyId', '==', CU.companyId));
-  onSnapshot(usersQ, snap => {
-    if (!window.userCache) window.userCache = {};
-    snap.docs.forEach(d => {
-      window.userCache[d.id] = d.data();
-    });
-    // If the product view is open, refresh the list to show new names instantly
-    if (document.getElementById('v-prod').classList.contains('active') && window.currentEntries?.length > 0) {
-      if (typeof window.renderEntries === 'function') window.renderEntries();
-    }
-  }, e => console.error('Live users error:', e));
-
-  // NEW
-  const prodQ = query(collection(db, 'products'), where('companyId', '==', CU.companyId));
 function startDashboardStatsListener() {
   if (!CU.companyId) return;
 
@@ -3983,17 +3964,6 @@ window.toggleAddProdConv = function(el) {
   document.getElementById('addProdConvBuilder').style.display = el.checked ? 'block' : 'none';
   const rows = document.getElementById('addProdConvRows');
   if (el.checked && rows && rows.children.length === 0) window.addProdConvFormulaRow();
-};
-
-window.toggleEditConvBuilder = function(el) {
-  const builder = document.getElementById('editConvBuilderContainer');
-  if (builder) {
-    builder.style.display = el.checked ? 'block' : 'none';
-  }
-  const rows = document.getElementById('editConvRows');
-  if (el.checked && rows && rows.children.length === 0) {
-    window.addEditConvFormulaRow();
-  }
 };
 window.toggleEditConvBuilder = function(el) {
   // Safe check to ensure we get the true/false state
