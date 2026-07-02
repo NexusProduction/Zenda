@@ -2967,7 +2967,7 @@ function loadWHs(){
     document.getElementById('sWHm').textContent=WHs.length;
     if(document.getElementById('whCnt')) document.getElementById('whCnt').textContent=WHs.length;
 
-        if (curWH && !WHs.find(w => w.id === curWH)) {
+        if (curWH && !WHs.find(w => w.id === curWH) && !window._isDeletingWH) {
             document.querySelectorAll('.mo.open').forEach(m => window.closeM(m.id));
             curWH = null; 
             showView('dash'); 
@@ -3201,11 +3201,10 @@ window.sendWhDeleteRequest = async function() {
         if (textarea) textarea.removeAttribute('readonly');
     }
 };
-
-// Owner Action: Directly Deletes Warehouse
 window.confirmDelWH = async function() {
   const btn = document.getElementById('delWhBtn');
   if(btn) { btn.disabled = true; btn.textContent = 'Deleting...'; }
+  window._isDeletingWH = true;
   
   try {
     const batch = writeBatch(db);
@@ -3219,13 +3218,12 @@ window.confirmDelWH = async function() {
     batch.delete(doc(db, 'godowns', curWH));
     await batch.commit();
     
-    // Trigger Success Animation
     const tick = document.getElementById('del-wh-success-tick');
     const textEl = document.getElementById('del-wh-success-text');
     
     if (tick && textEl) {
         textEl.textContent = "Warehouse Deleted";
-        textEl.style.color = "#111827"; // Standard text color
+        textEl.style.color = "#111827";
         tick.classList.add('active');
         const svg = tick.querySelector('svg');
         if (svg) setTimeout(() => { svg.style.strokeDashoffset = '0'; }, 50);
@@ -3235,13 +3233,16 @@ window.confirmDelWH = async function() {
             window.closeM('m-del-wh');
             showView('dash'); 
             curWH = null;
+            window._isDeletingWH = false;
         }, 1800);
     } else {
         window.closeM('m-del-wh'); 
         showView('dash'); 
         curWH = null;
+        window._isDeletingWH = false;
     }
   } catch(e) {
+    window._isDeletingWH = false;
     if(btn) { btn.disabled = false; btn.textContent = 'Delete'; }
     window.showToast('Failed: ' + e.message, 'error');
   }
