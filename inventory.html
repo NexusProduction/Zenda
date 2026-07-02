@@ -3447,7 +3447,7 @@ window.saveMergedProd = async function() {
     if(logs.length > 0) {
         await addDoc(collection(db, 'entries'), {
             type: 'LOG', qty: 0, qtyBase: 0, unit: '', entryUnit: '', 
-            note: `${CU.role} (${CU.name}) made changes: ${logs.join('. ')}`, 
+            note: `${CU.name} made changes: ${logs.join('. ')}`,
             productId: curProd.id, godownId: curWH, companyId: CU.companyId, 
             who: CU.name || 'Owner', createdBy: CU.uid, deleted: false, 
             isActivity: true, createdAt: serverTimestamp()
@@ -3733,7 +3733,7 @@ window.confirmDelProd = async function() {
     
     const rl = CU.role.charAt(0).toUpperCase() + CU.role.slice(1);
     const logRef = doc(collection(db,'entries'));
-    batch.set(logRef, {type:'LOG', qty:0, qtyBase:0, unit:'', entryUnit:'', note:`${rl} (${CU.name}) deleted product: "${curProd.name}"`, productId:'DELETED', godownId:curWH, companyId:CU.companyId, who:CU.name||'Owner', createdBy:CU.uid, deleted:false, isActivity:true, createdAt:serverTimestamp()});
+    batch.set(logRef, {type:'LOG', qty:0, qtyBase:0, unit:'', entryUnit:'', note:`${CU.name} deleted product: "${curProd.name}"`, productId:'DELETED', godownId:curWH, companyId:CU.companyId, who:CU.name||'Owner', createdBy:CU.uid, deleted:false, isActivity:true, createdAt:serverTimestamp()});
     batch.delete(doc(db,'products',curProd.id));
     await batch.commit();
     
@@ -3839,29 +3839,62 @@ window.renderEntries = function() {
   const startIndex = (window.entryCurrentPage - 1) * ENTRY_PER_PAGE;
   const slice = entries.slice(startIndex, startIndex + ENTRY_PER_PAGE);
 
-  el.innerHTML = slice.map(e => {
-      // --- LIVE NAME LOGIC (BULLETPROOF) ---
-      let displayName = e.who || 'Unknown';
-      
-      // 1. If YOU made this entry, instantly force it to use your LIVE loaded name
-      if (e.createdBy === CU.uid && CU.name) {
-          displayName = CU.name;
-      } 
-      // 2. Fallback for staff members (pulls from live cache if available)
-      else if (window.userCache && window.userCache[e.createdBy] && window.userCache[e.createdBy].name) {
-          displayName = window.userCache[e.createdBy].name;
-      }
+  // --- NEW: Title Case Helper Function ---
+  const toTitleCase = (str) => {
+      if (!str) return '';
+      return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
 
-      // 1. System Logs (No changes here)
+  el.innerHTML = slice.map(e => {
+      // --- LIVE NAME LOGIC (WITH TITLE CASE) ---
+      let rawName = e.who || 'Unknown';
+      if (e.createdBy === CU.uid && CU.name) {
+          rawName = CU.name;
+      } else if (window.userCache && window.userCache[e.createdBy] && window.userCache[e.createdBy].name) {
+          rawName = window.userCache[e.createdBy].name;
+      }
+      const displayName = toTitleCase(rawName);
+
+      // 1. System Logs (Dynamically strips old "owner ()" formats and uses Live Name)
       if(e.type==='LOG'||e.isActivity) {
-          return `<div class="erow"><div class="e-ind" style="background:var(--accent-soft);border:1px solid rgba(79,70,229,.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">System Log</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.note)} • ${ago(e.createdAt)}</div></div></div>`;
+          let cleanNote = e.note || '';
+          
+          // Regex to catch old DB formats like "owner (Salmon Bhai) made changes:"
+          const oldFormatMatch = cleanNote.match(/^(?:owner|manager|staff)?\s*\(([^)]+)\)\s*(.*)/i);
+          if (oldFormatMatch) {
+              cleanNote = `${displayName} ${oldFormatMatch[2]}`;
+          } else if (cleanNote.includes(' made changes:')) {
+              cleanNote = `${displayName} made changes:${cleanNote.split(' made changes:')[1]}`;
+          } else if (cleanNote.includes(' deleted product:')) {
+              cleanNote = `${displayName} deleted product:${cleanNote.split(' deleted product:')[1]}`;
+          }
+          
+          return `<div class="erow"><div class="e-ind" style="background:var(--accent-soft);border:1px solid rgba(79,70,229,.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">System Log</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(cleanNote)} • ${ago(e.createdAt)}</div></div></div>`;
       }
       
       const delBtn = !e.deleted ? `<button style="background:var(--red-soft);border:1.5px solid var(--red-border);color:var(--red);width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s;" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>` : '';
       
-      // 2. Deleted Rows (Now also dynamically applies the live name!)
+      // 2. Deleted Rows (Dynamically constructs the live text)
       if(e.deleted) {
-          return `<div class="erow del-row" style="opacity:0.7;cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--white-muted);border:1px solid var(--border-strong); border-radius: 12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-3); letter-spacing:-0.01em; text-decoration:line-through;">${esc(displayName)}</div><div class="e-time" style="color:var(--text-4); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.deleteMessage||'Deleted')} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
+          // Fetch Live Deleter Name
+          let deleterRaw = e.deletedByName || 'Unknown';
+          if (e.deletedBy === CU.uid && CU.name) {
+              deleterRaw = CU.name;
+          } else if (window.userCache && window.userCache[e.deletedBy] && window.userCache[e.deletedBy].name) {
+              deleterRaw = window.userCache[e.deletedBy].name;
+          }
+          const deleterName = toTitleCase(deleterRaw);
+          
+          // Construct the exact sentence requested
+          const amt = `${e.qty} ${e.entryUnit || e.unit || ''}`.trim();
+          let delMsg = '';
+          if (e.deletedBy === e.createdBy) {
+              delMsg = `${deleterName} deleted their own entry of ${amt} ${e.type}`;
+          } else {
+              delMsg = `${deleterName} deleted entry of ${displayName} of ${amt} ${e.type}`;
+          }
+          
+          return `<div class="erow del-row" style="opacity:0.7;cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--white-muted);border:1px solid var(--border-strong); border-radius: 12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-3); letter-spacing:-0.01em; text-decoration:line-through;">${esc(displayName)}</div><div class="e-time" style="color:var(--text-4); font-weight:500; font-size:13px; margin-top:2px;">${esc(delMsg)} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
       }
       
       // 3. Active IN/OUT Rows
@@ -3870,12 +3903,11 @@ window.renderEntries = function() {
       const amtStr = (isInc ? '+' : '-') + (e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty}`:e.qty);
       const untStr = esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units');
 
-      // --- SUBTITLE LOGIC (Action • Time) ---
       let actionText = isInc ? 'Stock In' : 'Stock Out';
       if (e.note && e.note.toLowerCase().includes('opening stock')) {
           actionText = 'Opening Stock';
       } else if (e.note && e.note.toLowerCase() !== 'stock in' && e.note.toLowerCase() !== 'stock out') {
-          actionText = esc(e.note); // If they type a custom note, show it here!
+          actionText = esc(e.note); 
       }
       
       return `<div class="erow">
@@ -3943,7 +3975,7 @@ window.confirmDelEntry=async function(){
     const e=snap.data();
     const isOwn=e.createdBy===CU.uid;
     const amt=`${e.qty} ${e.entryUnit||e.unit||''}`.trim();
-    const msg=isOwn?`${CU.name} deleted their own entry of ${amt} ${e.type}`:`${CU.role} (${CU.name}) deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;
+    const msg = isOwn ? `${CU.name} deleted their own entry of ${amt} ${e.type}` : `${CU.name} deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;
     
     // 1. Mark Entry as Deleted
     await updateDoc(doc(db,'entries',entToDelete),{deleted:true,deleteReason:reason,deleteMessage:msg,deletedBy:CU.uid,deletedByName:CU.name||'Owner',deletedAt:new Date().toISOString()});
