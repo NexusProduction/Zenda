@@ -3840,32 +3840,42 @@ window.renderEntries = function() {
   const slice = entries.slice(startIndex, startIndex + ENTRY_PER_PAGE);
 
   el.innerHTML = slice.map(e => {
-      // 1. System Logs
-      if(e.type==='LOG'||e.isActivity)return `<div class="erow"><div class="e-ind" style="background:var(--accent-soft);border:1px solid rgba(79,70,229,.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">System Log</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.note)} • ${ago(e.createdAt)}</div></div></div>`;
+      // --- LIVE NAME LOGIC (BULLETPROOF) ---
+      let displayName = e.who || 'Unknown';
       
-      // ALWAYS show the delete button if row isn't deleted (logic checks permissions on click)
+      // 1. If YOU made this entry, instantly force it to use your LIVE loaded name
+      if (e.createdBy === CU.uid && CU.name) {
+          displayName = CU.name;
+      } 
+      // 2. Fallback for staff members (pulls from live cache if available)
+      else if (window.userCache && window.userCache[e.createdBy] && window.userCache[e.createdBy].name) {
+          displayName = window.userCache[e.createdBy].name;
+      }
+
+      // 1. System Logs (No changes here)
+      if(e.type==='LOG'||e.isActivity) {
+          return `<div class="erow"><div class="e-ind" style="background:var(--accent-soft);border:1px solid rgba(79,70,229,.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">System Log</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.note)} • ${ago(e.createdAt)}</div></div></div>`;
+      }
+      
       const delBtn = !e.deleted ? `<button style="background:var(--red-soft);border:1.5px solid var(--red-border);color:var(--red);width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s;" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>` : '';
       
-      // 2. Deleted Rows (Styled perfectly faded out)
-      if(e.deleted)return `<div class="erow del-row" style="opacity:0.7;cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--white-muted);border:1px solid var(--border-strong); border-radius: 12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-3); letter-spacing:-0.01em; text-decoration:line-through;">${esc(e.who||'Unknown')}</div><div class="e-time" style="color:var(--text-4); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.deleteMessage||'Deleted')} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
+      // 2. Deleted Rows (Now also dynamically applies the live name!)
+      if(e.deleted) {
+          return `<div class="erow del-row" style="opacity:0.7;cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--white-muted);border:1px solid var(--border-strong); border-radius: 12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-3); letter-spacing:-0.01em; text-decoration:line-through;">${esc(displayName)}</div><div class="e-time" style="color:var(--text-4); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.deleteMessage||'Deleted')} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
+      }
       
-    // 3. Active IN/OUT Rows
+      // 3. Active IN/OUT Rows
       const isInc = e.type === 'IN';
       const arrow = isInc ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
       const amtStr = (isInc ? '+' : '-') + (e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty}`:e.qty);
       const untStr = esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units');
-
-      // --- LIVE NAME LOGIC ---
-      // Get the latest name from the live cache, fallback to saved name, fallback to 'Unknown'
-      const liveUser = window.userCache && window.userCache[e.createdBy];
-      const displayName = liveUser && liveUser.name ? liveUser.name : (e.who || 'Unknown');
 
       // --- SUBTITLE LOGIC (Action • Time) ---
       let actionText = isInc ? 'Stock In' : 'Stock Out';
       if (e.note && e.note.toLowerCase().includes('opening stock')) {
           actionText = 'Opening Stock';
       } else if (e.note && e.note.toLowerCase() !== 'stock in' && e.note.toLowerCase() !== 'stock out') {
-          actionText = esc(e.note); // If they typed a custom note, show it here
+          actionText = esc(e.note); // If they type a custom note, show it here!
       }
       
       return `<div class="erow">
@@ -3899,7 +3909,6 @@ window.renderEntries = function() {
     if (pagWrap) pagWrap.innerHTML = '';
   }
 };
-
 window.prepDelEntry = function(entId) {
   const entry = window.currentEntries.find(e => e.id === entId);
   if (!entry) return;
