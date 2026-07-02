@@ -2865,6 +2865,25 @@ async function init(){
   loadWHs();
   startDashboardStatsListener();
 }
+  function startDashboardStatsListener() {
+  if (!CU.companyId) return;
+
+  // --- NEW: LIVE USER CACHE ---
+  // Listens to user profile changes and updates names in real-time
+  const usersQ = query(collection(db, 'users'), where('companyId', '==', CU.companyId));
+  onSnapshot(usersQ, snap => {
+    if (!window.userCache) window.userCache = {};
+    snap.docs.forEach(d => {
+      window.userCache[d.id] = d.data();
+    });
+    // If the product view is open, refresh the list to show new names instantly
+    if (document.getElementById('v-prod').classList.contains('active') && window.currentEntries?.length > 0) {
+      if (typeof window.renderEntries === 'function') window.renderEntries();
+    }
+  }, e => console.error('Live users error:', e));
+
+  // NEW
+  const prodQ = query(collection(db, 'products'), where('companyId', '==', CU.companyId));
 function startDashboardStatsListener() {
   if (!CU.companyId) return;
 
@@ -3849,31 +3868,33 @@ window.renderEntries = function() {
       // 2. Deleted Rows (Styled perfectly faded out)
       if(e.deleted)return `<div class="erow del-row" style="opacity:0.7;cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--white-muted);border:1px solid var(--border-strong); border-radius: 12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-3); letter-spacing:-0.01em; text-decoration:line-through;">${esc(e.who||'Unknown')}</div><div class="e-time" style="color:var(--text-4); font-weight:500; font-size:13px; margin-top:2px;">${esc(e.deleteMessage||'Deleted')} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
       
-     // 3. Active IN/OUT Rows
+    // 3. Active IN/OUT Rows
       const isInc = e.type === 'IN';
       const arrow = isInc ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
       const amtStr = (isInc ? '+' : '-') + (e.entryUnit&&e.entryUnit!==curProd.unit?`${e.qty}`:e.qty);
       const untStr = esc(e.entryUnit&&e.entryUnit!==curProd.unit?`(${e.qtyBase||e.qty} ${curProd.unit||'units'})`:e.unit||curProd.unit||'units');
-      
-      // --- NEW: DYNAMIC ACTION TEXT LOGIC ---
-      let actionType = isInc ? 'Stock in' : 'Stock out';
+
+      // --- LIVE NAME LOGIC ---
+      // Get the latest name from the live cache, fallback to saved name, fallback to 'Unknown'
+      const liveUser = window.userCache && window.userCache[e.createdBy];
+      const displayName = liveUser && liveUser.name ? liveUser.name : (e.who || 'Unknown');
+
+      // --- SUBTITLE LOGIC (Action • Time) ---
+      let actionText = isInc ? 'Stock In' : 'Stock Out';
       if (e.note && e.note.toLowerCase().includes('opening stock')) {
-          actionType = 'Opening stock';
+          actionText = 'Opening Stock';
+      } else if (e.note && e.note.toLowerCase() !== 'stock in' && e.note.toLowerCase() !== 'stock out') {
+          actionText = esc(e.note); // If they typed a custom note, show it here
       }
       
-      // Clean up the note so redundant text isn't printed twice
-      let displayNote = (e.note && e.note.toLowerCase() !== 'opening stock' && e.note.toLowerCase() !== 'stock in' && e.note.toLowerCase() !== 'stock out') 
-          ? `<span style="color:var(--text-2); font-weight:600;">${esc(e.note)}</span><br>` 
-          : '';
-
       return `<div class="erow">
         <div class="e-ind ${isInc?'e-in':'e-out'}">${arrow}</div>
         <div class="e-body">
           <div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">
-            ${actionType} ${esc(e.who||'Unknown')}
+            ${esc(displayName)}
           </div>
           <div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">
-            ${displayNote}(${ago(e.createdAt)})
+            ${actionText} • ${ago(e.createdAt)}
           </div>
         </div>
         <div class="e-right" style="display:flex; align-items:center; gap:12px;">
