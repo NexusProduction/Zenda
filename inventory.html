@@ -2966,7 +2966,6 @@ function showView(v){document.querySelectorAll('.view').forEach(el=>el.classList
 window.goBack = function() {
   const active = document.querySelector('.view.active')?.id;
   if (active === 'v-prod') {
-    if (window._prodUnsub) { window._prodUnsub(); window._prodUnsub = null; }
     showView('wh'); 
   } else if (active === 'v-wh') {
     showView('dash'); 
@@ -3076,7 +3075,6 @@ function renderWHs() {
   }
 }
 window.openWH = async function(wh) {
-  if (window._prodUnsub) { window._prodUnsub(); window._prodUnsub = null; }
   curWH = wh.id || wh;
   const whObj = WHs.find(w => w.id === curWH) || wh;
   document.getElementById('whName').textContent = whObj.name || 'Warehouse';
@@ -3400,20 +3398,10 @@ window.openProd = async function(pId, highlight = false) {
     }
   }
 
-  if (window._prodUnsub) { window._prodUnsub(); window._prodUnsub = null; }
-  window._prodUnsub = onSnapshot(doc(db, 'products', pId), snap => {
-    if (!snap.exists()) {
-      if (window._prodUnsub) { window._prodUnsub(); window._prodUnsub = null; }
-      document.querySelectorAll('.mo.open').forEach(m => window.closeM(m.id));
-      window.showToast('This product was deleted.', 'error');
-      curProd = null;
-      showView('wh');
-    }
-  });
-
   showView('prod'); 
   await loadEntries(pId);
 };
+// ── MERGED EDIT ──
 window.openMergedEdit = function() {
   if(!curProd) return;
   setMM('editProdMsg', '', '');
