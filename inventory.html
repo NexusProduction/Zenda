@@ -541,6 +541,52 @@ body { padding-top: 60px; }
 .erow:hover:not(.del-row) {
   background: var(--white-cool) !important;
 }
+
+/* --- DELETE BUTTON POP-IN ANIMATION (Entry Rows) --- */
+.e-del-wrap {
+  width: 0;
+  opacity: 0;
+  transform: scale(0.4) translateX(15px);
+  overflow: hidden;
+  margin-left: -12px;
+  flex-shrink: 0;
+  transition: width 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1), margin-left 0.3s ease;
+}
+@media (hover: hover) {
+  .erow:hover .e-del-wrap {
+    width: 38px;
+    opacity: 1;
+    transform: scale(1) translateX(0);
+    margin-left: 0;
+  }
+}
+.erow.show-actions .e-del-wrap {
+  width: 38px;
+  opacity: 1;
+  transform: scale(1) translateX(0);
+  margin-left: 0;
+}
+.e-del-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--red-soft);
+  border: 1.5px solid var(--red-border);
+  color: var(--red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.e-del-btn:hover {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+  transform: scale(1.08);
+}
+
 .e-ind { width: 42px; height: 42px; min-width: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .e-in  { background: var(--red-soft); border: 1.5px solid var(--red-border); color: var(--red); }
 .e-out { background: var(--green-soft);   border: 1.5px solid var(--green-border);   color: var(--green); }
@@ -3847,7 +3893,7 @@ window.renderEntries = function() {
           return `<div class="erow"><div class="e-ind" style="background:var(--accent-soft);border:1px solid rgba(79,70,229,.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">System Log</div><div class="e-time" style="color:var(--text-3); font-weight:500; font-size:13px; margin-top:2px;">${esc(cleanNote)} • ${ago(e.createdAt)}</div></div></div>`;
       }
       
-      const delBtn = !e.deleted ? `<button style="background:var(--red-soft);border:1.5px solid var(--red-border);color:var(--red);width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s;" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>` : '';
+      const delBtn = !e.deleted ? `<div class="e-del-wrap"><button class="e-del-btn" onclick="event.stopPropagation();window.prepDelEntry('${e.id}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>` : '';
       
       // 2. Deleted Rows (Now properly outputs the live delMsg!)
       if(e.deleted) {
@@ -3893,7 +3939,7 @@ window.renderEntries = function() {
           actionText = esc(e.note); 
       }
       
-      return `<div class="erow">
+      return `<div class="erow" onclick="window.toggleRowActions(this)">
         <div class="e-ind ${isInc?'e-in':'e-out'}">${arrow}</div>
         <div class="e-body">
           <div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">
@@ -3924,6 +3970,19 @@ window.renderEntries = function() {
     if (pagWrap) pagWrap.innerHTML = '';
   }
 };
+window.toggleRowActions = function(el) {
+  const isTouch = window.matchMedia('(hover: none)').matches;
+  if (!isTouch) return; // desktop uses hover, no tap needed
+  const wasActive = el.classList.contains('show-actions');
+  document.querySelectorAll('.erow.show-actions').forEach(r => r.classList.remove('show-actions'));
+  if (!wasActive) el.classList.add('show-actions');
+};
+document.addEventListener('click', e => {
+  if (!e.target.closest('.erow')) {
+    document.querySelectorAll('.erow.show-actions').forEach(r => r.classList.remove('show-actions'));
+  }
+});
+
 window.prepDelEntry = function(entId) {
   const entry = window.currentEntries.find(e => e.id === entId);
   if (!entry) return;
