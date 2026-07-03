@@ -1255,11 +1255,9 @@ input[type=number] { -moz-appearance: textfield; }
 }
 .low-stock-item:hover {
   transform: translateY(-2px);
-  border-color: transparent; /* Makes border invisible */
+  border-color: var(--red);
   box-shadow: 0 8px 20px rgba(220, 38, 38, 0.15);
 }
-
-/* 1-Second Fog Highlight Animation for the Product Page */
 @keyframes focusFog {
   0% { box-shadow: 0 0 0 9999px rgba(13,15,20,0.6), 0 0 40px var(--accent); transform: scale(1.02); z-index: 999; border-color: var(--accent); }
   80% { box-shadow: 0 0 0 0 rgba(13,15,20,0), 0 0 0 transparent; transform: scale(1); z-index: 999; border-color: var(--border-faint); }
@@ -2897,7 +2895,7 @@ function startDashboardStatsListener() {
     window.allProducts = all;
     if (WHs.length) renderWHs();
     const total = all.length;
-    const lowList = all.filter(p => p.minStock != null ? p.stock <= p.minStock : p.stock <= 0);
+    const lowList = all.filter(p => isLowStock(p));
     const lowCount = lowList.length;
 
     document.getElementById('sProds').textContent = total;
@@ -2931,8 +2929,9 @@ function setSyncBadge(type,text){
   syncEl.className='sync-badge '+type;
   syncEl.innerHTML=text;
 }
-
-// --- CRITICAL MISSING HELPER FUNCTIONS ---
+function isLowStock(p) {
+  return p.minStock != null ? p.stock <= p.minStock : p.stock < 10;
+}
 function esc(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -3338,7 +3337,7 @@ function renderProds(list){
   const slice = list.slice(startIndex, startIndex + PROD_PER_PAGE);
   
   el.innerHTML = slice.map(p=>{
-    const isLow = p.minStock != null ? p.stock <= p.minStock : p.stock <= 0;
+    const isLow = isLowStock(p);
     
     // 🔥 Clean Redesigned Badge
     const lowBadge = isLow ? `<span class="low-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Low</span>` : '';
@@ -3792,7 +3791,7 @@ window.openLowStockModal = async function() {
   try {
     const snap = await getDocs(query(collection(db, 'products'), where('companyId', '==', CU.companyId)));
     const lowProds = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      .filter(p => p.minStock != null ? p.stock <= p.minStock : p.stock <= 0);
+      .filter(p => isLowStock(p));
 
     if (!lowProds.length) {
       listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-4);">No low stock items 🎉</div>';
@@ -3804,10 +3803,10 @@ window.openLowStockModal = async function() {
           <div style="width:36px;height:36px;border-radius:10px;background:var(--white-pure);border:1px solid var(--red-border);display:flex;align-items:center;justify-content:center;">${window.getExtIcon(p.emoji)}</div>
           <div>
             <div style="font-weight:800;font-size:14px;color:var(--text-1);">${esc(p.name)}</div>
-            <div style="font-size:12px;color:var(--text-3);">Stock: ${p.stock||0} ${esc(p.unit||'')}</div>
+            <div style="font-size:12px;color:var(--text-3);">${esc(p.desc || 'No description')}</div>
           </div>
         </div>
-        <div style="font-weight:800;color:var(--red);font-size:13px;">Min: ${p.minStock ?? 0}</div>
+        <div style="font-weight:800;color:var(--red);font-size:13px;">${p.stock||0} ${esc(p.unit||'')}</div>
       </div>
     `).join('');
   } catch(e) {
