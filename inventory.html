@@ -2058,14 +2058,14 @@ body.is-premium .premium-lock-overlay {
         </div>
         <div id="convPreview" style="display:none;"></div>
         <div class="mf" style="margin-bottom: 16px; margin-top: 16px;">
-          <label>Note</label>
-          <div class="mfr">
-            <span class="mico" style="display:flex; align-items:center; top:12px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-            </span>
-            <input type="text" id="en" placeholder="Reason, reference, supplier…" maxlength="40"/>
-          </div>
-        </div>
+  <label>Note <span style="color:var(--red);">*</span></label>
+  <div class="mfr">
+    <span class="mico" style="display:flex; align-items:center; top:12px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+    </span>
+    <input type="text" id="en" placeholder="Reason, reference, supplier…" maxlength="20"/>
+  </div>
+</div>
         <div style="border: 1.5px solid var(--accent); border-radius: 14px; background: var(--accent-soft); box-shadow: 0 8px 24px var(--accent-glow); margin-bottom: 8px;">
           <div id="expenseFields" style="display:block; padding: 16px; position:relative;">
             <div class="mf" style="margin-bottom:14px">
@@ -4003,8 +4003,8 @@ const delBtn = !e.deleted ? `<div class="e-del-wrap"><button class="e-del-btn${i
       if (e.note && e.note.toLowerCase().includes('opening stock')) {
           actionText = 'Opening Stock';
       } else if (e.note && e.note.toLowerCase() !== 'stock in' && e.note.toLowerCase() !== 'stock out') {
-          // This appends the transaction type to your custom note
-          actionText = `${esc(e.note)} • ${isInc ? 'Stock In' : 'Stock Out'}`; 
+          // Removes Stock In/Out and shows ONLY the note!
+          actionText = esc(e.note); 
       }
       
       return `<div class="erow" onclick="window.toggleRowActions(this)">
@@ -4488,6 +4488,12 @@ window.saveEntry = async function() {
   const qty = parseFloat(document.getElementById('eq').value) || 0;
   const note = document.getElementById('en').value.trim();
   if (qty <= 0) { setMM('entryMsg', '⚠ Enter a valid quantity.', 'err'); return; }
+  
+  // New rule: Note is mandatory, 3-20 characters
+  if (note.length < 3 || note.length > 20) {
+      setMM('entryMsg', '⚠ Note must be between 3 and 20 characters.', 'err');
+      return;
+  }
 
   const baseUnit = curProd.unit || 'Piece';
   const conv = (curProd.conversions || []).find(c => c.name === selUnit);
