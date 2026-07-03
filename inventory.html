@@ -2132,29 +2132,6 @@ body.is-premium .premium-lock-overlay {
     </div>
   </div>
 </div>
-
-<div class="mo" id="m-del-reason" onclick="if(event.target===this) window.closeM('m-del-reason')">
-  <div class="mbox" style="max-width: 400px; padding: 0; border-radius: 20px;">
-    <div class="mhd" style="border-bottom: 2px solid var(--border-strong); padding: 20px 24px 14px; display: flex; justify-content: space-between; align-items: center;">
-      <div class="mttl" style="color:var(--text-1); font-size: 1.25rem; font-weight: 800; font-family: var(--f-display); letter-spacing: -0.01em; margin-bottom: 0;">Deletion Details</div>
-      <button class="mx" onclick="window.closeM('m-del-reason')" style="background: var(--white-cool); border:none; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-3); transition: 0.2s;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-    </div>
-    <div class="mbd" style="padding: 24px;">
-      <div style="margin-bottom: 16px;">
-        <div style="font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Deleted By</div>
-        <div id="drDeletedBy" style="font-size: 15px; font-weight: 800; color: var(--text-1);"></div>
-      </div>
-      <div style="margin-bottom: 16px;">
-        <div style="font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Time of Deletion</div>
-        <div id="drTime" style="font-size: 14px; font-weight: 600; color: var(--text-2);"></div>
-      </div>
-      <div>
-        <div style="font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Reason</div>
-        <div id="drReason" style="font-size: 14px; font-weight: 500; color: var(--text-2); background: var(--white-cool); padding: 12px; border-radius: 10px; border: 1px solid var(--border-faint);"></div>
-      </div>
-    </div>
-  </div>
-</div>
 <div id="custom-toast-container"></div>
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -3900,7 +3877,7 @@ window.renderEntries = function() {
               delMsg = `Deleted Entry of ${displayName} of ${amt} ${e.type}`;
           }
           
-          return `<div class="erow del-row" style="opacity:0.7;cursor:pointer" onclick="window.viewDelReason('${e.id}')"><div class="e-ind" style="background:var(--white-muted);border:1px solid var(--border-strong); border-radius: 12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-3); letter-spacing:-0.01em; text-decoration:line-through;">${esc(displayName)}</div><div class="e-time" style="font-family:var(--f-display); color:var(--text-4); font-weight:600; font-size:13px; margin-top:2px;">${esc(delMsg)} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
+          return `<div class="erow del-row" style="opacity:0.7;"><div class="e-ind" style="background:var(--white-muted);border:1px solid var(--border-strong); border-radius: 12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-3); letter-spacing:-0.01em; text-decoration:line-through;">${esc(displayName)}</div><div class="e-time" style="font-family:var(--f-display); color:var(--text-4); font-weight:600; font-size:13px; margin-top:2px;">${esc(delMsg)} • ${ago(e.deletedAt)}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-4);">${e.type==='IN'?'+':'-'}${e.qty}</span></div></div></div>`;
       }
       
       // 3. Active IN/OUT Rows
@@ -4364,18 +4341,6 @@ window.calcEntryTotal = function() {
    const uLbl = document.getElementById('entryCostUnitLbl');
    if(uLbl) uLbl.textContent = selUnit || 'unit';
 };
-
-window.viewDelReason = async function(id) {
-   const entry = window.currentEntries.find(e => e.id === id);
-   if(!entry) return;
-   document.getElementById('drDeletedBy').textContent = entry.deletedByName || 'Unknown';
-   document.getElementById('drReason').textContent = entry.deleteReason || 'No reason provided';
-   
-   const dObj = typeof entry.deletedAt?.toDate === 'function' ? entry.deletedAt.toDate() : new Date(entry.deletedAt);
-   document.getElementById('drTime').textContent = dObj.toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
-   window.openM('m-del-reason');
-};
-
 window.toggleEntryExpFields = function(el) {
   const fields = document.getElementById('expenseFields');
   if (fields) fields.style.display = el.checked ? 'block' : 'none';
