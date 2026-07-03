@@ -3279,21 +3279,28 @@ async function loadWHStats(whId){
     console.error("Stats Load Error:", e);
   }
 }
-
-// ── PRODUCTS ──
-async function loadProds(whId){
+let prodsUnsub = null;
+function loadProds(whId){
   if(!whId)return;
   document.getElementById('prodList').innerHTML='<div style="text-align:center;padding:28px;color:var(--text-4);font-size:14px">Loading…</div>';
-  try{
-    const snap=await getDocs(query(collection(db,'products'), where('companyId','==',CU.companyId), where('godownId','==',whId)));
+  if(prodsUnsub){ prodsUnsub(); prodsUnsub=null; }
+  const q = query(collection(db,'products'), where('companyId','==',CU.companyId), where('godownId','==',whId));
+  prodsUnsub = onSnapshot(q, snap=>{
     prods=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name));
     renderProds(prods);
-  }catch(e){
+    if(curProd){
+      const updated = prods.find(p=>p.id===curProd.id);
+      if(updated){
+        curProd = updated;
+        const eTitle = document.getElementById('eCntTitle');
+        if(eTitle) eTitle.textContent = `CURRENT STOCK: ${curProd.stock || 0} ${curProd.unit || ''}`.trim().toUpperCase();
+      }
+    }
+  }, e=>{
     console.error("Products Load Error:", e);
     document.getElementById('prodList').innerHTML=`<div style="text-align:center;padding:28px;color:var(--red);font-size:14px"><b>Database Error:</b> ${e.message}</div>`;
-  }
+  });
 }
-
 let prodCurrentPage = 1;
 const PROD_PER_PAGE = 10;
 
