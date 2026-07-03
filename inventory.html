@@ -2349,6 +2349,46 @@ const syncEl=document.getElementById('syncEl');
 
 let CU=null, WHs=[], prods=[], curWH=null, curProd=null, eType='IN', entToDelete=null;
 let selUnit=null, curAddStockUnit=null;
+window._prodUnsub = null;
+window._entriesUnsub = null;
+
+function cleanupProdListeners() {
+  if (window._prodUnsub) { window._prodUnsub(); window._prodUnsub = null; }
+  if (window._entriesUnsub) { window._entriesUnsub(); window._entriesUnsub = null; }
+}
+
+window.subscribeToProduct = function(pId) {
+  if (window._prodUnsub) { window._prodUnsub(); window._prodUnsub = null; }
+  window._prodUnsub = onSnapshot(doc(db, 'products', pId), snap => {
+    if (!snap.exists()) return;
+    const data = { id: snap.id, ...snap.data() };
+    curProd = data;
+    const idx = prods.findIndex(x => x.id === pId);
+    if (idx > -1) prods[idx] = data;
+
+    document.getElementById('pdEmoji').innerHTML = window.getExtIcon(data.emoji);
+    document.getElementById('pdName').textContent = data.name;
+    document.getElementById('pdDesc').textContent = data.desc || 'No description';
+
+    const eTitle = document.getElementById('eCntTitle');
+    if (eTitle) eTitle.textContent = `CURRENT STOCK: ${data.stock || 0} ${data.unit || ''}`.trim().toUpperCase();
+
+    window.renderEntries();
+  }, e => console.error('Product live update error:', e));
+};
+
+window.subscribeToEntries = function(pId) {
+  if (window._entriesUnsub) { window._entriesUnsub(); window._entriesUnsub = null; }
+  document.getElementById('eList').innerHTML = '<div class="e-empty">Loading…</div>';
+  const q = query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('productId', '==', pId));
+  window._entriesUnsub = onSnapshot(q, snap => {
+    window.currentEntries = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(b.createdAt?.toDate ? b.createdAt.toDate() : b.createdAt || 0) - new Date(a.createdAt?.toDate ? a.createdAt.toDate() : a.createdAt || 0));
+    window.entryCurrentPage = 1;
+    window.renderEntries();
+  }, e => {
+    document.getElementById('eList').innerHTML = `<div class="e-empty" style="color:var(--red)">Error: ${e.message}</div>`;
+  });
+};
 
 const ICONS=[
   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
@@ -2959,6 +2999,7 @@ function showView(v){document.querySelectorAll('.view').forEach(el=>el.classList
 window.goBack = function() {
   const active = document.querySelector('.view.active')?.id;
   if (active === 'v-prod') {
+    cleanupProdListeners();
     showView('wh'); 
   } else if (active === 'v-wh') {
     showView('dash'); 
@@ -3068,6 +3109,7 @@ function renderWHs() {
   }
 }
 window.openWH = async function(wh) {
+  cleanupProdListeners();
   curWH = wh.id || wh;
   const whObj = WHs.find(w => w.id === curWH) || wh;
   document.getElementById('whName').textContent = whObj.name || 'Warehouse';
@@ -3399,9 +3441,9 @@ window.openProd = async function(pId, highlight = false) {
   }
 
   showView('prod'); 
-  await loadEntries(pId);
+  window.subscribeToProduct(pId);
+  window.subscribeToEntries(pId);
 };
-// ── MERGED EDIT ──
 window.openMergedEdit = function() {
   if(!curProd) return;
   setMM('editProdMsg', '', '');
