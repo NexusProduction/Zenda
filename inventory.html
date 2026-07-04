@@ -3038,9 +3038,12 @@ function loadWHs(){
     if(document.getElementById('whCnt')) document.getElementById('whCnt').textContent=WHs.length;
 
         if (curWH && !WHs.find(w => w.id === curWH) && !window._isDeletingWH) {
+            cleanupProdListeners();
             document.querySelectorAll('.mo.open').forEach(m => window.closeM(m.id));
-            curWH = null; 
-            showView('dash'); 
+            curWH = null;
+            curProd = null;
+            showView('dash');
+            window.showToast('This warehouse is deleted by owner.', 'error');
         }
       },()=>setSyncBadge('err','Sync Error'));
 }
@@ -3346,7 +3349,7 @@ function loadProds(whId){
         curProd = updated;
         const eTitle = document.getElementById('eCntTitle');
         if(eTitle) eTitle.textContent = `CURRENT STOCK: ${curProd.stock || 0} ${curProd.unit || ''}`.trim().toUpperCase();
-      } else if (!window._isDeletingProd) {
+     } else if (!window._isDeletingProd) {
         // Product was deleted by someone else while this device was viewing it
         cleanupProdListeners();
         const wasViewingProd = document.getElementById('v-prod')?.classList.contains('active');
@@ -3354,7 +3357,7 @@ function loadProds(whId){
         document.querySelectorAll('.mo.open').forEach(m => window.closeM(m.id));
         if (wasViewingProd) {
           showView('wh');
-          window.showToast('This product was deleted.', 'error');
+          window.showToast('This product is deleted by owner.', 'error');
         }
       }
     }
