@@ -3346,6 +3346,16 @@ function loadProds(whId){
         curProd = updated;
         const eTitle = document.getElementById('eCntTitle');
         if(eTitle) eTitle.textContent = `CURRENT STOCK: ${curProd.stock || 0} ${curProd.unit || ''}`.trim().toUpperCase();
+      } else if (!window._isDeletingProd) {
+        // Product was deleted by someone else while this device was viewing it
+        cleanupProdListeners();
+        const wasViewingProd = document.getElementById('v-prod')?.classList.contains('active');
+        curProd = null;
+        document.querySelectorAll('.mo.open').forEach(m => window.closeM(m.id));
+        if (wasViewingProd) {
+          showView('wh');
+          window.showToast('This product was deleted.', 'error');
+        }
       }
     }
   }, e=>{
@@ -3801,11 +3811,11 @@ window.sendProdDeleteRequest = async function() {
         if (textarea) textarea.removeAttribute('readonly');
     }
 };
-
 // Owner Deletion
 window.confirmDelProd = async function() {
   const btn = document.getElementById('delProdBtn');
   btn.disabled = true; btn.textContent = 'Deleting...';
+  window._isDeletingProd = true;
   try {
     const batch = writeBatch(db);
     const snap = await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));
@@ -3834,11 +3844,14 @@ window.confirmDelProd = async function() {
             window.closeM('m-del-prod');
             showView('wh'); 
             await loadProds(curWH);
+            window._isDeletingProd = false;
         }, 1800);
     } else {
         window.closeM('m-del-prod'); showView('wh'); await loadProds(curWH);
+        window._isDeletingProd = false;
     }
   } catch(e) {
+    window._isDeletingProd = false;
     window.showToast('Failed to delete: ' + e.message, 'error');
   }
   btn.disabled = false; btn.textContent = 'Delete Forever';
