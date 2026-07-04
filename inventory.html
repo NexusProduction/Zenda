@@ -1557,9 +1557,48 @@ body.is-premium .premium-lock-overlay {
   transition: all 0.4s ease 0.3s;
 }
 .ppm-success-overlay.active .ppm-success-text { opacity: 1; transform: translateY(0); }
+
+/* --- PREMIUM LOCK OVERLAY (Owner Not Upgraded) --- */
+#ownerLockOverlay {
+  position: fixed; inset: 0; z-index: 999999;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(13,15,20,0.55);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  padding: 20px;
+}
+#ownerLockOverlay.show { display: flex; }
+body.owner-locked .appbar, body.owner-locked .view, body.owner-locked .mo {
+  filter: blur(6px);
+  pointer-events: none !important;
+  user-select: none !important;
+}
+.lock-card {
+  background: var(--white-pure); border-radius: 24px; max-width: 380px; width: 100%;
+  padding: 36px 28px; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+  border: 1px solid var(--border-faint);
+}
+.lock-ico { width: 64px; height: 64px; border-radius: 18px; background: var(--amber-soft); color: var(--amber); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+.lock-ttl { font-family: var(--f-display); font-size: 1.3rem; font-weight: 800; color: var(--text-1); margin-bottom: 8px; letter-spacing: -0.01em; }
+.lock-sub { font-size: 14px; color: var(--text-3); font-weight: 500; line-height: 1.5; margin-bottom: 24px; }
+.lock-btn { width: 100%; padding: 14px; border-radius: 12px; border: none; background: linear-gradient(135deg,#F59E0B,#D97706); color: #fff; font-family: var(--f-display); font-weight: 800; font-size: 15px; cursor: pointer; box-shadow: 0 8px 20px rgba(217,119,6,0.35); display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+.lock-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(217,119,6,0.45); }
 </style>
 </head>
 <body>
+
+<div id="ownerLockOverlay">
+  <div class="lock-card">
+    <div class="lock-ico">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+    </div>
+    <div class="lock-ttl">Page Locked</div>
+    <div class="lock-sub">Please upgrade your account to continue using Inventory Management.</div>
+    <button class="lock-btn" onclick="window.location.href='subscription.html'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+      Upgrade Now
+    </button>
+  </div>
+</div>
 
 <header class="appbar" id="appbar">
   <div class="ab-left">
@@ -2455,10 +2494,25 @@ const ICONS=[
 ];
 const CATS={general:'General',cold:'Cold Storage',retail:'Retail',distribution:'Distribution',raw:'Raw Materials',finished:'Finished Goods'};
 const STD_UNITS=['Piece','Gram','KG','Litre','Box','Packet','Set','Bundle','Feet','Metre'];
+// ── PREMIUM LOCK GUARDS ──
+window._isOwnerLocked = function() {
+  return !!(CU && CU.role === 'owner' && CU.isPremium !== true);
+};
+window._blockIfLocked = function() {
+  if (window._isOwnerLocked()) {
+    document.body.classList.add('owner-locked');
+    document.getElementById('ownerLockOverlay')?.classList.add('show');
+    if (window.showToast) window.showToast('Please upgrade to continue.', 'error');
+    return true;
+  }
+  return false;
+};
 
 // ── UI HELPERS ──
-window.openM=function(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';};
-
+window.openM=function(id){
+  if (['m-wh','m-prod','m-edit-prod','m-entry'].includes(id) && window._blockIfLocked()) return;
+  document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';
+};
 window.closeM = function(id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -2706,7 +2760,8 @@ document.addEventListener('click', e => {
     closeWhCatDD();
   }
 });
-window.validateAndSaveWH = function() {
+window.createWH = async function() {
+  if (window._blockIfLocked()) return;
   const nameInp = document.getElementById('wn');
   const locInp = document.getElementById('wl');
   const nameVal = nameInp.value.trim();
@@ -2896,6 +2951,7 @@ async function init(){
   if(!CU.companyId)CU.companyId=activeUid;
   
   try {
+    try {
     const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
     if (compSnap.exists()) {
       const compData = compSnap.data();
@@ -2914,6 +2970,11 @@ async function init(){
   } catch(e) { CU.isPremium = false; }
 
   if (CU.isPremium) document.body.classList.add('is-premium');
+
+  if (CU.role === 'owner' && CU.isPremium !== true) {
+    document.body.classList.add('owner-locked');
+    document.getElementById('ownerLockOverlay')?.classList.add('show');
+  }
 
   const upgBtn = document.getElementById('globalUpgradeBtn');
   const syncBadge = document.getElementById('syncEl');
@@ -3325,6 +3386,7 @@ window.sendWhDeleteRequest = async function() {
     }
 };
 window.confirmDelWH = async function() {
+  if (window._blockIfLocked()) return;
   const btn = document.getElementById('delWhBtn');
   if(btn) { btn.disabled = true; btn.textContent = 'Deleting...'; }
   window._isDeletingWH = true;
@@ -3556,6 +3618,7 @@ window.openMergedEdit = function() {
   window.openM('m-edit-prod');
 };
 window.saveMergedProd = async function() {
+  if (window._blockIfLocked()) return;
   const newName = document.getElementById('editProdNameInp').value.trim();
   if(!newName) { setMM('editProdMsg', '⚠ Enter product name.', 'err'); return; }
   if(!/[a-zA-Z]/.test(newName)) { setMM('editProdMsg', '⚠ Name must contain at least one letter.', 'err'); return; }
@@ -3865,6 +3928,7 @@ window.sendProdDeleteRequest = async function() {
 };
 // Owner Deletion
 window.confirmDelProd = async function() {
+  if (window._blockIfLocked()) return;
   const btn = document.getElementById('delProdBtn');
   btn.disabled = true; btn.textContent = 'Deleting...';
   window._isDeletingProd = true;
@@ -4144,6 +4208,7 @@ window.prepDelEntry = function(entId) {
   window.openM('m-del-entry');
 };
 window.confirmDelEntry=async function(){
+  if (window._blockIfLocked()) return;
   const reason=document.getElementById('delReason').value.trim();
   const len=reason.length;
   if(len<10){setMM('delEntMsg','⚠ Write at least 10 characters.','err');return;}
@@ -4269,6 +4334,7 @@ window.openAddProd = function() {
   window.openM('m-prod');
 };
 window.addProduct = async function() {
+  if (window._blockIfLocked()) return;
   if (!curWH) { window.showToast('No warehouse selected.', 'error'); return; }
   const nameInp = document.getElementById('pn');
   const descInp = document.getElementById('pdesc');
@@ -4551,8 +4617,8 @@ window.toggleEntryExpFields = function(el) {
   if (fields) fields.style.display = el.checked ? 'block' : 'none';
   if (el.checked) window.calcEntryTotal();
 };
-
 window.saveEntry = async function() {
+  if (window._blockIfLocked()) return;
   if (!curProd || !curWH) { window.showToast('No product selected.', 'error'); return; }
 
   const qty = parseFloat(document.getElementById('eq').value) || 0;
