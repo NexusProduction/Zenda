@@ -2240,7 +2240,7 @@ body.is-premium .premium-lock-overlay {
 <script type="module">
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { requireAuth } from './auth.js';
 window.toggleAddProdExpense = function(val) {
   const block = document.getElementById('addProdExpenseBlock');
@@ -2789,10 +2789,9 @@ window.validateAndSaveWH = function() {
   }
 };
 window.getExtIcon = function(name) {
-  const icon = name || 'package';
+  const icon = String(name || 'package').replace(/[^a-zA-Z0-9\-]/g, '') || 'package';
   return `<img src="https://api.iconify.design/lucide/${icon}.svg?color=%230D0F14&stroke-width=2" style="width:1em; height:1em; object-fit:contain; opacity:0.85; display:inline-block; vertical-align:middle;" />`;
 };
-
 const EM_LIB = {
   rice:'shopping-bag', wheat:'shopping-bag', flour:'shopping-bag', maize:'shopping-bag', corn:'shopping-bag', 
   sugar:'archive', salt:'archive', oil:'droplet', ghee:'droplet', butter:'box', 
@@ -3223,6 +3222,12 @@ function renderWHs() {
   }
 }
 window.openWH = async function(wh) {
+  const targetId = wh.id || wh;
+  const globalIndex = WHs.findIndex(w => w.id === targetId);
+  if (!CU.isPremium && globalIndex > 0) {
+    window.showToast('Upgrade to access additional warehouses.', 'error');
+    return;
+  }
   cleanupProdListeners();
   curWH = wh.id || wh;
   const whObj = WHs.find(w => w.id === curWH) || wh;
@@ -4206,37 +4211,39 @@ window.confirmDelEntry=async function(){
   
   const btn=document.getElementById('delEntBtn');btn.disabled=true;btn.textContent='Deleting…';
   try{
-    const snap=await getDoc(doc(db,'entries',entToDelete));
-    const e=snap.data();
+    const entryRef = doc(db,'entries',entToDelete);
+    const prodRef = doc(db,'products',curProd.id);
+    let msg, newStock;
 
-    // Check BEFORE deleting: would removing this entry push stock negative?
-    const allSnap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));
-    const activeEntries=allSnap.docs.map(d=>({id:d.id,...d.data()})).filter(en=>!en.deleted && en.id!==entToDelete);
-    const projectedStock=activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0);
+    await runTransaction(db, async (tx) => {
+      const entrySnap = await tx.get(entryRef);
+      if (!entrySnap.exists()) throw new Error('Entry not found.');
+      const e = entrySnap.data();
+      if (e.deleted) throw new Error('This entry was already deleted.');
 
-    if(projectedStock<0){
-      setMM('delEntMsg','⚠ Cannot delete — stock would go negative.','err');
-      btn.disabled=false;btn.textContent='Delete Entry';
-      return;
-    }
+      const prodSnap = await tx.get(prodRef);
+      if (!prodSnap.exists()) throw new Error('Product no longer exists.');
+      const liveStock = prodSnap.data().stock || 0;
 
-    const isOwn=e.createdBy===CU.uid;
-    const amt=`${e.qty} ${e.entryUnit||e.unit||''}`.trim();
-    const msg = isOwn ? `${CU.name} Deleted Their entry of ${amt} ${e.type}` : `${CU.name} deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;
-    
-    // 1. Mark Entry as Deleted
-    await updateDoc(doc(db,'entries',entToDelete),{deleted:true,deleteReason:reason,deleteMessage:msg,deletedBy:CU.uid,deletedByName:CU.name||'Owner',deletedAt:new Date().toISOString()});
-    
-    // 2. Cross-App Sync: Always delete linked Expense
+      const delta = e.type === 'IN' ? -(e.qtyBase||e.qty||0) : (e.qtyBase||e.qty||0);
+      newStock = liveStock + delta;
+      if (newStock < 0) throw new Error('NEGATIVE_STOCK');
+
+      const isOwn=e.createdBy===CU.uid;
+      const amt=`${e.qty} ${e.entryUnit||e.unit||''}`.trim();
+      msg = isOwn ? `${CU.name} Deleted Their entry of ${amt} ${e.type}` : `${CU.name} deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;
+
+      tx.update(entryRef, {deleted:true,deleteReason:reason,deleteMessage:msg,deletedBy:CU.uid,deletedByName:CU.name||'Owner',deletedAt:new Date().toISOString()});
+      tx.update(prodRef, {stock:newStock});
+    });
+
     const expSnap = await getDocs(query(collection(db,'expenses'), where('companyId','==',CU.companyId), where('relatedEntryId','==',entToDelete)));
     expSnap.docs.forEach(d => {
        updateDoc(doc(db,'expenses',d.id), { isDeleted: true, deletedBy: CU.name, deletedById: CU.uid, deleteReason: reason, deletedAt: serverTimestamp() });
     });
 
     await loadEntries(curProd.id); 
-    
-    await updateDoc(doc(db,'products',curProd.id),{stock:projectedStock});
-    curProd.stock=projectedStock;
+    curProd.stock=newStock;
 
     const tick = document.getElementById('del-entry-success-tick');
     if (tick) {
@@ -4252,7 +4259,14 @@ window.confirmDelEntry=async function(){
         window.closeM('m-del-entry');
         btn.disabled=false;btn.textContent='Delete Entry';
     }
-  }catch(e){setMM('delEntMsg','❌ Failed: '+e.message,'err');btn.disabled=false;btn.textContent='Delete Entry';}
+  }catch(e){
+    if (e.message === 'NEGATIVE_STOCK') {
+      setMM('delEntMsg','⚠ Cannot delete — stock would go negative.','err');
+    } else {
+      setMM('delEntMsg','❌ Failed: '+e.message,'err');
+    }
+    btn.disabled=false;btn.textContent='Delete Entry';
+  }
 };
 window.toggleAddProdConv = function(el) {
   document.getElementById('addProdConvBuilder').style.display = el.checked ? 'block' : 'none';
@@ -4454,6 +4468,7 @@ const name = nameInp.value.trim();
   }
 };
 window.createWH = async function() {
+  if (window._blockIfLocked()) return;
   const nameInp = document.getElementById('wn');
   const locInp = document.getElementById('wl');
   const catInp = document.getElementById('wc');
@@ -4656,20 +4671,35 @@ window.saveEntry = async function() {
   setMM('entryMsg', '', '');
 
   try {
-    const entryRef = await addDoc(collection(db, 'entries'), {
-      type: eType, qty, qtyBase, unit: baseUnit, entryUnit: selUnit || baseUnit,
-      note: note || (eType === 'IN' ? 'Stock In' : 'Stock Out'),
-      productId: curProd.id,
-      godownId: curWH,
-      companyId: CU.companyId,
-      who: CU.name || 'Owner',
-      createdBy: CU.uid,
-      deleted: false,
-      createdAt: serverTimestamp()
+    const prodRef = doc(db, 'products', curProd.id);
+    const entryRef = doc(collection(db, 'entries'));
+    let newStock;
+
+    await runTransaction(db, async (tx) => {
+      const prodSnap = await tx.get(prodRef);
+      if (!prodSnap.exists()) throw new Error('Product no longer exists.');
+      const liveStock = prodSnap.data().stock || 0;
+
+      if (eType === 'OUT' && qtyBase > liveStock) {
+        throw new Error('INSUFFICIENT_STOCK');
+      }
+
+      newStock = eType === 'IN' ? liveStock + qtyBase : liveStock - qtyBase;
+
+      tx.set(entryRef, {
+        type: eType, qty, qtyBase, unit: baseUnit, entryUnit: selUnit || baseUnit,
+        note: note || (eType === 'IN' ? 'Stock In' : 'Stock Out'),
+        productId: curProd.id,
+        godownId: curWH,
+        companyId: CU.companyId,
+        who: CU.name || 'Owner',
+        createdBy: CU.uid,
+        deleted: false,
+        createdAt: serverTimestamp()
+      });
+      tx.update(prodRef, { stock: newStock });
     });
 
-    const newStock = eType === 'IN' ? (curProd.stock || 0) + qtyBase : Math.max(0, (curProd.stock || 0) - qtyBase);
-    await updateDoc(doc(db, 'products', curProd.id), { stock: newStock });
     curProd.stock = newStock;
 
     if (logExpense) {
@@ -4715,12 +4745,15 @@ window.saveEntry = async function() {
       await loadEntries(curProd.id);
     }
   } catch (e) {
-    setMM('entryMsg', '❌ Failed: ' + e.message, 'err');
+    if (e.message === 'INSUFFICIENT_STOCK') {
+      setMM('entryMsg', '⚠ Not enough stock available.', 'err');
+    } else {
+      setMM('entryMsg', '❌ Failed: ' + e.message, 'err');
+    }
     btn.disabled = false;
     btn.textContent = 'Save Entry';
   }
 };
-
 setupUnitDropdowns();
 window.setupPayMethodDropdowns();
 init();
