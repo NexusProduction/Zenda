@@ -2880,12 +2880,13 @@ document.addEventListener('click', e => {
   }
 });
 async function init(){
+  const authUser = await new Promise(r=>{const unsub=onAuthStateChanged(auth,user=>{unsub();r(user);});});
+  if(!authUser){ window.location.replace('login.html'); return; }
+
   const urlUid=new URLSearchParams(location.search).get('uid');
   const rawSession=sessionStorage.getItem('zenda_user');
   const sessionUser=rawSession?JSON.parse(rawSession):null;
-  const authUser=await new Promise(r=>{const unsub=onAuthStateChanged(auth,user=>{unsub();r(user);});setTimeout(()=>r(null),3000);});
-  const activeUid=urlUid||(sessionUser?sessionUser.uid:null)||(authUser?authUser.uid:null);
-  if(!activeUid){setSyncBadge('err','Not signed in');return;}
+  const activeUid=urlUid||(sessionUser?sessionUser.uid:null)||authUser.uid;
   try{
     const uSnap=await getDoc(doc(db,'users',activeUid));
     if(uSnap.exists()){CU={uid:activeUid,...uSnap.data()};}else if(sessionUser){CU=sessionUser;}
