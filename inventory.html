@@ -2221,6 +2221,7 @@ body.is-premium .premium-lock-overlay {
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { requireAuth } from './auth.js';
 window.toggleAddProdExpense = function(val) {
   const block = document.getElementById('addProdExpenseBlock');
   const qty = parseFloat(val) || 0;
@@ -2880,8 +2881,8 @@ document.addEventListener('click', e => {
   }
 });
 async function init(){
-  const authUser = await new Promise(r=>{const unsub=onAuthStateChanged(auth,user=>{unsub();r(user);});});
-  if(!authUser){ window.location.replace('login.html'); return; }
+  const authUser = await requireAuth('login.html');
+  if(!authUser){ return; } // requireAuth already handled the redirect or lockout overlay
 
   const urlUid=new URLSearchParams(location.search).get('uid');
   const rawSession=sessionStorage.getItem('zenda_user');
