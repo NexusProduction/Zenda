@@ -4208,6 +4208,18 @@ window.confirmDelEntry=async function(){
   try{
     const snap=await getDoc(doc(db,'entries',entToDelete));
     const e=snap.data();
+
+    // Check BEFORE deleting: would removing this entry push stock negative?
+    const allSnap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));
+    const activeEntries=allSnap.docs.map(d=>({id:d.id,...d.data()})).filter(en=>!en.deleted && en.id!==entToDelete);
+    const projectedStock=activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0);
+
+    if(projectedStock<0){
+      setMM('delEntMsg','⚠ Cannot delete — stock would go negative.','err');
+      btn.disabled=false;btn.textContent='Delete Entry';
+      return;
+    }
+
     const isOwn=e.createdBy===CU.uid;
     const amt=`${e.qty} ${e.entryUnit||e.unit||''}`.trim();
     const msg = isOwn ? `${CU.name} Deleted Their entry of ${amt} ${e.type}` : `${CU.name} deleted entry of ${e.who||'staff'} of ${amt} ${e.type}`;
@@ -4223,11 +4235,8 @@ window.confirmDelEntry=async function(){
 
     await loadEntries(curProd.id); 
     
-    const allSnap=await getDocs(query(collection(db,'entries'), where('companyId','==',CU.companyId), where('productId','==',curProd.id)));
-    const activeEntries=allSnap.docs.map(d=>d.data()).filter(en=>!en.deleted);
-    const newStock=activeEntries.reduce((s,en)=>en.type==='IN'?s+(en.qtyBase||en.qty||0):s-(en.qtyBase||en.qty||0),0);
-    await updateDoc(doc(db,'products',curProd.id),{stock:newStock});
-    curProd.stock=newStock;
+    await updateDoc(doc(db,'products',curProd.id),{stock:projectedStock});
+    curProd.stock=projectedStock;
 
     const tick = document.getElementById('del-entry-success-tick');
     if (tick) {
