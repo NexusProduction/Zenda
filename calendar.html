@@ -503,15 +503,23 @@ onAuthStateChanged(auth, async user => {
     setSyncStatus('err');
   }
 });
+let staffUnsub = null;
+
 function startStaffListener() {
   if (!CU?.companyId) return;
-  const q = query(collection(db, 'users'), where('companyId', '==', CU.companyId))
-  unsubs.push(onSnapshot(q, snap => {
+  
+  if (staffUnsub) staffUnsub(); // Clear any existing listener
+  
+  const q = query(collection(db, 'users'), where('companyId', '==', CU.companyId));
+  staffUnsub = onSnapshot(q, snap => {
     staffMap = {};
     companyStaff = [];
-    snap.forEach(d => { staffMap[d.id] = d.data(); companyStaff.push({ uid: d.id, ...d.data() }); });
-    mergeAndRender();   // ← re-renders using fresh staffMap, this already exists
-  }));
+    snap.forEach(d => { 
+        staffMap[d.id] = d.data(); 
+        companyStaff.push({ uid: d.id, ...d.data() }); 
+    });
+    mergeAndRender(); // ← Re-renders instantly whenever any staff name changes
+  });
 }
 function startListeners() {
   unsubs.forEach(u => u());
@@ -701,11 +709,11 @@ function renderEventItem(ev) {
   const creatorId = ev._src === 'task' ? ev.assignedBy : ev.uid;
 
   let fromText;
-  if (creatorId === auth.currentUser?.uid) {   // ← Keeps your "Myself" tag for your own events
+  if (creatorId === auth.currentUser?.uid) {
     fromText = 'Myself';
   } else {
+    // Because staffMap is now permanently synced, live.name will correctly exist
     const live = staffMap[creatorId];
-    // CHANGED: Prioritizes the LIVE Firebase name first, then falls back to the old saved name
     fromText = toTitleCase(live?.name || ev._fromName || 'Colleague');
   }
   
