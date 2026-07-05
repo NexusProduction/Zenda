@@ -250,6 +250,12 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
 .ppm-success-text{margin-top:20px;font-weight:800;font-size:1.3rem;color:#111827;letter-spacing:-.02em;opacity:0;transform:translateY(10px);transition:all .4s ease .3s}
 .ppm-success-overlay.active .ppm-success-text{opacity:1;transform:translateY(0)}
 
+.premium-lock-overlay{position:absolute;inset:0;background:rgba(255,255,255,.97);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:24px;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:1001;padding:24px;text-align:center}
+.premium-lock-overlay.active{display:flex}
+.premium-lock-btn{background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;padding:14px 26px;border-radius:12px;font-family:var(--fd);font-weight:800;font-size:.95rem;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(245,158,11,.35);transition:all .2s;margin-bottom:14px}
+.premium-lock-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(245,158,11,.45)}
+.premium-lock-text{font-family:var(--fb);font-weight:700;font-size:.9rem;color:var(--tx2)}
+
 .spin{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spinAnim .6s linear infinite}
 @keyframes spinAnim{to{transform:rotate(360deg)}}
 
@@ -387,6 +393,11 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
       </div>
       <div class="ppm-success-text">Event Added</div>
     </div>
+
+    <div class="premium-lock-overlay" id="add-event-lock-overlay">
+      <button class="premium-lock-btn" onclick="window.location.href='subscription.html'">⚡ Upgrade Now</button>
+      <div class="premium-lock-text">Upgrade to Add Events</div>
+    </div>
   </div>
 </div>
 <div class="modal-overlay" id="confirm-del-modal" onclick="if(event.target===this)closeConfirmDel()">
@@ -406,6 +417,11 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
         <svg width="34" height="34" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
       </div>
       <div class="ppm-success-text">Event Deleted</div>
+    </div>
+
+    <div class="premium-lock-overlay" id="del-event-lock-overlay">
+      <button class="premium-lock-btn" onclick="window.location.href='subscription.html'">⚡ Upgrade Now</button>
+      <div class="premium-lock-text">Upgrade to Delete Events</div>
     </div>
   </div>
 </div>
@@ -781,6 +797,10 @@ window.confirmDelete = function(id, visibility, src, btn, event) {
   deleteTargetSrc = src;
   deleteTargetBtn = btn;
   pEl('del-event-success-tick')?.classList.remove('active');
+
+  const delLock = pEl('del-event-lock-overlay');
+  if (delLock) delLock.classList.toggle('active', CU?.role === 'owner' && CU?.isPremium === false);
+
   const msgs = {
     all: 'This will delete the event for everyone. Are you sure?',
     custom: 'This will delete the event from selected staff. Are you sure?',
@@ -799,6 +819,11 @@ window.closeConfirmDel = () => {
 };
 window.executeDelete = async function() {
   if (!deleteTargetId) return;
+  if (CU?.role === 'owner' && CU?.isPremium === false) {
+    toast('Upgrade your plan to delete events.', 'error');
+    closeConfirmDel();
+    return;
+  }
   const id = deleteTargetId;
   const src = deleteTargetSrc;
   const btn = deleteTargetBtn;
@@ -1001,7 +1026,10 @@ window.toggleStaff = function(uid) {
 window.openAddModal = () => {
   pEl('add-modal').classList.add('open');
   pEl('add-event-success-tick')?.classList.remove('active');
-  
+
+  const addLock = pEl('add-event-lock-overlay');
+  if (addLock) addLock.classList.toggle('active', CU?.role === 'owner' && CU?.isPremium === false);
+
   currentVisibility = 'self';
   pEl('inline-staff-wrap')?.classList.remove('open');
   pEl('vis-options-menu')?.classList.remove('open');
@@ -1026,12 +1054,15 @@ window.closeAddModal = () => {
   }
 };
 window.addEvent = async function(btn) {
+  if (CU?.role === 'owner' && CU?.isPremium === false) {
+    toast('Upgrade your plan to add events.', 'error');
+    return;
+  }
+
   const form = btn.closest('.add-form');
   const titleEl = form?.querySelector('.ae-title');
   let rawTitle = titleEl?.value.trim() || '';
-  const visibility = currentVisibility; 
-
-  // 1. Strip any forbidden characters just in case the UI filter was bypassed
+  const visibility = currentVisibility;
   rawTitle = rawTitle.replace(/[^a-zA-Z0-9 .,-]/g, '');
 
   // 2. Validate empty
