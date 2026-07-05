@@ -493,19 +493,22 @@ onAuthStateChanged(auth, async user => {
   try {
     const uSnap = await getDoc(doc(db, 'users', user.uid));
     
-    let rawUserData = uSnap.exists()
+    // 1. Establish the global CU object safely
+    CU = uSnap.exists()
       ? { uid: user.uid, ...uSnap.data() }
       : { uid: user.uid, role: 'staff', companyId: null, name: user.email };
       
-    if (!rawUserData.companyId) rawUserData.companyId = user.uid;
+    if (!CU.companyId) CU.companyId = user.uid;
     
-    // FETCH PREMIUM STATUS FROM COMPANY DOC
+    // 2. Fetch Premium Status from the Company Document
     let isPremium = false;
     try {
-      const compSnap = await getDoc(doc(db, 'companies', rawUserData.companyId));
+      const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
       if (compSnap.exists()) {
         const compData = compSnap.data();
         isPremium = compData.isPremium === true;
+        
+        // Verify expiry date if they have one
         if (isPremium && compData.subscriptionExpiry) {
           if (new Date() > new Date(compData.subscriptionExpiry)) isPremium = false;
         }
@@ -514,21 +517,20 @@ onAuthStateChanged(auth, async user => {
       console.error('Premium check error:', e); 
     }
     
-    rawUserData.isPremium = isPremium;
+    // Assign the status directly to the global CU object
+    CU.isPremium = isPremium;
 
-    // Save to secure state and assign to our read-only variable
-    AppState.setCU(rawUserData);
-    CU = AppState.getCU();
-    
+    // 3. Start app sequence
     selectedStaffUIDs.add(CU.uid);
     if (CU.companyId) startStaffListener();
     startListeners();
     renderForms();
     renderCalendar();
     showDayEvents(selDay);
+    
   } catch(err) {
     console.error('Init error:', err);
-    setSyncStatus('err');
+    setSyncStatus('err'); 
   }
 });
 let staffUnsub = null;
