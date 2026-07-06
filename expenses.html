@@ -70,7 +70,7 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 .container{max-width:1240px;margin:0 auto;padding:24px 20px;width:100%}
 .summary-desktop{display:none;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
 @media(min-width:900px){.summary-desktop{display:grid}}
-.dsum-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px 20px 36px 20px;box-shadow:var(--sh1);transition:transform .2s,box-shadow .2s; cursor:pointer;}
+.dsum-card{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px 20px 36px 20px;box-shadow:var(--sh1);transition:transform .2s,box-shadow .2s; cursor:pointer;}
 .dsum-main .dsum-val{color:#fff;} 
 .dsum-card:hover{transform:translateY(-2px);box-shadow:var(--sh2)}
 .dsum-main{background:var(--blue);border-color:transparent;box-shadow:0 8px 24px rgba(79,70,229,.25)}
@@ -80,15 +80,19 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 .dsum-val.income{color:var(--green)}
 .dsum-val.expense{color:var(--red)}
 
+.dsum-lbl,.dsum-val,.mc-lbl,.mc-val{position:relative;z-index:1}
+.dsum-card::after,.mobile-card::after{content:'';position:absolute;right:8px;bottom:6px;width:74px;height:74px;background-repeat:no-repeat;background-position:center;background-size:contain;transform:rotate(-6deg);pointer-events:none;z-index:0}
+.dsum-card[data-theme="bal"]::after,.mobile-card[data-theme="bal"]::after{opacity:.18;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12V7H5a2 2 0 0 1 0-4h14v4'/%3E%3Cpath d='M3 5v14a2 2 0 0 0 2 2h16v-5'/%3E%3Cpath d='M18 12a2 2 0 0 0 0 4h4v-4z'/%3E%3C/svg%3E")}
+.dsum-card[data-theme="inc"]::after,.mobile-card[data-theme="inc"]::after{opacity:.13;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316A34A' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='23 6 13.5 15.5 8.5 10.5 1 18'/%3E%3Cpolyline points='17 6 23 6 23 12'/%3E%3C/svg%3E")}
+.dsum-card[data-theme="exp"]::after,.mobile-card[data-theme="exp"]::after{opacity:.13;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23DC2626' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='23 18 13.5 8.5 8.5 13.5 1 6'/%3E%3Cpolyline points='17 18 23 18 23 12'/%3E%3C/svg%3E")}
+
 .mobile-stack-wrap{display:block;position:relative;height:140px;margin-bottom:12px}
 @media(min-width:900px){.mobile-stack-wrap{display:none}}
-/* Base Mobile Card Styling + Animation */
 .mobile-card {
-  position: absolute; top: 0; left: 0; right: 0; height: 125px; 
+  position: absolute; top: 0; left: 0; right: 0; height: 125px; overflow:hidden;
   border-radius: 22px; padding: 20px 20px 30px 20px; 
   will-change: transform; user-select: none; touch-action: pan-y; 
   cursor: pointer; background: var(--surface);
-  /* ABSOLUTELY NO !important here so JS can cleanly teleport the card to the back! */
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, background 0.4s ease, box-shadow 0.4s ease;
 }
 
@@ -527,15 +531,15 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 
 <div class="container">
   <div class="summary-desktop">
-    <div class="dsum-card dsum-main">
+    <div class="dsum-card dsum-main" data-theme="bal">
       <div class="dsum-lbl">Net Balance</div>
       <div class="dsum-val" id="d-balance">&#x20B9;0.00</div>
     </div>
-    <div class="dsum-card">
+    <div class="dsum-card" data-theme="inc">
       <div class="dsum-lbl">Total Income</div>
       <div class="dsum-val income" id="d-income">&#x20B9;0.00</div>
     </div>
-    <div class="dsum-card">
+    <div class="dsum-card" data-theme="exp">
       <div class="dsum-lbl">Total Expenses</div>
       <div class="dsum-val expense" id="d-expense">&#x20B9;0.00</div>
     </div>
@@ -930,8 +934,54 @@ window.doAppeal = async function() {
     if (wrap && !wrap.contains(e.target) && menu) menu.style.display = 'none';
   });
 })();
-
 document.getElementById('exp-date').valueAsDate=new Date();
+
+// Mobile summary card swipe — was never wired up before
+(function(){
+  const stack = document.getElementById('mobile-stack');
+  if(!stack) return;
+  const cardIds = ['mc0','mc1','mc2'];
+  let order = [0,1,2];
+  let sx = 0, sy = 0;
+
+  function applyOrder(){
+    order.forEach((cardIdx, pos) => {
+      const el = document.getElementById(cardIds[cardIdx]);
+      el.classList.remove('mc-0','mc-1','mc-2');
+      el.classList.add('mc-'+pos);
+    });
+    document.querySelectorAll('.swipe-dot').forEach((d,i)=>{
+      d.classList.toggle('active', i === order[0]);
+    });
+  }
+
+  function advance(dir){
+    if(dir === 1) order.push(order.shift());
+    else order.unshift(order.pop());
+    applyOrder();
+  }
+
+  stack.addEventListener('touchstart', e => {
+    sx = e.changedTouches[0].screenX;
+    sy = e.changedTouches[0].screenY;
+  }, {passive:true});
+
+  stack.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].screenX - sx;
+    const dy = e.changedTouches[0].screenY - sy;
+    if(Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)){
+      advance(dx < 0 ? 1 : -1);
+    }
+  }, {passive:true});
+
+  document.querySelectorAll('.swipe-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      const target = parseInt(dot.dataset.i, 10);
+      while(order[0] !== target) order.push(order.shift());
+      applyOrder();
+    });
+  });
+})();
 
 const mainGrid=document.getElementById('main-grid');
 // Upgraded Breakdown Toggle with Exit Animation
