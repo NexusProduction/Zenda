@@ -140,16 +140,10 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 @media(min-width:900px){.swipe-dots{display:none}}
 .swipe-dot{width:5px;height:5px;border-radius:50%;background:var(--border);transition:all .3s cubic-bezier(.34,1.56,.64,1)}
 .swipe-dot.active{background:var(--blue);width:16px;border-radius:99px}
-
-/* MAIN GRID */
 .main-grid { 
-  display: grid; 
-  /* Always 2 columns, but second defaults to 0px */
-  grid-template-columns: minmax(0, 1fr) 0px; 
-  gap: 16px 0px; 
-  align-items: start; 
-  /* This transition animates BOTH opening and closing! */
-  transition: grid-template-columns 0.34s cubic-bezier(.22,1,.36,1), gap 0.34s ease; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 16px; 
 }
 .main-grid.panel-open { 
   grid-template-columns: minmax(0, 1fr) 308px; 
@@ -669,11 +663,6 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
     <div id="year-filter-menu" style="display:none; position:absolute; top:calc(100% + 6px); right:0; background:var(--surface); border:1.5px solid var(--border); border-radius:10px; box-shadow:var(--sh3); overflow:hidden; z-index:300; min-width:110px; animation:dropIn .2s cubic-bezier(.22,1,.36,1);">
     </div>
   </div>
-  <button class="breakdown-btn" id="breakdown-btn" style="height: 36px; padding: 0 13px; box-sizing: border-box;">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-    Breakdown
-    <svg class="chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-  </button>
   <button class="add-btn" id="add-btn-desktop" style="height: 36px; padding: 0 16px; box-sizing: border-box;">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     Add Record
@@ -701,24 +690,6 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
         <button class="pag-btn" id="pag-prev">Prev</button>
         <span class="pag-info" id="pag-info">1 / 1</span>
         <button class="pag-btn" id="pag-next">Next</button>
-      </div>
-    </div>
-
-    <div class="breakdown-panel" id="breakdown-panel">
-      <div class="bp-hdr">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <!-- Button is correctly sized, colored green for Income, and placed BEFORE the text -->
-          <button id="bp-flip-btn" style="background:var(--surface2); border:1.5px solid var(--border); width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--green); transition:all .5s cubic-bezier(.34,1.56,.64,1); flex-shrink:0;">
-            <!-- Horizontal Swap SVG -->
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="17 11 21 7 17 3"/><line x1="21" y1="7" x2="9" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="15" y1="17" x2="3" y2="17"/></svg>
-          </button>
-          <div class="bp-ttl" id="bp-ttl">Income Breakdown</div>
-        </div>
-        <span class="bp-period" id="bp-period">All time</span>
-      </div>
-      <div id="bp-body"><div style="text-align:center;padding:32px;color:var(--tx3);font-size:.85rem">No data yet</div></div>
-      <div class="show-more-row" id="show-more-row">
-        <button class="show-more-btn" id="show-more-btn">Show more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
       </div>
     </div>
   </div>
@@ -864,23 +835,8 @@ const syncEl = document.getElementById('sync-status');
 let CU        = { uid:null, role:'staff', companyId:null, name:'Staff', isPremium:false, ownerId:null };
 let allData=[]; let catFilter=''; let searchVal=''; let monthFilter = new Date().getFullYear().toString();
 let currentPage=1; const PER_PAGE=10;
-let catExpanded=false; let panelOpen=false; let expType='income'; let bpType='income'; let bpRot = 0;
+let expType='income';
 let ddOpen=false; let appealSent=false;
-
-document.getElementById('bp-flip-btn').addEventListener('click', function() {
-  bpType = bpType === 'income' ? 'expense' : 'income';
-  
-  // Adds 180 degrees every click so it spins in a continuous circle!
-  bpRot += 180;
-  this.style.transform = `rotate(${bpRot}deg)`;
-  this.style.color = bpType === 'income' ? 'var(--green)' : 'var(--red)';
-  
-  // Update the title
-  document.getElementById('bp-ttl').textContent = bpType === 'income' ? 'Income Breakdown' : 'Expense Breakdown';
-  
-  renderBreakdown();
-});
-  
 function buildDropdown() {
   const dd  = document.getElementById('cat-picker-dd');
   const cur = document.getElementById('exp-category').value;
@@ -1024,9 +980,7 @@ window.doAppeal = async function() {
 
   renderYearMenu();
   if(label) label.textContent = currentYear.toString();
-  const bpPeriod = document.getElementById('bp-period');
-  if(bpPeriod) bpPeriod.textContent = currentYear.toString();
-
+  
   document.getElementById('year-filter-trigger').addEventListener('click', (e) => {
     e.stopPropagation();
     menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
@@ -1036,7 +990,6 @@ window.doAppeal = async function() {
     monthFilter = y;
     label.textContent = y;
     menu.style.display = 'none';
-    if(document.getElementById('bp-period')) document.getElementById('bp-period').textContent = y;
     renderYearMenu(); 
     currentPage = 1;
     renderAll();
@@ -1286,47 +1239,12 @@ if(!/[a-zA-Z]/.test(desc)){ errorEl.textContent = 'Description must contain at l
 })();
 
 const mainGrid=document.getElementById('main-grid');
-// Upgraded Breakdown Toggle with Exit Animation
-let panelCloseTimeout;
-document.getElementById('breakdown-btn').addEventListener('click', function() {
-  clearTimeout(panelCloseTimeout); // Prevent glitches if clicked very fast
-  
-  if (panelOpen) {
-    // CLOSING PHASE
-    panelOpen = false;
-    this.classList.remove('active');
-    mainGrid.classList.remove('panel-open'); // <-- Remove this instantly!
-    mainGrid.classList.add('panel-closing');
-    
-    // Wait for the .35s animation to finish before hiding completely
-    panelCloseTimeout = setTimeout(() => {
-      mainGrid.classList.remove('panel-closing');
-      catExpanded = false;
-      smReset();
-    }, 340); 
-  } else {
-    // OPENING PHASE
-    panelOpen = true;
-    mainGrid.classList.remove('panel-closing');
-    mainGrid.classList.add('panel-open');
-    this.classList.add('active');
-    renderBreakdown();
-  }
-});
-document.getElementById('show-more-btn').addEventListener('click',function(){
-  catExpanded=!catExpanded;this.classList.toggle('expanded',catExpanded);
-  this.innerHTML=(catExpanded?'Show less':'Show more')+'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>';
-  renderBreakdown();
-});
-function smReset(){const b=document.getElementById('show-more-btn');b.innerHTML='Show more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>';b.classList.remove('expanded');}
-
 document.querySelectorAll('.ftab').forEach(btn => {
   btn.addEventListener('click', function() {
     if (this.hasAttribute('data-cat')) {
       // RESET UI BACK TO EXPENSES
       document.querySelector('.panel-ttl').innerHTML = `Ledger History <span id="ledger-count" style="color:var(--tx3); font-weight:700; margin-left:4px; font-size:0.95em;"></span>`;
       document.getElementById('add-btn-desktop').style.display = 'flex';
-      document.getElementById('breakdown-btn').style.display = 'flex';
       
       catFilter = this.dataset.cat || '';
       searchVal = ''; 
@@ -1342,7 +1260,7 @@ document.querySelectorAll('.ftab').forEach(btn => {
 function getTime(e){if(e.date)return new Date(e.date).getTime();if(e.createdAt){if(typeof e.createdAt.toMillis==='function')return e.createdAt.toMillis();if(typeof e.createdAt.toDate==='function')return e.createdAt.toDate().getTime();return new Date(e.createdAt).getTime();}return 0;}
 function getDate(e){if(e.date)return new Date(e.date);if(e.createdAt){if(typeof e.createdAt.toDate==='function')return e.createdAt.toDate();return new Date(e.createdAt);}return new Date();}
 function filtered(){return allData.filter(e=>{if(catFilter&&e.category!==catFilter)return false;if(monthFilter){const d=getDate(e);const k=String(d.getFullYear());if(k!==monthFilter)return false;}if(searchVal&&!((e.description||'')+' '+(e.category||'')).toLowerCase().includes(searchVal))return false;return true;});}
-function renderAll(){updateSummary();renderList();if(panelOpen)renderBreakdown();}
+function renderAll(){updateSummary();renderList();}
 
 function updateSummary(){
   const list=filtered().filter(e => !e.isDeleted);let inc=0,exp=0;
@@ -1458,81 +1376,6 @@ function renderList(){
     else{if(pw) pw.style.display='none';}
   }
 }
-
-function renderBreakdown(){
-  const targetData = allData.filter(e => {
-    if (e.parsedType !== bpType) return false;
-    if (e.isDeleted) return false; 
-    if (monthFilter && String(getDate(e).getFullYear()) !== monthFilter) return false;
-    return true;
-  });
-
-  const groups = {};
-  CATS.forEach(c => groups[c.v] = 0);
-  targetData.forEach(e => { groups[e.category] = (groups[e.category] || 0) + (Number(e.amount) || 0); });
-
-  const totalAmount = Object.values(groups).reduce((s,v) => s + v, 0);
-  const smr = document.getElementById('show-more-row');
-  const body = document.getElementById('bp-body');
-  if (smr) smr.style.display = 'none';
-
-  const oldPos = {};
-  [...body.children].forEach(el => {
-    if(el.dataset.cat && el.offsetHeight > 0) {
-      oldPos[el.dataset.cat] = el.offsetTop;
-    }
-  });
-
-  if (totalAmount === 0) {
-    body.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--tx3);font-family:var(--f-hd);font-size:.95rem;font-weight:700; animation: rowIn 0.4s cubic-bezier(0.22,1,0.36,1) both;">No data available</div>';
-    return; 
-  }
-
-  const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
-  body.innerHTML = sorted.map(([cat,amt], index) => {
-    const pct = Math.round(amt / totalAmount * 100);
-    const color = CAT_COLOR[cat] || '#71717A';
-    const bg = CAT_BG[cat] || '#F4F4F5';
-    const svg = CAT_SVG[cat] || CAT_SVG['Miscellaneous'];
-    const isZero = amt === 0 ? ' zero-amt' : '';
-    
-    const SHORT_MAP = {
-      'Inventory Stock': 'Inventory',
-      'Godown Expense': 'Godown',
-      'Office & Admin': 'Office',
-      'Raw Materials': 'Materials',
-      'Miscellaneous': 'Miscellaneous',
-      'Installation': 'Install'
-    };
-    const shortCat = SHORT_MAP[cat] || cat;
-
-    return `<div class="cat-item${isZero}" data-cat="${cat}" style="animation: rowIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: ${index * 35}ms;"><div class="cat-ico" style="background:${bg};color:${color}">${svg}</div><div class="cat-details"><div class="cat-top"><span class="cat-name"><span class="desk-only">${esc(cat)}</span><span class="mob-only">${esc(shortCat)}</span></span><span class="cat-val">₹${fmt(amt)}</span></div><div class="cat-bar-bg"><div class="cat-bar-fill" style="width: 0%; transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); background:${color}; height:100%; border-radius:99px;" data-w="${pct}%"></div></div><div class="cat-pct">${pct}% of ${bpType}</div></div></div>`;
-  }).join('');
-
-  setTimeout(() => {
-    body.querySelectorAll('.cat-bar-fill').forEach(bar => {
-      bar.style.width = bar.dataset.w;
-    });
-  }, 10);
-
-  [...body.children].forEach(el => {
-    const cat = el.dataset.cat;
-    if(oldPos[cat] !== undefined && el.offsetHeight > 0) {
-      el.style.animation = 'none'; 
-      const newTop = el.offsetTop;
-      const delta = oldPos[cat] - newTop;
-      if(delta !== 0) {
-        el.style.transform = `translateY(${delta}px)`;
-        el.style.transition = 'none';
-        requestAnimationFrame(() => {
-          el.style.transform = '';
-          el.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-        });
-      }
-    }
-  });
-}
-
 function fmt(n){return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0});}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function emptyHTML(t,s){return `<div class="empty-exp"><div class="empty-exp-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="empty-exp-ttl">${esc(t)}</div><div class="empty-exp-sub">${esc(s)}</div></div>`;}
@@ -1633,7 +1476,6 @@ window.fetchAndRenderProducts = async function(whId, whName) {
     
     document.querySelector('.panel-ttl').innerHTML = `${esc(currentWarehouseName)} Inventory`;
     document.getElementById('add-btn-desktop').style.display = 'none';
-    document.getElementById('breakdown-btn').style.display = 'none';
     document.getElementById('pag-wrap').style.display = 'none';
     
     const el = document.getElementById('exp-list');
