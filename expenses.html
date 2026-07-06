@@ -1093,6 +1093,7 @@ function renderDatePicker(){
   const firstDay = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m+1, 0).getDate();
   const todayStr = toYMD(new Date()), selStr = toYMD(dpSelectedDate);
+  
   let cells = '';
   for(let i=0;i<firstDay;i++) cells += `<div></div>`;
   for(let day=1; day<=daysInMonth; day++){
@@ -1100,7 +1101,14 @@ function renderDatePicker(){
     const isToday = dStr === todayStr, isSel = dStr === selStr;
     cells += `<div class="dp-day${isSel?' is-selected':''}${isToday&&!isSel?' is-today':''}" onclick="window.dpSelectDay(${y},${m},${day})">${day}</div>`;
   }
-  dd.innerHTML = `<div class="dp-hdr"><button type="button" class="dp-nav" onclick="event.stopPropagation(); window.dpChangeMonth(-1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button><span class="dp-title">${monthNames[m]} ${y}</span><button type="button" class="dp-nav" onclick="event.stopPropagation(); window.dpChangeMonth(1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button></div><div class="dp-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div><div class="dp-grid">${cells}</div>`;
+
+  // --- NEW: Calculate Limits ---
+  const maxYear = new Date().getFullYear() + 1; // Current year + 1
+  const disablePrev = (y <= 2022 && m === 0);   // Jan 2022
+  const disableNext = (y >= maxYear && m === 11); // Dec of Next Year
+
+  // --- UPDATED: Apply limits to the buttons ---
+  dd.innerHTML = `<div class="dp-hdr"><button type="button" class="dp-nav" onclick="event.stopPropagation(); window.dpChangeMonth(-1)" ${disablePrev ? 'style="opacity:0.3;cursor:not-allowed;" disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button><span class="dp-title">${monthNames[m]} ${y}</span><button type="button" class="dp-nav" onclick="event.stopPropagation(); window.dpChangeMonth(1)" ${disableNext ? 'style="opacity:0.3;cursor:not-allowed;" disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button></div><div class="dp-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div><div class="dp-grid">${cells}</div>`;
 }
 window.datePickerToggle = function(){
   dpOpen = !dpOpen;
@@ -1109,7 +1117,20 @@ window.datePickerToggle = function(){
   if(dpOpen){ dpCurrentDate = new Date(dpSelectedDate); renderDatePicker(); dd.style.display='block'; trig.classList.add('open'); }
   else { dd.style.display='none'; trig.classList.remove('open'); }
 };
-window.dpChangeMonth = function(delta){ dpCurrentDate.setMonth(dpCurrentDate.getMonth()+delta); renderDatePicker(); };
+window.dpChangeMonth = function(delta){ 
+  const maxYear = new Date().getFullYear() + 1;
+  
+  // Clone the date to test if the NEXT move is allowed
+  let testDate = new Date(dpCurrentDate);
+  testDate.setMonth(testDate.getMonth() + delta);
+  
+  // If the new year is before 2022 or after next year, stop here
+  if (testDate.getFullYear() < 2022 || testDate.getFullYear() > maxYear) return;
+  
+  // Otherwise, apply the change and re-render
+  dpCurrentDate.setMonth(dpCurrentDate.getMonth() + delta); 
+  renderDatePicker(); 
+};
 window.dpSelectDay = function(y,m,day){ setDateValue(new Date(y,m,day)); closeDatePicker(); };
 window.dpGoToday = function(){ const t = new Date(); dpCurrentDate = new Date(t); setDateValue(t); closeDatePicker(); };
 function closeDatePicker(){
