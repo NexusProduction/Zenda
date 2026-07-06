@@ -397,6 +397,18 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block;vertical-align:middle}
 
+/* SUCCESS TICK OVERLAY (Add Record) */
+.modal{position:relative}
+.ppm-success-overlay{position:absolute;inset:0;background:rgba(255,255,255,.95);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-radius:22px 22px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;opacity:0;visibility:hidden;transition:opacity .3s ease}
+@media(min-width:600px){.ppm-success-overlay{border-radius:22px}}
+.ppm-success-overlay.active{opacity:1;visibility:visible}
+.apple-tick{width:84px;height:84px;border-radius:22px;background:var(--green);display:flex;align-items:center;justify-content:center;transform:scale(0);transition:transform .5s cubic-bezier(.34,1.56,.64,1) .1s;box-shadow:0 8px 20px rgba(22,163,74,.3)}
+.ppm-success-overlay.active .apple-tick{transform:scale(1)}
+.apple-tick svg{width:38px;height:38px;stroke-dasharray:50;stroke-dashoffset:50;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;fill:none;transition:stroke-dashoffset .4s ease .4s}
+.ppm-success-overlay.active .apple-tick svg{stroke-dashoffset:0}
+.ppm-success-text{margin-top:18px;font-weight:800;font-size:1.15rem;color:var(--tx1);letter-spacing:-.02em;opacity:0;transform:translateY(10px);transition:all .4s ease .3s;font-family:var(--f-hd)}
+.ppm-success-overlay.active .ppm-success-text{opacity:1;transform:translateY(0)}
+
 /* CUSTOM CATEGORY PICKER */
 .cat-picker-wrap{position:relative}
 .cat-picker-trigger{ width:100%;padding:11px 14px; border:1.5px solid #D4D4D8;border-radius:12px; background:#F4F4F5;color:var(--tx1); font-family:var(--f);font-size:.95rem;font-weight:500; display:flex;align-items:center;justify-content:space-between; cursor:pointer;transition:border-color .2s,background .2s,box-shadow .2s; user-select:none; }
@@ -725,7 +737,12 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
     
     <div id="form-error" style="color: #991b1b; background: #fef2f2; padding: 12px; border-radius: 10px; font-size: 0.85rem; font-family: var(--f); font-weight: 600; text-align: center; margin-top: 16px; margin-bottom: 16px; border: 1px solid #fecaca; display: none;"></div>
 
-    <button class="save-btn" id="save-btn">Save Record</button>
+   <button class="save-btn" id="save-btn">Save Record</button>
+
+    <div class="ppm-success-overlay" id="add-record-success-tick">
+      <div class="apple-tick"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+      <div class="ppm-success-text" id="add-record-success-text">Record Added</div>
+    </div>
   </div>
 </div>
 <div class="modal-overlay" id="delete-modal">
@@ -1037,17 +1054,29 @@ document.getElementById('save-btn').addEventListener('click', async function(){
       createdBy: CU.uid, createdByName: CU.name,
       createdAt: serverTimestamp(), isDeleted: false
     });
-    btn.classList.add('success-state');
-    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Saved!';
-    toast('Record saved successfully ✓','success');
-    setTimeout(() => {
+    const tick = document.getElementById('add-record-success-tick');
+    const tickText = document.getElementById('add-record-success-text');
+    const tickSvg = tick ? tick.querySelector('svg') : null;
+    if (tick && tickText) {
+      tickText.textContent = expType === 'income' ? 'Income Added' : 'Expense Added';
+      tick.classList.add('active');
+      if (tickSvg) setTimeout(() => { tickSvg.style.strokeDashoffset = '0'; }, 50);
+      setTimeout(() => {
+        tick.classList.remove('active');
+        if (tickSvg) tickSvg.style.strokeDashoffset = '';
+        closeAddModal();
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        document.getElementById('exp-amount').value = '';
+        document.getElementById('exp-desc').value = '';
+      }, 1800);
+    } else {
       closeAddModal();
       btn.disabled = false;
-      btn.classList.remove('success-state');
       btn.innerHTML = originalHTML;
       document.getElementById('exp-amount').value = '';
       document.getElementById('exp-desc').value = '';
-    }, 900);
+    }
   }catch(err){
     btn.disabled = false;
     btn.innerHTML = originalHTML;
