@@ -979,7 +979,85 @@ window.doAppeal = async function() {
 })();
 document.getElementById('exp-date').valueAsDate=new Date();
 
-// Mobile summary card swipe — was never wired up before
+// ─── ADD RECORD MODAL WIRING (this was missing — root cause of the button not working) ───
+const addModal = document.getElementById('add-modal');
+function openAddModal(){
+  document.getElementById('exp-date').valueAsDate = new Date();
+  addModal.classList.add('open');
+}
+function closeAddModal(){
+  addModal.classList.remove('open');
+  document.getElementById('form-error').style.display = 'none';
+}
+document.getElementById('add-btn-desktop').addEventListener('click', openAddModal);
+document.getElementById('fab').addEventListener('click', openAddModal);
+document.getElementById('close-modal').addEventListener('click', closeAddModal);
+addModal.addEventListener('click', e => { if(e.target === addModal) closeAddModal(); });
+
+document.getElementById('btn-inc').addEventListener('click', function(){
+  expType = 'income';
+  this.classList.add('active-inc');
+  document.getElementById('btn-exp').classList.remove('active-exp');
+});
+document.getElementById('btn-exp').addEventListener('click', function(){
+  expType = 'expense';
+  this.classList.add('active-exp');
+  document.getElementById('btn-inc').classList.remove('active-inc');
+});
+
+window.checkAmountLimit = function(inp){
+  let digits = inp.value.replace(/[^0-9]/g,'');
+  if(digits.length > 10) digits = digits.slice(0,10);
+  inp.value = digits ? Number(digits).toLocaleString('en-IN') : '';
+};
+
+document.getElementById('save-btn').addEventListener('click', async function(){
+  const errorEl = document.getElementById('form-error');
+  errorEl.style.display = 'none';
+
+  const amount = parseFloat(document.getElementById('exp-amount').value.replace(/,/g,''));
+  const desc = document.getElementById('exp-desc').value.trim();
+  const category = document.getElementById('exp-category').value;
+  const payment = document.getElementById('exp-payment').value;
+  const dateVal = document.getElementById('exp-date').value;
+
+  if(!amount || amount <= 0){ errorEl.textContent = 'Enter a valid amount.'; errorEl.style.display = 'block'; return; }
+  if(desc.length < 5){ errorEl.textContent = 'Description must be at least 5 characters.'; errorEl.style.display = 'block'; return; }
+  if(!dateVal){ errorEl.textContent = 'Please select a date.'; errorEl.style.display = 'block'; return; }
+
+  const btn = this;
+  const originalHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+  try{
+    await addDoc(collection(db,'expenses'), {
+      companyId: CU.companyId,
+      amount, description: desc, category,
+      paymentMethod: payment, date: dateVal,
+      type: expType,
+      createdBy: CU.uid, createdByName: CU.name,
+      createdAt: serverTimestamp(), isDeleted: false
+    });
+    btn.classList.add('success-state');
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Saved!';
+    toast('Record saved successfully ✓','success');
+    setTimeout(() => {
+      closeAddModal();
+      btn.disabled = false;
+      btn.classList.remove('success-state');
+      btn.innerHTML = originalHTML;
+      document.getElementById('exp-amount').value = '';
+      document.getElementById('exp-desc').value = '';
+    }, 900);
+  }catch(err){
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+    errorEl.textContent = 'Failed to save: ' + err.message;
+    errorEl.style.display = 'block';
+    toast('Failed to save record.','error');
+  }
+});
 (function(){
   const stack = document.getElementById('mobile-stack');
   if(!stack) return;
