@@ -4614,7 +4614,6 @@ window.changeDpMonth = function(dir) {
   dpDate.setMonth(dpDate.getMonth() + dir);
   window.renderDatePicker();
 };
-
 window.renderDatePicker = function() {
   const grid = document.getElementById('dpGrid');
   const title = document.getElementById('dpTitle');
@@ -4624,6 +4623,34 @@ window.renderDatePicker = function() {
   const month = dpDate.getMonth();
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   title.textContent = `${months[month]} ${year}`;
+  
+  // Disable Previous Button if at Min Date (Product Creation Month)
+  const prevBtn = document.querySelectorAll('.dp-hdr .dp-btn')[0];
+  if (prevBtn) {
+    if (year < dpMinDate.getFullYear() || (year === dpMinDate.getFullYear() && month <= dpMinDate.getMonth())) {
+      prevBtn.disabled = true;
+      prevBtn.style.opacity = '0.3';
+      prevBtn.style.cursor = 'not-allowed';
+    } else {
+      prevBtn.disabled = false;
+      prevBtn.style.opacity = '1';
+      prevBtn.style.cursor = 'pointer';
+    }
+  }
+
+  // Disable Next Button if at Max Date (Dec 31 of Next Year)
+  const nextBtn = document.querySelectorAll('.dp-hdr .dp-btn')[1];
+  if (nextBtn) {
+    if (year > dpMaxDate.getFullYear() || (year === dpMaxDate.getFullYear() && month >= dpMaxDate.getMonth())) {
+      nextBtn.disabled = true;
+      nextBtn.style.opacity = '0.3';
+      nextBtn.style.cursor = 'not-allowed';
+    } else {
+      nextBtn.disabled = false;
+      nextBtn.style.opacity = '1';
+      nextBtn.style.cursor = 'pointer';
+    }
+  }
   
   grid.innerHTML = '';
   
@@ -4683,10 +4710,11 @@ window.openEntry = function(type) {
     dpMinDate = new Date(0);
   }
   
-  // Enforce max date limitation to exactly 1 year ahead of current date
+  // Set Max Date to Dec 31st of Next Year
   dpMaxDate = new Date();
-  dpMaxDate.setFullYear(dpMaxDate.getFullYear() + 1);
-
+  dpMaxDate.setFullYear(dpMaxDate.getFullYear() + 1, 11, 31);
+  dpMaxDate.setHours(23, 59, 59, 999);
+  
   const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const str = `${String(dpSelectedDate.getDate()).padStart(2, '0')} ${monthsShort[dpSelectedDate.getMonth()]} ${dpSelectedDate.getFullYear()}`;
   const val = `${dpSelectedDate.getFullYear()}-${String(dpSelectedDate.getMonth() + 1).padStart(2, '0')}-${String(dpSelectedDate.getDate()).padStart(2, '0')}`;
