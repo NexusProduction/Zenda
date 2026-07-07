@@ -59,8 +59,8 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
   border: 1px solid #D97706 !important; 
   cursor: pointer; 
   box-shadow: 0 2px 8px rgba(245,158,11,.3); 
-  border-radius: 8px !important; /* <--- This makes it a rounded square */
-  padding: 6px 14px !important; /* <--- Gives it a bit better spacing */
+  border-radius: 8px !important; 
+  padding: 6px 14px !important; 
 }
 .sync-upgrade:hover { 
   transform: translateY(-1px); 
@@ -113,11 +113,9 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
 .ev-item.self::before{background:var(--ac)}
 .ev-item.all::before{background:var(--green)}
 .ev-item.custom::before{background:var(--purple)}
-.ev-item.task::before{background:var(--amber)}
 .ev-item.self .ev-badge{background:var(--blue-s);color:var(--ac)}
 .ev-item.all .ev-badge{background:var(--green-s);color:var(--green)}
 .ev-item.custom .ev-badge{background:var(--purple-s);color:var(--purple)}
-.ev-item.task .ev-badge{background:var(--amber-s);color:var(--amber)}
 .ev-content{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;text-align:left}
 .ev-title{font-size:.95rem;font-weight:700;color:var(--tx1);line-height:1.4;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ev-badge{padding:3px 6px;border-radius:6px;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-right:6px;vertical-align:middle;display:inline-block;margin-bottom:2px;flex-shrink:0}
@@ -129,7 +127,6 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
 .ev-del.disabled-del:hover{cursor:not-allowed;background:rgba(0,0,0,.06)}
 @keyframes blackHoleCollapse{0%{opacity:1;transform:scale(1);filter:brightness(1)}50%{opacity:.5;transform:scale(.95);filter:brightness(.5)}100%{opacity:0;transform:scale(.9);height:0;padding-top:0;padding-bottom:0;margin-bottom:0;border:none}}
 .ev-item.deleting{animation:blackHoleCollapse .35s cubic-bezier(.25,1,.5,1) forwards;pointer-events:none}
-
 
 /* ── MODALS (Clean & Premium) ── */
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); z-index:10000; display:none; align-items:center; justify-content:center; padding:16px; overflow-y:auto; }
@@ -204,7 +201,6 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
 .add-btn:hover { background:var(--ach); transform:translateY(-1px); box-shadow:inset 0 0 0 0 rgb(0,255,21),0 4px 14px rgba(79,70,229,.3); }
 .add-btn:disabled { cursor:not-allowed; transform:none; }
 .add-btn.success-state { box-shadow:inset 400px 0 0 0 rgb(0,255,21),0 4px 14px rgba(0,255,21,.4)!important; transform:none!important; color:#fff!important; }
-
 
 .mob-wrap{display:none;flex-direction:column;height:calc(100dvh - 60px);overflow:hidden;width:100%}
 .mob-cal-container{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--sf);border-bottom:2px solid rgba(0,0,0,.15);box-shadow:0 4px 14px rgba(0,0,0,.06)}
@@ -486,7 +482,6 @@ let companyEvents = [];
 let companyStaff = [];
 let staffMap = {};
 let selectedStaffUIDs = new Set();
-let selectedAssigneeUID = null;
 let unsubs = [];
 let deleteTargetId = null;
 let deleteTargetSrc = null;
@@ -570,8 +565,6 @@ function startStaffLockoutTimer() {
   }, 1000);
 }
 
-// Watches the company's subscription status live so a staff member already inside the app
-// gets locked out instantly if the plan lapses mid-session, instead of only at next page load.
 function startCompanyPremiumWatcher() {
   if (!CU?.companyId || CU.role === 'owner') return;
   if (window._companyWatchUnsub) { window._companyWatchUnsub(); window._companyWatchUnsub = null; }
@@ -613,14 +606,13 @@ onAuthStateChanged(auth, async user => {
     }
     // Assign the status directly to the global CU object
     CU.isPremium = isPremium;
-// Staff on a non-upgraded company: lock the page and force logout after 15s
+    
+    // Staff on a non-upgraded company: lock the page and force logout after 15s
     if (CU.role !== 'owner' && CU.isPremium === false) {
       startStaffLockoutTimer();
       return;
     }
 
-    // Keep watching in the background: if premium lapses WHILE a staff member is using the
-    // app, lock them out immediately instead of waiting for a refresh.
     if (CU.role !== 'owner') startCompanyPremiumWatcher();
 
     // 3. Start app sequence
@@ -641,7 +633,7 @@ let staffUnsub = null;
 function startStaffListener() {
   if (!CU?.companyId) return;
   
-  if (staffUnsub) staffUnsub(); // Clear any existing listener
+  if (staffUnsub) staffUnsub();
   
   const q = query(collection(db, 'users'), where('companyId', '==', CU.companyId));
   staffUnsub = onSnapshot(q, snap => {
@@ -651,7 +643,7 @@ function startStaffListener() {
         staffMap[d.id] = d.data(); 
         companyStaff.push({ uid: d.id, ...d.data() }); 
     });
-    mergeAndRender(); // ← Re-renders instantly whenever any staff name changes
+    mergeAndRender();
   });
 }
 function startListeners() {
@@ -834,29 +826,25 @@ function showDayEvents(d) {
   try {
     evHtml = dayEvs.length ? dayEvs.map(renderEventItem).join('') : '';
   } catch (err) {
-    // Defensive: if any single event fails to render, log it and fall back
-    // to an empty list rather than silently leaving stale content on screen.
     console.error('renderEventItem failed:', err);
     evHtml = `<div class="no-events" style="color:var(--red);">Error rendering events — check console.</div>`;
   }
   const evListD = pEl('ev-list-d'); if (evListD) evListD.innerHTML = evHtml || empty;
   const evListM = pEl('ev-list-m'); if (evListM) evListM.innerHTML = evHtml || empty;
 }
+
 function renderEventItem(ev) {
   let visCls = ev.visibility || 'self';
-  if (ev.type === 'task') visCls = 'task';
 
-  const badgeMap = { self: 'Only Me', all: 'Public', custom: 'Custom Staff', task: 'Task' };
+  const badgeMap = { self: 'Only Me', all: 'Public', custom: 'Custom Staff' };
   const badgeTxt = badgeMap[visCls] || 'Only Me';
   const canDel = ev.uid === CU.uid;
-  // FIX: tasks are identified by ev.type, not ev._src (which only ever holds 'personal'/'company').
-  const creatorId = ev.type === 'task' ? (ev.assignedBy || ev.uid) : ev.uid;
+  const creatorId = ev.uid;
 
   let fromText;
   if (creatorId === auth.currentUser?.uid) {
     fromText = 'Myself';
   } else {
-    // Because staffMap is now permanently synced, live.name will correctly exist
     const live = staffMap[creatorId];
     fromText = toTitleCase(live?.name || ev._fromName || 'Colleague');
   }
@@ -865,26 +853,14 @@ function renderEventItem(ev) {
   const src = ev._src || 'personal';
   const trashIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`;
 
-  // SECURITY FIX: fromText is another user's profile "name" — untrusted input. It was being
-  // dropped into an inline onclick="...('...')" with only basic HTML-escaping, which does NOT
-  // stop a name containing a quote from breaking out of the JS string (HTML entities decode
-  // BEFORE the onclick handler compiles). escAttr() closes that hole; ids/visCls/src are also
-  // routed through it as cheap insurance even though they come from trusted internal values.
   const delBtn = canDel
     ? `<button class="ev-del" onclick="confirmDelete('${escAttr(ev.id)}','${escAttr(visCls)}','${escAttr(src)}',this,event)" title="Delete">${trashIcon}</button>`
     : `<button class="ev-del disabled-del" onclick="showCannotDelete('${escAttr(fromText)}',event)" title="Cannot Delete">${trashIcon}</button>`;
-
-  let metaExtra = '';
-  if (ev.type === 'task' && ev.assignedTo) {
-    const assigneeName = ev.assignedTo === CU.uid ? 'You' : toTitleCase(staffMap[ev.assignedTo]?.name || 'Teammate');
-    metaExtra = `<div style="font-size:.75rem;color:var(--tx3);margin-top:2px;">Assigned to: <span style="font-weight:600;color:var(--tx2);">${esc(assigneeName)}</span></div>`;
-  }
 
   return `<div class="ev-item ${visCls}" onclick="toggleEvCard(this,event)">
     <div class="ev-content">
       <div class="ev-title"><span class="ev-badge">${badgeTxt}</span><span class="txt">${esc(ev.title)}</span></div>
       <div class="ev-meta">${fromTxt}</div>
-      ${metaExtra}
     </div>
     ${delBtn}
   </div>`;
@@ -907,8 +883,7 @@ window.confirmDelete = function(id, visibility, src, btn, event) {
   const msgs = {
     all: 'This will delete the event for everyone. Are you sure?',
     custom: 'This will delete the event from selected staff. Are you sure?',
-    self: 'This will delete the event only from you. Are you sure?',
-    task: 'This will delete the task. Are you sure?'
+    self: 'This will delete the event only from you. Are you sure?'
   };
   pEl('del-msg').textContent = msgs[visibility] || 'Delete this event. Are you sure?';
   pEl('confirm-del-modal').classList.add('open');
@@ -985,14 +960,6 @@ function renderForms() {
   const univForm = pEl('add-form-univ');
   if (!univForm) return;
 
-  // "Assign Task" only exists once the company is premium — and works the same for owner
-  // and staff alike, so anyone can assign a task to any teammate.
-  const taskOption = CU?.isPremium ? `
-            <div class="cs-opt" onclick="selectVisibility('task', this)">
-              <div class="cs-icon" style="background:var(--amber-s);color:var(--amber);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
-              <div class="cs-opt-txt"><div class="cs-opt-title">Assign Task</div><div class="cs-opt-sub">Give a task to a teammate</div></div>
-            </div>` : '';
-
   univForm.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:24px;">
       <div>
@@ -1028,7 +995,7 @@ function renderForms() {
             <div class="cs-opt" onclick="selectVisibility('custom', this)">
               <div class="cs-icon custom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
               <div class="cs-opt-txt"><div class="cs-opt-title">Custom Staff</div><div class="cs-opt-sub">Select specific team members</div></div>
-            </div>${taskOption}
+            </div>
           </div>
         </div>
 
@@ -1061,7 +1028,6 @@ document.addEventListener('click', function(e) {
 });
 window.selectVisibility = async function(val, optElement) {
   currentVisibility = val;
-  selectedAssigneeUID = null;
 
   if (optElement) {
     document.querySelectorAll('.cs-opt').forEach(el => el.classList.remove('selected'));
@@ -1077,16 +1043,12 @@ window.selectVisibility = async function(val, optElement) {
   const titleLbl = pEl('ae-title-lbl');
   const staffHeader = pEl('inline-staff-header');
   const submitBtn = pEl('add-event-btn');
-  if (titleLbl) titleLbl.textContent = val === 'task' ? 'Task Title' : 'Event Title';
-  if (staffHeader) staffHeader.textContent = val === 'task' ? 'Assign To (choose one)' : 'Select Team Members';
-  if (submitBtn) submitBtn.textContent = val === 'task' ? 'Assign Task' : 'Add Event';
+  if (titleLbl) titleLbl.textContent = 'Event Title';
+  if (staffHeader) staffHeader.textContent = 'Select Team Members';
+  if (submitBtn) submitBtn.textContent = 'Add Event';
 
   const wrap = pEl('inline-staff-wrap');
-  if (val === 'custom' || val === 'task') {
-    // Safety net: 'task' shouldn't be reachable when not premium since the option isn't
-    // even rendered — but block it here too in case of stale DOM.
-    if (val === 'task' && !CU?.isPremium) { toast('Upgrade to assign tasks.', 'error'); return; }
-
+  if (val === 'custom') {
     wrap.classList.add('open');
     const list = pEl('inline-staff-list');
     
@@ -1109,29 +1071,27 @@ window.selectVisibility = async function(val, optElement) {
 window.renderInlineStaff = function() {
   const list = pEl('inline-staff-list');
   if (!list) return;
-  const isTaskMode = currentVisibility === 'task';
-  // Task mode excludes yourself entirely — you can't assign a task to yourself.
-  const candidates = isTaskMode ? companyStaff.filter(s => s.uid !== CU.uid) : companyStaff;
+  const candidates = companyStaff;
 
   if (!candidates.length) {
-    list.innerHTML = `<div style="text-align:center;padding:12px;color:var(--tx4);font-size:0.8rem;font-weight:600;">${isTaskMode ? 'No teammates to assign yet.' : 'No team members found.'}</div>`;
+    list.innerHTML = `<div style="text-align:center;padding:12px;color:var(--tx4);font-size:0.8rem;font-weight:600;">No team members found.</div>`;
     return;
   }
 
-  if (!isTaskMode) selectedStaffUIDs.add(CU.uid);
+  selectedStaffUIDs.add(CU.uid);
   const colors = ['#3B82F6','#10B981','#FF9500','#EF4444','#AF52DE'];
   const colorFor = name => colors[Math.abs([...name].reduce((h,c) => c.charCodeAt(0)+((h<<5)-h), 0)) % colors.length];
 
   list.innerHTML = candidates.map(s => {
     const isSelf = s.uid === CU.uid;
-    const isSelected = isTaskMode ? selectedAssigneeUID === s.uid : selectedStaffUIDs.has(s.uid);
+    const isSelected = selectedStaffUIDs.has(s.uid);
     const initials = (s.name||'?').slice(0,2).toUpperCase();
     const color = colorFor(s.name||'X');
     const checkSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
     const email = s.email || s.role || 'Staff';
-    const clickHandler = isTaskMode ? `selectAssignee('${s.uid}')` : (isSelf ? '' : `toggleStaff('${s.uid}')`);
+    const clickHandler = isSelf ? '' : `toggleStaff('${s.uid}')`;
 
-    return `<div class="inline-staff-card ${isSelected ? 'selected' : ''} ${(!isTaskMode && isSelf) ? 'is-self' : ''}" id="card-${s.uid}" onclick="${clickHandler}">
+    return `<div class="inline-staff-card ${isSelected ? 'selected' : ''} ${isSelf ? 'is-self' : ''}" id="card-${s.uid}" onclick="${clickHandler}">
       <div class="staff-av" style="background:${color}22;color:${color}">${initials}</div>
       <div class="staff-info">
         <div class="staff-name">${esc(s.name||'Unknown')}</div>
@@ -1156,10 +1116,6 @@ window.toggleStaff = function(uid) {
   if (chk) { chk.classList.toggle('checked', isNowSelected); chk.innerHTML = isNowSelected ? checkSvg : ''; }
 };
 
-window.selectAssignee = function(uid) {
-  selectedAssigneeUID = (selectedAssigneeUID === uid) ? null : uid;
-  renderInlineStaff();
-};
 window.openAddModal = () => {
   if (isLockedOut) return;
 
@@ -1170,7 +1126,6 @@ window.openAddModal = () => {
   if (addLock) addLock.classList.toggle('active', CU?.role === 'owner' && CU?.isPremium === false);
 
   currentVisibility = 'self';
-  selectedAssigneeUID = null;
   selectedStaffUIDs = new Set([CU.uid]);
   pEl('inline-staff-wrap')?.classList.remove('open');
   pEl('vis-options-menu')?.classList.remove('open');
@@ -1209,7 +1164,6 @@ window.addEvent = async function(btn) {
   const visibility = currentVisibility;
   rawTitle = rawTitle.replace(/[^a-zA-Z0-9 .,-]/g, '');
 
-  // 2. Validate empty
   if (!rawTitle) {
     const errEl = pEl('title-err');
     if (errEl) errEl.style.display = 'block';
@@ -1217,22 +1171,13 @@ window.addEvent = async function(btn) {
     return;
   }
 
-  // 3. Format: Capitalize First Letter Of Every Word & Enforce Max 150 Chars
   const title = rawTitle.split(' ').map(word => {
     if (!word) return '';
     return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
   }).join(' ').substring(0, 150);
 
-  if ((visibility === 'all' || visibility === 'custom' || visibility === 'task') && !CU.companyId) {
+  if ((visibility === 'all' || visibility === 'custom') && !CU.companyId) {
     toast('You need to be part of a company to share events.', 'error');
-    return;
-  }
-  if (visibility === 'task' && !CU.isPremium) {
-    toast('Upgrade your plan to assign tasks.', 'error');
-    return;
-  }
-  if (visibility === 'task' && !selectedAssigneeUID) {
-    toast('Choose a teammate to assign this task to.', 'error');
     return;
   }
 
@@ -1256,21 +1201,6 @@ window.addEvent = async function(btn) {
         events: [...cleanPersonal, newEv],
         updatedAt: new Date().toISOString()
       }, { merge: true });
-    } else if (visibility === 'task') {
-      const newEv = {
-        title,
-        date: dk(selDay),
-        visibility: 'custom',
-        visibleToUIDs: [selectedAssigneeUID],
-        type: 'task',
-        uid: CU.uid,
-        assignedBy: CU.uid,
-        assignedTo: selectedAssigneeUID,
-        companyId: CU.companyId,
-        _fromName: CU.name || 'User',
-        createdAt: Date.now()
-      };
-      await addDoc(collection(db, 'calendar'), newEv);
     } else {
       const newEv = {
         title,
