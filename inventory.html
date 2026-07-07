@@ -4609,23 +4609,39 @@ document.addEventListener('click', e => {
     if (popup) popup.style.display = 'none';
   }
 });
-
 window.changeDpMonth = function(dir) {
-  dpDate.setMonth(dpDate.getMonth() + dir);
+  const newMonth = dpDate.getMonth() + dir;
+  const testDate = new Date(dpDate.getFullYear(), newMonth, 1);
+  
+  // Hacker-proof boundaries (Locking it down at the logic layer)
+  const minMonth = new Date(dpMinDate.getFullYear(), dpMinDate.getMonth(), 1);
+  const maxMonth = new Date(dpMaxDate.getFullYear(), dpMaxDate.getMonth(), 1);
+  
+  if (testDate < minMonth || testDate > maxMonth) {
+      console.warn("Access Denied: Month out of bounds.");
+      return; 
+  }
+  
+  dpDate.setMonth(newMonth);
   window.renderDatePicker();
 };
 window.renderDatePicker = function() {
+  const popup = document.getElementById('datePickerPopup');
   const grid = document.getElementById('dpGrid');
   const title = document.getElementById('dpTitle');
-  if (!grid || !title) return;
+  if (!grid || !title || !popup) return;
   
   const year = dpDate.getFullYear();
   const month = dpDate.getMonth();
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   title.textContent = `${months[month]} ${year}`;
   
+  // Scope queries ONLY to this specific popup to prevent collisions
+  const btns = popup.querySelectorAll('.dp-hdr .dp-btn');
+  const prevBtn = btns[0];
+  const nextBtn = btns[1];
+  
   // Disable Previous Button if at Min Date (Product Creation Month)
-  const prevBtn = document.querySelectorAll('.dp-hdr .dp-btn')[0];
   if (prevBtn) {
     if (year < dpMinDate.getFullYear() || (year === dpMinDate.getFullYear() && month <= dpMinDate.getMonth())) {
       prevBtn.disabled = true;
@@ -4639,7 +4655,6 @@ window.renderDatePicker = function() {
   }
 
   // Disable Next Button if at Max Date (Dec 31 of Next Year)
-  const nextBtn = document.querySelectorAll('.dp-hdr .dp-btn')[1];
   if (nextBtn) {
     if (year > dpMaxDate.getFullYear() || (year === dpMaxDate.getFullYear() && month >= dpMaxDate.getMonth())) {
       nextBtn.disabled = true;
@@ -4681,7 +4696,6 @@ window.renderDatePicker = function() {
     grid.innerHTML += `<div class="${classes}" onclick="if(!${isDisabled}) window.selectDpDate(${year}, ${month}, ${day})">${day}</div>`;
   }
 };
-
 window.selectDpDate = function(year, month, day) {
   dpSelectedDate = new Date(year, month, day);
   const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -4704,13 +4718,15 @@ window.openEntry = function(type) {
   // Custom Date Picker Initialization
   dpSelectedDate = new Date();
   dpDate = new Date();
+  
+  // Patch: Fallback to today if Firebase hasn't synced the serverTimestamp yet
   if (curProd && curProd.createdAt) {
     dpMinDate = typeof curProd.createdAt.toDate === 'function' ? curProd.createdAt.toDate() : new Date(curProd.createdAt);
   } else {
-    dpMinDate = new Date(0);
+    dpMinDate = new Date(); 
   }
   
-  // Set Max Date to Dec 31st of Next Year
+  // Set Max Date to exactly Dec 31st of the Next Full Year
   dpMaxDate = new Date();
   dpMaxDate.setFullYear(dpMaxDate.getFullYear() + 1, 11, 31);
   dpMaxDate.setHours(23, 59, 59, 999);
