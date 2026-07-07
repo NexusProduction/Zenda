@@ -945,7 +945,25 @@ function buildDropdown() {
       </div>`;
   }).join('');
 }
+// Global Staff Dictionary
+let staffMap = {};
+let staffUnsub = null;
 
+// Realtime Listener for Staff Profile Changes
+function startStaffListener() {
+  if (!CU || !CU.companyId) return;
+  if (staffUnsub) staffUnsub();
+  
+  const q = query(collection(db, 'users'), where('companyId', '==', CU.companyId));
+  staffUnsub = onSnapshot(q, snap => {
+    staffMap = {};
+    snap.forEach(d => { 
+      staffMap[d.id] = d.data(); 
+    });
+    // Instantly re-render the list if a teammate changes their name
+    if (typeof renderAll === 'function') renderAll();
+  });
+}
 window.catPickerToggle = function() {
   ddOpen = !ddOpen;
   const dd  = document.getElementById('cat-picker-dd');
@@ -1393,22 +1411,23 @@ const cat=e.category||'Miscellaneous';
       : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
     const ds=getDate(e).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const isInc=e.parsedType==='income';
+    // --- 🟢 LIVE CREATOR NAME RESOLUTION ---
     let creatorNameRaw = e.createdByName || 'User';
-    if (e.createdBy === CU.uid) { creatorNameRaw = CU.name; } 
-    else if (e.createdBy === CU.ownerId && CU.ownerName) { creatorNameRaw = CU.ownerName; } 
-    else {
-        const cLower = creatorNameRaw.trim().toLowerCase();
-        if (cLower.includes('lala') || cLower.includes('vipul')) { creatorNameRaw = CU.role === 'owner' ? CU.name : (CU.ownerName || 'Owner'); }
+    if (e.createdBy === CU.uid) { 
+      creatorNameRaw = CU.name; 
+    } else if (staffMap[e.createdBy] && staffMap[e.createdBy].name) { 
+      creatorNameRaw = staffMap[e.createdBy].name; // Pulls live from database
     }
     const creatorName = creatorNameRaw.split(' ')[0];
     
+    // --- 🔴 LIVE DELETER NAME RESOLUTION ---
     let actualDeletedByRaw = e.deletedBy || e.deletedByName || 'User';
-    if (e.deletedById === CU.uid) { actualDeletedByRaw = CU.name; } 
-    else if (e.deletedById === CU.ownerId && CU.ownerName) { actualDeletedByRaw = CU.ownerName; } 
-    else if (!e.deletedById && e.createdBy === CU.uid && (e.deletedBy === e.createdByName || e.deletedByName === e.createdByName)) { actualDeletedByRaw = CU.name; } 
-    else {
-        const dLower = actualDeletedByRaw.trim().toLowerCase();
-        if (dLower.includes('lala') || dLower.includes('vipul')) { actualDeletedByRaw = CU.role === 'owner' ? CU.name : (CU.ownerName || 'Owner'); }
+    if (e.deletedById === CU.uid) { 
+      actualDeletedByRaw = CU.name; 
+    } else if (e.deletedById && staffMap[e.deletedById] && staffMap[e.deletedById].name) { 
+      actualDeletedByRaw = staffMap[e.deletedById].name; // Pulls live from database
+    } else if (!e.deletedById && e.createdBy === CU.uid && (e.deletedBy === e.createdByName || e.deletedByName === e.createdByName)) { 
+      actualDeletedByRaw = CU.name; 
     }
     const shortDeletedBy = actualDeletedByRaw.split(' ')[0];
     
@@ -1503,7 +1522,7 @@ async function init(){
         }
       }
     }catch(_){ }
-
+startStaffListener();
     document.body.setAttribute('data-premium', CU.isPremium === true ? "true" : "false");
 
     const q=query(collection(db,'expenses'),where('companyId','==',CU.companyId));
