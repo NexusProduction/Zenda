@@ -846,40 +846,105 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
     </div>
   </div>
 </div>
-<div class="modal-overlay" id="delete-modal">
-  <div class="modal" style="width: 90%; max-width: 400px; text-align: left; padding: 32px 24px; border-radius: 24px;">
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="modal-overlay" id="delete-modal" onclick="if(event.target===this) window.closeDeleteModal()">
+  <div class="modal" style="width: 90%; max-width: 340px; text-align: center; padding: 24px; border-radius: 24px; position: relative; margin: auto;">
     
-    <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--tx1); margin-bottom: 8px; font-family: var(--f-hd);">Delete Record?</h3>
-    <p style="font-size: .9rem; color: var(--tx2); margin-bottom: 20px; font-family: var(--f); line-height: 1.5;">This will void the transaction. Please provide a reason below.</p>
-    
-    <input type="text" id="delete-reason-inp" class="del-inp" placeholder="Reason (10-20 chars)" maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')" style="width: 100%; box-sizing: border-box; text-align: left;">
-    <div id="del-error" style="color: #DC2626; font-size: 0.75rem; font-weight: 700; margin-top: 4px; margin-bottom: 16px; display: none; text-align: left;">Must be at least 10 characters.</div>
-    
-    <div style="display: flex; gap: 12px; margin-top: 20px;">
-      <button onclick="closeDeleteModal()" style="flex: 1; padding: 12px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f-hd); font-size: 1rem; font-weight: 700; color: var(--tx1); cursor: pointer; transition: background .2s;">Cancel</button>
-      <button id="confirm-delete-btn" style="flex: 1; padding: 12px; background: #DC2626; border: none; border-radius: 12px; font-family: var(--f-hd); font-size: 1rem; font-weight: 700; color: #fff; cursor: pointer; transition: all .2s; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);">Delete</button>
+    <div style="width: 48px; height: 48px; background: #FEE2E2; color: #DC2626; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
     </div>
+    
+    <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--tx1); margin-bottom: 8px; font-family: var(--f-hd);">Delete Record?</h3>
+    <p style="font-size: .9rem; color: var(--tx3); margin-bottom: 20px; font-family: var(--f); line-height: 1.4;">This will void the transaction. Please provide a reason below.</p>
+    
+    <input type="text" id="delete-reason-inp" placeholder="Reason (min 10 chars)" maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')" style="width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--f); font-size: 0.95rem; margin-bottom: 4px; outline: none; box-sizing: border-box; text-align: center; transition: border-color 0.2s;">
+    <div id="del-error" style="color: #DC2626; font-size: 0.75rem; font-weight: 700; margin-bottom: 16px; display: none;">Must be at least 10 characters.</div>
+    
+    <div style="display: flex; gap: 12px; margin-top: 16px;">
+      <button onclick="window.closeDeleteModal()" style="flex: 1; padding: 12px; background: var(--surface); border: 2px solid var(--border); border-radius: 10px; font-family: var(--f-hd); font-size: 1rem; font-weight: 700; color: var(--tx2); cursor: pointer; transition: background .2s;">Cancel</button>
+      <button id="confirm-delete-btn" style="flex: 1; padding: 12px; background: #DC2626; border: none; border-radius: 10px; font-family: var(--f-hd); font-size: 1rem; font-weight: 700; color: #fff; cursor: pointer; transition: all .2s;">Delete</button>
+    </div>
+    
   </div>
 </div>
 
-<!-- PERMISSION DENIED MODAL (Now safely outside the delete modal!) -->
-<div class="modal-overlay" id="permission-modal">
-  <!-- Matches the new 400px wide, left-aligned premium aesthetic -->
-  <div class="modal" style="width: 90%; max-width: 400px; text-align: left; padding: 32px 24px; border-radius: 24px; position: relative;">
-    
-    <!-- Top Right Close Button -->
-    <button onclick="closePermissionModal()" style="position: absolute; top: 24px; right: 24px; width: 32px; height: 32px; background: var(--surface2); border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--tx2); transition: all .18s;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    
-    <!-- Lock icon completely removed. Title left-aligned with right padding to clear the X button -->
-    <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--tx1); margin-bottom: 8px; font-family: var(--f-hd); padding-right: 40px;">Permission Denied</h3>
-    <p id="permission-msg" style="font-size: .9rem; color: var(--tx2); margin-bottom: 0; font-family: var(--f); line-height: 1.5;">This is assigned by User. You can't delete it.</p>
+<!-- PERMISSION DENIED MODAL -->
+<div class="modal-overlay" id="permission-modal" onclick="if(event.target===this) window.closePermissionModal()">
+  <div class="modal" style="width: 90%; max-width: 340px; text-align: center; padding: 24px; border-radius: 24px; position: relative; margin: auto;">
+    <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--tx1); margin-bottom: 8px; font-family: var(--f-hd);">Permission Denied</h3>
+    <p id="permission-msg" style="font-size: .9rem; color: var(--tx3); margin-bottom: 8px; font-family: var(--f); line-height: 1.4;">This is assigned by User. You can't delete it.</p>
   </div>
 </div>
 <div id="toast-container"></div>
 
 <script type="module">
+  // --- DELETE & PERMISSION MODAL LOGIC ---
+let recordToDelete = null;
+
+// Open the Permission Denied Modal
+window.showPermissionModal = function(creatorName) {
+  document.getElementById('permission-msg').textContent = `This was added by ${creatorName}. You can't delete it.`;
+  document.getElementById('permission-modal').classList.add('open');
+};
+
+// Close the Permission Denied Modal
+window.closePermissionModal = function() {
+  document.getElementById('permission-modal').classList.remove('open');
+};
+
+// Open the Delete Modal
+window.delExp = function(id) {
+  recordToDelete = id;
+  document.getElementById('delete-reason-inp').value = '';
+  document.getElementById('del-error').style.display = 'none';
+  document.getElementById('delete-modal').classList.add('open');
+};
+
+// Close the Delete Modal
+window.closeDeleteModal = function() {
+  recordToDelete = null;
+  document.getElementById('delete-modal').classList.remove('open');
+};
+
+// Execute the Deletion in Firebase
+document.getElementById('confirm-delete-btn').addEventListener('click', async function() {
+  if (!recordToDelete) return;
+  
+  const reason = document.getElementById('delete-reason-inp').value.trim();
+  const errorEl = document.getElementById('del-error');
+  
+  // Validate reason length
+  if (reason.length < 10) {
+    errorEl.style.display = 'block';
+    return;
+  }
+  errorEl.style.display = 'none';
+
+  const btn = this;
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;margin-right:6px;vertical-align:middle;"></span>...';
+
+  try {
+    // Mark the document as deleted in Firestore
+    await updateDoc(doc(db, 'expenses', recordToDelete), {
+      isDeleted: true,
+      deleteReason: reason,
+      deletedAt: serverTimestamp(),
+      deletedBy: CU.name,
+      deletedById: CU.uid
+    });
+    
+    toast('Record voided successfully.', 'success');
+    window.closeDeleteModal();
+  } catch (err) {
+    console.error("Delete error:", err);
+    toast('Failed to delete record.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+});
 import { db, auth } from './firebase-config.js';
 import { getCurrentUser } from './auth.js';
 import { addNotification } from './notifications.js';
