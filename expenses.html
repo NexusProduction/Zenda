@@ -1594,17 +1594,23 @@ startStaffListener();
         
         return{id:d.id,parsedType:pt,...data};
       }).sort((a,b) => {
-        const timeA = getTime(a);
-        const timeB = getTime(b);
-        if (timeA === timeB) {
-          const getC = (obj) => {
-            if (!obj.createdAt) return 0;
-            if (typeof obj.createdAt.toMillis === 'function') return obj.createdAt.toMillis();
-            return new Date(obj.createdAt).getTime() || 0;
-          };
-          return getC(b) - getC(a);
+        // 1. Sort by Transaction Date (Descending: Newest date first)
+        const dateStrA = a.date || "";
+        const dateStrB = b.date || "";
+        
+        if (dateStrA !== dateStrB) {
+          return dateStrB.localeCompare(dateStrA); // 100% reliable YYYY-MM-DD sorting
         }
-        return timeB - timeA;
+        
+        // 2. If dates are exactly the same, sort by Creation Time (Descending: Latest added first)
+        const getC = (obj) => {
+          if (!obj.createdAt) return 0;
+          if (typeof obj.createdAt.toMillis === 'function') return obj.createdAt.toMillis();
+          if (typeof obj.createdAt.toDate === 'function') return obj.createdAt.toDate().getTime();
+          return new Date(obj.createdAt).getTime() || 0;
+        };
+        
+        return getC(b) - getC(a);
       });
       
       syncEl.textContent='Connected';
