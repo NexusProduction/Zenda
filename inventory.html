@@ -1578,6 +1578,23 @@ body.is-premium .premium-lock-overlay {
 }
 .pml-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(217,119,6,0.45); }
 .pml-txt { font-family: var(--f-display); font-weight: 700; font-size: 14px; color: var(--text-2); }
+.dp-popup {
+  position: absolute; top: calc(100% + 8px); right: 0; width: 280px;
+  background: var(--white-pure); border: 1.5px solid var(--border); border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12); z-index: 1000; display: none;
+  padding: 16px; animation: dropDown 0.2s cubic-bezier(.22,1,.36,1);
+}
+.dp-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.dp-btn { width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid var(--border); background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-2); transition: all 0.2s; }
+.dp-btn:hover { background: var(--bg-canvas); border-color: var(--text-3); }
+.dp-title { font-family: var(--f-display); font-weight: 700; font-size: 15px; color: var(--text-1); }
+.dp-days-hdr { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; font-weight: 800; color: var(--text-4); margin-bottom: 8px; }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.dp-day { height: 32px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--text-1); border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+.dp-day:hover:not(.disabled) { background: var(--white-dim); }
+.dp-day.selected { background: var(--accent) !important; color: #fff !important; box-shadow: 0 4px 12px rgba(79,70,229,0.25); }
+.dp-day.disabled { color: var(--text-4); opacity: 0.3; cursor: not-allowed; }
+.dp-day.empty { pointer-events: none; }
 </style>
 </head>
 <body>
@@ -2134,18 +2151,26 @@ body.is-premium .premium-lock-overlay {
               <input type="text" id="en" placeholder="Reason, reference..." maxlength="20"/>
             </div>
           </div>
-          <div class="mf" style="margin-bottom: 0;">
+          <div class="mf" style="margin-bottom: 0; position: relative;" id="entryDateWrap">
             <label>Date <span style="color:var(--red);">*</span></label>
             <div class="mfr" style="position: relative;">
               <span class="mico" style="display:flex; align-items:center; top:12px;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
               </span>
-              <input type="date" id="entryDate" style="cursor: pointer;" onclick="if(this.showPicker) this.showPicker();"/>
-              <style>
-                #entryDate::-webkit-calendar-picker-indicator {
-                    position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
-                }
-              </style>
+              <input type="text" id="entryDateStr" readonly style="cursor: pointer; background: var(--white-pure);" onclick="window.toggleDatePicker()" value=""/>
+              <input type="hidden" id="entryDateVal" value="" />
+            </div>
+            
+            <div class="dp-popup" id="datePickerPopup">
+              <div class="dp-hdr">
+                <button type="button" class="dp-btn" onclick="window.changeDpMonth(-1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <div class="dp-title" id="dpTitle">Month Year</div>
+                <button type="button" class="dp-btn" onclick="window.changeDpMonth(1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+              </div>
+              <div class="dp-days-hdr">
+                <div>SU</div><div>MO</div><div>TU</div><div>WE</div><div>TH</div><div>FR</div><div>SA</div>
+              </div>
+              <div class="dp-grid" id="dpGrid"></div>
             </div>
           </div>
         </div>
@@ -3102,10 +3127,11 @@ function esc(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function ago(dateInput) {
-  if (!dateInput) return '';
-  const d = typeof dateInput.toDate === 'function' ? dateInput.toDate() : new Date(dateInput);
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${d.getDate()}${months[d.getMonth()]}${d.getFullYear()}`;
+    if (!dateInput) return '';
+    const d = typeof dateInput.toDate === 'function' ? dateInput.toDate() : new Date(dateInput);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 function setMM(id, msg, type) {
     const el = document.getElementById(id);
@@ -4561,6 +4587,81 @@ window.createWH = async function() {
     btn.innerHTML = CU.role === 'owner' ? 'Save Record' : 'Request';
   }
 };
+let dpDate = new Date();
+let dpSelectedDate = new Date();
+let dpMinDate = new Date(0);
+
+window.toggleDatePicker = function() {
+  const popup = document.getElementById('datePickerPopup');
+  if (popup.style.display === 'block') {
+    popup.style.display = 'none';
+  } else {
+    popup.style.display = 'block';
+    window.renderDatePicker();
+  }
+};
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('entryDateWrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const popup = document.getElementById('datePickerPopup');
+    if (popup) popup.style.display = 'none';
+  }
+});
+
+window.changeDpMonth = function(dir) {
+  dpDate.setMonth(dpDate.getMonth() + dir);
+  window.renderDatePicker();
+};
+
+window.renderDatePicker = function() {
+  const grid = document.getElementById('dpGrid');
+  const title = document.getElementById('dpTitle');
+  if (!grid || !title) return;
+  
+  const year = dpDate.getFullYear();
+  const month = dpDate.getMonth();
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  title.textContent = `${months[month]} ${year}`;
+  
+  grid.innerHTML = '';
+  
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  
+  for (let i = 0; i < firstDay; i++) {
+    grid.innerHTML += `<div class="dp-day empty"></div>`;
+  }
+  
+  for (let day = 1; day <= daysInMonth; day++) {
+    const currentIterDate = new Date(year, month, day);
+    currentIterDate.setHours(0,0,0,0);
+    
+    const minDateCheck = new Date(dpMinDate);
+    minDateCheck.setHours(0,0,0,0);
+    
+    const isDisabled = currentIterDate < minDateCheck;
+    const isSelected = currentIterDate.getTime() === new Date(dpSelectedDate.getFullYear(), dpSelectedDate.getMonth(), dpSelectedDate.getDate()).getTime();
+    
+    let classes = 'dp-day';
+    if (isDisabled) classes += ' disabled';
+    if (isSelected) classes += ' selected';
+    
+    grid.innerHTML += `<div class="${classes}" onclick="if(!${isDisabled}) window.selectDpDate(${year}, ${month}, ${day})">${day}</div>`;
+  }
+};
+
+window.selectDpDate = function(year, month, day) {
+  dpSelectedDate = new Date(year, month, day);
+  const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const str = `${String(day).padStart(2, '0')} ${monthsShort[month]} ${year}`;
+  const val = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  
+  document.getElementById('entryDateStr').value = str;
+  document.getElementById('entryDateVal').value = val;
+  document.getElementById('datePickerPopup').style.display = 'none';
+};
+
 window.openEntry = function(type) {
   eType = type;
   document.getElementById('eq').value = '';
@@ -4569,20 +4670,23 @@ window.openEntry = function(type) {
   document.getElementById('convPreview').style.display = 'none';
   setMM('entryMsg', '', '');
   
-  const dateInp = document.getElementById('entryDate');
-  if (dateInp) {
-    const offsetDate = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-    dateInp.value = offsetDate;
-    
-    if (curProd && curProd.createdAt) {
-        const cDate = typeof curProd.createdAt.toDate === 'function' ? curProd.createdAt.toDate() : new Date(curProd.createdAt);
-        const minDate = new Date(cDate.getTime() - (cDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-        dateInp.min = minDate;
-    } else {
-        dateInp.min = '';
-    }
+  // Custom Date Picker Initialization
+  dpSelectedDate = new Date();
+  dpDate = new Date();
+  if (curProd && curProd.createdAt) {
+    dpMinDate = typeof curProd.createdAt.toDate === 'function' ? curProd.createdAt.toDate() : new Date(curProd.createdAt);
+  } else {
+    dpMinDate = new Date(0);
   }
+  const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const str = `${String(dpSelectedDate.getDate()).padStart(2, '0')} ${monthsShort[dpSelectedDate.getMonth()]} ${dpSelectedDate.getFullYear()}`;
+  const val = `${dpSelectedDate.getFullYear()}-${String(dpSelectedDate.getMonth() + 1).padStart(2, '0')}-${String(dpSelectedDate.getDate()).padStart(2, '0')}`;
   
+  const dateStrInp = document.getElementById('entryDateStr');
+  if (dateStrInp) dateStrInp.value = str;
+  const dateValInp = document.getElementById('entryDateVal');
+  if (dateValInp) dateValInp.value = val;
+
   document.getElementById('ettIn').classList.toggle('on', type === 'IN');
   document.getElementById('ettOut').classList.toggle('on', type === 'OUT');
   
@@ -4694,7 +4798,7 @@ window.saveEntry = async function() {
   setMM('entryMsg', '', '');
 
   try {
-    const dateVal = document.getElementById('entryDate').value;
+    const dateVal = document.getElementById('entryDateVal').value;
     let finalDate = new Date();
     if (dateVal) {
        const [y, m, d] = dateVal.split('-');
