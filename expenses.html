@@ -242,22 +242,38 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 .del-inp:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--redbg); }
 .exp-meta { display: flex; align-items: center; gap: 6px; font-family: var(--f); font-size: 0.8rem; font-weight: 600; color: var(--tx2); }
 .exp-cat-pill { padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; }
-
-/* Amount explicitly constrained */
-.exp-amt { position: relative; z-index: 30; font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 1.15rem; font-weight: 800; text-align: right; flex-shrink: 0; white-space: nowrap; letter-spacing: -0.02em; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); transform: translateX(0); }
+.exp-amt-wrap {
+  display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0;
+  gap: 0; padding: 7px 10px; border: 1.5px solid transparent; border-radius: 12px;
+  background: transparent;
+  transition: border-color .35s cubic-bezier(.22,1,.36,1), background .35s cubic-bezier(.22,1,.36,1), gap .35s cubic-bezier(.22,1,.36,1), padding .35s cubic-bezier(.22,1,.36,1);
+}
+.exp-row:hover .exp-amt-wrap,
+.exp-row.expanded .exp-amt-wrap {
+  border-color: var(--panel-border); background: var(--surface);
+  gap: 10px; padding: 7px 8px 7px 14px;
+}
+.exp-amt { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 1.15rem; font-weight: 800; text-align: right; white-space: nowrap; letter-spacing: -0.02em; }
 .exp-amt.pos { color: #10B981; } 
 .exp-amt.neg { color: #DC2626; }
-.del-btn { position: absolute; right: 8px; top: 50%; transform: translate(0, calc(-50% + 14px)) scale(0.4); width: 36px; height: 36px; background: #FEE2E2; border: 1.5px solid #FECACA; cursor: pointer; padding: 0; border-radius: 10px; color: #DC2626; flex-shrink: 0; opacity: 0; pointer-events: none; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, right 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, color 0.2s ease, border-color 0.2s ease; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.1); z-index: 20; }
-.del-btn svg { width: 16px; height: 16px; display: block; pointer-events: none; transition: all 0.2s ease; }
-/* PC Logic - springier reveal, nudged further left, drops back down when not hovering */
-.exp-row:hover .exp-amt { transform: translateX(-60px); max-width: 35%; } /* Pushed text further left */
-.exp-row:hover .del-btn { right: 12px; transform: translate(0, -50%) scale(1); opacity: 1; pointer-events: auto; } /* Popped button further left */
-.exp-row:hover .del-btn:hover { background: #DC2626; border-color: #DC2626; color: #FFF; transform: translate(0, -50%) scale(1.1); box-shadow: 0 6px 16px rgba(220, 38, 38, 0.3); }
-.exp-row:hover .del-btn:active { transform: translate(0, -50%) scale(0.95); transition: transform .15s cubic-bezier(0.34, 1.8, 0.64, 1); }
-/* Hide Accordion Details completely on PC */
+.del-btn {
+  width: 0; height: 32px; overflow: hidden; opacity: 0; pointer-events: none;
+  background: #FEE2E2; border: 1.5px solid #FECACA; cursor: pointer; padding: 0;
+  border-radius: 9px; color: #DC2626; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.1);
+  transition: width .35s cubic-bezier(.34,1.56,.64,1), opacity .25s ease, background .2s ease, color .2s ease, border-color .2s ease;
+}
+.del-btn svg { width: 16px; height: 16px; flex-shrink: 0; display: block; pointer-events: none; transition: all 0.2s ease; }
+.exp-row:hover .del-btn,
+.exp-row.expanded .del-btn { width: 32px; opacity: 1; pointer-events: auto; }
+.exp-row:hover .del-btn:hover,
+.exp-row.expanded .del-btn:hover { background: #DC2626; border-color: #DC2626; color: #FFF; transform: scale(1.08); box-shadow: 0 6px 16px rgba(220, 38, 38, 0.3); }
+.exp-row:hover .del-btn:active,
+.exp-row.expanded .del-btn:active { transform: scale(0.95); transition: transform .15s cubic-bezier(0.34, 1.8, 0.64, 1); }
 .exp-details { display: none !important; }
-/* 📱 MOBILE OPTIMIZATIONS (Complete Clean Rewrite) */
 @media (max-width: 600px) {
+  .exp-amt-wrap { display: contents; }
   .exp-row { cursor: pointer; padding: 12px 14px 20px; border-radius: 16px; transition: background .25s ease, box-shadow .25s ease; border-bottom: 1.5px solid var(--border); }
   .exp-row:last-child { border-bottom: none; }
   .exp-row.expanded { background: #FFF; transform: scale(1); box-shadow: 0 8px 24px rgba(0,0,0,0.08); z-index: 10; margin: 8px 0; border: 1px solid var(--border); border-radius: 16px; }
@@ -659,7 +675,6 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
   .exp-desc { font-size: 14px !important; }
   .exp-meta { font-size: 12px !important; }
   .exp-amt { font-size: 1.05rem; } 
-  .exp-row:hover .exp-amt, .exp-row.expanded .exp-amt { transform: translateX(-56px); }
   .fab { display: none !important; }
   .add-btn { display: flex !important; }
 }
@@ -1563,7 +1578,7 @@ const cat=e.category||'Miscellaneous';
     }
     const rowClass = e.isDeleted ? 'exp-row is-deleted' : 'exp-row';
 
-    return `<div class="${rowClass}" style="animation-delay:${i*32}ms;" onclick="window.toggleRow(this, event)"><div class="exp-row-main"><div class="exp-ico" style="background:${bg};color:${color}">${svg}</div><div class="exp-info">${infoHTML}</div><div class="exp-amt ${isInc?'pos':'neg'}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>${delBtn}</div><div class="exp-details" onclick="event.stopPropagation();">${accordionHTML}</div></div>`;
+    return `<div class="${rowClass}" style="animation-delay:${i*32}ms;" onclick="window.toggleRow(this, event)"><div class="exp-row-main"><div class="exp-ico" style="background:${bg};color:${color}">${svg}</div><div class="exp-info">${infoHTML}</div><div class="exp-amt-wrap"><div class="exp-amt ${isInc?'pos':'neg'}">${isInc?'+':'-'}₹${fmt(e.amount)}</div>${delBtn}</div></div><div class="exp-details" onclick="event.stopPropagation();">${accordionHTML}</div></div>`;
   }).join('');
 
   if (showLock) {
