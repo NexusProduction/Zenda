@@ -83,6 +83,7 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
   position:relative;overflow:hidden;isolation:isolate;
   border-radius:22px;padding:20px 22px 26px;border:none;cursor:pointer;
   transition:transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s cubic-bezier(.22,1,.36,1);
+  container-type:inline-size;
 }
 @media (hover:hover){ .dsum-card:hover{transform:translateY(-6px) scale(1.015)} }
 
@@ -97,8 +98,17 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 @media (hover:hover){ .dsum-card:hover .dsum-icon-chip{transform:scale(1.12) rotate(-8deg)} }
 .dsum-icon-chip svg{width:17px;height:17px}
 .dsum-lbl{font-family:var(--f-hd);font-size:.78rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:rgba(255,255,255,.75)}
-.dsum-val{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:clamp(1.15rem, 1vw + 0.95rem, 1.85rem);font-weight:800;letter-spacing:-.02em;line-height:1;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block;transition:font-size .15s ease}
-.dsum-watermark{position:absolute;right:6px;bottom:6px;width:100px;height:100px;color:#fff;opacity:.4;pointer-events:none;z-index:1;display:flex;align-items:center;justify-content:center;transition:transform .5s cubic-bezier(.22,1,.36,1), opacity .3s ease}
+.dsum-val{
+  font-family:var(--f-num);font-variant-numeric:tabular-nums;
+  font-size:clamp(1.05rem, 7.6cqw, 1.85rem);
+  font-weight:800;letter-spacing:-.02em;line-height:1;color:#fff;
+  display:flex;align-items:baseline;gap:2px;
+  white-space:nowrap;overflow:hidden;max-width:100%;
+}
+.dsum-currency{font-size:.62em;font-weight:700;opacity:.82}
+.dsum-num{display:inline-flex;align-items:baseline}
+.dsum-decimals{font-size:.68em;font-weight:700;opacity:.75;margin-left:1px}
+  .dsum-watermark{position:absolute;right:6px;bottom:6px;width:100px;height:100px;color:#fff;opacity:.4;pointer-events:none;z-index:1;display:flex;align-items:center;justify-content:center;transition:transform .5s cubic-bezier(.22,1,.36,1), opacity .3s ease}
 .dsum-watermark svg{width:72px;height:72px;display:block}
 @media (hover:hover){ .dsum-card:hover .dsum-watermark{transform:scale(1.12) rotate(6deg);opacity:.5} }
 
@@ -106,7 +116,13 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 .dsum-icon-chip svg{display:block}
 .dsum-lbl{line-height:1;display:flex;align-items:center}
 .mobile-card .dsum-top{margin-bottom:14px}
-.mc-val{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:1.9rem;font-weight:800;letter-spacing:-.025em;line-height:1.05}
+.mc-val{
+  font-family:var(--f-num);font-variant-numeric:tabular-nums;
+  font-size:clamp(1.2rem, 8.2cqw, 2rem);
+  font-weight:800;letter-spacing:-.025em;line-height:1.05;
+  display:flex;align-items:baseline;gap:2px;
+  white-space:nowrap;overflow:hidden;max-width:100%;
+}
 .mobile-card .dsum-icon-chip svg{width:16px;height:16px}
 .mobile-card .mc-lbl{font-size:.72rem;letter-spacing:.05em;opacity:.85}
 .mobile-card .dsum-watermark{width:100px;height:100px;right:2px;bottom:auto;top:50%;transform:translateY(-50%)}
@@ -126,8 +142,8 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
   will-change: transform; user-select: none; touch-action: pan-y; 
   cursor: pointer; background: var(--surface);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, background 0.4s ease, box-shadow 0.4s ease;
+  container-type: inline-size;
 }
-/* All three cards are now gradient-themed, matching the desktop version */
 .mobile-card[data-theme="bal"] { background: linear-gradient(135deg,#4F46E5,#4338CA) !important; border: none !important; }
 .mobile-card[data-theme="inc"] { background: linear-gradient(135deg,#16A34A,#0D7A3B) !important; border: none !important; }
 .mobile-card[data-theme="exp"] { background: linear-gradient(135deg,#DC2626,#B91C1C) !important; border: none !important; }
@@ -1448,16 +1464,16 @@ function renderAll(){updateSummary();renderList();}
 function updateSummary(){
   const list=filtered().filter(e => !e.isDeleted);let inc=0,exp=0;
   list.forEach(e=>{if(e.parsedType==='income')inc+=Number(e.amount)||0;else exp+=Number(e.amount)||0;});
-  const bal=inc-exp,fbal=(bal<0?'-₹ ':'₹ ')+fmt(Math.abs(bal))+'.00';
+  const bal=inc-exp;
   const db2=document.getElementById('d-balance');
-  if(db2) { db2.textContent=fbal; db2.style.setProperty('color', '#ffffff', 'important'); }
-  if(document.getElementById('d-income')) document.getElementById('d-income').textContent='₹ '+fmt(inc)+'.00';
-  if(document.getElementById('d-expense')) document.getElementById('d-expense').textContent='₹ '+fmt(exp)+'.00';
-  if(document.getElementById('m-balance')) document.getElementById('m-balance').textContent=fbal;
-  if(document.getElementById('m-income')) document.getElementById('m-income').textContent='₹ '+fmt(inc)+'.00';
-  if(document.getElementById('m-expense')) document.getElementById('m-expense').textContent='₹ '+fmt(exp)+'.00';
+  renderAmount(db2, Math.abs(bal), bal<0);
+  if(db2) db2.style.setProperty('color', '#ffffff', 'important');
+  renderAmount(document.getElementById('d-income'), inc, false);
+  renderAmount(document.getElementById('d-expense'), exp, false);
+  renderAmount(document.getElementById('m-balance'), Math.abs(bal), bal<0);
+  renderAmount(document.getElementById('m-income'), inc, false);
+  renderAmount(document.getElementById('m-expense'), exp, false);
 
-  fitDesktopAmounts();
   }
 
 function renderList(){
@@ -1559,7 +1575,11 @@ const cat=e.category||'Miscellaneous';
 }
 function fmt(n){return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0});}
 
-// --- Responsive desktop summary amount auto-fit (PC only, >=900px) ---
+function renderAmount(el, amount, isNegative){
+  if(!el) return;
+  const sign = isNegative ? '-' : '';
+  el.innerHTML = `<span class="dsum-currency">${sign}₹</span><span class="dsum-num">${fmt(amount)}<span class="dsum-decimals">.00</span></span>`;
+}
 function fitDesktopAmounts(){
   if(window.innerWidth < 900) return; // mobile stack cards handle their own sizing
   document.querySelectorAll('.summary-desktop .dsum-val').forEach(el=>{
