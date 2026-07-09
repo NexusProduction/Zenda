@@ -76,7 +76,6 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
   .dsum-icon-chip{width:30px;height:30px;border-radius:9px}
   .dsum-icon-chip svg{width:15px;height:15px}
   .dsum-lbl{font-size:.72rem}
-  .dsum-val{font-size:1.5rem}
   .dsum-watermark{width:80px;height:80px}
   .dsum-watermark svg{width:56px;height:56px}
 }
@@ -98,7 +97,7 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 @media (hover:hover){ .dsum-card:hover .dsum-icon-chip{transform:scale(1.12) rotate(-8deg)} }
 .dsum-icon-chip svg{width:17px;height:17px}
 .dsum-lbl{font-family:var(--f-hd);font-size:.78rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:rgba(255,255,255,.75)}
-.dsum-val{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:1.85rem;font-weight:800;letter-spacing:-.02em;line-height:1;color:#fff}
+.dsum-val{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:clamp(1.15rem, 1vw + 0.95rem, 1.85rem);font-weight:800;letter-spacing:-.02em;line-height:1;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block;transition:font-size .15s ease}
 .dsum-watermark{position:absolute;right:6px;bottom:6px;width:100px;height:100px;color:#fff;opacity:.4;pointer-events:none;z-index:1;display:flex;align-items:center;justify-content:center;transition:transform .5s cubic-bezier(.22,1,.36,1), opacity .3s ease}
 .dsum-watermark svg{width:72px;height:72px;display:block}
 @media (hover:hover){ .dsum-card:hover .dsum-watermark{transform:scale(1.12) rotate(6deg);opacity:.5} }
@@ -1458,6 +1457,7 @@ function updateSummary(){
   if(document.getElementById('m-income')) document.getElementById('m-income').textContent='₹ '+fmt(inc)+'.00';
   if(document.getElementById('m-expense')) document.getElementById('m-expense').textContent='₹ '+fmt(exp)+'.00';
 
+  fitDesktopAmounts();
   }
 
 function renderList(){
@@ -1558,6 +1558,28 @@ const cat=e.category||'Miscellaneous';
   }
 }
 function fmt(n){return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0});}
+
+// --- Responsive desktop summary amount auto-fit (PC only, >=900px) ---
+function fitDesktopAmounts(){
+  if(window.innerWidth < 900) return; // mobile stack cards handle their own sizing
+  document.querySelectorAll('.summary-desktop .dsum-val').forEach(el=>{
+    const card = el.closest('.dsum-card');
+    if(!card) return;
+    el.style.fontSize = ''; // reset to CSS clamp() default before measuring
+    const maxWidth = card.clientWidth - 44; // account for card padding
+    let size = parseFloat(getComputedStyle(el).fontSize);
+    const minSize = 15; // px floor so text never becomes unreadable
+    while(el.scrollWidth > maxWidth && size > minSize){
+      size -= 1;
+      el.style.fontSize = size + 'px';
+    }
+  });
+}
+let fitAmountsTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(fitAmountsTimer);
+  fitAmountsTimer = setTimeout(fitDesktopAmounts, 100);
+});
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function capWords(s){return String(s||'').replace(/\b\w/g, c => c.toUpperCase());}
 function shortPayment(p){const m={'Credit Card':'Card','Bank Transfer':'Bank','UPI':'UPI','Cash':'Cash','Cheque':'Cheque'};return m[p]||p;}
