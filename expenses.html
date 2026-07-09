@@ -339,8 +339,8 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
   .exp-amt.neg { background: #FEE2E2; color: #DC2626; border: 1.5px solid #FECACA; }
   .exp-row.is-deleted .exp-amt { background: #F4F4F5; color: #A1A1AA; border: 1.5px solid #E4E4E7; text-decoration: line-through; }
 
-  /* Hidden Metadata in Normal View */
-  .exp-meta, .exp-creator, .exp-amt-wrap .del-btn { display: none !important; }
+  /* Hide Desktop Meta pills on mobile. (Notice .exp-creator is removed so it shows!) */
+  .exp-meta, .exp-amt-wrap .del-btn { display: none !important; }
 
   /* 🪄 Expanded Details View (Clicked) */
   .exp-row.expanded { 
@@ -363,8 +363,8 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
     animation: dropIn 0.25s cubic-bezier(0.22, 1, 0.36, 1); 
   }
 
-  /* Screenshot-style Information Pills */
-  .mob-pill-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  /* One-by-One Vertically Stacked Pills */
+  .mob-pill-container { display: flex; flex-direction: column; gap: 8px; }
   .mob-pill { 
     background: #F4F4F5; 
     border: 1px solid #E4E4E7; 
@@ -373,31 +373,30 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
     font-size: 0.78rem; 
     display: inline-flex; 
     align-items: center; 
-    gap: 5px; 
+    gap: 6px; 
+    width: fit-content;
   }
   .mob-pill-lbl { color: var(--tx3); font-weight: 600; }
   .mob-pill-val { color: var(--tx1); font-weight: 700; }
 
-  /* Full Width Mobile Delete Button */
+  /* Square Saturated Red Delete Button */
   .mob-del-btn { 
-    width: 100%; 
-    padding: 12px; 
+    width: 44px; 
+    height: 44px; 
     border-radius: 12px; 
-    background: #FEF2F2; 
-    color: #DC2626; 
-    border: 1.5px solid #FECACA; 
-    font-family: var(--f-hd); 
-    font-size: 0.9rem; 
-    font-weight: 700; 
+    background: #DC2626; /* Highly saturated pure red */
+    color: #FFFFFF; 
+    border: none; 
     display: flex; 
     align-items: center; 
     justify-content: center; 
-    gap: 6px; 
     cursor: pointer; 
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
     transition: all 0.2s; 
+    flex-shrink: 0;
   }
-  .mob-del-btn:active { transform: scale(0.97); }
-  .mob-del-btn.disabled-btn { background: #F4F4F5; color: #A1A1AA; border-color: #E4E4E7; }
+  .mob-del-btn:active { transform: scale(0.92); box-shadow: 0 2px 6px rgba(220, 38, 38, 0.2); }
+  .mob-del-btn.disabled-btn { background: #F4F4F5; color: #A1A1AA; box-shadow: none; border: 1.5px solid #E4E4E7; }
 }
 .empty-exp{text-align:center;padding:60px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;flex:1;justify-content:center}
 .empty-exp-icon{color:var(--border);margin-bottom:4px}
@@ -1562,15 +1561,21 @@ function renderList(){
       delDateStr = dObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
     }
 
-    // --- 💻 DESKTOP LAYOUT (Preserved functionality) ---
+    // --- Main Info Layout: Name stacked over "Added by" ---
     let infoHTML = `
-      <div style="display: flex; align-items: baseline; gap: 6px;">
-        <div class="exp-desc">${esc(capWords(e.description))}</div>
-        <span class="exp-creator desk-only">
-          ${e.isDeleted ? `<span style="font-weight:500; color:var(--tx2);">Deleted by</span> <span style="color:#B91C1C;">${esc(shortDeletedBy)}</span>` : `<span style="font-weight:500; color:var(--tx2);">by</span> ${esc(creatorName)}`}
-        </span>
+      <div style="display: flex; flex-direction: column; min-width: 0; justify-content: center; gap: 4px;">
+        <div class="exp-desc" style="line-height: 1.1;">${esc(capWords(e.description))}</div>
+        <div class="exp-creator" style="font-size: 0.75rem; font-weight: 600; color: var(--tx2); margin: 0; line-height: 1;">
+          ${e.isDeleted 
+            ? `Deleted by <span style="color:#B91C1C; font-weight:700;">${esc(shortDeletedBy)}</span>` 
+            : `Added by <span style="font-weight:700; color:var(--tx1);">${esc(creatorName)}</span>`}
+        </div>
       </div>
-      <div class="exp-meta desk-only" style="margin-top:6px;">
+    `;
+
+    // (Desktop-only) Inline pills appended to the infoHTML so desktop stays clean
+    infoHTML += `
+      <div class="exp-meta desk-only" style="margin-top:8px; display:flex; gap:6px;">
         <div style="background:var(--surface2); padding:4px 8px; border-radius:6px; border:1px solid var(--border);">${e.isDeleted ? delDateStr : ds}</div>
         ${e.isDeleted
           ? `<div style="background:var(--surface2); padding:4px 8px; border-radius:6px; border:1px solid var(--border); color:var(--tx2);">Reason <span style="color:var(--tx1);">${esc(e.deleteReason)}</span></div>`
@@ -1588,27 +1593,26 @@ function renderList(){
       }
     }
 
-    // --- 📱 MOBILE LAYOUT (Premium Accordion based on Screenshot) ---
+    // --- 📱 MOBILE ACCORDION: Pills stacked left, Square Delete button right ---
     let accordionHTML = `
-      <div class="mob-pill-container">
-        <div class="mob-pill"><span class="mob-pill-lbl">Date</span> <span class="mob-pill-val">${e.isDeleted ? delDateStr : ds}</span></div>
-        ${e.isDeleted
-          ? `<div class="mob-pill"><span class="mob-pill-lbl">Deleted by</span> <span class="mob-pill-val" style="color:#B91C1C;">${esc(shortDeletedBy)}</span></div>
-             <div class="mob-pill"><span class="mob-pill-lbl">Reason</span> <span class="mob-pill-val">${esc(e.deleteReason)}</span></div>`
-          : `<div class="mob-pill"><span class="mob-pill-lbl">Added by</span> <span class="mob-pill-val">${esc(creatorName)}</span></div>
-             <div class="mob-pill"><span class="mob-pill-lbl">Pay by</span> <span class="mob-pill-val">${esc(shortPayment(e.paymentMethod||'Cash'))}</span></div>`
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
+        <div class="mob-pill-container">
+          <div class="mob-pill"><span class="mob-pill-lbl">Date</span> <span class="mob-pill-val">${e.isDeleted ? delDateStr : ds}</span></div>
+          ${e.isDeleted
+            ? `<div class="mob-pill"><span class="mob-pill-lbl">Reason</span> <span class="mob-pill-val">${esc(e.deleteReason)}</span></div>`
+            : `<div class="mob-pill"><span class="mob-pill-lbl">Pay by</span> <span class="mob-pill-val">${esc(shortPayment(e.paymentMethod||'Cash'))}</span></div>`
+          }
+        </div>
+        
+        ${(!e.isDeleted && (e.createdBy === CU.uid || CU.role==='owner'))
+            ? `<button class="mob-del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')">
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+               </button>`
+            : (!e.isDeleted ? `<button class="mob-del-btn disabled-btn" onclick="event.stopPropagation(); window.showPermissionModal('${esc(creatorName)}')">
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+               </button>` : '')
         }
       </div>
-      ${(!e.isDeleted && (e.createdBy === CU.uid || CU.role==='owner'))
-          ? `<button class="mob-del-btn" onclick="event.stopPropagation(); window.delExp('${e.id}')">
-               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-               Delete Record
-             </button>`
-          : (!e.isDeleted ? `<button class="mob-del-btn disabled-btn" onclick="event.stopPropagation(); window.showPermissionModal('${esc(creatorName)}')">
-               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-               Cannot Delete
-             </button>` : '')
-      }
     `;
 
     const rowClass = e.isDeleted ? 'exp-row is-deleted' : 'exp-row';
