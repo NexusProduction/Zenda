@@ -375,7 +375,7 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
     overflow: hidden; 
     margin-top: 0; 
     padding-top: 0; 
-    border-top: 1.5px dotted transparent; 
+    border-top: 2px dotted transparent;
     transition: max-height .4s cubic-bezier(.22,1,.36,1), 
                 opacity .3s ease .05s, 
                 margin-top .4s cubic-bezier(.22,1,.36,1), 
@@ -460,6 +460,15 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
   .mob-del-btn-full:active { transform: scale(0.97); box-shadow: 0 2px 6px rgba(220, 38, 38, 0.15); }
   .mob-del-btn-full.disabled-btn { background: #F4F4F5; color: #A1A1AA; box-shadow: none; border: 1.5px solid #E4E4E7; }
   .mob-del-btn-full.disabled-btn svg { transform: none !important; }
+
+  /* Border pass: outer containers bolder, inner separators a touch thicker */
+  .panel { border-width: 2.5px !important; }
+  .exp-row, .exp-row.expanded { border-width: 2.5px !important; }
+  .panel-hdr { border-bottom-width: 2px !important; }
+  .search-wrap { border-bottom-width: 2px !important; }
+  .filter-tabs { border-bottom-width: 1.5px !important; }
+  .mob-detail-divider { border-left-width: 2.5px !important; }
+  .mob-horizontal-divider { border-top-width: 2px !important; }
 }
 .empty-exp{text-align:center;padding:60px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;flex:1;justify-content:center}
 .empty-exp-icon{color:var(--border);margin-bottom:4px}
@@ -1098,6 +1107,7 @@ let CU        = { uid:null, role:'staff', companyId:null, name:'Staff', isPremiu
 let allData=[]; let catFilter=''; let searchVal=''; let monthFilter = new Date().getFullYear().toString();
 let currentPage=1; const PER_PAGE=10;
 let expType='income';
+let expandedRowId = null;
 let ddOpen=false; let appealSent=false;
 function buildDropdown() {
   const dd  = document.getElementById('cat-picker-dd');
@@ -1187,15 +1197,14 @@ document.addEventListener('click', e => {
   const catWrap = document.getElementById('cat-picker-wrap');
   if (catWrap && !catWrap.contains(e.target)) closeCatDD();
 });
-
-// Mobile accordion: expand a row's details, collapsing any other open row
-window.toggleRow = function(el, e) {
+window.toggleRow = function(el, e, id) {
   if (e) e.stopPropagation();
   const wasExpanded = el.classList.contains('expanded');
   document.querySelectorAll('.exp-row.expanded').forEach(r => {
     if (r !== el) r.classList.remove('expanded');
   });
   el.classList.toggle('expanded', !wasExpanded);
+  expandedRowId = wasExpanded ? null : (id || null);
 };
 function showLockCard() {
   if (CU.role === 'owner') {
@@ -1686,9 +1695,9 @@ function renderList(){
       }
     `;
 
-    const rowClass = e.isDeleted ? 'exp-row is-deleted' : 'exp-row';
+    const rowClass = (e.isDeleted ? 'exp-row is-deleted' : 'exp-row') + (e.id === expandedRowId ? ' expanded' : '');
     return `
-      <div class="${rowClass}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event)">
+      <div class="${rowClass}" data-id="${e.id}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event, '${e.id}')">
         <div class="exp-row-main">
           <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
           <div class="exp-info">${infoHTML}</div>
