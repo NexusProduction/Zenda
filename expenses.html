@@ -395,32 +395,25 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
     border-top-color: var(--border); 
   }
 
-  .mob-deleted-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px 14px 13px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(220,38,38,.045), rgba(220,38,38,.01));
-  border: 1px solid rgba(220,38,38,.14);
-}
-.mdp-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: .7rem;
-  font-weight: 800;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: #B91C1C;
-  padding-bottom: 9px;
-  border-bottom: 1px dashed rgba(220,38,38,.18);
-}
-.mdp-status svg { width: 13px; height: 13px; flex-shrink: 0; opacity: .9; }
-.mdp-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-.mdp-lbl { font-size: .7rem; font-weight: 700; color: var(--tx3); text-transform: uppercase; letter-spacing: .03em; flex-shrink: 0; padding-top: 1px; }
-.mdp-val { font-size: .88rem; font-weight: 700; color: var(--tx1); text-align: right; word-break: break-word; }
-.mdp-reason { color: #B91C1C; }
+  /* Grid for Date | Vertical Line | Pay By */
+  .mob-details-grid {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    margin-bottom: 14px;
+  }
+  .mob-detail-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+  }
+  .mob-detail-lbl { font-size: 0.75rem; color: var(--tx3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .mob-detail-val { font-size: 0.95rem; color: var(--tx1); font-weight: 800; text-align: center; }
+  
+  /* The Vertical Dotted Line */
   .mob-detail-divider {
     width: 1px;
     height: 36px;
@@ -1228,6 +1221,12 @@ window.toggleRow = function(el, e, id) {
   el.classList.toggle('expanded', !wasExpanded);
   expandedRowId = wasExpanded ? null : (id || null);
 };
+document.addEventListener('click', function(e){
+  if (!e.target.closest('.exp-row')) {
+    document.querySelectorAll('.exp-row.expanded').forEach(r => r.classList.remove('expanded'));
+    expandedRowId = null;
+  }
+});
 function showLockCard() {
   if (CU.role === 'owner') {
     document.getElementById('lc-owner').classList.add('show');
@@ -1696,35 +1695,25 @@ function renderList(){
       }
     }
 
-    let accordionHTML = e.isDeleted ? `
-      <div class="mob-deleted-panel">
-        <div class="mdp-status">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          Record deleted
-        </div>
-        <div class="mdp-row">
-          <span class="mdp-lbl">Date</span>
-          <span class="mdp-val">${delDateStr}</span>
-        </div>
-        <div class="mdp-row">
-          <span class="mdp-lbl">Reason</span>
-          <span class="mdp-val mdp-reason">${esc(e.deleteReason)}</span>
-        </div>
-      </div>
-    ` : `
+    // --- 📱 MOBILE ACCORDION: Date | Dotted Line | Pay By -> Dotted Line -> Full Width Button ---
+    let accordionHTML = `
       <div class="mob-details-grid">
         <div class="mob-detail-item">
           <span class="mob-detail-lbl">Date</span>
-          <span class="mob-detail-val">${ds}</span>
+          <span class="mob-detail-val">${e.isDeleted ? delDateStr : ds}</span>
         </div>
+        
         <div class="mob-detail-divider"></div>
+        
         <div class="mob-detail-item">
-          <span class="mob-detail-lbl">Pay by</span>
-          <span class="mob-detail-val">${esc(shortPayment(e.paymentMethod||'Cash'))}</span>
+          <span class="mob-detail-lbl">${e.isDeleted ? 'Reason' : 'Pay by'}</span>
+          <span class="mob-detail-val" ${e.isDeleted ? 'style="color:#B91C1C;"' : ''}>${e.isDeleted ? esc(e.deleteReason) : esc(shortPayment(e.paymentMethod||'Cash'))}</span>
         </div>
       </div>
-      <div class="mob-horizontal-divider"></div>
-      ${(e.createdBy === CU.uid || CU.role==='owner')
+      
+      ${!e.isDeleted ? `
+    <div class="mob-horizontal-divider"></div>
+    ${(e.createdBy === CU.uid || CU.role==='owner')
         ? `<button class="mob-del-btn-full" onclick="event.stopPropagation(); window.delExp('${e.id}')">
              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
              Delete Record
@@ -1733,8 +1722,9 @@ function renderList(){
              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
              Cannot Delete
            </button>`
-      }
-    `;
+    }
+    ` : ''}
+  `;
 
     const rowClass = (e.isDeleted ? 'exp-row is-deleted' : 'exp-row') + (e.id === expandedRowId ? ' expanded' : '');
     return `
