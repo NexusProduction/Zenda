@@ -1006,6 +1006,11 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
     <div id="del-error" style="color: #DC2626; font-size: 0.75rem; font-weight: 700; margin-bottom: 14px; display: none;">Must be at least 10 characters.</div>
     
     <button id="confirm-delete-btn" style="width: 100%; padding: 14px; background: #DC2626; border: none; border-radius: 14px; font-family: var(--f-hd); font-size: .95rem; font-weight: 700; color: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(220,38,38,.25); transition: all .2s; margin-top: 8px;" onmouseover="this.style.background='#B91C1C'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#DC2626'; this.style.transform='none'">Delete Entry</button>
+
+    <div class="ppm-success-overlay" id="delete-success-tick">
+      <div class="apple-tick"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+      <div class="ppm-success-text">Record Deleted</div>
+    </div>
     
   </div>
 </div>
@@ -1046,13 +1051,13 @@ window.closeDeleteModal = function() {
   recordToDelete = null;
   document.getElementById('delete-modal').classList.remove('open');
 };
-// Execute the Deletion in Firebase
 document.getElementById('confirm-delete-btn').addEventListener('click', async function() {
   if (!recordToDelete) return;
   
   const reason = document.getElementById('delete-reason-inp').value.trim();
   const errorEl = document.getElementById('del-error');
   
+  // Validate reason length (min 10 characters)
   if (reason.length < 10) {
     errorEl.style.display = 'block';
     return;
@@ -1073,13 +1078,27 @@ document.getElementById('confirm-delete-btn').addEventListener('click', async fu
       deletedBy: CU.name,
       deletedById: CU.uid
     });
-    
-    toast('Record voided successfully.', 'success');
-    window.closeDeleteModal();
+
+    const tick = document.getElementById('delete-success-tick');
+    const tickSvg = tick ? tick.querySelector('svg') : null;
+    if (tick) {
+      tick.classList.add('active');
+      if (tickSvg) setTimeout(() => { tickSvg.style.strokeDashoffset = '0'; }, 50);
+      setTimeout(() => {
+        tick.classList.remove('active');
+        if (tickSvg) tickSvg.style.strokeDashoffset = '';
+        window.closeDeleteModal();
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }, 1400);
+    } else {
+      window.closeDeleteModal();
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
   } catch (err) {
     console.error("Delete error:", err);
     toast('Failed to delete record.', 'error');
-  } finally {
     btn.disabled = false;
     btn.innerHTML = originalText;
   }
