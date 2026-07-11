@@ -570,7 +570,6 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
   .wh-prod-row:hover .wh-prod-ico img{filter:invert(1) brightness(100);opacity:1}
   .wh-prod-row:hover .wh-prod-arrow{color:var(--tx1);transform:translateX(3px)}
   .wh-prod-row:last-child:hover{border-bottom-left-radius:18px;border-bottom-right-radius:18px}
-  .wh-prod-row:first-child:hover{border-top-left-radius:18px;border-top-right-radius:18px}
 }
 .wh-prod-ico{
   width:46px;height:46px;border-radius:14px;flex-shrink:0;
@@ -1275,6 +1274,7 @@ const syncEl = document.getElementById('sync-status');
 let CU        = { uid:null, role:'staff', companyId:null, name:'Staff', isPremium:false, ownerId:null };
 let allData=[]; let catFilter=''; let searchVal=''; let monthFilter = new Date().getFullYear().toString();
 let currentPage=1; const PER_PAGE=10;
+let listMode='expenses'; let whCurrentPage=1; let whAllProducts=[];
 let expType='income';
 let expandedRowId = null;
 let ddOpen=false; let appealSent=false;
@@ -1780,6 +1780,7 @@ document.querySelectorAll('.ftab').forEach(btn => {
       
       catFilter = this.dataset.cat || '';
       searchVal = ''; 
+      listMode = 'expenses';
       
       document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
       this.classList.add('on');
@@ -2132,22 +2133,52 @@ function renderProductsHTML(prods){
     html += '</div>';
     return html;
 }
+function renderProductsPage(){
+    const el = document.getElementById('exp-list');
+    const pw = document.getElementById('pag-wrap');
+    const prods = whAllProducts;
+
+    if (!prods.length) {
+        el.innerHTML = `<div class="empty-exp"><div class="empty-exp-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="empty-exp-ttl">No Products Found</div><div class="empty-exp-sub">Add products inside the Inventory App.</div></div>`;
+        if(pw) pw.style.display = 'none';
+        return;
+    }
+
+    const total = Math.ceil(prods.length / PER_PAGE);
+    if(whCurrentPage > total) whCurrentPage = total;
+    if(whCurrentPage < 1) whCurrentPage = 1;
+    const slice = prods.slice((whCurrentPage-1)*PER_PAGE, whCurrentPage*PER_PAGE);
+
+    el.innerHTML = renderProductsHTML(slice);
+
+    if(total > 1){
+        if(pw) pw.style.display = 'flex';
+        document.getElementById('pag-prev').disabled = whCurrentPage===1;
+        document.getElementById('pag-next').disabled = whCurrentPage===total;
+        document.getElementById('pag-info').innerHTML = `<span class="pag-info-current">${whCurrentPage}</span><span class="pag-info-sep">/</span><span class="pag-info-total">${total}</span>`;
+    } else {
+        if(pw) pw.style.display = 'none';
+    }
+}
 
 window.fetchAndRenderProducts = async function(whId, whName) {
     if (whName) currentWarehouseName = whName;
     currentWarehouseId = whId;
+    listMode = 'products';
+    whCurrentPage = 1;
     
     animateHeader(false);
-    document.getElementById('pag-wrap').style.display = 'none';
     
-    const el = document.getElementById('exp-list');
     const cached = whProductsCache[whId];
 
     if (cached) {
         // Instant render from cache, refresh silently in background
-        el.innerHTML = renderProductsHTML(cached);
+        whAllProducts = cached;
+        renderProductsPage();
     } else {
-        el.innerHTML = '<div class="empty-exp"><div class="empty-exp-ttl">Loading Products...</div></div>';
+        whAllProducts = [];
+        document.getElementById('pag-wrap').style.display = 'none';
+        document.getElementById('exp-list').innerHTML = '<div class="empty-exp"><div class="empty-exp-ttl">Loading Products...</div></div>';
     }
 
     try {
@@ -2158,15 +2189,18 @@ window.fetchAndRenderProducts = async function(whId, whName) {
 
         // Only repaint if we're still viewing this same warehouse
         if (currentWarehouseId === whId) {
-            el.innerHTML = renderProductsHTML(prods);
+            whAllProducts = prods;
+            renderProductsPage();
         }
     } catch(e) {
         if (!cached) {
-            el.innerHTML = `<div class="empty-exp"><div class="empty-exp-ttl" style="color:red;">Error loading products</div><div class="empty-exp-sub">${e.message}</div></div>`;
+            document.getElementById('exp-list').innerHTML = `<div class="empty-exp"><div class="empty-exp-ttl" style="color:red;">Error loading products</div><div class="empty-exp-sub">${e.message}</div></div>`;
         }
     }
 };
 window.fetchAndRenderEntries = async function(prodId, prodName) {
+    listMode = 'entries';
+    document.getElementById('pag-wrap').style.display = 'none';
     const el = document.getElementById('exp-list');
     
     document.querySelector('.panel-ttl').innerHTML = `
@@ -2270,8 +2304,11 @@ if (!snap.docs.length) {
      });
   });
 }
-// --- PAGINATION CLICK EVENTS ---
 document.getElementById('pag-prev').addEventListener('click', () => {
+  if (listMode === 'products') {
+    if (whCurrentPage > 1) { whCurrentPage--; renderProductsPage(); }
+    return;
+  }
   if (currentPage > 1) {
     currentPage--;
     renderList(); // Re-render the list for the previous page
@@ -2279,6 +2316,11 @@ document.getElementById('pag-prev').addEventListener('click', () => {
 });
 
 document.getElementById('pag-next').addEventListener('click', () => {
+  if (listMode === 'products') {
+    const totalPages = Math.ceil(whAllProducts.length / PER_PAGE);
+    if (whCurrentPage < totalPages) { whCurrentPage++; renderProductsPage(); }
+    return;
+  }
   const totalListLength = filtered().length;
   const totalPages = Math.ceil(totalListLength / PER_PAGE);
   
