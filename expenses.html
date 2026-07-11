@@ -2159,7 +2159,6 @@ function renderProductsPage(){
         if(pw) pw.style.display = 'none';
     }
 }
-
 window.fetchAndRenderProducts = async function(whId, whName) {
     if (whName) currentWarehouseName = whName;
     currentWarehouseId = whId;
@@ -2184,10 +2183,13 @@ window.fetchAndRenderProducts = async function(whId, whName) {
         const q = query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', whId));
         const snap = await getDocs(q);
         const prods = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name));
+
+        // Only repaint if the data actually changed — prevents replaying entrance animation twice
+        const dataChanged = !cached || JSON.stringify(cached) !== JSON.stringify(prods);
         whProductsCache[whId] = prods;
 
         // Only repaint if we're still viewing this same warehouse
-        if (currentWarehouseId === whId) {
+        if (currentWarehouseId === whId && dataChanged) {
             whAllProducts = prods;
             renderProductsPage();
         }
