@@ -2500,10 +2500,10 @@ window.subscribeToProduct = function(pId) {
     window.renderEntries();
   }, e => console.error('Product live update error:', e));
 };
-
 window.subscribeToEntries = function(pId) {
   if (window._entriesUnsub) { window._entriesUnsub(); window._entriesUnsub = null; }
   document.getElementById('eList').innerHTML = '<div class="e-empty">Loading…</div>';
+  loadEntryCostMap(pId);
   const q = query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('productId', '==', pId));
   window._entriesUnsub = onSnapshot(q, snap => {
     window.currentEntries = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(b.createdAt?.toDate ? b.createdAt.toDate() : b.createdAt || 0) - new Date(a.createdAt?.toDate ? a.createdAt.toDate() : a.createdAt || 0));
@@ -2513,7 +2513,6 @@ window.subscribeToEntries = function(pId) {
     document.getElementById('eList').innerHTML = `<div class="e-empty" style="color:var(--red)">Error: ${e.message}</div>`;
   });
 };
-
 const ICONS=[
   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
@@ -4057,7 +4056,22 @@ window.jumpToLowStockProduct = async function(pId, whId) {
 };
 window.currentEntries = [];
 window.entryCurrentPage = 1;
+window.entryCostMap = {};
 const ENTRY_PER_PAGE = 10;
+
+async function loadEntryCostMap(pId) {
+  try {
+    const expSnap = await getDocs(query(collection(db, 'expenses'), where('companyId', '==', CU.companyId), where('productId', '==', pId)));
+    const map = {};
+    expSnap.docs.forEach(d => {
+      const ex = d.data();
+      if (ex.relatedEntryId && ex.costPerUnit != null) map[ex.relatedEntryId] = ex.costPerUnit;
+    });
+    window.entryCostMap = map;
+  } catch(e) {
+    console.error('Entry cost map load error:', e);
+  }
+}
 async function loadEntries(pId) {
   document.getElementById('eList').innerHTML = '<div class="e-empty">Loading…</div>';
   try {
@@ -4065,6 +4079,7 @@ async function loadEntries(pId) {
     
     window.currentEntries = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(b.createdAt?.toDate ? b.createdAt.toDate() : b.createdAt || 0) - new Date(a.createdAt?.toDate ? a.createdAt.toDate() : a.createdAt || 0));
     window.entryCurrentPage = 1;
+    await loadEntryCostMap(pId);
 
     const eTitle = document.getElementById('eCntTitle');
     if (eTitle) eTitle.textContent = `CURRENT STOCK: ${curProd.stock || 0} ${curProd.unit || ''}`.trim().toUpperCase();
@@ -4170,7 +4185,11 @@ const delBtn = !e.deleted ? `<div class="e-del-wrap"><button class="e-del-btn${i
           // Removes Stock In/Out and shows ONLY the note!
           actionText = esc(e.note); 
       }
-      
+     const costPer = (window.entryCostMap || {})[e.id];
+      const costHTML = costPer != null
+        ? `<div style="font-size:11px; font-weight:700; color:var(--accent); margin-top:2px;">₹${Number(costPer).toLocaleString('en-IN')}/${esc(e.entryUnit||curProd.unit||'unit')}</div>`
+        : '';
+
       return `<div class="erow" onclick="window.toggleRowActions(this)">
         <div class="e-ind ${isInc?'e-in':'e-out'}">${arrow}</div>
         <div class="e-body">
@@ -4185,6 +4204,7 @@ const delBtn = !e.deleted ? `<div class="e-del-wrap"><button class="e-del-btn${i
           <div style="text-align:right;">
             ${topQtyHtml}
             <span class="e-unit" style="font-size:11px; font-weight:700; color:var(--text-4); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-top:2px;">${untStr}</span>
+            ${costHTML}
           </div>
           ${delBtn}
         </div>
