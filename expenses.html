@@ -2184,8 +2184,10 @@ window.fetchAndRenderProducts = async function(whId, whName) {
         const snap = await getDocs(q);
         const prods = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name));
 
-        // Only repaint if the data actually changed — prevents replaying entrance animation twice
-        const dataChanged = !cached || JSON.stringify(cached) !== JSON.stringify(prods);
+        // Lightweight signature using only primitive fields (Firestore Timestamp objects
+        // don't stringify consistently, which was causing the false "data changed" re-render)
+        const sig = arr => arr.map(p => `${p.id}|${p.name}|${p.stock}|${p.unit}|${p.desc}|${p.emoji}`).join(',');
+        const dataChanged = !cached || sig(cached) !== sig(prods);
         whProductsCache[whId] = prods;
 
         // Only repaint if we're still viewing this same warehouse
