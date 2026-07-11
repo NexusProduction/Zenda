@@ -1723,14 +1723,47 @@ if(!/[a-zA-Z]/.test(desc)){ errorEl.textContent = 'Description must contain at l
 
 const mainGrid=document.getElementById('main-grid');
 function softSwapText(el, newText){
-  el.style.transition = 'opacity .2s ease';
-  el.style.opacity = '0';
-  setTimeout(()=>{
-    el.textContent = newText;
-    el.style.opacity = '1';
-  }, 200);
-}
+  const oldText = el.textContent;
+  if(oldText === newText) return;
 
+  // Cancel any animation already running on this element
+  if(el._typeTimer) clearInterval(el._typeTimer);
+
+  const common = (() => {
+    let i = 0;
+    while(i < oldText.length && i < newText.length && oldText[i] === newText[i]) i++;
+    return i;
+  })();
+
+  let pos = oldText.length;
+  const deleteStep = () => {
+    if(pos > common){
+      pos--;
+      el.textContent = oldText.slice(0, pos);
+    } else {
+      clearInterval(el._typeTimer);
+      typeStep();
+    }
+  };
+
+  let tPos = common;
+  function typeStep(){
+    el._typeTimer = setInterval(()=>{
+      if(tPos < newText.length){
+        tPos++;
+        el.textContent = newText.slice(0, tPos);
+      } else {
+        clearInterval(el._typeTimer);
+      }
+    }, 16);
+  }
+
+  if(pos > common){
+    el._typeTimer = setInterval(deleteStep, 12);
+  } else {
+    typeStep();
+  }
+}
 document.querySelectorAll('.ftab').forEach(btn => {
   btn.addEventListener('click', function() {
     if (this.hasAttribute('data-cat')) {
