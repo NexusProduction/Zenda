@@ -1727,9 +1727,10 @@ const mainGrid=document.getElementById('main-grid');
 document.querySelectorAll('.ftab').forEach(btn => {
   btn.addEventListener('click', function() {
     if (this.hasAttribute('data-cat')) {
-     document.querySelector('.panel-hdr').style.display = '';
-      fadeSwapTitle('Transaction History');
-      toggleHeaderExtras(true);
+      animateHeader(true);
+      document.querySelectorAll('#warehouse-tabs .ftab').forEach(b => {
+        b.textContent = b.dataset.baseName || b.textContent;
+      });
       
       catFilter = this.dataset.cat || '';
       searchVal = ''; 
@@ -2031,45 +2032,40 @@ startStaffListener();
 }
 let currentWarehouseId = null;
 let currentWarehouseName = '';
-
-function fadeSwapTitle(newHTML){
-  const el = document.querySelector('.panel-ttl');
-  if(!el) return;
-  el.style.transition = 'opacity .25s ease';
-  el.style.opacity = '0';
-  setTimeout(()=>{
-    el.innerHTML = newHTML;
-    el.style.opacity = '1';
-  }, 250);
+function animateHeader(show){
+  const hdr = document.querySelector('.panel-hdr');
+  if(!hdr) return;
+  hdr.style.overflow = 'hidden';
+  hdr.style.transition = 'max-height .3s ease, opacity .3s ease, padding-top .3s ease, padding-bottom .3s ease';
+  if(show){
+    hdr.style.display = '';
+    hdr.style.maxHeight = '0px';
+    hdr.style.opacity = '0';
+    hdr.style.paddingTop = '0px';
+    hdr.style.paddingBottom = '0px';
+    requestAnimationFrame(()=>{
+      hdr.style.maxHeight = '70px';
+      hdr.style.opacity = '1';
+      hdr.style.paddingTop = '';
+      hdr.style.paddingBottom = '';
+    });
+    setTimeout(()=>{ hdr.style.maxHeight = ''; hdr.style.overflow = ''; }, 320);
+  } else {
+    hdr.style.maxHeight = hdr.scrollHeight + 'px';
+    requestAnimationFrame(()=>{
+      hdr.style.maxHeight = '0px';
+      hdr.style.opacity = '0';
+      hdr.style.paddingTop = '0px';
+      hdr.style.paddingBottom = '0px';
+    });
+    setTimeout(()=>{ hdr.style.display = 'none'; }, 300);
+  }
 }
-
-function toggleHeaderExtras(show){
-  const addBtn = document.getElementById('add-btn-desktop');
-  const yearWrap = document.getElementById('year-filter-wrap');
-  [addBtn, yearWrap].forEach(elm=>{
-    if(!elm) return;
-    elm.style.transition = 'opacity .3s ease, transform .3s ease';
-    if(show){
-      elm.style.display = '';
-      requestAnimationFrame(()=>{
-        elm.style.opacity = '1';
-        elm.style.transform = 'translateX(0)';
-      });
-    } else {
-      elm.style.opacity = '0';
-      elm.style.transform = 'translateX(8px)';
-      setTimeout(()=>{ elm.style.display = 'none'; }, 300);
-    }
-  });
-}
-
 window.fetchAndRenderProducts = async function(whId, whName) {
     if (whName) currentWarehouseName = whName;
     currentWarehouseId = whId;
     
-    document.querySelector('.panel-hdr').style.display = '';
-    fadeSwapTitle(`${esc(capWords(currentWarehouseName))} Warehouse`);
-    toggleHeaderExtras(false);
+    animateHeader(false);
     document.getElementById('pag-wrap').style.display = 'none';
     const el = document.getElementById('exp-list');
     el.innerHTML = '<div class="empty-exp"><div class="empty-exp-ttl">Loading Products...</div></div>';
@@ -2189,13 +2185,19 @@ if (!snap.docs.length) {
      snap.docs.forEach(docSnap => {
          const wh = docSnap.data();
          const btn = document.createElement('button');
+         const baseName = capWords(wh.name || 'Warehouse');
          
           btn.className = 'ftab';
-         btn.textContent = capWords(wh.name || 'Warehouse');
+         btn.textContent = baseName;
+         btn.dataset.baseName = baseName;
          
          btn.onclick = () => {
-             document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
+             document.querySelectorAll('#warehouse-tabs .ftab').forEach(b => {
+               b.classList.remove('on');
+               b.textContent = b.dataset.baseName;
+             });
              btn.classList.add('on');
+             btn.textContent = `${baseName} Warehouse`;
              window.fetchAndRenderProducts(docSnap.id, wh.name);
          };
          
