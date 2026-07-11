@@ -1979,7 +1979,7 @@ body.is-premium .premium-lock-overlay {
             </div>
             <div class="mfr">
                 <span class="mico" style="display:flex; align-items:center; top:12px;">₹</span>
-                <input type="number" id="addProdCost" placeholder="0.00" min="0" step="any" onkeydown="return event.key !== 'e' && event.key !== 'E' && event.key !== '+' && event.key !== '-';" oninput="window.calcExpTotal()">
+                <input type="text" inputmode="decimal" id="addProdCost" placeholder="0.00" oninput="window.formatPriceInput(this); window.calcExpTotal()">
               </div>
           </div>
           
@@ -2183,7 +2183,7 @@ body.is-premium .premium-lock-overlay {
               </div>
               <div class="mfr">
                 <span class="mico" style="display:flex; align-items:center; top:12px;">₹</span>
-                <input type="number" id="entryCost" placeholder="0.00" min="0" step="any" onkeydown="return event.key !== 'e' && event.key !== 'E' && event.key !== '+' && event.key !== '-';" oninput="window.calcEntryTotal()">
+                <input type="text" inputmode="decimal" id="entryCost" placeholder="0.00" oninput="window.formatPriceInput(this); window.calcEntryTotal()">
               </div>
             </div>
             <input type="hidden" id="entryExpCategory" value="Inventory Stock"/>
@@ -2294,17 +2294,23 @@ window.toggleExpFields = function(el) {
   if(fields) fields.style.display = el.checked ? 'block' : 'none';
   if(el.checked) window.calcExpTotal();
 };
-
-// Real-Time Math Calculator
+window.formatPriceInput = function(inp) {
+  let raw = inp.value.replace(/[^0-9.]/g, '');
+  const firstDot = raw.indexOf('.');
+  if (firstDot !== -1) raw = raw.slice(0, firstDot + 1) + raw.slice(firstDot + 1).replace(/\./g, '');
+  let [intPart, decPart] = raw.split('.');
+  if (intPart.length > 8) intPart = intPart.slice(0, 8);
+  if (decPart !== undefined) decPart = decPart.slice(0, 2);
+  const formattedInt = intPart ? Number(intPart).toLocaleString('en-IN') : '';
+  inp.value = decPart !== undefined ? formattedInt + '.' + decPart : formattedInt;
+};
 window.calcExpTotal = function() {
   const qty = parseFloat(document.getElementById('ps').value) || 0;
-  const pricePer = parseFloat(document.getElementById('addProdCost').value) || 0;
+  const pricePer = parseFloat((document.getElementById('addProdCost').value || '').replace(/,/g, '')) || 0;
   const total = qty * pricePer;
   const totalEl = document.getElementById('exp-total-calc');
   if(totalEl) totalEl.textContent = `Total: ₹ ${total.toFixed(2)}`;
 };
-
-// --- PREMIUM DROPDOWN ENGINE (Categories & Payment Methods) ---
 const EXP_CATS = ['Inventory', 'Material'];
 const PAY_METHODS = [
   { name: 'Cash', icon: 'banknote' },
@@ -4409,7 +4415,7 @@ const name = nameInp.value.trim();
   }
 
   const logExpense = stock >= 1;
-  const costPer = parseFloat(document.getElementById('addProdCost')?.value) || 0;
+  const costPer = parseFloat((document.getElementById('addProdCost')?.value || '').replace(/,/g, '')) || 0;
   const payMethod = document.getElementById('addProdPayMethod')?.value || 'Cash';
 
   if (logExpense && costPer <= 0) {
@@ -4797,10 +4803,9 @@ window.updateConvPreview = function() {
   preview.textContent = "= " + baseQty + " " + (curProd.unit || 'Piece') + " (Base)";
   preview.style.display = 'block';
 };
-
 window.calcEntryTotal = function() {
    const qty = parseFloat(document.getElementById('eq').value) || 0;
-   const cost = parseFloat(document.getElementById('entryCost').value) || 0;
+   const cost = parseFloat((document.getElementById('entryCost').value || '').replace(/,/g, '')) || 0;
    const total = qty * cost;
    const lbl = document.getElementById('entryTotalCalc');
    if(lbl) lbl.textContent = "Total: ₹ " + total.toFixed(2);
@@ -4835,11 +4840,9 @@ window.saveEntry = async function() {
     setMM('entryMsg', '⚠ Not enough stock available.', 'err');
     return;
   }
-
-  const logExpense = true;
-  const costPer = parseFloat(document.getElementById('entryCost')?.value) || 0;
+const logExpense = true;
+  const costPer = parseFloat((document.getElementById('entryCost')?.value || '').replace(/,/g, '')) || 0;
   const payMethod = document.getElementById('entryPayMethod')?.value || 'Cash';
-
   if (costPer <= 0) {
     setMM('entryMsg', '⚠ Enter price per ' + (selUnit || baseUnit) + '.', 'err');
     return;
