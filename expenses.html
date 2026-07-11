@@ -1728,8 +1728,8 @@ document.querySelectorAll('.ftab').forEach(btn => {
   btn.addEventListener('click', function() {
     if (this.hasAttribute('data-cat')) {
      document.querySelector('.panel-hdr').style.display = '';
-      document.querySelector('.panel-ttl').innerHTML = `Transaction History`;
-      document.getElementById('add-btn-desktop').style.display = '';
+      fadeSwapTitle('Transaction History');
+      toggleHeaderExtras(true);
       
       catFilter = this.dataset.cat || '';
       searchVal = ''; 
@@ -2031,13 +2031,46 @@ startStaffListener();
 }
 let currentWarehouseId = null;
 let currentWarehouseName = '';
+
+function fadeSwapTitle(newHTML){
+  const el = document.querySelector('.panel-ttl');
+  if(!el) return;
+  el.style.transition = 'opacity .25s ease';
+  el.style.opacity = '0';
+  setTimeout(()=>{
+    el.innerHTML = newHTML;
+    el.style.opacity = '1';
+  }, 250);
+}
+
+function toggleHeaderExtras(show){
+  const addBtn = document.getElementById('add-btn-desktop');
+  const yearWrap = document.getElementById('year-filter-wrap');
+  [addBtn, yearWrap].forEach(elm=>{
+    if(!elm) return;
+    elm.style.transition = 'opacity .3s ease, transform .3s ease';
+    if(show){
+      elm.style.display = '';
+      requestAnimationFrame(()=>{
+        elm.style.opacity = '1';
+        elm.style.transform = 'translateX(0)';
+      });
+    } else {
+      elm.style.opacity = '0';
+      elm.style.transform = 'translateX(8px)';
+      setTimeout(()=>{ elm.style.display = 'none'; }, 300);
+    }
+  });
+}
+
 window.fetchAndRenderProducts = async function(whId, whName) {
     if (whName) currentWarehouseName = whName;
     currentWarehouseId = whId;
     
-    document.querySelector('.panel-hdr').style.display = 'none';
+    document.querySelector('.panel-hdr').style.display = '';
+    fadeSwapTitle(`${esc(capWords(currentWarehouseName))} Warehouse`);
+    toggleHeaderExtras(false);
     document.getElementById('pag-wrap').style.display = 'none';
-    
     const el = document.getElementById('exp-list');
     el.innerHTML = '<div class="empty-exp"><div class="empty-exp-ttl">Loading Products...</div></div>';
     
