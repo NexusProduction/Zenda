@@ -2119,7 +2119,7 @@ function renderProductsHTML(prods){
         const icon = `<img src="https://api.iconify.design/lucide/${iconPath}.svg?color=%230D0F14&stroke-width=2" alt=""/>`;
         
         html += `
-        <div class="wh-prod-row" style="animation-delay:${i*20}ms;" onclick="window.fetchAndRenderProducts('${p.id}', this.getAttribute('data-name'))" data-name="${esc(p.name)}">
+        <div class="wh-prod-row" style="animation-delay:${i*20}ms;" onclick="window.fetchAndRenderEntries('${p.id}', this.getAttribute('data-name'))" data-name="${esc(p.name)}">
             <div class="wh-prod-ico">${icon}</div>
             <div class="wh-prod-info">
                 <div class="wh-prod-name">${esc(p.name)}</div>
@@ -2229,9 +2229,18 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
             const tB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (new Date(b.createdAt || 0).getTime());
             return tB - tA;
         });
+
+        // Pull price-per-unit for each entry from its linked expense record
+        const expQ = query(collection(db, 'expenses'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
+        const expSnap = await getDocs(expQ);
+        const costByEntryId = {};
+        expSnap.docs.forEach(d => {
+            const ex = d.data();
+            if (ex.relatedEntryId && ex.costPerUnit != null) costByEntryId[ex.relatedEntryId] = ex.costPerUnit;
+        });
         
         if (!entries.length) {
-            el.innerHTML = `<div class="empty-exp"><div class="empty-exp-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="empty-exp-ttl">No Stock Entries</div></div>`;
+            el.innerHTML = `<div class="empty-exp"><div class="empty-exp-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="empty-exp-ttl">No entry</div></div>`;
             return;
         }
         
@@ -2248,6 +2257,11 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
                 const dObj = typeof e.createdAt.toDate === 'function' ? e.createdAt.toDate() : new Date(e.createdAt);
                 dateStr = dObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
             }
+
+            const costPer = costByEntryId[e.id];
+            const costHTML = costPer != null
+              ? `<div style="font-size:0.78rem; color:var(--tx2); font-weight:700; margin-top:2px;">₹${fmt(costPer)} / ${esc(e.entryUnit || e.unit || 'unit')}</div>`
+              : '';
             
             html += `
             <div style="background:var(--surface); border:1.5px solid var(--border); border-radius:18px; padding:16px 20px; display:flex; align-items:center; gap:16px; box-shadow:var(--sh1); animation:rowIn 0.3s cubic-bezier(0.22,1,0.36,1) ${i*20}ms both;">
@@ -2259,6 +2273,7 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
                 <div style="text-align:right; flex-shrink:0;">
                     <div style="font-family:var(--f-num); font-size:1.3rem; font-weight:800; color:${color};">${sign}${e.qty}</div>
                     <div style="font-size:0.75rem; color:var(--tx3); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; margin-top:2px;">${esc(e.entryUnit || e.unit || 'units')}</div>
+                    ${costHTML}
                 </div>
             </div>`;
         });
