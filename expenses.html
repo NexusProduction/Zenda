@@ -546,11 +546,44 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
   }
   .exp-details { display: none !important; }
 }
-
 .empty-exp{text-align:center;padding:60px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;flex:1;justify-content:center}
 .empty-exp-icon{color:var(--border);margin-bottom:4px}
 .empty-exp-ttl{font-size:1rem;font-weight:700;letter-spacing:-.015em}
 .empty-exp-sub{font-size:.85rem;color:var(--tx2);line-height:1.55}
+
+/* Warehouse product browse list — flat rows, mirrors .exp-row */
+.wh-prod-list{display:flex;flex-direction:column}
+.wh-prod-row{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 22px;
+  border-bottom:1.5px solid #E4E4E7;
+  cursor:pointer;
+  transition:background .2s ease;
+  animation:rowIn .4s cubic-bezier(.22,1,.36,1) both;
+  -webkit-tap-highlight-color:transparent;
+}
+.wh-prod-row:last-child{border-bottom:none}
+.wh-prod-row:active{background:#F4F4F5}
+@media (hover:hover) and (pointer:fine){
+  .wh-prod-row:hover{background:#F4F4F5}
+  .wh-prod-row:hover .wh-prod-ico{background:#09090B;border-color:#09090B;transform:scale(1.05) rotate(-6deg)}
+  .wh-prod-row:hover .wh-prod-ico img{filter:invert(1) brightness(100);opacity:1}
+  .wh-prod-row:hover .wh-prod-arrow{color:var(--tx1);transform:translateX(3px)}
+}
+.wh-prod-ico{
+  width:46px;height:46px;border-radius:14px;flex-shrink:0;
+  background:var(--surface2);border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  transition:all .3s cubic-bezier(.34,1.56,.64,1);
+}
+.wh-prod-ico img{width:21px;height:21px;opacity:.75;transition:all .25s ease;display:block}
+.wh-prod-info{flex:1;min-width:0}
+.wh-prod-name{font-family:var(--f-hd);font-size:1rem;font-weight:700;color:var(--tx1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.wh-prod-desc{font-size:.82rem;color:var(--tx3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.wh-prod-stk{text-align:right;flex-shrink:0}
+.wh-prod-num{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:1.1rem;font-weight:800;color:var(--tx1);line-height:1;letter-spacing:-.01em}
+.wh-prod-unit{font-size:.66rem;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
+.wh-prod-arrow{color:var(--tx3);flex-shrink:0;display:flex;align-items:center;transition:all .25s cubic-bezier(.34,1.56,.64,1)}
 .pag-wrap{
   display:none;align-items:center;justify-content:space-between;
   padding:14px 20px;
@@ -2017,22 +2050,24 @@ window.fetchAndRenderProducts = async function(whId, whName) {
             el.innerHTML = `<div class="empty-exp"><div class="empty-exp-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="empty-exp-ttl">No Products Found</div><div class="empty-exp-sub">Add products inside the Inventory App.</div></div>`;
             return;
         }
-        
-        let html = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px; padding:12px;">';
+        let html = '<div class="wh-prod-list">';
         prods.forEach((p, i) => {
             const iconPath = p.emoji ? p.emoji : 'package';
-            const icon = `<img src="https://api.iconify.design/lucide/${iconPath}.svg?color=%230D0F14&stroke-width=2" style="width:26px; height:26px; opacity:0.85;" />`;
+            const icon = `<img src="https://api.iconify.design/lucide/${iconPath}.svg?color=%230D0F14&stroke-width=2" alt=""/>`;
             
             html += `
-            <div style="background:var(--surface); border:1.5px solid var(--border); border-radius:20px; padding:16px; cursor:pointer; box-shadow:var(--sh1); display:flex; align-items:center; gap:16px; transition:transform 0.2s, box-shadow 0.2s; animation:rowIn 0.3s cubic-bezier(0.22,1,0.36,1) ${i*20}ms both;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--sh2)';" onmouseout="this.style.transform='none'; this.style.boxShadow='var(--sh1)';" onclick="window.fetchAndRenderEntries('${p.id}', this.getAttribute('data-name'))" data-name="${esc(p.name)}">
-                <div style="width:52px; height:52px; background:var(--bg); border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${icon}</div>
-                <div style="flex:1; min-width:0;">
-                    <div style="font-family:var(--f-hd); font-size:1.1rem; font-weight:800; color:var(--tx1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px;">${esc(p.name)}</div>
-                    <div style="font-size:0.85rem; color:var(--tx3); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(p.desc || 'No description')}</div>
+            <div class="wh-prod-row" style="animation-delay:${i*20}ms;" onclick="window.fetchAndRenderEntries('${p.id}', this.getAttribute('data-name'))" data-name="${esc(p.name)}">
+                <div class="wh-prod-ico">${icon}</div>
+                <div class="wh-prod-info">
+                    <div class="wh-prod-name">${esc(p.name)}</div>
+                    <div class="wh-prod-desc">${esc(p.desc || 'No description')}</div>
                 </div>
-                <div style="text-align:right; flex-shrink:0;">
-                    <div style="font-family:var(--f-num); font-size:1.4rem; font-weight:800; color:var(--tx1); line-height:1;">${p.stock || 0}</div>
-                    <div style="font-size:0.7rem; font-weight:700; color:var(--tx3); text-transform:uppercase; letter-spacing:0.05em; margin-top:4px;">${esc(p.unit || 'units')}</div>
+                <div class="wh-prod-stk">
+                    <div class="wh-prod-num">${p.stock || 0}</div>
+                    <div class="wh-prod-unit">${esc(p.unit || 'units')}</div>
+                </div>
+                <div class="wh-prod-arrow">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </div>
             </div>`;
         });
