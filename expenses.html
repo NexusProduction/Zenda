@@ -2244,14 +2244,15 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
             return;
         }
         
-        let html = '<div style="display:flex; flex-direction:column; gap:12px; padding:12px;">';
+        let html = '';
         entries.forEach((e, i) => {
             const isInc = e.type === 'IN';
-            const sign = isInc ? '+' : '-';
-            const color = isInc ? 'var(--green)' : 'var(--red)';
-            const bg = isInc ? 'var(--greenbg)' : 'var(--redbg)';
-            const arrow = isInc ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`;
-            
+            const color = isInc ? '#16A34A' : '#DC2626';
+            const bg = isInc ? '#DCFCE7' : '#FEE2E2';
+            const svg = isInc
+              ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
+              : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
+
             let dateStr = '';
             if(e.createdAt) {
                 const dObj = typeof e.createdAt.toDate === 'function' ? e.createdAt.toDate() : new Date(e.createdAt);
@@ -2259,25 +2260,28 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
             }
 
             const costPer = costByEntryId[e.id];
-            const costHTML = costPer != null
-              ? `<div style="font-size:0.78rem; color:var(--tx2); font-weight:700; margin-top:2px;">₹${fmt(costPer)} / ${esc(e.entryUnit || e.unit || 'unit')}</div>`
-              : '';
-            
+            const hasCost = costPer != null;
+            const totalAmt = hasCost ? costPer * (Number(e.qty)||0) : 0;
+            const amtLabel = hasCost
+              ? `${isInc?'+':'-'}₹${fmt(totalAmt)}`
+              : `${isInc?'+':'-'}${e.qty} ${esc(e.entryUnit || e.unit || 'units')}`;
+
             html += `
-            <div style="background:var(--surface); border:1.5px solid var(--border); border-radius:18px; padding:16px 20px; display:flex; align-items:center; gap:16px; box-shadow:var(--sh1); animation:rowIn 0.3s cubic-bezier(0.22,1,0.36,1) ${i*20}ms both;">
-                <div style="width:48px; height:48px; background:${bg}; color:${color}; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid ${color}40;">${arrow}</div>
-                <div style="flex:1; min-width:0;">
-                    <div style="font-family:var(--f-hd); font-size:1.05rem; font-weight:800; color:var(--tx1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px;">${esc(e.note || (isInc ? 'Stock In' : 'Stock Out'))}</div>
-                    <div style="font-size:0.8rem; color:var(--tx2); font-weight:600;">${dateStr} • by ${esc((e.who || e.createdByName || 'System').split(' ')[0])}</div>
+            <div class="exp-row" style="animation-delay:${i*20}ms;">
+              <div class="exp-row-main">
+                <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
+                <div class="exp-info">
+                  <div class="exp-info-stack">
+                    <div class="exp-desc">${esc(e.note || (isInc ? 'Stock In' : 'Stock Out'))}</div>
+                    <div class="exp-creator">${dateStr} • by <span style="font-weight:700; color:var(--tx1);">${esc((e.who || e.createdByName || 'System').split(' ')[0])}</span></div>
+                  </div>
                 </div>
-                <div style="text-align:right; flex-shrink:0;">
-                    <div style="font-family:var(--f-num); font-size:1.3rem; font-weight:800; color:${color};">${sign}${e.qty}</div>
-                    <div style="font-size:0.75rem; color:var(--tx3); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; margin-top:2px;">${esc(e.entryUnit || e.unit || 'units')}</div>
-                    ${costHTML}
+                <div class="exp-amt-wrap">
+                  <div class="exp-amt ${isInc?'pos':'neg'}">${amtLabel}</div>
                 </div>
+              </div>
             </div>`;
         });
-        html += '</div>';
         el.innerHTML = html;
     } catch(err) {
         el.innerHTML = `<div class="empty-exp"><div class="empty-exp-ttl" style="color:red;">Error</div><div class="empty-exp-sub">${err.message}</div></div>`;
