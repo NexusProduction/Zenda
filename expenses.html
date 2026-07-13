@@ -2230,13 +2230,17 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
             return tB - tA;
         });
 
-        // Pull price-per-unit for each entry from its linked expense record
+        // Pull price-per-unit AND payment method for each entry from its linked expense record
         const expQ = query(collection(db, 'expenses'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
         const expSnap = await getDocs(expQ);
         const costByEntryId = {};
+        const paymentByEntryId = {};
         expSnap.docs.forEach(d => {
             const ex = d.data();
-            if (ex.relatedEntryId && ex.costPerUnit != null) costByEntryId[ex.relatedEntryId] = ex.costPerUnit;
+            if (ex.relatedEntryId) {
+              if (ex.costPerUnit != null) costByEntryId[ex.relatedEntryId] = ex.costPerUnit;
+              if (ex.paymentMethod) paymentByEntryId[ex.relatedEntryId] = ex.paymentMethod;
+            }
         });
         
         if (!entries.length) {
@@ -2253,11 +2257,8 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
               ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
               : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
 
-            let dateStr = '';
-            if(e.createdAt) {
-                const dObj = typeof e.createdAt.toDate === 'function' ? e.createdAt.toDate() : new Date(e.createdAt);
-                dateStr = dObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
-            }
+            const dObj = e.createdAt ? (typeof e.createdAt.toDate === 'function' ? e.createdAt.toDate() : new Date(e.createdAt)) : new Date();
+            const ds = dObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
 
             const costPer = costByEntryId[e.id];
             const hasCost = costPer != null;
@@ -2266,20 +2267,47 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
               ? `${isInc?'+':'-'}₹${fmt(totalAmt)}`
               : `${isInc?'+':'-'}${e.qty} ${esc(e.entryUnit || e.unit || 'units')}`;
 
+            const creatorName = esc((e.who || e.createdByName || 'System').split(' ')[0]);
+            const payMethod = paymentByEntryId[e.id];
+
+            let infoHTML = `
+              <div class="exp-info-stack">
+                <div class="exp-desc">${esc(e.note || (isInc ? 'Stock In' : 'Stock Out'))}</div>
+                <div class="exp-creator"><span class="mob-only">Add</span><span class="desk-only">Added</span> by <span style="font-weight:700; color:var(--tx1);">${creatorName}</span></div>
+              </div>
+            `;
+            infoHTML += `
+              <div class="exp-meta desk-only">
+                <div class="meta-pill">${ds}</div>
+                ${payMethod ? `<div class="meta-pill">Pay by <span style="color:var(--tx1);">${esc(shortPayment(payMethod))}</span></div>` : ''}
+              </div>
+            `;
+
+            const accordionHTML = `
+              <div class="mob-details-grid">
+                <div class="mob-detail-item">
+                  <span class="mob-detail-lbl">Date</span>
+                  <span class="mob-detail-val">${ds}</span>
+                </div>
+                ${payMethod ? `
+                <div class="mob-detail-divider"></div>
+                <div class="mob-detail-item">
+                  <span class="mob-detail-lbl">Pay by</span>
+                  <span class="mob-detail-val">${esc(shortPayment(payMethod))}</span>
+                </div>` : ''}
+              </div>
+            `;
+
             html += `
-            <div class="exp-row" style="animation-delay:${i*20}ms;">
+            <div class="exp-row" data-id="${e.id}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event, '${e.id}')">
               <div class="exp-row-main">
                 <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
-                <div class="exp-info">
-                  <div class="exp-info-stack">
-                    <div class="exp-desc">${esc(e.note || (isInc ? 'Stock In' : 'Stock Out'))}</div>
-                    <div class="exp-creator">${dateStr} • by <span style="font-weight:700; color:var(--tx1);">${esc((e.who || e.createdByName || 'System').split(' ')[0])}</span></div>
-                  </div>
-                </div>
+                <div class="exp-info">${infoHTML}</div>
                 <div class="exp-amt-wrap">
                   <div class="exp-amt ${isInc?'pos':'neg'}">${amtLabel}</div>
                 </div>
               </div>
+              <div class="exp-details" onclick="event.stopPropagation();">${accordionHTML}</div>
             </div>`;
         });
         el.innerHTML = html;
