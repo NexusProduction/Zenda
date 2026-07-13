@@ -2222,7 +2222,9 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
     try {
         const q = query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
         const snap = await getDocs(q);
-        let entries = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(e => !e.deleted && e.type !== 'LOG' && !e.isActivity);
+        
+        // FIX: Removed "!e.deleted" from the filter so deleted entries stay in the list
+        let entries = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(e => e.type !== 'LOG' && !e.isActivity);
         
         entries.sort((a,b) => {
             const tA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (new Date(a.createdAt || 0).getTime());
@@ -2230,7 +2232,6 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
             return tB - tA;
         });
 
-        // Pull price-per-unit AND payment method for each entry from its linked expense record
         const expQ = query(collection(db, 'expenses'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
         const expSnap = await getDocs(expQ);
         const costByEntryId = {};
@@ -2251,14 +2252,25 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
         let html = '';
         entries.forEach((e, i) => {
             const isInc = e.type === 'IN';
-            const color = isInc ? '#16A34A' : '#DC2626';
-            const bg = isInc ? '#DCFCE7' : '#FEE2E2';
-            const svg = isInc
-              ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
-              : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
+            
+            // FIX: Apply grey styling and the "-" icon if the entry is deleted
+            const color = e.deleted ? '#94A3B8' : (isInc ? '#16A34A' : '#DC2626');
+            const bg = e.deleted ? '#F1F5F9' : (isInc ? '#DCFCE7' : '#FEE2E2');
+            const svg = e.deleted 
+              ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+              : (isInc
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>');
 
             const dObj = e.createdAt ? (typeof e.createdAt.toDate === 'function' ? e.createdAt.toDate() : new Date(e.createdAt)) : new Date();
             const ds = dObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+
+            // FIX: Format the deleted date correctly
+            let delDateStr = ds;
+            if (e.deletedAt) {
+                const delObj = typeof e.deletedAt === 'string' ? new Date(e.deletedAt) : (typeof e.deletedAt.toDate === 'function' ? e.deletedAt.toDate() : new Date());
+                delDateStr = delObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+            }
 
             const costPer = costByEntryId[e.id];
             const hasCost = costPer != null;
@@ -2268,38 +2280,62 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
               : `${isInc?'+':'-'}${e.qty} ${esc(e.entryUnit || e.unit || 'units')}`;
 
             const creatorName = esc((e.who || e.createdByName || 'System').split(' ')[0]);
+            const deletedByName = esc((e.deletedByName || 'User').split(' ')[0]);
             const payMethod = paymentByEntryId[e.id];
+            
+            const reasonText = e.deleteReason || 'No reason provided';
+            const isLongReason = e.deleted && reasonText.length > 20;
 
+            // FIX: Build the UI to display "Deleted by", the Reason pill, and Deleted Date pill
             let infoHTML = `
               <div class="exp-info-stack">
                 <div class="exp-desc">${esc(e.note || (isInc ? 'Stock In' : 'Stock Out'))}</div>
-                <div class="exp-creator"><span class="mob-only">Add</span><span class="desk-only">Added</span> by <span style="font-weight:700; color:var(--tx1);">${creatorName}</span></div>
+                <div class="exp-creator">
+                    ${e.deleted 
+                        ? `Deleted by <span style="font-weight:700; color:var(--tx1);">${deletedByName}</span>` 
+                        : `<span class="mob-only">Add</span><span class="desk-only">Added</span> by <span style="font-weight:700; color:var(--tx1);">${creatorName}</span>`
+                    }
+                </div>
               </div>
             `;
+            
             infoHTML += `
               <div class="exp-meta desk-only">
-                <div class="meta-pill">${ds}</div>
-                ${payMethod ? `<div class="meta-pill">Pay by <span style="color:var(--tx1);">${esc(shortPayment(payMethod))}</span></div>` : ''}
+                <div class="meta-pill">${e.deleted ? `Deleted Date -&nbsp;<span style="color:var(--tx1);">${delDateStr}</span>` : ds}</div>
+                ${e.deleted 
+                    ? `<div class="meta-pill">Reason -&nbsp;<span style="color:var(--tx1);">${esc(reasonText)}</span></div>`
+                    : (payMethod ? `<div class="meta-pill">Pay by <span style="color:var(--tx1);">${esc(shortPayment(payMethod))}</span></div>` : '')
+                }
               </div>
             `;
 
+            // Mobile Accordion View
             const accordionHTML = `
               <div class="mob-details-grid">
                 <div class="mob-detail-item">
-                  <span class="mob-detail-lbl">Date</span>
-                  <span class="mob-detail-val">${ds}</span>
+                  <span class="mob-detail-lbl">${e.deleted ? 'Deleted Date' : 'Date'}</span>
+                  <span class="mob-detail-val">${e.deleted ? delDateStr : ds}</span>
                 </div>
-                ${payMethod ? `
-                <div class="mob-detail-divider"></div>
+                
+                ${(e.deleted || payMethod) ? `<div class="mob-detail-divider"></div>` : ''}
+                
+                ${e.deleted ? `
+                <div class="mob-detail-item">
+                  <span class="mob-detail-lbl">Reason</span>
+                  <span class="mob-detail-val${isLongReason ? ' mob-reason-long' : ''}">${esc(reasonText)}</span>
+                </div>` : (payMethod ? `
                 <div class="mob-detail-item">
                   <span class="mob-detail-lbl">Pay by</span>
                   <span class="mob-detail-val">${esc(shortPayment(payMethod))}</span>
-                </div>` : ''}
+                </div>` : '')}
               </div>
             `;
 
+            // Apply the 'is-deleted' class which handles the grey colors and dashed borders from your existing CSS
+            const rowClass = e.deleted ? 'exp-row is-deleted' : 'exp-row';
+
             html += `
-            <div class="exp-row" data-id="${e.id}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event, '${e.id}')">
+            <div class="${rowClass}" data-id="${e.id}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event, '${e.id}')">
               <div class="exp-row-main">
                 <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
                 <div class="exp-info">${infoHTML}</div>
