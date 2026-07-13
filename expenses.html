@@ -1794,7 +1794,7 @@ function getTime(e){if(e.date)return new Date(e.date).getTime();if(e.createdAt){
 function getDate(e){if(e.date)return new Date(e.date);if(e.createdAt){if(typeof e.createdAt.toDate==='function')return e.createdAt.toDate();return new Date(e.createdAt);}return new Date();}
 function filtered(){return allData.filter(e=>{if(catFilter&&e.category!==catFilter)return false;if(monthFilter){const d=getDate(e);const k=String(d.getFullYear());if(k!==monthFilter)return false;}if(searchVal&&!((e.description||'')+' '+(e.category||'')).toLowerCase().includes(searchVal))return false;return true;});}
 function renderAll(){updateSummary();renderList();}
-function updateSummary(){
+function updateSummary() {
   const db2 = document.getElementById('d-balance');
   const dInc = document.getElementById('d-income');
   const dExp = document.getElementById('d-expense');
@@ -1802,7 +1802,7 @@ function updateSummary(){
   const mi = document.getElementById('m-income');
   const me = document.getElementById('m-expense');
 
-  // Helper to dynamically switch card titles
+  // Helper to dynamically switch card titles based on context
   const setLabels = (l1, l2, l3) => {
     document.querySelectorAll('.dsum-card[data-theme="bal"] .dsum-lbl, .mobile-card[data-theme="bal"] .mc-lbl').forEach(el => el.textContent = l1);
     document.querySelectorAll('.dsum-card[data-theme="inc"] .dsum-lbl, .mobile-card[data-theme="inc"] .mc-lbl').forEach(el => el.textContent = l2);
@@ -1814,16 +1814,16 @@ function updateSummary(){
     const list = filtered().filter(e => !e.isDeleted && e.category !== 'Inventory Stock');
     let inc = 0, exp = 0;
     list.forEach(e => {
-      if(e.parsedType === 'income') inc += Number(e.amount)||0;
-      else exp += Number(e.amount)||0;
+      if (e.parsedType === 'income') inc += Number(e.amount) || 0;
+      else exp += Number(e.amount) || 0;
     });
     const bal = inc - exp;
-    
+
     renderAmount(db2, Math.abs(bal), bal < 0, true);
-    if(db2) db2.style.setProperty('color', '#ffffff', 'important');
+    if (db2) db2.style.setProperty('color', '#ffffff', 'important');
     renderAmount(dInc, inc, false, true);
     renderAmount(dExp, exp, false, true);
-    
+
     renderAmount(mb, Math.abs(bal), bal < 0, true);
     renderAmount(mi, inc, false, true);
     renderAmount(me, exp, false, true);
@@ -1835,58 +1835,86 @@ function updateSummary(){
       tIn += Number(p.totalIn) || 0;
       tOut += Number(p.totalOut) || 0;
     });
-    
-    // Smart Fallback: Calculate total money from expenses related strictly to this warehouse
+
+    // Calculate total money from expenses related strictly to this warehouse
     let mIn = 0, mOut = 0;
     allData.forEach(e => {
-        if (!e.isDeleted && whAllProducts.some(p => p.id === e.productId)) {
-            if (e.parsedType === 'income') mIn += Number(e.amount) || 0;
-            else mOut += Number(e.amount) || 0;
-        }
+      if (!e.isDeleted && whAllProducts.some(p => p.id === e.productId)) {
+        if (e.parsedType === 'income') mIn += Number(e.amount) || 0;
+        else mOut += Number(e.amount) || 0;
+      }
     });
 
-    // Display Sales value if stock history isn't saved, otherwise display Stock qtys
-    if (tIn === 0 && tOut === 0 && (mIn > 0 || mOut > 0)) {
-        setLabels('Net Value', 'Total Sales', 'Total Spent');
-        const mBal = mIn - mOut;
-        renderAmount(db2, Math.abs(mBal), mBal < 0, true);
-        renderAmount(dInc, mIn, false, true);
-        renderAmount(dExp, mOut, false, true);
-        renderAmount(mb, Math.abs(mBal), mBal < 0, true);
-        renderAmount(mi, mIn, false, true);
-        renderAmount(me, mOut, false, true);
+    // Always prioritize showing the monetary value in the Finance App
+    if (mIn > 0 || mOut > 0) {
+      setLabels('Net Value', 'Total Sales', 'Total Spent');
+      const mBal = mIn - mOut;
+      renderAmount(db2, Math.abs(mBal), mBal < 0, true);
+      renderAmount(dInc, mIn, false, true);
+      renderAmount(dExp, mOut, false, true);
+      renderAmount(mb, Math.abs(mBal), mBal < 0, true);
+      renderAmount(mi, mIn, false, true);
+      renderAmount(me, mOut, false, true);
     } else {
-        setLabels('Total Stock', 'Stock In', 'Stock Out');
-        renderAmount(db2, Math.abs(tStock), tStock < 0, false);
-        renderAmount(dInc, tIn, false, false);
-        renderAmount(dExp, tOut, false, false);
-        renderAmount(mb, Math.abs(tStock), tStock < 0, false);
-        renderAmount(mi, tIn, false, false);
-        renderAmount(me, tOut, false, false);
+      setLabels('Total Stock', 'Stock In', 'Stock Out');
+      renderAmount(db2, Math.abs(tStock), tStock < 0, false);
+      renderAmount(dInc, tIn, false, false);
+      renderAmount(dExp, tOut, false, false);
+      renderAmount(mb, Math.abs(tStock), tStock < 0, false);
+      renderAmount(mi, tIn, false, false);
+      renderAmount(me, tOut, false, false);
     }
   }
   else if (listMode === 'entries') {
-    setLabels('Current Stock', 'Total In', 'Total Out');
-    let tIn = 0, tOut = 0;
+    let tInQty = 0, tOutQty = 0;
+    let tInMoney = 0, tOutMoney = 0;
+    let hasMoney = false;
+
     if (window.ledgerEntriesCache) {
-        window.ledgerEntriesCache.forEach(e => {
-            if (!e.deleted && !e.isActivity && e.type !== 'LOG') {
-                if (e.type === 'IN') tIn += Number(e.qty) || 0;
-                else tOut += Number(e.qty) || 0;
+      window.ledgerEntriesCache.forEach(e => {
+        if (!e.deleted && !e.isActivity && e.type !== 'LOG') {
+          let qty = Number(e.qty) || 0;
+          let costPer = window.ledgerCostCache[e.id];
+
+          if (e.type === 'IN') {
+            tInQty += qty;
+            if (costPer != null) {
+              tInMoney += (costPer * qty); // Summing up the actual ₹ amount
+              hasMoney = true;
             }
-        });
+          } else {
+            tOutQty += qty;
+            if (costPer != null) {
+              tOutMoney += (costPer * qty); // Summing up the actual ₹ amount
+              hasMoney = true;
+            }
+          }
+        }
+      });
     }
-    let tStock = tIn - tOut;
-    
-    renderAmount(db2, Math.abs(tStock), tStock < 0, false);
-    renderAmount(dInc, tIn, false, false);
-    renderAmount(dExp, tOut, false, false);
-    renderAmount(mb, Math.abs(tStock), tStock < 0, false);
-    renderAmount(mi, tIn, false, false);
-    renderAmount(me, tOut, false, false);
+
+    // If financial values exist, show the total ₹ value. Otherwise, fallback to showing stock quantity.
+    if (hasMoney) {
+      setLabels('Net Value', 'Total In Value', 'Total Out Value');
+      let mBal = tInMoney - tOutMoney;
+      renderAmount(db2, Math.abs(mBal), mBal < 0, true);
+      renderAmount(dInc, tInMoney, false, true);
+      renderAmount(dExp, tOutMoney, false, true);
+      renderAmount(mb, Math.abs(mBal), mBal < 0, true);
+      renderAmount(mi, tInMoney, false, true);
+      renderAmount(me, tOutMoney, false, true);
+    } else {
+      setLabels('Current Stock', 'Total In', 'Total Out');
+      let tStock = tInQty - tOutQty;
+      renderAmount(db2, Math.abs(tStock), tStock < 0, false);
+      renderAmount(dInc, tInQty, false, false);
+      renderAmount(dExp, tOutQty, false, false);
+      renderAmount(mb, Math.abs(tStock), tStock < 0, false);
+      renderAmount(mi, tInQty, false, false);
+      renderAmount(me, tOutQty, false, false);
+    }
   }
 }
-
 function renderList(){
   const list=filtered(),el=document.getElementById('exp-list'),pw=document.getElementById('pag-wrap');
   if(!el) return;
