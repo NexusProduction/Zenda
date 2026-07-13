@@ -2203,8 +2203,14 @@ window.fetchAndRenderProducts = async function(whId, whName) {
         }
     }
 };
+window.ledgerEntriesCache = [];
+window.ledgerCostCache = {};
+window.ledgerPaymentCache = {};
+window.ledgerCurrentPage = 1;
+
 window.fetchAndRenderEntries = async function(prodId, prodName) {
     listMode = 'entries';
+    window.ledgerCurrentPage = 1;
     document.getElementById('pag-wrap').style.display = 'none';
     const el = document.getElementById('exp-list');
     
@@ -2223,7 +2229,6 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
         const q = query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
         const snap = await getDocs(q);
         
-        // FIX: Removed "!e.deleted" from the filter so deleted entries stay in the list
         let entries = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(e => e.type !== 'LOG' && !e.isActivity);
         
         entries.sort((a,b) => {
@@ -2231,124 +2236,147 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
             const tB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (new Date(b.createdAt || 0).getTime());
             return tB - tA;
         });
+        window.ledgerEntriesCache = entries;
 
         const expQ = query(collection(db, 'expenses'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
         const expSnap = await getDocs(expQ);
-        const costByEntryId = {};
-        const paymentByEntryId = {};
+        window.ledgerCostCache = {};
+        window.ledgerPaymentCache = {};
         expSnap.docs.forEach(d => {
             const ex = d.data();
             if (ex.relatedEntryId) {
-              if (ex.costPerUnit != null) costByEntryId[ex.relatedEntryId] = ex.costPerUnit;
-              if (ex.paymentMethod) paymentByEntryId[ex.relatedEntryId] = ex.paymentMethod;
+              if (ex.costPerUnit != null) window.ledgerCostCache[ex.relatedEntryId] = ex.costPerUnit;
+              if (ex.paymentMethod) window.ledgerPaymentCache[ex.relatedEntryId] = ex.paymentMethod;
             }
         });
         
-        if (!entries.length) {
-            el.innerHTML = `<div class="empty-exp"><div class="empty-exp-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="empty-exp-ttl">No entry</div></div>`;
-            return;
-        }
-        
-        let html = '';
-        entries.forEach((e, i) => {
-            const isInc = e.type === 'IN';
-            
-            // FIX: Apply grey styling and the "-" icon if the entry is deleted
-            const color = e.deleted ? '#94A3B8' : (isInc ? '#16A34A' : '#DC2626');
-            const bg = e.deleted ? '#F1F5F9' : (isInc ? '#DCFCE7' : '#FEE2E2');
-            const svg = e.deleted 
-              ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>'
-              : (isInc
-                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
-                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>');
-
-            const dObj = e.createdAt ? (typeof e.createdAt.toDate === 'function' ? e.createdAt.toDate() : new Date(e.createdAt)) : new Date();
-            const ds = dObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-
-            // FIX: Format the deleted date correctly
-            let delDateStr = ds;
-            if (e.deletedAt) {
-                const delObj = typeof e.deletedAt === 'string' ? new Date(e.deletedAt) : (typeof e.deletedAt.toDate === 'function' ? e.deletedAt.toDate() : new Date());
-                delDateStr = delObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-            }
-
-            const costPer = costByEntryId[e.id];
-            const hasCost = costPer != null;
-            const totalAmt = hasCost ? costPer * (Number(e.qty)||0) : 0;
-            const amtLabel = hasCost
-              ? `${isInc?'+':'-'}₹${fmt(totalAmt)}`
-              : `${isInc?'+':'-'}${e.qty} ${esc(e.entryUnit || e.unit || 'units')}`;
-
-            const creatorName = esc((e.who || e.createdByName || 'System').split(' ')[0]);
-            const deletedByName = esc((e.deletedByName || 'User').split(' ')[0]);
-            const payMethod = paymentByEntryId[e.id];
-            
-            const reasonText = e.deleteReason || 'No reason provided';
-            const isLongReason = e.deleted && reasonText.length > 20;
-
-            // FIX: Build the UI to display "Deleted by", the Reason pill, and Deleted Date pill
-            let infoHTML = `
-              <div class="exp-info-stack">
-                <div class="exp-desc">${esc(e.note || (isInc ? 'Stock In' : 'Stock Out'))}</div>
-                <div class="exp-creator">
-                    ${e.deleted 
-                        ? `Deleted by <span style="font-weight:700; color:var(--tx1);">${deletedByName}</span>` 
-                        : `<span class="mob-only">Add</span><span class="desk-only">Added</span> by <span style="font-weight:700; color:var(--tx1);">${creatorName}</span>`
-                    }
-                </div>
-              </div>
-            `;
-            
-            infoHTML += `
-              <div class="exp-meta desk-only">
-                <div class="meta-pill">${e.deleted ? `Deleted Date -&nbsp;<span style="color:var(--tx1);">${delDateStr}</span>` : ds}</div>
-                ${e.deleted 
-                    ? `<div class="meta-pill">Reason -&nbsp;<span style="color:var(--tx1);">${esc(reasonText)}</span></div>`
-                    : (payMethod ? `<div class="meta-pill">Pay by <span style="color:var(--tx1);">${esc(shortPayment(payMethod))}</span></div>` : '')
-                }
-              </div>
-            `;
-
-            // Mobile Accordion View
-            const accordionHTML = `
-              <div class="mob-details-grid">
-                <div class="mob-detail-item">
-                  <span class="mob-detail-lbl">${e.deleted ? 'Deleted Date' : 'Date'}</span>
-                  <span class="mob-detail-val">${e.deleted ? delDateStr : ds}</span>
-                </div>
-                
-                ${(e.deleted || payMethod) ? `<div class="mob-detail-divider"></div>` : ''}
-                
-                ${e.deleted ? `
-                <div class="mob-detail-item">
-                  <span class="mob-detail-lbl">Reason</span>
-                  <span class="mob-detail-val${isLongReason ? ' mob-reason-long' : ''}">${esc(reasonText)}</span>
-                </div>` : (payMethod ? `
-                <div class="mob-detail-item">
-                  <span class="mob-detail-lbl">Pay by</span>
-                  <span class="mob-detail-val">${esc(shortPayment(payMethod))}</span>
-                </div>` : '')}
-              </div>
-            `;
-
-            // Apply the 'is-deleted' class which handles the grey colors and dashed borders from your existing CSS
-            const rowClass = e.deleted ? 'exp-row is-deleted' : 'exp-row';
-
-            html += `
-            <div class="${rowClass}" data-id="${e.id}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event, '${e.id}')">
-              <div class="exp-row-main">
-                <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
-                <div class="exp-info">${infoHTML}</div>
-                <div class="exp-amt-wrap">
-                  <div class="exp-amt ${isInc?'pos':'neg'}">${amtLabel}</div>
-                </div>
-              </div>
-              <div class="exp-details" onclick="event.stopPropagation();">${accordionHTML}</div>
-            </div>`;
-        });
-        el.innerHTML = html;
+        window.renderLedgerPage();
     } catch(err) {
         el.innerHTML = `<div class="empty-exp"><div class="empty-exp-ttl" style="color:red;">Error</div><div class="empty-exp-sub">${err.message}</div></div>`;
+    }
+};
+
+window.renderLedgerPage = function() {
+    const el = document.getElementById('exp-list');
+    const pw = document.getElementById('pag-wrap');
+    const entries = window.ledgerEntriesCache;
+
+    if (!entries || !entries.length) {
+        el.innerHTML = `<div class="empty-exp"><div class="empty-exp-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="empty-exp-ttl">No entry</div></div>`;
+        if(pw) pw.style.display = 'none';
+        return;
+    }
+
+    const PER_PAGE = 10;
+    const total = Math.ceil(entries.length / PER_PAGE);
+    if (window.ledgerCurrentPage > total) window.ledgerCurrentPage = total;
+    if (window.ledgerCurrentPage < 1) window.ledgerCurrentPage = 1;
+
+    const slice = entries.slice((window.ledgerCurrentPage - 1) * PER_PAGE, window.ledgerCurrentPage * PER_PAGE);
+
+    let html = '';
+    slice.forEach((e, i) => {
+        const isInc = e.type === 'IN';
+        
+        const color = e.deleted ? '#94A3B8' : (isInc ? '#16A34A' : '#DC2626');
+        const bg = e.deleted ? '#F1F5F9' : (isInc ? '#DCFCE7' : '#FEE2E2');
+        const svg = e.deleted 
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+          : (isInc
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>');
+
+        const dObj = e.createdAt ? (typeof e.createdAt.toDate === 'function' ? e.createdAt.toDate() : new Date(e.createdAt)) : new Date();
+        const ds = dObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+
+        let delDateStr = ds;
+        if (e.deletedAt) {
+            const delObj = typeof e.deletedAt === 'string' ? new Date(e.deletedAt) : (typeof e.deletedAt.toDate === 'function' ? e.deletedAt.toDate() : new Date());
+            delDateStr = delObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+        }
+
+        const costPer = window.ledgerCostCache[e.id];
+        const hasCost = costPer != null;
+        const totalAmt = hasCost ? costPer * (Number(e.qty)||0) : 0;
+        const amtLabel = hasCost
+          ? `${isInc?'+':'-'}₹${fmt(totalAmt)}`
+          : `${isInc?'+':'-'}${e.qty} ${esc(e.entryUnit || e.unit || 'units')}`;
+
+        const creatorName = esc((e.who || e.createdByName || 'System').split(' ')[0]);
+        const deletedByName = esc((e.deletedByName || 'User').split(' ')[0]);
+        const payMethod = window.ledgerPaymentCache[e.id];
+        
+        const reasonText = e.deleteReason || 'No reason provided';
+        const isLongReason = e.deleted && reasonText.length > 20;
+
+        let infoHTML = `
+          <div class="exp-info-stack">
+            <div class="exp-desc">${esc(e.note || (isInc ? 'Stock In' : 'Stock Out'))}</div>
+            <div class="exp-creator">
+                ${e.deleted 
+                    ? `Deleted by <span style="font-weight:700; color:var(--tx1);">${deletedByName}</span>` 
+                    : `<span class="mob-only">Add</span><span class="desk-only">Added</span> by <span style="font-weight:700; color:var(--tx1);">${creatorName}</span>`
+                }
+            </div>
+          </div>
+        `;
+        
+        infoHTML += `
+          <div class="exp-meta desk-only">
+            <div class="meta-pill">${e.deleted ? `Deleted Date -&nbsp;<span style="color:var(--tx1);">${delDateStr}</span>` : ds}</div>
+            ${e.deleted 
+                ? `<div class="meta-pill">Reason -&nbsp;<span style="color:var(--tx1);">${esc(reasonText)}</span></div>`
+                : (payMethod ? `<div class="meta-pill">Pay by <span style="color:var(--tx1);">${esc(shortPayment(payMethod))}</span></div>` : '')
+            }
+          </div>
+        `;
+
+        const accordionHTML = `
+          <div class="mob-details-grid">
+            <div class="mob-detail-item">
+              <span class="mob-detail-lbl">${e.deleted ? 'Deleted Date' : 'Date'}</span>
+              <span class="mob-detail-val">${e.deleted ? delDateStr : ds}</span>
+            </div>
+            
+            ${(e.deleted || payMethod) ? `<div class="mob-detail-divider"></div>` : ''}
+            
+            ${e.deleted ? `
+            <div class="mob-detail-item">
+              <span class="mob-detail-lbl">Reason</span>
+              <span class="mob-detail-val${isLongReason ? ' mob-reason-long' : ''}">${esc(reasonText)}</span>
+            </div>` : (payMethod ? `
+            <div class="mob-detail-item">
+              <span class="mob-detail-lbl">Pay by</span>
+              <span class="mob-detail-val">${esc(shortPayment(payMethod))}</span>
+            </div>` : '')}
+          </div>
+        `;
+
+        const rowClass = e.deleted ? 'exp-row is-deleted' : 'exp-row';
+
+        html += `
+        <div class="${rowClass}" data-id="${e.id}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event, '${e.id}')">
+          <div class="exp-row-main">
+            <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
+            <div class="exp-info">${infoHTML}</div>
+            <div class="exp-amt-wrap">
+              <div class="exp-amt ${isInc?'pos':'neg'}">${amtLabel}</div>
+            </div>
+          </div>
+          <div class="exp-details" onclick="event.stopPropagation();">${accordionHTML}</div>
+        </div>`;
+    });
+    
+    el.innerHTML = html;
+
+    // Render Pagination
+    if(total > 1){
+        if(pw) pw.style.display = 'flex';
+        document.getElementById('pag-prev').disabled = window.ledgerCurrentPage === 1;
+        document.getElementById('pag-next').disabled = window.ledgerCurrentPage === total;
+        document.getElementById('pag-info').innerHTML = `<span class="pag-info-current">${window.ledgerCurrentPage}</span><span class="pag-info-sep">/</span><span class="pag-info-total">${total}</span>`;
+    } else {
+        if(pw) pw.style.display = 'none';
     }
 };
 function loadWarehousesForFinance() {
@@ -2397,6 +2425,10 @@ document.getElementById('pag-prev').addEventListener('click', () => {
     if (whCurrentPage > 1) { whCurrentPage--; renderProductsPage(); }
     return;
   }
+  if (listMode === 'entries') {
+    if (window.ledgerCurrentPage > 1) { window.ledgerCurrentPage--; window.renderLedgerPage(); }
+    return;
+  }
   if (currentPage > 1) {
     currentPage--;
     renderList(); // Re-render the list for the previous page
@@ -2407,6 +2439,11 @@ document.getElementById('pag-next').addEventListener('click', () => {
   if (listMode === 'products') {
     const totalPages = Math.ceil(whAllProducts.length / PER_PAGE);
     if (whCurrentPage < totalPages) { whCurrentPage++; renderProductsPage(); }
+    return;
+  }
+  if (listMode === 'entries') {
+    const totalPages = Math.ceil(window.ledgerEntriesCache.length / 10);
+    if (window.ledgerCurrentPage < totalPages) { window.ledgerCurrentPage++; window.renderLedgerPage(); }
     return;
   }
   const totalListLength = filtered().length;
