@@ -1795,19 +1795,97 @@ function getDate(e){if(e.date)return new Date(e.date);if(e.createdAt){if(typeof 
 function filtered(){return allData.filter(e=>{if(catFilter&&e.category!==catFilter)return false;if(monthFilter){const d=getDate(e);const k=String(d.getFullYear());if(k!==monthFilter)return false;}if(searchVal&&!((e.description||'')+' '+(e.category||'')).toLowerCase().includes(searchVal))return false;return true;});}
 function renderAll(){updateSummary();renderList();}
 function updateSummary(){
-  const list=filtered().filter(e => !e.isDeleted && e.category !== 'Inventory Stock');let inc=0,exp=0;
-  list.forEach(e=>{if(e.parsedType==='income')inc+=Number(e.amount)||0;else exp+=Number(e.amount)||0;});
-  const bal=inc-exp;
-  const db2=document.getElementById('d-balance');
-  renderAmount(db2, Math.abs(bal), bal<0);
-  if(db2) db2.style.setProperty('color', '#ffffff', 'important');
-  renderAmount(document.getElementById('d-income'), inc, false);
-  renderAmount(document.getElementById('d-expense'), exp, false);
-  renderAmount(document.getElementById('m-balance'), Math.abs(bal), bal<0);
-  renderAmount(document.getElementById('m-income'), inc, false);
-  renderAmount(document.getElementById('m-expense'), exp, false);
+  const db2 = document.getElementById('d-balance');
+  const dInc = document.getElementById('d-income');
+  const dExp = document.getElementById('d-expense');
+  const mb = document.getElementById('m-balance');
+  const mi = document.getElementById('m-income');
+  const me = document.getElementById('m-expense');
 
+  // Helper to dynamically switch card titles
+  const setLabels = (l1, l2, l3) => {
+    document.querySelectorAll('.dsum-card[data-theme="bal"] .dsum-lbl, .mobile-card[data-theme="bal"] .mc-lbl').forEach(el => el.textContent = l1);
+    document.querySelectorAll('.dsum-card[data-theme="inc"] .dsum-lbl, .mobile-card[data-theme="inc"] .mc-lbl').forEach(el => el.textContent = l2);
+    document.querySelectorAll('.dsum-card[data-theme="exp"] .dsum-lbl, .mobile-card[data-theme="exp"] .mc-lbl').forEach(el => el.textContent = l3);
+  };
+
+  if (listMode === 'expenses') {
+    setLabels('Net Balance', 'Total Income', 'Total Expenses');
+    const list = filtered().filter(e => !e.isDeleted && e.category !== 'Inventory Stock');
+    let inc = 0, exp = 0;
+    list.forEach(e => {
+      if(e.parsedType === 'income') inc += Number(e.amount)||0;
+      else exp += Number(e.amount)||0;
+    });
+    const bal = inc - exp;
+    
+    renderAmount(db2, Math.abs(bal), bal < 0, true);
+    if(db2) db2.style.setProperty('color', '#ffffff', 'important');
+    renderAmount(dInc, inc, false, true);
+    renderAmount(dExp, exp, false, true);
+    
+    renderAmount(mb, Math.abs(bal), bal < 0, true);
+    renderAmount(mi, inc, false, true);
+    renderAmount(me, exp, false, true);
   }
+  else if (listMode === 'products') {
+    let tStock = 0, tIn = 0, tOut = 0;
+    whAllProducts.forEach(p => {
+      tStock += Number(p.stock) || 0;
+      tIn += Number(p.totalIn) || 0;
+      tOut += Number(p.totalOut) || 0;
+    });
+    
+    // Smart Fallback: Calculate total money from expenses related strictly to this warehouse
+    let mIn = 0, mOut = 0;
+    allData.forEach(e => {
+        if (!e.isDeleted && whAllProducts.some(p => p.id === e.productId)) {
+            if (e.parsedType === 'income') mIn += Number(e.amount) || 0;
+            else mOut += Number(e.amount) || 0;
+        }
+    });
+
+    // Display Sales value if stock history isn't saved, otherwise display Stock qtys
+    if (tIn === 0 && tOut === 0 && (mIn > 0 || mOut > 0)) {
+        setLabels('Net Value', 'Total Sales', 'Total Spent');
+        const mBal = mIn - mOut;
+        renderAmount(db2, Math.abs(mBal), mBal < 0, true);
+        renderAmount(dInc, mIn, false, true);
+        renderAmount(dExp, mOut, false, true);
+        renderAmount(mb, Math.abs(mBal), mBal < 0, true);
+        renderAmount(mi, mIn, false, true);
+        renderAmount(me, mOut, false, true);
+    } else {
+        setLabels('Total Stock', 'Stock In', 'Stock Out');
+        renderAmount(db2, Math.abs(tStock), tStock < 0, false);
+        renderAmount(dInc, tIn, false, false);
+        renderAmount(dExp, tOut, false, false);
+        renderAmount(mb, Math.abs(tStock), tStock < 0, false);
+        renderAmount(mi, tIn, false, false);
+        renderAmount(me, tOut, false, false);
+    }
+  }
+  else if (listMode === 'entries') {
+    setLabels('Current Stock', 'Total In', 'Total Out');
+    let tIn = 0, tOut = 0;
+    if (window.ledgerEntriesCache) {
+        window.ledgerEntriesCache.forEach(e => {
+            if (!e.deleted && !e.isActivity && e.type !== 'LOG') {
+                if (e.type === 'IN') tIn += Number(e.qty) || 0;
+                else tOut += Number(e.qty) || 0;
+            }
+        });
+    }
+    let tStock = tIn - tOut;
+    
+    renderAmount(db2, Math.abs(tStock), tStock < 0, false);
+    renderAmount(dInc, tIn, false, false);
+    renderAmount(dExp, tOut, false, false);
+    renderAmount(mb, Math.abs(tStock), tStock < 0, false);
+    renderAmount(mi, tIn, false, false);
+    renderAmount(me, tOut, false, false);
+  }
+}
 
 function renderList(){
   const list=filtered(),el=document.getElementById('exp-list'),pw=document.getElementById('pag-wrap');
@@ -1952,12 +2030,21 @@ infoHTML += `
     else{if(pw) pw.style.display='none';}
   }
 }
-function fmt(n){return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0});}
+function fmt(n, allowDecimals = false) {
+  return Number(n||0).toLocaleString('en-IN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: allowDecimals ? 2 : 0
+  });
+}
 
-function renderAmount(el, amount, isNegative){
+function renderAmount(el, amount, isNegative, isCurrency = true) {
   if(!el) return;
   const sign = isNegative ? '-' : '';
-  el.innerHTML = `<span class="dsum-currency">${sign}₹</span><span class="dsum-num">${fmt(amount)}<span class="dsum-decimals">.00</span></span>`;
+  if(isCurrency) {
+    el.innerHTML = `<span class="dsum-currency">${sign}₹</span><span class="dsum-num">${fmt(amount, false)}<span class="dsum-decimals">.00</span></span>`;
+  } else {
+    el.innerHTML = `<span class="dsum-num">${sign}${fmt(amount, true)}</span>`;
+  }
 }
 function fitDesktopAmounts(){
   if(window.innerWidth < 900) return; // mobile stack cards handle their own sizing
@@ -2172,13 +2259,14 @@ window.fetchAndRenderProducts = async function(whId, whName) {
     const cached = whProductsCache[whId];
 
     if (cached) {
-        // Instant render from cache, refresh silently in background
         whAllProducts = cached;
         renderProductsPage();
+        updateSummary(); // <--- INJECT THIS
     } else {
         whAllProducts = [];
         document.getElementById('pag-wrap').style.display = 'none';
         document.getElementById('exp-list').innerHTML = '<div class="empty-exp"><div class="empty-exp-ttl">Loading Products...</div></div>';
+        updateSummary(); // <--- INJECT THIS (Resets to 0 while loading)
     }
 
     try {
@@ -2186,16 +2274,14 @@ window.fetchAndRenderProducts = async function(whId, whName) {
         const snap = await getDocs(q);
         const prods = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name));
 
-        // Lightweight signature using only primitive fields (Firestore Timestamp objects
-        // don't stringify consistently, which was causing the false "data changed" re-render)
         const sig = arr => arr.map(p => `${p.id}|${p.name}|${p.stock}|${p.unit}|${p.desc}|${p.emoji}`).join(',');
         const dataChanged = !cached || sig(cached) !== sig(prods);
         whProductsCache[whId] = prods;
 
-        // Only repaint if we're still viewing this same warehouse
         if (currentWarehouseId === whId && dataChanged) {
             whAllProducts = prods;
             renderProductsPage();
+            updateSummary(); // <--- INJECT THIS
         }
     } catch(e) {
         if (!cached) {
@@ -2207,7 +2293,6 @@ window.ledgerEntriesCache = [];
 window.ledgerCostCache = {};
 window.ledgerPaymentCache = {};
 window.ledgerCurrentPage = 1;
-
 window.fetchAndRenderEntries = async function(prodId, prodName) {
     listMode = 'entries';
     window.ledgerCurrentPage = 1;
@@ -2224,6 +2309,9 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
     `;
     
     el.innerHTML = '<div class="empty-exp"><div class="empty-exp-ttl">Loading Ledger...</div></div>';
+    
+    window.ledgerEntriesCache = []; // <--- INJECT THIS
+    updateSummary(); // <--- INJECT THIS
     
     try {
         const q = query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
@@ -2251,11 +2339,11 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
         });
         
         window.renderLedgerPage();
+        updateSummary(); // <--- INJECT THIS
     } catch(err) {
         el.innerHTML = `<div class="empty-exp"><div class="empty-exp-ttl" style="color:red;">Error</div><div class="empty-exp-sub">${err.message}</div></div>`;
     }
 };
-
 window.renderLedgerPage = function() {
     const el = document.getElementById('exp-list');
     const pw = document.getElementById('pag-wrap');
