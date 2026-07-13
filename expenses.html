@@ -935,6 +935,34 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 .del-btn.disabled-btn { background: #F4F4F5; color: #A1A1AA; border-color: #A1A1AA; box-shadow: none; }
 .exp-row:hover .del-btn.disabled-btn:hover,
 .exp-row.expanded .del-btn.disabled-btn:hover { background: #E4E4E7; color: #71717A; transform: scale(1.06); cursor: pointer; }
+/* Add this anywhere inside your <style> tags */
+.ftab {
+    display: inline-flex;
+    align-items: center;
+}
+.ftab::before {
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 14px;
+    opacity: 0;
+    margin-right: 0;
+    background-color: currentColor;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='15 18 9 12 15 6'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='15 18 9 12 15 6'/%3E%3C/svg%3E");
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease, margin-right 0.3s ease;
+}
+.ftab.is-back-btn::before {
+    width: 14px;
+    opacity: 1;
+    margin-right: 6px;
+}
 </style>
 </head>
 <body data-state="loading">
@@ -2285,10 +2313,11 @@ window.fetchAndRenderProducts = async function(whId, whName) {
     document.getElementById('fab').style.display = 'none';
     animateHeader(false);
     
-    // Smoothly backspace just the " - Back" text when returning to the product list
+    // Smoothly slide the arrow away
     const activeTab = document.querySelector('#warehouse-tabs .ftab.on');
-    if (activeTab && activeTab.dataset.baseName) {
-        if (activeTab.textContent !== `${activeTab.dataset.baseName} Warehouse`) {
+    if (activeTab) {
+        activeTab.classList.remove('is-back-btn');
+        if (activeTab.dataset.baseName && activeTab.textContent !== `${activeTab.dataset.baseName} Warehouse`) {
             softSwapText(activeTab, `${activeTab.dataset.baseName} Warehouse`);
         }
     }
@@ -2335,10 +2364,13 @@ window.fetchAndRenderEntries = async function(prodId, prodName) {
     document.getElementById('pag-wrap').style.display = 'none';
     const el = document.getElementById('exp-list');
     
-    // Animate the active warehouse tab without deleting the text (Appends at the end)
+    // Slide the back arrow in using CSS, leaving the text untouched
     const activeTab = document.querySelector('#warehouse-tabs .ftab.on');
-    if (activeTab && activeTab.dataset.baseName) {
-        softSwapText(activeTab, `${activeTab.dataset.baseName} Warehouse - Back`);
+    if (activeTab) {
+        activeTab.classList.add('is-back-btn');
+        if (activeTab.dataset.baseName) {
+            softSwapText(activeTab, `${activeTab.dataset.baseName} Warehouse`);
+        }
     }
     
     document.querySelector('.panel-ttl').innerHTML = `
