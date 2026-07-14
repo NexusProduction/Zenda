@@ -1833,9 +1833,52 @@ function renderAll() {
     }
   } 
   else if (listMode === 'entries') {
-    // Detects background changes and silently refreshes the ledger page
-    if (window.currentProductId) {
-        window.fetchAndRenderEntries(window.currentProductId, window.currentProductName, true);
+    let tInQty = 0, tOutQty = 0;
+    let mEarned = 0, mSpent = 0; // New financial variables
+    let hasMoney = false;
+
+    if (window.ledgerEntriesCache) {
+      window.ledgerEntriesCache.forEach(e => {
+        if (!e.deleted && !e.isActivity && e.type !== 'LOG') {
+          let qty = Number(e.qty) || 0;
+          let costPer = window.ledgerCostCache[e.id];
+
+          if (e.type === 'IN') {
+            tInQty += qty; 
+            if (costPer != null) {
+              mSpent += (costPer * qty); // Buying stock = Money SPENT
+              hasMoney = true;
+            }
+          } else {
+            tOutQty += qty;
+            if (costPer != null) {
+              mEarned += (costPer * qty); // Selling stock = Money EARNED
+              hasMoney = true;
+            }
+          }
+        }
+      });
+    }
+
+    // If financial values exist, show the total ₹ value. Otherwise, fallback to showing stock quantity.
+    if (hasMoney) {
+      setLabels('Net Value', 'Total Sales', 'Total Spent');
+      let mBal = mEarned - mSpent;
+      renderAmount(db2, Math.abs(mBal), mBal < 0, true);
+      renderAmount(dInc, mEarned, false, true); // Green Card = Earned (Sales)
+      renderAmount(dExp, mSpent, false, true);  // Red Card = Spent (Payments)
+      renderAmount(mb, Math.abs(mBal), mBal < 0, true);
+      renderAmount(mi, mEarned, false, true);
+      renderAmount(me, mSpent, false, true);
+    } else {
+      setLabels('Current Stock', 'Total In', 'Total Out');
+      let tStock = tInQty - tOutQty;
+      renderAmount(db2, Math.abs(tStock), tStock < 0, false);
+      renderAmount(dInc, tInQty, false, false);
+      renderAmount(dExp, tOutQty, false, false);
+      renderAmount(mb, Math.abs(tStock), tStock < 0, false);
+      renderAmount(mi, tInQty, false, false);
+      renderAmount(me, tOutQty, false, false);
     }
   }
 }
@@ -2463,15 +2506,21 @@ window.renderLedgerPage = function() {
 
     let html = '';
     slice.forEach((e, i) => {
-        const isInc = e.type === 'IN';
+        const costPer = window.ledgerCostCache[e.id];
+        const hasCost = costPer != null;
+        const totalAmt = hasCost ? costPer * (Number(e.qty)||0) : 0;
         
-        const color = e.deleted ? '#94A3B8' : (isInc ? '#16A34A' : '#DC2626');
-        const bg = e.deleted ? '#F1F5F9' : (isInc ? '#DCFCE7' : '#FEE2E2');
-        
-        // Corrected Arrows: Down for Inward (Green), Up for Outgoing (Red)
+        // SMART LOGIC: If money is involved, Stock IN = Expense (-), Stock OUT = Income (+).
+        // If only tracking stock qty, Stock IN = Added (+), Stock OUT = Removed (-).
+        const isPositive = hasCost ? (e.type === 'OUT') : (e.type === 'IN');
+
+        const color = e.deleted ? '#94A3B8' : (isPositive ? '#16A34A' : '#DC2626');
+        const bg = e.deleted ? '#F1F5F9' : (isPositive ? '#DCFCE7' : '#FEE2E2');
+
+        // Down Arrow for Positive (Money In / Stock In), Up Arrow for Negative (Money Out / Stock Out)
         const svg = e.deleted 
           ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>'
-          : (isInc
+          : (isPositive
             ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'
             : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>');
 
@@ -2484,12 +2533,9 @@ window.renderLedgerPage = function() {
             delDateStr = delObj.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
         }
 
-        const costPer = window.ledgerCostCache[e.id];
-        const hasCost = costPer != null;
-        const totalAmt = hasCost ? costPer * (Number(e.qty)||0) : 0;
         const amtLabel = hasCost
-          ? `${isInc?'+':'-'}₹${fmt(totalAmt)}`
-          : `${isInc?'+':'-'}${e.qty} ${esc(e.entryUnit || e.unit || 'units')}`;
+          ? `${isPositive ? '+' : '-'}₹${fmt(totalAmt)}`
+          : `${isPositive ? '+' : '-'}${e.qty} ${esc(e.entryUnit || e.unit || 'units')}`;
 
         const creatorName = esc((e.who || e.createdByName || 'System').split(' ')[0]);
         const deletedByName = esc((e.deletedByName || 'User').split(' ')[0]);
@@ -2500,7 +2546,7 @@ window.renderLedgerPage = function() {
 
         let infoHTML = `
           <div class="exp-info-stack">
-            <div class="exp-desc">${esc(e.note || (isInc ? 'Stock In' : 'Stock Out'))}</div>
+            <div class="exp-desc">${esc(e.note || (e.type === 'IN' ? 'Stock In' : 'Stock Out'))}</div>
             <div class="exp-creator">
                 ${e.deleted 
                     ? `Deleted by <span style="font-weight:700; color:var(--tx1);">${deletedByName}</span>` 
@@ -2549,7 +2595,7 @@ window.renderLedgerPage = function() {
             <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
             <div class="exp-info">${infoHTML}</div>
             <div class="exp-amt-wrap">
-              <div class="exp-amt ${isInc?'pos':'neg'}">${amtLabel}</div>
+              <div class="exp-amt ${isPositive ? 'pos' : 'neg'}">${amtLabel}</div>
             </div>
           </div>
           <div class="exp-details" onclick="event.stopPropagation();">${accordionHTML}</div>
