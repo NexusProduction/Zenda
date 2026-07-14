@@ -1868,13 +1868,6 @@ function updateSummary() {
     renderAmount(me, exp, false, true);
   }
   else if (listMode === 'products') {
-    let tStock = 0, tIn = 0, tOut = 0;
-    whAllProducts.forEach(p => {
-      tStock += Number(p.stock) || 0;
-      tIn += Number(p.totalIn) || 0;
-      tOut += Number(p.totalOut) || 0;
-    });
-
     // Calculate total money from expenses related strictly to this warehouse
     let mIn = 0, mOut = 0;
     allData.forEach(e => {
@@ -1884,30 +1877,18 @@ function updateSummary() {
       }
     });
 
-    // Always prioritize showing the monetary value in the Finance App
-    if (mIn > 0 || mOut > 0) {
-      setLabels('Net Value', 'Total Sales', 'Total Spent');
-      const mBal = mIn - mOut;
-      renderAmount(db2, Math.abs(mBal), mBal < 0, true);
-      renderAmount(dInc, mIn, false, true);
-      renderAmount(dExp, mOut, false, true);
-      renderAmount(mb, Math.abs(mBal), mBal < 0, true);
-      renderAmount(mi, mIn, false, true);
-      renderAmount(me, mOut, false, true);
-    } else {
-      setLabels('Total Stock', 'Stock In', 'Stock Out');
-      renderAmount(db2, Math.abs(tStock), tStock < 0, false);
-      renderAmount(dInc, tIn, false, false);
-      renderAmount(dExp, tOut, false, false);
-      renderAmount(mb, Math.abs(tStock), tStock < 0, false);
-      renderAmount(mi, tIn, false, false);
-      renderAmount(me, tOut, false, false);
-    }
+    // STRICT FINANCE MODE: Always show monetary value (even if it's 0)
+    setLabels('Net Value', 'Total Sales', 'Total Spent');
+    const mBal = mIn - mOut;
+    renderAmount(db2, Math.abs(mBal), mBal < 0, true);
+    renderAmount(dInc, mIn, false, true);
+    renderAmount(dExp, mOut, false, true);
+    renderAmount(mb, Math.abs(mBal), mBal < 0, true);
+    renderAmount(mi, mIn, false, true);
+    renderAmount(me, mOut, false, true);
   }
   else if (listMode === 'entries') {
-    let tInQty = 0, tOutQty = 0;
     let mEarned = 0, mSpent = 0; 
-    let hasMoney = false;
 
     if (window.ledgerEntriesCache) {
       window.ledgerEntriesCache.forEach(e => {
@@ -1916,52 +1897,23 @@ function updateSummary() {
           let costPer = window.ledgerCostCache[e.id];
 
           if (e.type === 'IN') {
-            tInQty += qty; 
-            if (costPer != null) {
-              mSpent += (costPer * qty); // Stock IN = Money SPENT
-              hasMoney = true;
-            }
+            if (costPer != null) mSpent += (costPer * qty); 
           } else {
-            tOutQty += qty;
-            if (costPer != null) {
-              mEarned += (costPer * qty); // Stock OUT = Money EARNED (Income)
-              hasMoney = true;
-            }
+            if (costPer != null) mEarned += (costPer * qty); 
           }
         }
       });
     }
 
-    // Apply the exact routed calculations to the cards
-    if (hasMoney) {
-      // Changed labels to 'Sales' and 'Spent' to remove any "In/Out" ambiguity
-      setLabels('Net Value', 'Total Sales', 'Total Spent');
-      let mBal = mEarned - mSpent;
-      
-      renderAmount(db2, Math.abs(mBal), mBal < 0, true);
-      
-      // 🟢 GREEN CARD (dInc) = Earned / Income (Stock OUT)
-      renderAmount(dInc, mEarned, false, true); 
-      // 🔴 RED CARD (dExp) = Spent / Expense (Stock IN)
-      renderAmount(dExp, mSpent, false, true);  
-      
-      renderAmount(mb, Math.abs(mBal), mBal < 0, true);
-      renderAmount(mi, mEarned, false, true);
-      renderAmount(me, mSpent, false, true);
-    } else {
-      setLabels('Current Stock', 'Stock In', 'Stock Out');
-      let tStock = tInQty - tOutQty;
-      
-      renderAmount(db2, Math.abs(tStock), tStock < 0, false);
-      // 🟢 GREEN CARD = Stock IN Quantity
-      renderAmount(dInc, tInQty, false, false);
-      // 🔴 RED CARD = Stock OUT Quantity
-      renderAmount(dExp, tOutQty, false, false);
-      
-      renderAmount(mb, Math.abs(tStock), tStock < 0, false);
-      renderAmount(mi, tInQty, false, false);
-      renderAmount(me, tOutQty, false, false);
-    }
+    // STRICT FINANCE MODE: Always show monetary value (even if it's 0)
+    setLabels('Net Value', 'Total Sales', 'Total Spent');
+    let mBal = mEarned - mSpent;
+    renderAmount(db2, Math.abs(mBal), mBal < 0, true);
+    renderAmount(dInc, mEarned, false, true); 
+    renderAmount(dExp, mSpent, false, true);  
+    renderAmount(mb, Math.abs(mBal), mBal < 0, true);
+    renderAmount(mi, mEarned, false, true);
+    renderAmount(me, mSpent, false, true);
   }
 }
 function renderList(){
