@@ -2656,6 +2656,54 @@ init().then(() => {
     console.error("Startup Error:", err);
     window.showToast("Failed to load warehouses.", "error");
 });
+// --- PC Premium Slider Logic for Filter Tabs ---
+(function() {
+  const slider = document.querySelector('.filter-tabs');
+  if (!slider) return;
+
+  let isDown = false;
+  let startX;
+  let scrollLeft;
+
+  // 1. Mouse Wheel to Horizontal Scroll
+  slider.addEventListener('wheel', (e) => {
+    // Check if device is likely a PC (has hover capabilities)
+    if (window.matchMedia("(pointer: fine)").matches) {
+      if (e.deltaY !== 0) {
+        e.preventDefault(); // Stop page from scrolling down
+        slider.scrollLeft += e.deltaY; // Scroll the tabs horizontally instead
+      }
+    }
+  }, { passive: false }); // Passive false is required to use e.preventDefault()
+
+  // 2. Click and Drag to Slide (Optional, but highly recommended for PC)
+  slider.addEventListener('mousedown', (e) => {
+    if (window.matchMedia("(pointer: fine)").matches) {
+      isDown = true;
+      slider.style.cursor = 'grabbing';
+      startX = e.pageX - slider.offsetLeft;
+      scrollLeft = slider.scrollLeft;
+    }
+  });
+
+  slider.addEventListener('mouseleave', () => {
+    isDown = false;
+    slider.style.cursor = 'default';
+  });
+
+  slider.addEventListener('mouseup', () => {
+    isDown = false;
+    slider.style.cursor = 'default';
+  });
+
+  slider.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - slider.offsetLeft;
+    const walk = (x - startX) * 1.5; // Multiply by 1.5 to make the drag slightly faster
+    slider.scrollLeft = scrollLeft - walk;
+  });
+})();
 </script>
 </body>
 </html>
