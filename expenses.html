@@ -1827,64 +1827,10 @@ function getTime(e){if(e.date)return new Date(e.date).getTime();if(e.createdAt){
 function getDate(e){if(e.date)return new Date(e.date);if(e.createdAt){if(typeof e.createdAt.toDate==='function')return e.createdAt.toDate();return new Date(e.createdAt);}return new Date();}
 function filtered(){return allData.filter(e=>{if(catFilter&&e.category!==catFilter)return false;if(monthFilter){const d=getDate(e);const k=String(d.getFullYear());if(k!==monthFilter)return false;}if(searchVal&&!((e.description||'')+' '+(e.category||'')).toLowerCase().includes(searchVal))return false;return true;});}
 function renderAll() {
+  // Only render the global expense list if we are actually on the expenses tab
   if (listMode === 'expenses') {
     updateSummary();
     renderList();
-  } 
-  else if (listMode === 'products') {
-    // Detects background changes and silently refreshes the products page
-    if (currentWarehouseId) {
-        window.fetchAndRenderProducts(currentWarehouseId, currentWarehouseName, true);
-    }
-  } 
-  else if (listMode === 'entries') {
-    let tInQty = 0, tOutQty = 0;
-    let mEarned = 0, mSpent = 0; // New financial variables
-    let hasMoney = false;
-
-    if (window.ledgerEntriesCache) {
-      window.ledgerEntriesCache.forEach(e => {
-        if (!e.deleted && !e.isActivity && e.type !== 'LOG') {
-          let qty = Number(e.qty) || 0;
-          let costPer = window.ledgerCostCache[e.id];
-
-          if (e.type === 'IN') {
-            tInQty += qty; 
-            if (costPer != null) {
-              mSpent += (costPer * qty); // Buying stock = Money SPENT
-              hasMoney = true;
-            }
-          } else {
-            tOutQty += qty;
-            if (costPer != null) {
-              mEarned += (costPer * qty); // Selling stock = Money EARNED
-              hasMoney = true;
-            }
-          }
-        }
-      });
-    }
-
-    // If financial values exist, show the total ₹ value. Otherwise, fallback to showing stock quantity.
-    if (hasMoney) {
-      setLabels('Net Value', 'Total Sales', 'Total Spent');
-      let mBal = mEarned - mSpent;
-      renderAmount(db2, Math.abs(mBal), mBal < 0, true);
-      renderAmount(dInc, mEarned, false, true); // Green Card = Earned (Sales)
-      renderAmount(dExp, mSpent, false, true);  // Red Card = Spent (Payments)
-      renderAmount(mb, Math.abs(mBal), mBal < 0, true);
-      renderAmount(mi, mEarned, false, true);
-      renderAmount(me, mSpent, false, true);
-    } else {
-      setLabels('Current Stock', 'Total In', 'Total Out');
-      let tStock = tInQty - tOutQty;
-      renderAmount(db2, Math.abs(tStock), tStock < 0, false);
-      renderAmount(dInc, tInQty, false, false);
-      renderAmount(dExp, tOutQty, false, false);
-      renderAmount(mb, Math.abs(tStock), tStock < 0, false);
-      renderAmount(mi, tInQty, false, false);
-      renderAmount(me, tOutQty, false, false);
-    }
   }
 }
 function updateSummary() {
@@ -2368,108 +2314,98 @@ function renderProductsPage(){
         if(pw) pw.style.display = 'none';
     }
 }
-window.fetchAndRenderProducts = async function(whId, whName, isSilent = false) {
+window._whProductsUnsub = null; // Stores listener to prevent memory leaks
+
+window.fetchAndRenderProducts = function(whId, whName) {
     if (whName) currentWarehouseName = whName;
     currentWarehouseId = whId;
     listMode = 'products';
+    whCurrentPage = 1;
     
-    if (!isSilent) {
-        whCurrentPage = 1;
-        document.getElementById('fab').style.display = 'none';
-        animateHeader(false);
-        
-        // Smoothly slide the arrow away
-        const activeTab = document.querySelector('#warehouse-tabs .ftab.on');
-        if (activeTab) {
-            activeTab.classList.remove('is-back-btn');
-            if (activeTab.dataset.baseName && activeTab.textContent !== `${activeTab.dataset.baseName} Warehouse`) {
-                softSwapText(activeTab, `${activeTab.dataset.baseName} Warehouse`);
-            }
-        }
-
-        const cached = whProductsCache[whId];
-        if (cached) {
-            whAllProducts = cached;
-            renderProductsPage();
-            updateSummary();
-        } else {
-            whAllProducts = [];
-            document.getElementById('pag-wrap').style.display = 'none';
-            document.getElementById('exp-list').innerHTML = '<div class="empty-exp"><div class="empty-exp-ttl">Loading Products...</div></div>';
-            updateSummary();
+    document.getElementById('fab').style.display = 'none';
+    animateHeader(false);
+    
+    const activeTab = document.querySelector('#warehouse-tabs .ftab.on');
+    if (activeTab) {
+        activeTab.classList.remove('is-back-btn');
+        if (activeTab.dataset.baseName && activeTab.textContent !== `${activeTab.dataset.baseName} Warehouse`) {
+            softSwapText(activeTab, `${activeTab.dataset.baseName} Warehouse`);
         }
     }
 
-    try {
-        const q = query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', whId));
-        const snap = await getDocs(q);
+    const cached = whProductsCache[whId];
+    if (cached) {
+        whAllProducts = cached;
+        renderProductsPage();
+        updateSummary();
+    } else {
+        whAllProducts = [];
+        document.getElementById('pag-wrap').style.display = 'none';
+        document.getElementById('exp-list').innerHTML = '<div class="empty-exp"><div class="empty-exp-ttl">Loading Products...</div></div>';
+        updateSummary();
+    }
+
+    // KILL OLD LISTENER IF SWITCHING WAREHOUSES
+    if (window._whProductsUnsub) window._whProductsUnsub();
+
+    // NATIVE REAL-TIME FIREBASE LISTENER
+    const q = query(collection(db, 'products'), where('companyId', '==', CU.companyId), where('godownId', '==', whId));
+    window._whProductsUnsub = onSnapshot(q, (snap) => {
         const prods = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name));
-
         whProductsCache[whId] = prods;
-
+        
+        // Update UI instantly if we are still looking at this warehouse
         if (currentWarehouseId === whId) {
             whAllProducts = prods;
             renderProductsPage();
             updateSummary();
         }
-    } catch(e) {
-        if (!isSilent) {
-            document.getElementById('exp-list').innerHTML = `<div class="empty-exp"><div class="empty-exp-ttl" style="color:red;">Error loading products</div><div class="empty-exp-sub">${e.message}</div></div>`;
-        }
-    }
+    }, (e) => {
+        document.getElementById('exp-list').innerHTML = `<div class="empty-exp"><div class="empty-exp-ttl" style="color:red;">Error loading products</div><div class="empty-exp-sub">${e.message}</div></div>`;
+    });
 };
-window.ledgerEntriesCache = [];
-window.ledgerCostCache = {};
-window.ledgerPaymentCache = {};
-window.ledgerCurrentPage = 1;
-window.fetchAndRenderEntries = async function(prodId, prodName, isSilent = false) {
+window._ledgerEntriesUnsub = null;
+window._ledgerExpensesUnsub = null;
+
+window.fetchAndRenderEntries = function(prodId, prodName) {
     listMode = 'entries';
     window.currentProductId = prodId;
     window.currentProductName = prodName;
     
-    if (!isSilent) {
-        window.ledgerCurrentPage = 1;
-        document.getElementById('pag-wrap').style.display = 'none';
-        const el = document.getElementById('exp-list');
-        
-        // Slide the back arrow in using CSS, leaving the text untouched
-        const activeTab = document.querySelector('#warehouse-tabs .ftab.on');
-        if (activeTab) {
-            activeTab.classList.add('is-back-btn');
-            if (activeTab.dataset.baseName) {
-                softSwapText(activeTab, `${activeTab.dataset.baseName} Warehouse`);
-            }
+    window.ledgerCurrentPage = 1;
+    document.getElementById('pag-wrap').style.display = 'none';
+    const el = document.getElementById('exp-list');
+    
+    const activeTab = document.querySelector('#warehouse-tabs .ftab.on');
+    if (activeTab) {
+        activeTab.classList.add('is-back-btn');
+        if (activeTab.dataset.baseName) {
+            softSwapText(activeTab, `${activeTab.dataset.baseName} Warehouse`);
         }
-        
-        document.querySelector('.panel-ttl').innerHTML = `
-            <div style="display:flex; align-items:center; gap:12px;">
-                <button onclick="window.fetchAndRenderProducts('${currentWarehouseId}')" style="background:var(--bg); border:1.5px solid var(--border); border-radius:10px; cursor:pointer; color:var(--tx1); display:flex; align-items:center; justify-content:center; width:34px; height:34px; transition:all 0.2s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--bg)'">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-                </button>
-                <span style="font-size:1.1rem; font-weight:800;">${esc(prodName)} Ledger</span>
-            </div>
-        `;
-        
-        el.innerHTML = '<div class="empty-exp"><div class="empty-exp-ttl">Loading Ledger...</div></div>';
-        window.ledgerEntriesCache = []; 
-        updateSummary();
     }
     
-    try {
-        const q = query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
-        const snap = await getDocs(q);
-        
-        let entries = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(e => e.type !== 'LOG' && !e.isActivity);
-        
-        entries.sort((a,b) => {
-            const tA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (new Date(a.createdAt || 0).getTime());
-            const tB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (new Date(b.createdAt || 0).getTime());
-            return tB - tA;
-        });
-        window.ledgerEntriesCache = entries;
+    document.querySelector('.panel-ttl').innerHTML = `
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button onclick="window.fetchAndRenderProducts('${currentWarehouseId}')" style="background:var(--bg); border:1.5px solid var(--border); border-radius:10px; cursor:pointer; color:var(--tx1); display:flex; align-items:center; justify-content:center; width:34px; height:34px; transition:all 0.2s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--bg)'">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span style="font-size:1.1rem; font-weight:800;">${esc(prodName)} Ledger</span>
+        </div>
+    `;
+    
+    el.innerHTML = '<div class="empty-exp"><div class="empty-exp-ttl">Loading Ledger...</div></div>';
+    
+    // KILL OLD LISTENERS TO PREVENT MEMORY LEAKS
+    if (window._ledgerEntriesUnsub) window._ledgerEntriesUnsub();
+    if (window._ledgerExpensesUnsub) window._ledgerExpensesUnsub();
 
-        const expQ = query(collection(db, 'expenses'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
-        const expSnap = await getDocs(expQ);
+    window.ledgerEntriesCache = [];
+    window.ledgerCostCache = {};
+    window.ledgerPaymentCache = {};
+
+    // REAL-TIME LISTENER FOR EXPENSE COSTS & PAYMENTS
+    const expQ = query(collection(db, 'expenses'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
+    window._ledgerExpensesUnsub = onSnapshot(expQ, (expSnap) => {
         window.ledgerCostCache = {};
         window.ledgerPaymentCache = {};
         expSnap.docs.forEach(d => {
@@ -2480,16 +2416,33 @@ window.fetchAndRenderEntries = async function(prodId, prodName, isSilent = false
             }
         });
         
-        // Ensure we only render if the user hasn't clicked away during the fetch
+        // Update UI instantly if the user is looking at this ledger
+        if (window.currentProductId === prodId && window.ledgerEntriesCache.length > 0) {
+            window.renderLedgerPage();
+            updateSummary();
+        }
+    });
+
+    // REAL-TIME LISTENER FOR LEDGER ENTRIES
+    const entQ = query(collection(db, 'entries'), where('companyId', '==', CU.companyId), where('productId', '==', prodId));
+    window._ledgerEntriesUnsub = onSnapshot(entQ, (snap) => {
+        let entries = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(e => e.type !== 'LOG' && !e.isActivity);
+        
+        entries.sort((a,b) => {
+            const tA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (new Date(a.createdAt || 0).getTime());
+            const tB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (new Date(b.createdAt || 0).getTime());
+            return tB - tA;
+        });
+        window.ledgerEntriesCache = entries;
+        
+        // Update UI instantly if the user is looking at this ledger
         if (window.currentProductId === prodId) {
             window.renderLedgerPage();
-            updateSummary(); 
+            updateSummary();
         }
-    } catch(err) {
-        if (!isSilent) {
-            document.getElementById('exp-list').innerHTML = `<div class="empty-exp"><div class="empty-exp-ttl" style="color:red;">Error</div><div class="empty-exp-sub">${err.message}</div></div>`;
-        }
-    }
+    }, (err) => {
+        document.getElementById('exp-list').innerHTML = `<div class="empty-exp"><div class="empty-exp-ttl" style="color:red;">Error</div><div class="empty-exp-sub">${err.message}</div></div>`;
+    });
 };
 window.renderLedgerPage = function() {
     const el = document.getElementById('exp-list');
