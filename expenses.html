@@ -1906,7 +1906,7 @@ function updateSummary() {
   }
   else if (listMode === 'entries') {
     let tInQty = 0, tOutQty = 0;
-    let tInMoney = 0, tOutMoney = 0;
+    let mEarned = 0, mSpent = 0; 
     let hasMoney = false;
 
     if (window.ledgerEntriesCache) {
@@ -1916,15 +1916,15 @@ function updateSummary() {
           let costPer = window.ledgerCostCache[e.id];
 
           if (e.type === 'IN') {
-            tInQty += qty;
+            tInQty += qty; 
             if (costPer != null) {
-              tInMoney += (costPer * qty); // Summing up the actual ₹ amount
+              mSpent += (costPer * qty); // Stock IN = Money SPENT
               hasMoney = true;
             }
           } else {
             tOutQty += qty;
             if (costPer != null) {
-              tOutMoney += (costPer * qty); // Summing up the actual ₹ amount
+              mEarned += (costPer * qty); // Stock OUT = Money EARNED (Income)
               hasMoney = true;
             }
           }
@@ -1932,22 +1932,32 @@ function updateSummary() {
       });
     }
 
-    // If financial values exist, show the total ₹ value. Otherwise, fallback to showing stock quantity.
+    // Apply the exact routed calculations to the cards
     if (hasMoney) {
-      setLabels('Net Value', 'Total In Value', 'Total Out Value');
-      let mBal = tInMoney - tOutMoney;
+      // Changed labels to 'Sales' and 'Spent' to remove any "In/Out" ambiguity
+      setLabels('Net Value', 'Total Sales', 'Total Spent');
+      let mBal = mEarned - mSpent;
+      
       renderAmount(db2, Math.abs(mBal), mBal < 0, true);
-      renderAmount(dInc, tInMoney, false, true);
-      renderAmount(dExp, tOutMoney, false, true);
+      
+      // 🟢 GREEN CARD (dInc) = Earned / Income (Stock OUT)
+      renderAmount(dInc, mEarned, false, true); 
+      // 🔴 RED CARD (dExp) = Spent / Expense (Stock IN)
+      renderAmount(dExp, mSpent, false, true);  
+      
       renderAmount(mb, Math.abs(mBal), mBal < 0, true);
-      renderAmount(mi, tInMoney, false, true);
-      renderAmount(me, tOutMoney, false, true);
+      renderAmount(mi, mEarned, false, true);
+      renderAmount(me, mSpent, false, true);
     } else {
-      setLabels('Current Stock', 'Total In', 'Total Out');
+      setLabels('Current Stock', 'Stock In', 'Stock Out');
       let tStock = tInQty - tOutQty;
+      
       renderAmount(db2, Math.abs(tStock), tStock < 0, false);
+      // 🟢 GREEN CARD = Stock IN Quantity
       renderAmount(dInc, tInQty, false, false);
+      // 🔴 RED CARD = Stock OUT Quantity
       renderAmount(dExp, tOutQty, false, false);
+      
       renderAmount(mb, Math.abs(tStock), tStock < 0, false);
       renderAmount(mi, tInQty, false, false);
       renderAmount(me, tOutQty, false, false);
