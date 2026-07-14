@@ -754,6 +754,7 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 .cat-picker-trigger.open{border-color:var(--blue);background:var(--surface);box-shadow:0 0 0 3px var(--bluebg)}
 .cpt-left{display:flex;align-items:center;gap:9px}
 .cpt-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;transition:background .2s}
+.cpt-icon svg{width:13px;height:13px;display:block}
 .cpt-label{font-weight:500;font-size:.95rem}
 .cpt-arrow{color:var(--tx1);transition:transform .25s cubic-bezier(.34,1.56,.64,1);flex-shrink:0}
 .cat-picker-trigger.open .cpt-arrow{transform:rotate(180deg)}
@@ -786,6 +787,7 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 .cat-opt.is-locked:hover{background:rgba(217,119,6,.06)}
 .cat-opt.is-locked .copt-name{color:var(--tx3)}
 .copt-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+.copt-icon svg{width:15px;height:15px;display:block}
 .copt-name{font-size:.84rem;font-weight:600;flex:1;min-width:0}
 .copt-check{color:var(--blue);flex-shrink:0}
 .copt-check svg{display:block}
@@ -1058,7 +1060,12 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
 </div>
       </div>
       <div class="filter-tabs" id="cat-tabs" style="align-items: center;">
-  <button class="ftab on" data-cat="">Expenses</button>
+  <button class="ftab" data-cat="Godown Expense">Godown Expense</button>
+  <button class="ftab" data-cat="Installation">Installation</button>
+  <button class="ftab" data-cat="Logistics">Logistics</button>
+  <button class="ftab" data-cat="Raw Materials">Raw Materials</button>
+  <button class="ftab" data-cat="Office &amp; Admin">Office &amp; Admin</button>
+  <button class="ftab" data-cat="Miscellaneous">Other / Misc</button>
   
   <div style="width: 2px; height: 24px; background: var(--border); margin: 0 8px; border-radius: 2px; flex-shrink: 0;"></div>
   
@@ -1116,13 +1123,26 @@ body[data-state="connected"][data-premium="false"] #sync-status { display: none;
         <input type="text" id="exp-amount" class="fi amount-inp" placeholder="0" inputmode="numeric" oninput="window.checkAmountLimit(this)">
       </div>
     </div>
-    <div class="fg">
-      <label>Description</label>
-      <!-- ID is strictly "exp-desc", and it ONLY allows letters, numbers, and spaces -->
-      <input type="text" id="exp-desc" class="fi" placeholder="Enter details (5-20 chars)" minlength="5" maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')">
+    <div class="fg-row" style="margin-bottom:16px;">
+      <div class="fg" style="margin-bottom:0;">
+        <label>Description</label>
+        <input type="text" id="exp-desc" class="fi" placeholder="Enter details (5-20 chars)" minlength="5" maxlength="20" oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')">
+      </div>
+      <div class="fg" style="margin-bottom:0;">
+        <label>Category</label>
+        <div class="cat-picker-wrap" id="cat-picker-wrap">
+          <div class="cat-picker-trigger" id="cat-picker-trigger" onclick="window.catPickerToggle()">
+            <div class="cpt-left">
+              <div class="cpt-icon" id="cpt-icon" style="background:#F4F4F5;color:#71717A;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+              <span class="cpt-label" id="cpt-label">Other / Misc</span>
+            </div>
+            <svg class="cpt-arrow" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cat-picker-dropdown" id="cat-picker-dd" style="display:none;"></div>
+        </div>
+        <input type="hidden" id="exp-category" value="Miscellaneous">
+      </div>
     </div>
-
-    <input type="hidden" id="exp-category" value="Miscellaneous">
 
     <div class="fg-row mobile-split">
       <div class="fg" style="margin-bottom:0;">
@@ -1274,15 +1294,13 @@ import {
   collection, query, where, onSnapshot, getDocs,
   addDoc, deleteDoc, doc, getDoc, serverTimestamp, updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
 const CATS = [
-  { v:'Inventory Stock', label:'Inventory Stock', emoji:'📦', bg:'#EEF2FF', color:'#4F46E5', free:true  },
-  { v:'Godown Expense',  label:'Godown Expense',  emoji:'🏭', bg:'#FEF3C7', color:'#D97706', free:false },
-  { v:'Installation',    label:'Installation',    emoji:'🔧', bg:'#CFFAFE', color:'#0891B2', free:false },
-  { v:'Logistics',       label:'Logistics',       emoji:'🚚', bg:'#EDE9FE', color:'#8B5CF6', free:false },
-  { v:'Raw Materials',   label:'Raw Materials',   emoji:'⚙️', bg:'#DCFCE7', color:'#16A34A', free:false },
-  { v:'Office & Admin',  label:'Office & Admin',  emoji:'📄', bg:'#F4F4F5', color:'#374151', free:false },
-  { v:'Miscellaneous',   label:'Other / Misc',    emoji:'💡', bg:'#F4F4F5', color:'#71717A', free:false },
+  { v:'Godown Expense',  label:'Godown Expense',  bg:'#FEF3C7', color:'#D97706' },
+  { v:'Installation',    label:'Installation',    bg:'#CFFAFE', color:'#0891B2' },
+  { v:'Logistics',       label:'Logistics',       bg:'#EDE9FE', color:'#8B5CF6' },
+  { v:'Raw Materials',   label:'Raw Materials',   bg:'#DCFCE7', color:'#16A34A' },
+  { v:'Office & Admin',  label:'Office & Admin',  bg:'#F4F4F5', color:'#374151' },
+  { v:'Miscellaneous',   label:'Other / Misc',    bg:'#F4F4F5', color:'#71717A' },
 ];
 const CAT_MAP   = Object.fromEntries(CATS.map(c=>[c.v,c]));
 const CAT_COLOR = Object.fromEntries(CATS.map(c=>[c.v,c.color]));
@@ -1310,31 +1328,18 @@ function buildDropdown() {
   const cur = document.getElementById('exp-category').value;
 
   dd.innerHTML = CATS.map(cat => {
-    const locked   = !CU.isPremium && !cat.free;
     const selected = cat.v === cur;
-
-    const lockBadge = locked
-      ? `<span class="copt-lock" title="Premium Locked" style="padding: 4px;">
-           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-         </span>`
-      : '';
-
-    const checkmark = (!locked && selected)
+    const checkmark = selected
       ? `<span class="copt-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></span>`
       : '';
 
-    return `<div
-        class="cat-opt${locked?' is-locked':''}${selected&&!locked?' is-selected':''}"
-        onclick="catOptClick('${cat.v}',${locked})"
-      >
+    return `<div class="cat-opt${selected?' is-selected':''}" onclick="window.catOptClick('${cat.v}')">
         <div class="copt-icon" style="background:${cat.bg}; color:${cat.color}">${CAT_SVG[cat.v]}</div>
         <span class="copt-name">${cat.label}</span>
-        ${lockBadge}
         ${checkmark}
       </div>`;
   }).join('');
 }
-// Global Staff Dictionary
 let staffMap = {};
 let staffUnsub = null;
 
@@ -1367,19 +1372,14 @@ window.catPickerToggle = function() {
   }
 };
 
-window.catOptClick = function(value, locked) {
+window.catOptClick = function(value) {
   closeCatDD();
-  if (locked) {
-    window.location.href = 'subscription.html';
-    return;
-  }
   document.getElementById('exp-category').value = value;
   const cat = CAT_MAP[value];
   document.getElementById('cpt-icon').innerHTML         = CAT_SVG[value];
   document.getElementById('cpt-icon').style.background  = cat.bg;
   document.getElementById('cpt-icon').style.color       = cat.color;
   document.getElementById('cpt-label').textContent      = cat.label;
-  hideLockCards();
 };
 function closeCatDD() {
   ddOpen = false;
@@ -1614,11 +1614,15 @@ document.addEventListener('click', e => {
 });
 
 setDateValue(new Date());
-
-// ─── ADD RECORD MODAL WIRING ───
 const addModal = document.getElementById('add-modal');
 function openAddModal(){
   setDateValue(new Date());
+  const dcat = CAT_MAP['Miscellaneous'];
+  document.getElementById('exp-category').value = 'Miscellaneous';
+  document.getElementById('cpt-icon').innerHTML = CAT_SVG['Miscellaneous'];
+  document.getElementById('cpt-icon').style.background = dcat.bg;
+  document.getElementById('cpt-icon').style.color = dcat.color;
+  document.getElementById('cpt-label').textContent = dcat.label;
   addModal.classList.add('open');
 }
 function closeAddModal(){
