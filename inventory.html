@@ -4888,27 +4888,29 @@ window.selectDpDate = function(year, month, day) {
   document.getElementById('entryDateVal').value = val;
   document.getElementById('datePickerPopup').style.display = 'none';
 };
-
 window.openEntry = function(type) {
   eType = type;
-  document.getElementById('eq').value = '';
-  document.getElementById('en').value = '';
-  document.getElementById('entryCost').value = '';
-  document.getElementById('convPreview').style.display = 'none';
-  setMM('entryMsg', '', '');
   
-  // Custom Date Picker Initialization
+  // Safely reset inputs if they exist
+  if (document.getElementById('eq')) document.getElementById('eq').value = '';
+  if (document.getElementById('en')) document.getElementById('en').value = '';
+  if (document.getElementById('entryCost')) document.getElementById('entryCost').value = '';
+  
+  // Safeguard: If the old convPreview div is still in the HTML somehow, hide it safely
+  const convPreview = document.getElementById('convPreview');
+  if (convPreview) convPreview.style.display = 'none';
+  
+  if (typeof setMM === 'function') setMM('entryMsg', '', '');
+  
   dpSelectedDate = new Date();
   dpDate = new Date();
   
-  // Patch: Fallback to today if Firebase hasn't synced the serverTimestamp yet
-  if (curProd && curProd.createdAt) {
+  if (typeof curProd !== 'undefined' && curProd && curProd.createdAt) {
     dpMinDate = typeof curProd.createdAt.toDate === 'function' ? curProd.createdAt.toDate() : new Date(curProd.createdAt);
   } else {
     dpMinDate = new Date(); 
   }
   
-  // Set Max Date to exactly Dec 31st of the Next Full Year
   dpMaxDate = new Date();
   dpMaxDate.setFullYear(dpMaxDate.getFullYear() + 1, 11, 31);
   dpMaxDate.setHours(23, 59, 59, 999);
@@ -4917,35 +4919,32 @@ window.openEntry = function(type) {
   const str = `${String(dpSelectedDate.getDate()).padStart(2, '0')} ${monthsShort[dpSelectedDate.getMonth()]} ${dpSelectedDate.getFullYear()}`;
   const val = `${dpSelectedDate.getFullYear()}-${String(dpSelectedDate.getMonth() + 1).padStart(2, '0')}-${String(dpSelectedDate.getDate()).padStart(2, '0')}`;
   
-  const dateStrInp = document.getElementById('entryDateStr');
-  if (dateStrInp) dateStrInp.value = str;
-  const dateValInp = document.getElementById('entryDateVal');
-  if (dateValInp) dateValInp.value = val;
+  if (document.getElementById('entryDateStr')) document.getElementById('entryDateStr').value = str;
+  if (document.getElementById('entryDateVal')) document.getElementById('entryDateVal').value = val;
 
-  document.getElementById('ettIn').classList.toggle('on', type === 'IN');
-  document.getElementById('ettOut').classList.toggle('on', type === 'OUT');
+  if (document.getElementById('ettIn')) document.getElementById('ettIn').classList.toggle('on', type === 'IN');
+  if (document.getElementById('ettOut')) document.getElementById('ettOut').classList.toggle('on', type === 'OUT');
   
-  document.getElementById('expenseFields').style.display = 'block';
+  if (document.getElementById('expenseFields')) document.getElementById('expenseFields').style.display = 'block';
   
-  selUnit = curProd.unit || 'Piece';
-  document.getElementById('entry-unit-lbl').textContent = selUnit;
+  // Force the unit to the base product unit (removes conversion dependency)
+  selUnit = (typeof curProd !== 'undefined' && curProd && curProd.unit) ? curProd.unit : 'Piece';
+  
+  if (document.getElementById('entry-unit-lbl')) document.getElementById('entry-unit-lbl').textContent = selUnit;
   
   const dd = document.getElementById('entry-unit-dd');
-  let opts = [curProd.unit || 'Piece'];
-  if(curProd.conversions) {
-    opts = opts.concat(curProd.conversions.map(c => c.name));
-  }
-  if(dd) {
-    dd.innerHTML = opts.map(u => `
-      <div class="cat-opt" style="padding: 12px 16px;" onclick="window.selectEntryUnit('${u}')">
-        <span class="copt-name" style="font-size: 14px; font-weight: 700; color: var(--text-1);">${u}</span>
+  if (dd) {
+    dd.innerHTML = `
+      <div class="cat-opt" style="padding: 12px 16px;" onclick="window.selectEntryUnit('${selUnit}')">
+        <span class="copt-name" style="font-size: 14px; font-weight: 700; color: var(--text-1);">${selUnit}</span>
       </div>
-    `).join('');
+    `;
   }
   
+  // Finally, open the modal safely
   window.openM('m-entry');
 };
-
+window.updateConvPreview = function() {}; // Dummy function to catch old HTML triggers safely
 window.setET = function(type) {
   eType = type;
   document.getElementById('ettIn').classList.toggle('on', type === 'IN');
