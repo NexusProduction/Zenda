@@ -1493,7 +1493,7 @@ document.addEventListener('click', e => {
   const catWrap = document.getElementById('cat-picker-wrap');
   if (catWrap && !catWrap.contains(e.target)) closeCatDD();
 });
-window.toggleRow = function(el, e, id) {
+window.toggleRow = function(el, e) {
   if (e) e.stopPropagation();
   if (window.innerWidth > 600) return; 
 
@@ -1502,7 +1502,7 @@ window.toggleRow = function(el, e, id) {
     if (r !== el) r.classList.remove('expanded');
   });
   el.classList.toggle('expanded', !wasExpanded);
-  expandedRowId = wasExpanded ? null : (id || null);
+  expandedRowId = wasExpanded ? null : (el.dataset.id || null);
 };
 document.addEventListener('click', function(e){
   if (!e.target.closest('.exp-row')) {
@@ -2130,9 +2130,9 @@ infoHTML += `
     let delBtnDesk = '';
     if (!e.isDeleted) {
       if (e.createdBy === CU.uid) { 
-        delBtnDesk = `<button class="del-btn desk-only" onclick="event.stopPropagation(); window.delExp('${e.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`;
+        delBtnDesk = `<button class="del-btn desk-only" data-id="${esc(e.id)}" onclick="event.stopPropagation(); window.delExp(this.dataset.id)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`;
       } else {
-        delBtnDesk = `<button class="del-btn disabled-btn desk-only" onclick="event.stopPropagation(); window.showPermissionModal('${esc(creatorName)}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`;
+        delBtnDesk = `<button class="del-btn disabled-btn desk-only" data-creator="${esc(creatorName)}" onclick="event.stopPropagation(); window.showPermissionModal(this.dataset.creator)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>`;
       }
     }
 
@@ -2156,11 +2156,11 @@ infoHTML += `
       ${!e.isDeleted ? `
     <div class="mob-horizontal-divider"></div>
     ${(e.createdBy === CU.uid)
-        ? `<button class="mob-del-btn-full" onclick="event.stopPropagation(); window.delExp('${e.id}')">
+        ? `<button class="mob-del-btn-full" data-id="${esc(e.id)}" onclick="event.stopPropagation(); window.delExp(this.dataset.id)">
              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
              Delete Record
            </button>`
-        : `<button class="mob-del-btn-full disabled-btn" onclick="event.stopPropagation(); window.showPermissionModal('${esc(creatorName)}')">
+        : `<button class="mob-del-btn-full disabled-btn" data-creator="${esc(creatorName)}" onclick="event.stopPropagation(); window.showPermissionModal(this.dataset.creator)">
              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
              Cannot Delete
            </button>`
@@ -2170,7 +2170,7 @@ infoHTML += `
 
     const rowClass = (e.isDeleted ? 'exp-row is-deleted' : 'exp-row') + (e.id === expandedRowId ? ' expanded' : '');
     return `
-      <div class="${rowClass}" data-id="${e.id}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event, '${e.id}')">
+      <div class="${rowClass}" data-id="${esc(e.id)}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event)">
         <div class="exp-row-main">
           <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
           <div class="exp-info">${infoHTML}</div>
@@ -2375,7 +2375,7 @@ function renderProductsHTML(prods){
         const icon = `<img src="https://api.iconify.design/lucide/${iconPath}.svg?color=%230D0F14&stroke-width=2" alt=""/>`;
         
         html += `
-        <div class="wh-prod-row" style="animation-delay:${i*20}ms;" onclick="window.fetchAndRenderEntries('${p.id}', this.getAttribute('data-name'))" data-name="${esc(p.name)}">
+        <div class="wh-prod-row" style="animation-delay:${i*20}ms;" onclick="window.fetchAndRenderEntries(this.dataset.id, this.dataset.name)" data-id="${esc(p.id)}" data-name="${esc(p.name)}">
             <div class="wh-prod-ico">${icon}</div>
             <div class="wh-prod-info">
                 <div class="wh-prod-name">${esc(p.name)}</div>
@@ -2494,7 +2494,7 @@ window.fetchAndRenderEntries = function(prodId, prodName) {
     
     document.querySelector('.panel-ttl').innerHTML = `
         <div style="display:flex; align-items:center; gap:12px;">
-            <button onclick="window.fetchAndRenderProducts('${currentWarehouseId}')" style="background:var(--bg); border:1.5px solid var(--border); border-radius:10px; cursor:pointer; color:var(--tx1); display:flex; align-items:center; justify-content:center; width:34px; height:34px; transition:all 0.2s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--bg)'">
+            <button data-wh-id="${esc(currentWarehouseId)}" onclick="window.fetchAndRenderProducts(this.dataset.whId)" style="background:var(--bg); border:1.5px solid var(--border); border-radius:10px; cursor:pointer; color:var(--tx1); display:flex; align-items:center; justify-content:center; width:34px; height:34px; transition:all 0.2s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--bg)'">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <span style="font-size:1.1rem; font-weight:800;">${esc(prodName)} Ledger</span>
@@ -2662,7 +2662,7 @@ window.renderLedgerPage = function() {
         const rowClass = e.deleted ? 'exp-row is-deleted' : 'exp-row';
 
         html += `
-        <div class="${rowClass}" data-id="${e.id}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event, '${e.id}')">
+        <div class="${rowClass}" data-id="${esc(e.id)}" style="animation-delay:${i*20}ms;" onclick="window.toggleRow(this, event)">
           <div class="exp-row-main">
             <div class="exp-ico" style="background:${bg};color:${color}">${svg}</div>
             <div class="exp-info">${infoHTML}</div>
