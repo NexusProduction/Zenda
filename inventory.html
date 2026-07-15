@@ -3811,23 +3811,29 @@ window.saveMergedProd = async function() {
   }
   
   try {
-    // We explicitly empty out conversions in the database update to clean up old data
     const updates = { name: newName, desc: newDesc, conversions: [] };
     const logs = [];
     
+    // Track individual changes
     if(newName !== curProd.name) logs.push(`Renamed to "${newName}"`);
     if(newDesc !== (curProd.desc || '')) logs.push('Description updated');
     
     await updateDoc(doc(db, 'products', curProd.id), updates);
     
+    // Create a SEPARATE database entry for every change in the logs array
     if(logs.length > 0) {
-        await addDoc(collection(db, 'entries'), {
-            type: 'LOG', qty: 0, qtyBase: 0, unit: '', entryUnit: '', 
-            note: logs.join(', '),
-            productId: curProd.id, godownId: curWH, companyId: CU.companyId, 
-            who: CU.name || 'Owner', createdBy: CU.uid, deleted: false, 
-            isActivity: true, createdAt: serverTimestamp()
+        const logPromises = logs.map(noteText => {
+            return addDoc(collection(db, 'entries'), {
+                type: 'LOG', qty: 0, qtyBase: 0, unit: '', entryUnit: '', 
+                note: noteText, // <--- Inserts the individual string instead of joining them
+                productId: curProd.id, godownId: curWH, companyId: CU.companyId, 
+                who: CU.name || 'Owner', createdBy: CU.uid, deleted: false, 
+                isActivity: true, createdAt: serverTimestamp()
+            });
         });
+        
+        // Wait for all individual log entries to finish saving
+        await Promise.all(logPromises);
     }
     
     curProd.name = newName;
