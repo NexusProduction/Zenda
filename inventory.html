@@ -1925,6 +1925,7 @@ body.is-premium .premium-lock-overlay {
       </div>
       
       <div id="whList"></div>
+      <div id="whPagination"></div>
       
       <div class="wh-empty-state" id="whEmpty" style="flex: 1; min-height: 50vh; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
         <div style="color:var(--text-3); margin-bottom:16px;">
@@ -3394,14 +3395,15 @@ window.changeWhPage = function(dir) {
   whCurrentPage += dir;
   renderWHs();
 };
-
 function renderWHs() {
   const pcList = document.getElementById('whList');
+  const pagWrap = document.getElementById('whPagination'); // Targeting the new container
   const emptyEl = document.getElementById('whEmpty');
   const addRow = document.getElementById('addWhRow');
   const canAdd = true;
 
   pcList.innerHTML = '';
+  if (pagWrap) pagWrap.innerHTML = ''; // Clear pagination
 
   if (!WHs.length) {
     emptyEl.classList.add('visible');
@@ -3424,8 +3426,6 @@ function renderWHs() {
 
   slice.forEach((wh, indexInSlice) => {
     const globalIndex = startIndex + indexInSlice;
-    
-    // 🔥 FIX: Lock EVERY warehouse if the account is not premium (Removed globalIndex > 0)
     const isLocked = !CU.isPremium; 
     
     const icon = ICONS[globalIndex % ICONS.length];
@@ -3443,6 +3443,8 @@ function renderWHs() {
       pcList.appendChild(row);
     }
   });
+
+  // Account Locking Blur
   if (hasLocked) {
     let lockBtnHtml = '';
     if (CU.role === 'owner') {
@@ -3457,16 +3459,23 @@ function renderWHs() {
            <div style="font-size: 12.5px; font-weight: 600; color: var(--text-3);">please tell your owner to upgrade.</div>
         </div>`;
     }
-    
-    // FIX: Changed z-index from 9999 to 10 so it scrolls cleanly UNDER the top app bar (z-index: 200). 
-    // Also added rounded bottom corners to perfectly match the list container.
     const lockOverlay = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:10; background: rgba(244, 245, 248, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: all !important; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;" onclick="event.stopPropagation();">${lockBtnHtml}</div>`;
     
     const lockedPcContainer = document.createElement('div');
     lockedPcContainer.style.position = 'relative';
-    lockedPcContainer.style.pointerEvents = 'none'; // Lock out underlying clicks
+    lockedPcContainer.style.pointerEvents = 'none';
     lockedPcContainer.innerHTML = `<div style="filter: blur(6px) grayscale(40%); opacity: 0.5; user-select: none; pointer-events: none;">${lockedPcHtml}</div>${lockOverlay}`;
     pcList.appendChild(lockedPcContainer);
+  }
+
+  // Premium Pagination Rendered to the new Wrapper
+  if (totalPages > 1) {
+    if (pagWrap) pagWrap.innerHTML = `
+      <div class="pag-wrap" style="margin:0 !important; border-radius:0 !important; border:none !important; border-top:1.5px solid var(--border-faint) !important; background:var(--white-pure) !important; backdrop-filter:none !important;">
+        <button class="pag-btn" onclick="window.changeWhPage(-1)" ${whCurrentPage === 1 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Prev</button>
+        <span class="pag-info">${whCurrentPage} / ${totalPages}</span>
+        <button class="pag-btn" onclick="window.changeWhPage(1)" ${whCurrentPage === totalPages ? 'disabled' : ''}>Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>`;
   }
 }
 window.openWH = async function(wh) {
