@@ -2685,39 +2685,64 @@ const ICONS=[
 const CATS={general:'General',cold:'Cold Storage',retail:'Retail',distribution:'Distribution',raw:'Raw Materials',finished:'Finished Goods'};
 const STD_UNITS=['Piece','Gram','KG','Litre','Box','Packet','Set','Bundle','Feet','Metre'];
 // ── PREMIUM LOCK GUARDS ──
-window._isOwnerLocked = function() {
-  return !!(CU && CU.role === 'owner' && CU.isPremium !== true);
+window._isLocked = function() {
+  return !!(CU && CU.isPremium !== true);
 };
+
+// Map old function name so nothing breaks
+window._isOwnerLocked = window._isLocked;
+
 window._blockIfLocked = function() {
-  if (window._isOwnerLocked()) {
-    if (window.showToast) window.showToast('Please upgrade to continue.', 'error');
+  if (window._isLocked()) {
+    if (window.showToast) {
+        if (CU.role !== 'owner') window.showToast('Your account is not upgraded please tell your owner to upgrade.', 'error');
+        else window.showToast('Please upgrade to continue.', 'error');
+    }
     return true;
   }
   return false;
 };
+
 window._LOCKABLE_MODALS = ['m-wh','m-prod','m-edit-prod','m-entry','m-del-wh','m-del-prod','m-del-entry','m-low-stock'];
+
 window._injectModalLock = function(modalId) {
   const mbox = document.querySelector(`#${modalId} .mbox`);
   if (!mbox || mbox.querySelector('.premium-modal-lock')) return;
   const lock = document.createElement('div');
   lock.className = 'premium-modal-lock';
-  lock.innerHTML = `
-    <button class="pml-btn" onclick="window.location.href='subscription.html'">
-      ⚡ Upgrade Now
-    </button>
-    <div class="pml-txt">Upgrade to Access The App</div>
-  `;
+  
+  // Extremely secure overlay CSS injected directly so it overrides everything (Anti-Bypass)
+  lock.style.cssText = "position: absolute !important; inset: 0 !important; z-index: 99999 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.7) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; padding: 24px !important; text-align: center !important; pointer-events: all !important; user-select: none !important;";
+  
+  // Stop clicks from reaching inputs underneath
+  lock.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); }, true);
+  
+  if (CU.role !== 'owner') {
+      lock.innerHTML = `
+        <div style="width: 48px; height: 48px; background: var(--white-pure); border: 2px solid var(--border-strong); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        <div style="font-family: var(--f-display); font-weight: 800; font-size: 14.5px; color: var(--text-1); line-height: 1.4;">Your account is not upgraded<br><span style="font-weight: 600; color: var(--text-3); font-size: 13px;">please tell your owner to upgrade.</span></div>
+      `;
+  } else {
+      lock.innerHTML = `
+        <button class="pml-btn" onclick="window.location.href='subscription.html'" style="pointer-events: all;">
+          ⚡ Upgrade Now
+        </button>
+        <div class="pml-txt" style="font-family: var(--f-display); font-weight: 700; font-size: 14px; color: var(--text-2); margin-top: 10px;">Upgrade to Access The App</div>
+      `;
+  }
   mbox.appendChild(lock);
 };
+
 window._removeModalLock = function(modalId) {
   document.querySelector(`#${modalId} .mbox .premium-modal-lock`)?.remove();
 };
 
-// ── UI HELPERS ──
 window.openM=function(id){
   document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';
   if (window._LOCKABLE_MODALS.includes(id)) {
-    if (window._isOwnerLocked()) window._injectModalLock(id);
+    if (window._isLocked()) window._injectModalLock(id);
     else window._removeModalLock(id);
   }
 };
@@ -3178,12 +3203,15 @@ if (CU.isPremium) document.body.classList.add('is-premium');
   const upgBtn = document.getElementById('globalUpgradeBtn');
   const syncBadge = document.getElementById('syncEl');
   if (upgBtn && syncBadge) {
-    if (!CU.isPremium) {
+    if (!CU.isPremium && CU.role === 'owner') {
+      // Only un-upgraded owners see the Upgrade button
       upgBtn.style.display = 'flex';
       syncBadge.style.display = 'none';
     } else {
+      // Premium accounts AND Staff members see the Connected badge
       upgBtn.style.display = 'none';
       syncBadge.style.display = 'inline-flex';
+      setSyncBadge('ok', 'Connected');
     }
   }
 
@@ -3407,22 +3435,28 @@ function renderWHs() {
     }
   });
   if (hasLocked) {
-    const lockOverlay = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:10;"><button onclick="window.location.href='subscription.html'" style="background:var(--amber); color:white; padding:12px 24px; border:none; border-radius:24px; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow: 0 8px 30px rgba(217,119,6,0.3); cursor:pointer; transition: transform 0.2s;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Upgrade to Access All</button></div>`;
+    let lockBtnHtml = '';
+    if (CU.role === 'owner') {
+        lockBtnHtml = `<button onclick="window.location.href='subscription.html'" style="background:var(--amber); color:white; padding:12px 24px; border:none; border-radius:24px; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow: 0 8px 30px rgba(217,119,6,0.3); cursor:pointer; transition: transform 0.2s; pointer-events: all;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Upgrade to Access All</button>`;
+    } else {
+        lockBtnHtml = `
+        <div style="background: var(--white-pure); padding: 14px 20px; border: 1.5px solid var(--border-strong); border-radius: 16px; text-align: center; box-shadow: 0 12px 32px rgba(0,0,0,0.08); pointer-events: all; user-select: none;">
+           <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom: 4px;">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+             <span style="font-family: var(--f-display); font-weight: 800; font-size: 14.5px; color: var(--text-1);">Account Not Upgraded</span>
+           </div>
+           <div style="font-size: 12.5px; font-weight: 600; color: var(--text-3);">please tell your owner to upgrade.</div>
+        </div>`;
+    }
+    
+    // Un-bypassable lock interceptor layer
+    const lockOverlay = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:9999; background: rgba(244, 245, 248, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: all !important;" onclick="event.stopPropagation();">${lockBtnHtml}</div>`;
+    
     const lockedPcContainer = document.createElement('div');
     lockedPcContainer.style.position = 'relative';
-    lockedPcContainer.innerHTML = `<div style="filter: blur(5px) grayscale(30%); opacity: 0.6; user-select: none;">${lockedPcHtml}</div>${lockOverlay}`;
+    lockedPcContainer.style.pointerEvents = 'none'; // Lock out any accidental clicks
+    lockedPcContainer.innerHTML = `<div style="filter: blur(6px) grayscale(40%); opacity: 0.5; user-select: none; pointer-events: none;">${lockedPcHtml}</div>${lockOverlay}`;
     pcList.appendChild(lockedPcContainer);
-  }
-  if (totalPages > 1) {
-    const pagHTML = `
-      <div class="pag-wrap">
-        <button class="pag-btn" onclick="window.changeWhPage(-1)" ${whCurrentPage===1?'disabled':''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Prev</button>
-        <span class="pag-info">${whCurrentPage} / ${totalPages}</span>
-        <button class="pag-btn" onclick="window.changeWhPage(1)" ${whCurrentPage===totalPages?'disabled':''}>Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
-      </div>`;
-    const pcPag = document.createElement('div');
-    pcPag.innerHTML = pagHTML;
-    pcList.appendChild(pcPag);
   }
 }
 window.openWH = async function(wh) {
