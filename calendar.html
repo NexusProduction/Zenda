@@ -253,16 +253,13 @@ body{background:var(--bg);color:var(--tx1);font-family:var(--fb);-webkit-font-sm
 .premium-lock-text{font-family:var(--fb);font-weight:700;font-size:.9rem;color:var(--tx2)}
 .spin{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spinAnim .6s linear infinite}
 @keyframes spinAnim{to{transform:rotate(360deg)}}
-
-#staff-lockout-overlay{position:fixed;inset:0;background:#0B0F1A;z-index:999999;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+#staff-lockout-overlay{position:fixed;inset:0;background:rgba(244,245,248,.55);backdrop-filter:blur(10px) saturate(140%);-webkit-backdrop-filter:blur(10px) saturate(140%);z-index:999999;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
 #staff-lockout-overlay.active{display:flex}
-.slo-icon{width:64px;height:64px;border-radius:50%;background:rgba(220,38,38,.15);display:flex;align-items:center;justify-content:center;margin-bottom:28px}
-.slo-title{font-family:var(--fd);font-weight:800;font-size:1.4rem;color:#fff;margin-bottom:14px}
-.slo-sub{font-family:var(--fb);font-size:.95rem;color:#94A3B8;max-width:380px;line-height:1.5;margin-bottom:28px}
-.slo-pill{background:rgba(255,255,255,.08);color:#fff;padding:10px 20px;border-radius:24px;font-family:var(--fd);font-weight:700;font-size:.9rem}
-.slo-pill b{color:#EF4444}
+.slo-icon{width:64px;height:64px;border-radius:50%;background:rgba(217,119,6,.12);border:2px solid rgba(217,119,6,.25);display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.slo-title{font-family:var(--fd);font-weight:800;font-size:1.25rem;color:var(--tx1);margin-bottom:10px}
+.slo-sub{font-family:var(--fb);font-size:.9rem;color:var(--tx3);max-width:340px;line-height:1.5}
 body.staff-locked .appbar,
-body.staff-locked .cal-wrap,
+body.staff-locked .cal-wrap{pointer-events:none!important;user-select:none!important;filter:blur(1px)}
 body.staff-locked .modal-overlay,
 body.staff-locked #toast-container{display:none!important;pointer-events:none!important;visibility:hidden!important}
 
@@ -282,14 +279,12 @@ body.staff-locked #toast-container{display:none!important;pointer-events:none!im
 </style>
 </head>
 <body>
-
 <div id="staff-lockout-overlay">
   <div class="slo-icon">
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
   </div>
   <div class="slo-title">Account Not Upgraded</div>
-  <div class="slo-sub">Your account is not upgraded. Tell your owner to upgrade the company account to restore access.</div>
-  <div class="slo-pill">Closing automatically in <b id="slo-countdown">15</b> seconds…</div>
+  <div class="slo-sub">Ask your owner to upgrade the company account to unlock this feature.</div>
 </div>
 
 <div class="appbar" id="appbar">
@@ -513,7 +508,7 @@ function setSyncStatus(state) {
   el.onclick = null;
   
   if (state === 'live') { 
-    if (CU && CU.isPremium === false) {
+    if (CU && CU.role === 'owner' && CU.isPremium === false) {
       el.className = 'sync-pill sync-upgrade'; 
       el.innerHTML = '⚡ Upgrade';
       el.onclick = () => window.location.href = 'subscription.html';
@@ -537,34 +532,26 @@ window.toast = function(msg, type = 'success') {
 function lockDownStaffUI() {
   isLockedOut = true;
   document.body.classList.add('staff-locked');
-  // Stop all live reads/writes immediately, don't wait for the redirect at countdown's end.
   unsubs.forEach(u => u());
   unsubs = [];
   if (staffUnsub) { staffUnsub(); staffUnsub = null; }
-  if (window._companyWatchUnsub) { window._companyWatchUnsub(); window._companyWatchUnsub = null; }
+}
+
+function unlockStaffUI() {
+  if (!isLockedOut) return;
+  isLockedOut = false;
+  document.body.classList.remove('staff-locked');
+  document.getElementById('staff-lockout-overlay')?.classList.remove('active');
+  if (CU?.companyId) startStaffListener();
+  startListeners();
 }
 
 function startStaffLockoutTimer() {
   const overlay = document.getElementById('staff-lockout-overlay');
-  const countdownEl = document.getElementById('slo-countdown');
-  if (!overlay || overlay.classList.contains('active')) return;
+  if (!overlay) return;
   overlay.classList.add('active');
   lockDownStaffUI();
-  document.body.style.overflow = 'hidden';
-  let secondsLeft = 15;
-  if (countdownEl) countdownEl.textContent = secondsLeft;
-  const interval = setInterval(async () => {
-    secondsLeft--;
-    if (countdownEl) countdownEl.textContent = secondsLeft;
-    if (secondsLeft <= 0) {
-      clearInterval(interval);
-      try { await signOut(auth); } catch(e) { console.error('Sign out error:', e); }
-      sessionStorage.clear();
-      window.location.href = 'login.html';
-    }
-  }, 1000);
 }
-
 function startCompanyPremiumWatcher() {
   if (!CU?.companyId || CU.role === 'owner') return;
   if (window._companyWatchUnsub) { window._companyWatchUnsub(); window._companyWatchUnsub = null; }
@@ -573,7 +560,9 @@ function startCompanyPremiumWatcher() {
     const d = snap.data();
     let stillPremium = d.isPremium === true;
     if (stillPremium && d.subscriptionExpiry && new Date() > new Date(d.subscriptionExpiry)) stillPremium = false;
-    if (!stillPremium) { CU.isPremium = false; startStaffLockoutTimer(); }
+    CU.isPremium = stillPremium;
+    if (!stillPremium) startStaffLockoutTimer();
+    else unlockStaffUI();
   }, e => console.error('Company watcher error:', e));
 }
 onAuthStateChanged(auth, async user => {
@@ -604,18 +593,11 @@ onAuthStateChanged(auth, async user => {
     } catch(e) { 
       console.error('Premium check error:', e); 
     }
-    // Assign the status directly to the global CU object
     CU.isPremium = isPremium;
-    
-    // Staff on a non-upgraded company: lock the page and force logout after 15s
+    if (CU.role !== 'owner') startCompanyPremiumWatcher();
     if (CU.role !== 'owner' && CU.isPremium === false) {
       startStaffLockoutTimer();
-      return;
     }
-
-    if (CU.role !== 'owner') startCompanyPremiumWatcher();
-
-    // 3. Start app sequence
     selectedStaffUIDs.add(CU.uid);
     if (CU.companyId) startStaffListener();
     startListeners();
