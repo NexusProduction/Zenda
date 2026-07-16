@@ -3424,7 +3424,10 @@ function renderWHs() {
 
   slice.forEach((wh, indexInSlice) => {
     const globalIndex = startIndex + indexInSlice;
-    const isLocked = !CU.isPremium && globalIndex > 0;
+    
+    // 🔥 FIX: Lock EVERY warehouse if the account is not premium (Removed globalIndex > 0)
+    const isLocked = !CU.isPremium; 
+    
     const icon = ICONS[globalIndex % ICONS.length];
     const catLabel = CATS[wh.category] || wh.category || 'Warehouse';
     const itemCnt = (window.allProducts || []).filter(p => p.godownId === wh.id).length;
@@ -3469,10 +3472,17 @@ function renderWHs() {
 window.openWH = async function(wh) {
   const targetId = wh.id || wh;
   const globalIndex = WHs.findIndex(w => w.id === targetId);
-  if (!CU.isPremium && globalIndex > 0) {
-    window.showToast('Upgrade to access additional warehouses.', 'error');
+  
+  // 🔥 FIX: Prevent opening ANY warehouse if the account is not premium
+  if (!CU.isPremium) {
+    if (CU.role !== 'owner') {
+      window.showToast('Account not upgraded. Please tell your owner to upgrade.', 'error');
+    } else {
+      window.showToast('Upgrade to access warehouses.', 'error');
+    }
     return;
   }
+  
   cleanupProdListeners();
   curWH = wh.id || wh;
   const whObj = WHs.find(w => w.id === curWH) || wh;
