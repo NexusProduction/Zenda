@@ -2445,7 +2445,6 @@ body.is-premium .premium-lock-overlay {
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { requireAuth } from './auth.js';
 window.toggleAddProdExpense = function(val) {
   const block = document.getElementById('addProdExpenseBlock');
   const qty = parseFloat(val) || 0;
@@ -2688,14 +2687,12 @@ const STD_UNITS=['Piece','Gram','KG','Litre','Box','Packet','Set','Bundle','Feet
 window._isLocked = function() {
   return !!(CU && CU.isPremium !== true);
 };
-
-// Map old function name so nothing breaks
-window._isOwnerLocked = window._isLocked;
+window._isOwnerLocked = window._isLocked; // keep for compatibility
 
 window._blockIfLocked = function() {
   if (window._isLocked()) {
     if (window.showToast) {
-        if (CU.role !== 'owner') window.showToast('Your account is not upgraded please tell your owner to upgrade.', 'error');
+        if (CU.role !== 'owner') window.showToast('Account not upgraded. Please tell your owner to upgrade.', 'error');
         else window.showToast('Please upgrade to continue.', 'error');
     }
     return true;
@@ -2711,13 +2708,12 @@ window._injectModalLock = function(modalId) {
   const lock = document.createElement('div');
   lock.className = 'premium-modal-lock';
   
-  // Extremely secure overlay CSS injected directly so it overrides everything (Anti-Bypass)
+  // SUPER SECURE BLUR: Blocks all clicks underneath and cannot be bypassed.
   lock.style.cssText = "position: absolute !important; inset: 0 !important; z-index: 99999 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.7) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; padding: 24px !important; text-align: center !important; pointer-events: all !important; user-select: none !important;";
-  
-  // Stop clicks from reaching inputs underneath
   lock.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); }, true);
   
   if (CU.role !== 'owner') {
+      // Staff View
       lock.innerHTML = `
         <div style="width: 48px; height: 48px; background: var(--white-pure); border: 2px solid var(--border-strong); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
@@ -2725,6 +2721,7 @@ window._injectModalLock = function(modalId) {
         <div style="font-family: var(--f-display); font-weight: 800; font-size: 14.5px; color: var(--text-1); line-height: 1.4;">Your account is not upgraded<br><span style="font-weight: 600; color: var(--text-3); font-size: 13px;">please tell your owner to upgrade.</span></div>
       `;
   } else {
+      // Owner View
       lock.innerHTML = `
         <button class="pml-btn" onclick="window.location.href='subscription.html'" style="pointer-events: all;">
           ⚡ Upgrade Now
@@ -2739,8 +2736,8 @@ window._removeModalLock = function(modalId) {
   document.querySelector(`#${modalId} .mbox .premium-modal-lock`)?.remove();
 };
 
-window.openM=function(id){
-  document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';
+window.openM = function(id){
+  document.getElementById(id).classList.add('open'); document.body.style.overflow='hidden';
   if (window._LOCKABLE_MODALS.includes(id)) {
     if (window._isLocked()) window._injectModalLock(id);
     else window._removeModalLock(id);
@@ -3167,13 +3164,25 @@ document.addEventListener('click', e => {
   }
 });
 async function init(){
-  const authUser = await requireAuth('login.html');
-  if(!authUser){ return; } // requireAuth already handled the redirect or lockout overlay
+  // 🚀 BYPASS THE 15-SECOND auth.js TIMER HERE 🚀
+  // Redirect immediately to login.html if they are not logged in.
+  const authUser = await new Promise((resolve) => {
+      onAuthStateChanged(auth, (user) => {
+          if (user) resolve(user);
+          else {
+              window.location.href = 'login.html'; 
+              resolve(null);
+          }
+      });
+  });
+  
+  if(!authUser){ return; }
 
   const urlUid=new URLSearchParams(location.search).get('uid');
   const rawSession=sessionStorage.getItem('zenda_user');
   const sessionUser=rawSession?JSON.parse(rawSession):null;
   const activeUid=urlUid||(sessionUser?sessionUser.uid:null)||authUser.uid;
+  
   try{
     const uSnap=await getDoc(doc(db,'users',activeUid));
     if(uSnap.exists()){CU={uid:activeUid,...uSnap.data()};}else if(sessionUser){CU=sessionUser;}
@@ -3198,25 +3207,24 @@ async function init(){
       CU.isPremium = false;
     }
   } catch(e) { CU.isPremium = false; }
-if (CU.isPremium) document.body.classList.add('is-premium');
+  if (CU.isPremium) document.body.classList.add('is-premium');
 
+  // 🚀 TOP RIGHT BADGE LOGIC (Connected vs Upgrade) 🚀
   const upgBtn = document.getElementById('globalUpgradeBtn');
   const syncBadge = document.getElementById('syncEl');
   if (upgBtn && syncBadge) {
     if (!CU.isPremium && CU.role === 'owner') {
-      // Only un-upgraded owners see the Upgrade button
+      // ONLY the Owner sees the Upgrade button
       upgBtn.style.display = 'flex';
       syncBadge.style.display = 'none';
     } else {
-      // Premium accounts AND Staff members see the Connected badge
+      // Premium Owners AND ALL Staff members see the "Connected" badge
       upgBtn.style.display = 'none';
       syncBadge.style.display = 'inline-flex';
       setSyncBadge('ok', 'Connected');
     }
   }
 
-  setSyncBadge('ok','Connected');
-  
   const addRow = document.getElementById('addWhRow');
   if (addRow) addRow.style.display = 'flex';
   const btnTop = document.getElementById('btnAddWhTop');
@@ -3229,7 +3237,6 @@ if (CU.isPremium) document.body.classList.add('is-premium');
     if (modalSub) modalSub.textContent = 'Send creation request to owner';
   }
 
-  // FIX: Added typeof check to prevent strict-mode ReferenceError crashes
   if (typeof reviewCreateTarget !== 'undefined' && reviewCreateTarget) {
     getDoc(doc(db, 'users', CU.uid, 'notifications', reviewCreateTarget)).then(snap => {
       if (snap.exists()) {
@@ -3261,7 +3268,6 @@ if (CU.isPremium) document.body.classList.add('is-premium');
                 <button class="btn-black" id="btnApproveWh" onclick="window.processWhReview('approve')" style="flex: 1; margin: 0; height: 46px;">Approve</button>
               `;
           }
-
           window.openM('m-review');
         }
       }
@@ -3449,12 +3455,12 @@ function renderWHs() {
         </div>`;
     }
     
-    // Un-bypassable lock interceptor layer
+    // Secure overlay catches clicks and stops them from going through
     const lockOverlay = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:9999; background: rgba(244, 245, 248, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: all !important;" onclick="event.stopPropagation();">${lockBtnHtml}</div>`;
     
     const lockedPcContainer = document.createElement('div');
     lockedPcContainer.style.position = 'relative';
-    lockedPcContainer.style.pointerEvents = 'none'; // Lock out any accidental clicks
+    lockedPcContainer.style.pointerEvents = 'none'; // Lock out underlying clicks
     lockedPcContainer.innerHTML = `<div style="filter: blur(6px) grayscale(40%); opacity: 0.5; user-select: none; pointer-events: none;">${lockedPcHtml}</div>${lockOverlay}`;
     pcList.appendChild(lockedPcContainer);
   }
