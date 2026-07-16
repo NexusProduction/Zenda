@@ -274,12 +274,41 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/f
 window.selectedPlan = '';
 window.selectedPrice = 0;
 let currentUserData = null;
-
 onAuthStateChanged(auth, async (user) => {
-  if (user) {
+  const btnM = document.getElementById('btnMonthly');
+  const btnA = document.getElementById('btnAnnual');
+
+  // 1. NOT LOGGED IN: Redirect to login
+  if (!user) {
+    btnM.textContent = 'Log In to Upgrade';
+    btnM.onclick = () => window.location.href = 'login.html';
+    btnA.textContent = 'Log In to Upgrade';
+    btnA.onclick = () => window.location.href = 'login.html';
+    return;
+  }
+
+  // 2. LOGGED IN
+  try {
     const snap = await getDoc(doc(db, 'users', user.uid));
     if (snap.exists()) {
       currentUserData = snap.data();
+      const role = currentUserData.role || 'staff';
+
+      // 2a. STAFF MEMBER: Block upgrading
+      if (role !== 'owner') {
+        btnM.textContent = 'Staff Cannot Upgrade';
+        btnM.className = 'btn btn-muted';
+        btnM.disabled = true;
+        btnM.onclick = null;
+
+        btnA.textContent = 'Staff Cannot Upgrade';
+        btnA.className = 'btn btn-muted';
+        btnA.disabled = true;
+        btnA.onclick = null;
+        return;
+      }
+
+      // 2b. OWNER: Check current plan status
       if (currentUserData.companyId) {
         const compSnap = await getDoc(doc(db, 'companies', currentUserData.companyId));
         if (compSnap.exists()) {
@@ -296,43 +325,25 @@ onAuthStateChanged(auth, async (user) => {
               document.getElementById('activePlanExpiry').textContent = expiryStr;
               document.getElementById('activeSubBanner').classList.add('show');
 
-              const planType = (compData.planType || '').toLowerCase();
-              
-              if (planType === 'monthly') {
-                const btnM = document.getElementById('btnMonthly');
-                btnM.textContent = '✓ Active Plan';
-                btnM.className = 'btn btn-active';
-                btnM.disabled = true;
-                btnM.onclick = null;
-                
-                const btnA = document.getElementById('btnAnnual');
-                btnA.disabled = true;
-                btnA.className = 'btn btn-muted';
-                btnA.textContent = 'Current Plan Active';
-                btnA.onclick = null;
-                
-                } else if (planType === 'annual' || planType === 'yearly') {
-                const btnA = document.getElementById('btnAnnual');
-                btnA.textContent = '✓ Active Plan';
-                btnA.className = 'btn btn-active';
-                btnA.disabled = true;
-                btnA.onclick = null;
-                
-                const btnM = document.getElementById('btnMonthly');
-                btnM.disabled = true;
-                btnM.className = 'btn btn-muted';
-                btnM.textContent = 'Current Plan Active';
-                btnM.onclick = null;
+              // If ANY plan is active, disable ALL upgrade buttons
+              btnM.textContent = '✓ Plan Active';
+              btnM.className = 'btn btn-active';
+              btnM.disabled = true;
+              btnM.onclick = null;
 
-                }
+              btnA.textContent = '✓ Plan Active';
+              btnA.className = 'btn btn-active';
+              btnA.disabled = true;
+              btnA.onclick = null;
             }
           }
         }
       }
     }
+  } catch (error) {
+    console.error("Error loading profile data:", error);
   }
 });
-
 window.openPayment = function(plan, price) {
   window.selectedPlan = plan;
   window.selectedPrice = price;
