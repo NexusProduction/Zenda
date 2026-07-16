@@ -4329,11 +4329,6 @@ window.renderEntries = function() {
         .erow.date-mode .action-toggle-btn .icon-clock { opacity: 0; transform: scale(1.5) rotate(-45deg); }
         .erow.date-mode .action-toggle-btn .icon-trash { opacity: 1; transform: scale(1) rotate(0); }
         
-        /* Hide toggle entirely when System Logs are expanded */
-        .erow.no-delete.show-actions .action-toggle-btn {
-          opacity: 0; transform: scale(0.5); pointer-events: none;
-        }
-        
         /* The Drawer Container */
         .e-del-full {
           display: block; width: 100%; max-height: 0; opacity: 0; overflow: hidden;
@@ -4380,7 +4375,7 @@ window.renderEntries = function() {
           opacity: 1; transform: translateY(0) scale(1); pointer-events: auto;
         }
         
-        /* Force Date display for system logs */
+        /* Force Date display for system logs & deleted rows */
         .e-drawer-content.date-only .e-date-full-btn {
           opacity: 1; transform: translateY(0) scale(1); pointer-events: auto;
         }
@@ -4401,7 +4396,7 @@ window.renderEntries = function() {
       const badgeStyleDel = `background:var(--white-cool); border:1.5px solid var(--border-strong); padding:3px 10px; border-radius:8px; color:var(--text-1); font-weight:700; font-size:12px; font-family:var(--f-body); display:inline-block;`;
       
       const actionToggleBtn = `
-        <span class="action-toggle-btn" onclick="event.stopPropagation(); window.handleActionToggle(this)">
+        <span class="action-toggle-btn" onclick="window.handleActionToggle(this)">
           <svg class="icon-clock" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <svg class="icon-trash" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
         </span>
@@ -4419,7 +4414,7 @@ window.renderEntries = function() {
           if (!cleanNote) cleanNote = 'Product updated';
           cleanNote = capitalizeFirst(cleanNote);
 
-          return `<div class="erow no-delete" onclick="window.toggleRowActions(this)"><div class="erow-top"><div class="e-ind" style="background:var(--accent-soft);color:var(--accent);border:2.5px solid currentColor"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">${esc(cleanNote)}</div><div class="e-time" style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; align-items:center;"><span class="badge-date" style="${badgeStyle}">${ago(e.createdAt)}</span><span style="${badgeStyle}">By ${esc(displayName)}</span>${actionToggleBtn}</div></div></div><div class="e-del-full"><div class="e-drawer-content date-only"><div class="e-date-full-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${ago(e.createdAt)}</div></div></div></div>`;
+          return `<div class="erow no-delete" onclick="window.toggleRowActions(this)"><div class="erow-top"><div class="e-ind" style="background:var(--accent-soft);color:var(--accent);border:2.5px solid currentColor"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em;">${esc(cleanNote)}</div><div class="e-time" style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; align-items:center;"><span class="badge-date" style="${badgeStyle}">${ago(e.createdAt)}</span><span style="${badgeStyle}">By ${esc(displayName)}</span></div></div></div><div class="e-del-full"><div class="e-drawer-content date-only"><div class="e-date-full-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${ago(e.createdAt)}</div></div></div></div>`;
       }
       
       const isOwnEntry = e.createdBy === CU.uid;
@@ -4444,7 +4439,7 @@ window.renderEntries = function() {
           const rawReason = e.deleteReason || 'No reason provided';
           const delMsg = `Reason - ${capitalizeFirst(rawReason)}`;
           
-         return `<div class="erow del-row no-delete" onclick="window.toggleRowActions(this)"><div class="erow-top"><div class="e-ind" style="background:var(--white-muted);color:var(--text-2);border:2.5px solid currentColor; border-radius: 12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em; text-decoration:none;">${esc(delMsg)}</div><div class="e-time" style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; align-items:center;"><span class="badge-date" style="${badgeStyleDel}">${ago(e.deletedAt)}</span><span style="${badgeStyleDel}">By ${esc(deleterName)}</span>${actionToggleBtn}</div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-2);">${e.type==='IN'?'+':'-'}${e.qty}</span><span class="e-unit" style="font-size:11px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-top:2px;">${esc(delUnit)}</span></div></div></div><div class="e-del-full"><div class="e-drawer-content date-only"><div class="e-date-full-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${ago(e.deletedAt)}</div></div></div></div>`;
+         return `<div class="erow del-row no-delete" onclick="window.toggleRowActions(this)"><div class="erow-top"><div class="e-ind" style="background:var(--white-muted);color:var(--text-2);border:2.5px solid currentColor; border-radius: 12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="e-body"><div class="e-who" style="font-family:var(--f-display); font-weight:800; font-size:15px; color:var(--text-1); letter-spacing:-0.01em; text-decoration:none;">${esc(delMsg)}</div><div class="e-time" style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; align-items:center;"><span class="badge-date" style="${badgeStyleDel}">${ago(e.deletedAt)}</span><span style="${badgeStyleDel}">By ${esc(deleterName)}</span></div></div><div class="e-right"><div style="text-align:right;"><span class="e-qty" style="font-family:var(--f-display); font-size:18px; font-weight:800; text-decoration:line-through; color:var(--text-2);">${e.type==='IN'?'+':'-'}${e.qty}</span><span class="e-unit" style="font-size:11px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-top:2px;">${esc(delUnit)}</span></div></div></div><div class="e-del-full"><div class="e-drawer-content date-only"><div class="e-date-full-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${ago(e.deletedAt)}</div></div></div></div>`;
       }
       
       const isInc = e.type === 'IN';
@@ -4502,19 +4497,15 @@ window.handleActionToggle = function(btnEl) {
   if (!row) return;
 
   if (!row.classList.contains('show-actions')) {
-    // Row is closed. Close all others
     document.querySelectorAll('.erow.show-actions').forEach(r => { 
       r.classList.remove('show-actions'); 
-      // Deliberately DO NOT remove .date-mode so the outgoing row collapses without flashing colors
     });
     
-    // Open this specific row into Date Mode immediately
     row.classList.add('date-mode');
     requestAnimationFrame(() => {
         row.classList.add('show-actions');
     });
   } else {
-    // If it is already open, toggle smoothly between Date and Delete views
     row.classList.toggle('date-mode');
   }
 };
@@ -4525,25 +4516,21 @@ window.toggleRowActions = function(el) {
   
   const wasActive = el.classList.contains('show-actions');
   
-  // Close all other rows gracefully
   document.querySelectorAll('.erow.show-actions').forEach(r => { 
     r.classList.remove('show-actions'); 
-    // Do not remove .date-mode here so it collapses perfectly maintaining its current theme
   });
   
   if (!wasActive) {
-    // Reset to Delete Mode by default BEFORE it opens (prevents color glitches)
-    el.classList.remove('date-mode');
-    el.classList.add('show-actions');
-    
-    // System logs & deleted rows do not have delete buttons, so force them to date mode
     if (el.classList.contains('no-delete')) {
       el.classList.add('date-mode');
+      el.classList.add('show-actions');
+    } else {
+      el.classList.remove('date-mode');
+      el.classList.add('show-actions');
     }
   }
 };
 
-// Global click listener to close everything beautifully
 document.addEventListener('click', e => {
   if (!e.target.closest('.erow')) {
     document.querySelectorAll('.erow.show-actions').forEach(r => { 
