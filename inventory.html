@@ -3179,17 +3179,24 @@ async function init(){
   
   if(!authUser){ return; }
 
-  const urlUid=new URLSearchParams(location.search).get('uid');
-  const rawSession=sessionStorage.getItem('zenda_user');
-  const sessionUser=rawSession?JSON.parse(rawSession):null;
-  const activeUid=urlUid||(sessionUser?sessionUser.uid:null)||authUser.uid;
-  
-  try{
-    const uSnap=await getDoc(doc(db,'users',activeUid));
-    if(uSnap.exists()){CU={uid:activeUid,...uSnap.data()};}else if(sessionUser){CU=sessionUser;}
-    else{CU={uid:activeUid,role:'owner',companyId:activeUid,name:authUser?.displayName||'Owner'};}
-  }catch(e){CU=sessionUser||{uid:activeUid,role:'owner',companyId:activeUid,name:'Owner'};}
-  if(!CU.companyId)CU.companyId=activeUid;
+  // NEW — identity can only come from Firebase Auth itself
+const activeUid = authUser.uid;
+
+try {
+  const uSnap = await getDoc(doc(db, 'users', activeUid));
+  if (uSnap.exists()) {
+    CU = { uid: activeUid, ...uSnap.data() };
+  } else {
+    // No profile doc for this authenticated user — don't invent one
+    // with role:'owner'. Bounce to login instead of granting access.
+    window.location.href = 'login.html';
+    return;
+  }
+} catch (e) {
+  window.location.href = 'login.html';
+  return;
+}
+if (!CU.companyId) CU.companyId = activeUid;
   
   try {
     const compSnap = await getDoc(doc(db, 'companies', CU.companyId));
@@ -3644,8 +3651,10 @@ window.sendWhDeleteRequest = async function() {
         if (textarea) textarea.removeAttribute('readonly');
     }
 };
+// NEW
 window.confirmDelWH = async function() {
   if (window._blockIfLocked()) return;
+  if (CU.role !== 'owner') { window.showToast('Only the owner can delete warehouses.', 'error'); return; }
   const btn = document.getElementById('delWhBtn');
   if(btn) { btn.disabled = true; btn.textContent = 'Deleting...'; }
   window._isDeletingWH = true;
@@ -4204,8 +4213,10 @@ window.sendProdDeleteRequest = async function() {
         if (textarea) textarea.removeAttribute('readonly');
     }
 };
+// NEW
 window.confirmDelProd = async function() {
   if (window._blockIfLocked()) return;
+  if (CU.role !== 'owner') { window.showToast('Only the owner can delete products.', 'error'); return; }
   const btn = document.getElementById('delProdBtn');
   btn.disabled = true; btn.textContent = 'Deleting...';
   window._isDeletingProd = true;
