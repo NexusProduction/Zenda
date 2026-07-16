@@ -2691,7 +2691,6 @@ window._blockIfLocked = function() {
 };
 
 window._LOCKABLE_MODALS = ['m-wh','m-prod','m-edit-prod','m-entry','m-del-wh','m-del-prod','m-del-entry','m-low-stock'];
-
 window._injectModalLock = function(modalId) {
   const mbox = document.querySelector(`#${modalId} .mbox`);
   if (!mbox || mbox.querySelector('.premium-modal-lock')) return;
@@ -2700,7 +2699,16 @@ window._injectModalLock = function(modalId) {
   
   // SUPER SECURE BLUR: Blocks all clicks underneath and cannot be bypassed.
   lock.style.cssText = "position: absolute !important; inset: 0 !important; z-index: 99999 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; background: rgba(255,255,255,0.7) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; padding: 24px !important; text-align: center !important; pointer-events: all !important; user-select: none !important;";
-  lock.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); }, true);
+  
+  // FIX: Intercept the click and manually redirect if it's the button
+  lock.addEventListener('click', e => { 
+    if (e.target.closest('button') || e.target.closest('.pml-btn')) {
+        window.location.href = 'subscription.html';
+        return;
+    }
+    e.stopPropagation(); 
+    e.preventDefault(); 
+  }, true);
   
   if (CU.role !== 'owner') {
       // Staff View
@@ -2713,7 +2721,7 @@ window._injectModalLock = function(modalId) {
   } else {
       // Owner View
       lock.innerHTML = `
-        <button class="pml-btn" onclick="window.location.href='subscription.html'" style="pointer-events: all;">
+        <button class="pml-btn" style="pointer-events: all;">
           ⚡ Upgrade Now
         </button>
         <div class="pml-txt" style="font-family: var(--f-display); font-weight: 700; font-size: 14px; color: var(--text-2); margin-top: 10px;">Upgrade to Access The App</div>
@@ -2721,7 +2729,6 @@ window._injectModalLock = function(modalId) {
   }
   mbox.appendChild(lock);
 };
-
 window._removeModalLock = function(modalId) {
   document.querySelector(`#${modalId} .mbox .premium-modal-lock`)?.remove();
 };
@@ -3439,8 +3446,6 @@ function renderWHs() {
       pcList.appendChild(row);
     }
   });
-
-  // Account Locking Blur
   if (hasLocked) {
     let lockBtnHtml = '';
     if (CU.role === 'owner') {
