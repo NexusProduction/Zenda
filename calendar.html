@@ -529,29 +529,9 @@ window.toast = function(msg, type = 'success') {
   c.appendChild(t);
   setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
 };
-function lockDownStaffUI() {
-  isLockedOut = true;
-  document.body.classList.add('staff-locked');
-  unsubs.forEach(u => u());
-  unsubs = [];
-  if (staffUnsub) { staffUnsub(); staffUnsub = null; }
-}
-
-function unlockStaffUI() {
-  if (!isLockedOut) return;
-  isLockedOut = false;
-  document.body.classList.remove('staff-locked');
-  document.getElementById('staff-lockout-overlay')?.classList.remove('active');
-  if (CU?.companyId) startStaffListener();
-  startListeners();
-}
-
-function startStaffLockoutTimer() {
-  const overlay = document.getElementById('staff-lockout-overlay');
-  if (!overlay) return;
-  overlay.classList.add('active');
-  lockDownStaffUI();
-}
+function lockDownStaffUI() {}
+function unlockStaffUI() {}
+function startStaffLockoutTimer() {}
 function startCompanyPremiumWatcher() {
   if (!CU?.companyId || CU.role === 'owner') return;
   if (window._companyWatchUnsub) { window._companyWatchUnsub(); window._companyWatchUnsub = null; }
@@ -860,7 +840,23 @@ window.confirmDelete = function(id, visibility, src, btn, event) {
   pEl('del-event-success-tick')?.classList.remove('active');
 
   const delLock = pEl('del-event-lock-overlay');
-  if (delLock) delLock.classList.toggle('active', CU?.role === 'owner' && CU?.isPremium === false);
+  if (delLock) {
+    const isLocked = CU?.isPremium === false;
+    delLock.classList.toggle('active', isLocked);
+    if (isLocked) {
+      if (CU?.role === 'owner') {
+        delLock.innerHTML = `<button class="premium-lock-btn" onclick="window.location.href='subscription.html'">⚡ Upgrade Now</button>
+        <div class="premium-lock-text">Upgrade to Delete Events</div>`;
+      } else {
+        delLock.innerHTML = `
+        <div style="margin-bottom:16px;background:rgba(217,119,6,.12);border:2px solid rgba(217,119,6,.25);border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="premium-lock-text" style="font-size:1.1rem;font-weight:800;color:var(--tx1);margin-bottom:8px;">Account Not Upgraded</div>
+        <div class="premium-lock-text" style="font-size:0.9rem;">Ask your owner to upgrade the company account to unlock this feature.</div>`;
+      }
+    }
+  }
 
   const msgs = {
     all: 'This will delete the event for everyone. Are you sure?',
@@ -879,9 +875,8 @@ window.closeConfirmDel = () => {
 };
 window.executeDelete = async function() {
   if (!deleteTargetId) return;
-  if (isLockedOut) { toast('Access locked.', 'error'); closeConfirmDel(); return; }
-  if (CU?.role === 'owner' && CU?.isPremium === false) {
-    toast('Upgrade your plan to delete events.', 'error');
+  if (CU?.isPremium === false) {
+    toast(CU?.role === 'owner' ? 'Upgrade your plan to delete events.' : 'Ask your owner to upgrade to delete events.', 'error');
     closeConfirmDel();
     return;
   }
@@ -1099,13 +1094,27 @@ window.toggleStaff = function(uid) {
 };
 
 window.openAddModal = () => {
-  if (isLockedOut) return;
-
   pEl('add-modal').classList.add('open');
   pEl('add-event-success-tick')?.classList.remove('active');
 
   const addLock = pEl('add-event-lock-overlay');
-  if (addLock) addLock.classList.toggle('active', CU?.role === 'owner' && CU?.isPremium === false);
+  if (addLock) {
+    const isLocked = CU?.isPremium === false;
+    addLock.classList.toggle('active', isLocked);
+    if (isLocked) {
+      if (CU?.role === 'owner') {
+        addLock.innerHTML = `<button class="premium-lock-btn" onclick="window.location.href='subscription.html'">⚡ Upgrade Now</button>
+        <div class="premium-lock-text">Upgrade to Add Events</div>`;
+      } else {
+        addLock.innerHTML = `
+        <div style="margin-bottom:16px;background:rgba(217,119,6,.12);border:2px solid rgba(217,119,6,.25);border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="premium-lock-text" style="font-size:1.1rem;font-weight:800;color:var(--tx1);margin-bottom:8px;">Account Not Upgraded</div>
+        <div class="premium-lock-text" style="font-size:0.9rem;">Ask your owner to upgrade the company account to unlock this feature.</div>`;
+      }
+    }
+  }
 
   currentVisibility = 'self';
   selectedStaffUIDs = new Set([CU.uid]);
@@ -1134,9 +1143,8 @@ window.closeAddModal = () => {
   }
 };
 window.addEvent = async function(btn) {
-  if (isLockedOut) { toast('Access locked.', 'error'); return; }
-  if (CU?.role === 'owner' && CU?.isPremium === false) {
-    toast('Upgrade your plan to add events.', 'error');
+  if (CU?.isPremium === false) {
+    toast(CU?.role === 'owner' ? 'Upgrade your plan to add events.' : 'Ask your owner to upgrade to add events.', 'error');
     return;
   }
 
