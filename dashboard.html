@@ -3576,7 +3576,7 @@ textarea.form-input:focus {
           
           <div class="content-card recent-wrap-order">
             <div class="content-hdr" style="padding: 24px 32px;">
-              <div class="content-ttl" id="recent-ttl">Recent Tasks</div>
+              <div class="content-ttl" id="recent-ttl">Assigned to Me</div>
               <button class="btn-outline" onclick="window.setMobScope('my'); window.setTaskTab('my-pending'); window.showView('tasks')">View All</button>
             </div>
             <div id="recent-tasks" class="task-list-wrapper" style="padding:24px 32px; display:flex; flex-direction:column; gap:8px;"></div>
@@ -7827,50 +7827,24 @@ window.renderRecentTasks = function() {
     const el = document.getElementById('recent-tasks');
     if (!el) return;
     
-    // 1. Get "My Work" (Strictly Pending Tasks)
+    // Only tasks assigned TO me, strictly pending
     const myPending = (window.myTasks || [])
-        .filter(t => t.status === 'pending')
-        .map(t => ({...t, _listType: 'assigned-to-me'}));
-        
-    // 2. Get "I Assigned" (Strictly Pending Tasks)
-    const assignedPending = (window.assignedByMeTasks || [])
-        .filter(t => t.status === 'pending')
-        .map(t => ({...t, _listType: 'assigned-by-me'}));
-        
-    // 3. Combine both lists into one pool
-    const combined = [...myPending, ...assignedPending];
-    
-    // 4. Remove duplicates
-    const uniqueTasks = [];
-    const seenIds = new Set();
-    for (const t of combined) {
-        if (!seenIds.has(t.id)) {
-            seenIds.add(t.id);
-            uniqueTasks.push(t);
-        } else if (t._listType === 'assigned-to-me') {
-            const existingIdx = uniqueTasks.findIndex(x => x.id === t.id);
-            if (existingIdx !== -1) uniqueTasks[existingIdx] = t;
-        }
-    }
-    
-    // 5. Sort by Newest First and grab 3 or 4 tasks dynamically
-    uniqueTasks.sort((a, b) => b.createdAt - a.createdAt);
+        .filter(t => t.status === 'pending' && !window.isOverdue(t.dueDate))
+        .sort((a, b) => b.createdAt - a.createdAt);
     
     // If screen is stacked (<= 1116px), show 4. If side-by-side, show 3.
     const taskLimit = window.innerWidth <= 1116 ? 4 : 3;
-    const recent = uniqueTasks.slice(0, taskLimit);
+    const recent = myPending.slice(0, taskLimit);
     
     // Render Empty State if nothing is pending
     if (recent.length === 0) {
-        el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--tx-muted); font-weight: 600;">No recent active tasks.</div>';
+        el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--tx-muted); font-weight: 600;">No pending tasks assigned to you.</div>';
         return;
     }
     
-    // Map through the array and render each card using its mapped _listType
-    el.innerHTML = recent.map((t, i) => generateTaskCard(t, t._listType, i)).join('');
+    // Always render with 'assigned-to-me' type so the tick/cross quick actions show
+    el.innerHTML = recent.map((t, i) => generateTaskCard(t, 'assigned-to-me', i)).join('');
 };
-
-// Re-render task count smoothly on device rotation/resize
 window.addEventListener('resize', () => {
     if (typeof window.renderRecentTasks === 'function') {
         window.renderRecentTasks();
