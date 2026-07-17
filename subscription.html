@@ -152,6 +152,36 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
 .success-screen.show .succ-btn { transform: translateY(0); opacity: 1; }
 
 #confetti { position: absolute; inset: 0; pointer-events: none; z-index: -1; width: 100%; height: 100%; }
+.active-date-info {
+  border-top: 1.5px dashed #A7F3D0;
+  padding-top: 16px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #059669;
+  text-align: center;
+  letter-spacing: 0.02em;
+  font-family: var(--f-disp);
+}
+
+.btn-active {
+  background: #ECFDF5 !important;
+  color: #059669 !important;
+  border: 1.5px solid #10B981 !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  cursor: default !important;
+  opacity: 1 !important;
+}
+
+.btn-active svg {
+  width: 18px;
+  height: 18px;
+}
 </style>
 </head>
 <body>
@@ -338,15 +368,35 @@ onAuthStateChanged(auth, async (user) => {
             isStillActive = !isNaN(expiry.getTime()) && expiry > new Date();
 
             if (isStillActive) {
-              const expiryStr = expiry.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+              const expiryStr = expiry.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
               document.getElementById('activePlanName').textContent = compData.planType || 'Premium';
               document.getElementById('activePlanExpiry').textContent = expiryStr;
               document.getElementById('activeSubBanner').classList.add('show');
+              const cleanTickSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+              const setActiveCardUI = (btnId) => {
+                const btn = document.getElementById(btnId);
+                btn.innerHTML = `${cleanTickSVG} Already Active`;
+                btn.className = 'btn btn-active';
+                btn.disabled = true;
+                if (!btn.previousElementSibling || !btn.previousElementSibling.classList.contains('active-date-info')) {
+                  btn.insertAdjacentHTML('beforebegin', `<div class="active-date-info">Active till ${expiryStr}</div>`);
+                }
+              };
 
-              setButtonState(btnM, '✓ Plan Active', 'btn btn-active', true);
-              setButtonState(btnA, '✓ Plan Active', 'btn btn-active', true);
+              const planName = compData.planType || "";
+              if (planName.includes('30') || planName.toLowerCase().includes('monthly')) {
+                setActiveCardUI('btnMonthly');
+                setButtonState(btnA, 'Upgrade to 365 Days', 'btn btn-ghost', false, () => openPayment('365 Days', 399, 365));
+                
+              } else if (planName.includes('365') || planName.toLowerCase().includes('annual')) {
+                setActiveCardUI('btnAnnual');
+                setButtonState(btnM, 'Included in Annual', 'btn btn-muted', true);
+                
+              } else {
+                setActiveCardUI('btnMonthly');
+                setActiveCardUI('btnAnnual');
+              }
             }
-          }
         }
       } catch (compError) {
         console.error("Error loading company data:", compError);
