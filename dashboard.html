@@ -3684,6 +3684,39 @@ textarea.form-input:focus {
         width: 14px !important;
         height: 14px !important;
     }
+    /* --- RESPONSIVE TASK TITLE & REASON ALIGNMENT --- */
+    .ztc-title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        overflow: hidden;
+    }
+    
+    /* PC View: Title gets up to 60% of the space, allowing the reason to fit next to it */
+    .ztc-title-row .ztc-title {
+        flex-shrink: 0;
+        max-width: 60%; 
+    }
+    
+    /* Stops the reason box from stretching too long */
+    .ztc-title-row .ztc-reason {
+        flex-shrink: 1;
+        min-width: 0;
+        width: fit-content !important; 
+    }
+
+    /* Phone View: Stack them vertically */
+    @media (max-width: 768px) {
+        .ztc-title-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+        .ztc-title-row .ztc-title {
+            max-width: 100%; /* Allows title to take full width on mobile */
+        }
+    }
 </style>
 </head>
 <body>
@@ -7932,14 +7965,14 @@ function generateTaskCard(t, tab, idx = 0) {
 
     const reason = t.declineReason || t.reason || '';
 
-   // Wrap both the title and the reason inside a flex container so they stay on one line
+   // Use a CSS class instead of inline styles so it can be responsive
     const titleHtml  = `
-        <div style="display: flex; align-items: center; gap: 8px; width: 100%; overflow: hidden;">
-            <div class="ztc-title${isDone ? ' ztc-done' : ''}" style="max-width: 50%; flex-shrink: 0;">${esc(t.title)}</div>
-            ${(isDeclined && reason) ? `<div class="ztc-reason" style="flex: 1; min-width: 0;">Reason :- ${esc(reason)}</div>` : ''}
+        <div class="ztc-title-row">
+            <div class="ztc-title${isDone ? ' ztc-done' : ''}">${esc(t.title)}</div>
+            ${(isDeclined && reason) ? `<div class="ztc-reason">Reason :- ${esc(reason)}</div>` : ''}
         </div>`;
         
-    const reasonHtml = ''; // We leave this empty because it's now injected directly into the line above
+    const reasonHtml = ''; // Leave this empty as we injected it into the title row
 
     let rightHtml = '';
     if (isDone) {
