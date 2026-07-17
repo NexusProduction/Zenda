@@ -8871,6 +8871,44 @@ window.prepDeleteStaff = function(uid, name, email) {
     const content  = document.getElementById('del-modal-dynamic-content');
     if (!content) return;
 
+    // --- PREMIUM GATE ---
+    let isUpgraded = false;
+    if (window.CU && window.CU.isPremium === true) {
+        isUpgraded = !window.CU.subscriptionExpiry || new Date(window.CU.subscriptionExpiry).getTime() > Date.now();
+    }
+
+    if (!isUpgraded) {
+        if (isOwner) {
+            content.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; text-align:center; font-family:var(--font-main);">
+                    <div style="width: 52px; height: 52px; border-radius: 16px; background: #FEF3C7; color: #D97706; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <div style="font-weight: 800; font-size: 1.15rem; color: var(--tx-main); margin-bottom: 8px;">Upgrade Required</div>
+                    <div style="font-size: 0.9rem; color: var(--tx-muted); line-height: 1.5; margin-bottom: 20px;">
+                        Your account is not upgraded. Upgrade to Premium to remove staff members from your team.
+                    </div>
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                        <button class="btn btn-ghost w-full" onclick="window.closeModal('delete-modal')">Cancel</button>
+                        <button class="btn btn-primary w-full" onclick="window.location.href='subscription.html'" style="background:linear-gradient(135deg,#F59E0B,#D97706); box-shadow:0 4px 12px rgba(245,158,11,.3);">⚡ Upgrade</button>
+                    </div>
+                </div>`;
+        } else {
+            content.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:14px; align-items:center; text-align:center; font-family:var(--font-main);">
+                    <div style="width: 52px; height: 52px; border-radius: 16px; background: #FEF3C7; color: #D97706; display: flex; align-items: center; justify-content: center; margin: 0 auto 2px;">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <div style="font-weight: 800; font-size: 1.15rem; color: var(--tx-main);">Upgrade Required</div>
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--tx-muted); line-height: 1.5; background: var(--bg-page); border: 1px solid var(--bd-color); border-radius: 12px; padding: 12px 14px; width: 100%; box-sizing: border-box;">
+                        Only the account owner can upgrade the plan. Please ask them to upgrade so you can request staff removal.
+                    </div>
+                </div>`;
+        }
+        window.openModal('delete-modal');
+        return;
+    }
+
     if (isOwner) {
         content.innerHTML = `
           <div style="font-family:var(--font-main);">
@@ -8927,7 +8965,6 @@ window.prepDeleteStaff = function(uid, name, email) {
     }
     window.openModal('delete-modal');
 };
-/* ── Checkbox toggle (owner confirmation) ── */
 window.toggleOwnerDelBtn = function() {
     const check = document.getElementById('del-owner-check');
     const btn   = document.getElementById('del-confirm-btn');
