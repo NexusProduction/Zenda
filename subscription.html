@@ -359,6 +359,7 @@ onAuthStateChanged(auth, async (user) => {
     if (currentUserData.companyId) {
       try {
         const compSnap = await getDoc(doc(db, 'companies', currentUserData.companyId));
+        
         if (compSnap.exists()) {
           const compData = compSnap.data();
           currentUserData.companyName = compData.name;
@@ -372,7 +373,9 @@ onAuthStateChanged(auth, async (user) => {
               document.getElementById('activePlanName').textContent = compData.planType || 'Premium';
               document.getElementById('activePlanExpiry').textContent = expiryStr;
               document.getElementById('activeSubBanner').classList.add('show');
+              
               const cleanTickSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+              
               const setActiveCardUI = (btnId) => {
                 const btn = document.getElementById(btnId);
                 btn.innerHTML = `${cleanTickSVG} Already Active`;
@@ -384,6 +387,7 @@ onAuthStateChanged(auth, async (user) => {
               };
 
               const planName = compData.planType || "";
+              
               if (planName.includes('30') || planName.toLowerCase().includes('monthly')) {
                 setActiveCardUI('btnMonthly');
                 setButtonState(btnA, 'Upgrade to 365 Days', 'btn btn-ghost', false, () => openPayment('365 Days', 399, 365));
@@ -396,8 +400,9 @@ onAuthStateChanged(auth, async (user) => {
                 setActiveCardUI('btnMonthly');
                 setActiveCardUI('btnAnnual');
               }
-            }
-        }
+            } // <- CLOSES isStillActive
+          } // <- CLOSES isPremium
+        } // <- CLOSES compSnap.exists()
       } catch (compError) {
         console.error("Error loading company data:", compError);
         showErrorState('Tap to Retry');
@@ -415,7 +420,6 @@ onAuthStateChanged(auth, async (user) => {
     showErrorState('Tap to Retry');
   }
 });
-
 function generateRefCode() {
   const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
   return `ZEN-${Date.now().toString().slice(-6)}-${rand}`;
