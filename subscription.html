@@ -267,7 +267,7 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
 
 <script type="module">
 import { auth, db } from './firebase-config.js';
-import { collection, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { collection, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // ─── CONFIG: replace with your real UPI details ───
@@ -414,42 +414,61 @@ window.closePayment = function() {
 window.handleOverlayClick = function(e) {
   if (e.target === document.getElementById('payModal')) closePayment();
 };
-
 window.handlePaymentConfirm = async function() {
   const btn = document.getElementById('submitPayBtn');
   btn.classList.add('loading');
   btn.disabled = true;
-
-  const minSpinnerTime = new Promise(res => setTimeout(res, 2200 + Math.random() * 1500));
+  const loaderHTML = `
+    <style>
+      .pay-loader-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: var(--f-disp); transition: opacity 0.3s; }
+      .pay-spinner { width: 64px; height: 64px; border: 5px solid rgba(255,255,255,0.1); border-top-color: #10B981; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 24px; }
+      .pay-tick { width: 80px; height: 80px; background: #10B981; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 40px; font-weight: bold; margin-bottom: 24px; animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4); }
+      .pay-text { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+      @keyframes scaleIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+    </style>
+    <div class="pay-loader-overlay" id="payLoaderOverlay">
+      <div class="pay-spinner" id="paySpinner"></div>
+      <div class="pay-tick" id="payTick">✓</div>
+      <div class="pay-text" id="payText">Verifying Payment...</div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', loaderHTML);
 
   try {
-    const payload = {
-      plan: window.selectedPlan,
-      days: window.selectedDays,
-      price: window.selectedPrice,
-      refCode: window.currentRefCode,
-      status: "pending",
-      userId: auth.currentUser ? auth.currentUser.uid : "Unknown User",
-      userEmail: auth.currentUser ? auth.currentUser.email : "Unknown Email",
-      ownerName: currentUserData ? currentUserData.name : "Unknown Owner",
-      companyName: (currentUserData && currentUserData.companyName) ? currentUserData.companyName : "Unknown Company",
-      companyId: currentUserData ? currentUserData.companyId : (auth.currentUser ? auth.currentUser.uid : "Unknown"),
-      createdAt: new Date().toISOString()
-    };
+    const companyId = currentUserData ? currentUserData.companyId : (auth.currentUser ? auth.currentUser.uid : null);
+    if (!companyId) throw new Error("No company ID found.");
 
-    await Promise.all([
-      addDoc(collection(db, 'upgradeRequests'), payload),
-      minSpinnerTime
-    ]);
+    const compRef = doc(db, 'companies', companyId);
+    const compSnap = await getDoc(compRef);
+    const compData = compSnap.exists() ? compSnap.data() : {};
+    let expiry = compData.subscriptionExpiry ? new Date(compData.subscriptionExpiry) : new Date();
+    if (expiry < new Date()) expiry = new Date(); // Reset to today if expired
 
-    closePayment();
-    triggerSuccessReward(window.selectedPlan);
+    if (window.selectedDays === 30) {
+      expiry.setMonth(expiry.getMonth() + 1);
+    } else if (window.selectedDays === 365) {
+      expiry.setFullYear(expiry.getFullYear() + 1);
+    }
+    await updateDoc(compRef, {
+      isPremium: true,
+      planType: window.selectedPlan,
+      subscriptionExpiry: expiry.toISOString()
+    });
+
+    window.closePayment();
+    document.getElementById('paySpinner').style.display = 'none';
+    document.getElementById('payTick').style.display = 'flex';
+    document.getElementById('payText').innerText = "Payment completed. Redirecting to dashboard...";
+    setTimeout(() => {
+      window.location.href = 'dashboard.html';
+    }, 2500);
 
   } catch (error) {
     console.error("Firebase Error:", error);
+    document.getElementById('payLoaderOverlay').remove();
     btn.classList.remove('loading');
     btn.disabled = false;
-    alert("Something went wrong submitting your request. Please try again.");
+    alert("Something went wrong processing your payment. Please try again.");
   }
 };
 
