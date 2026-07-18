@@ -26,9 +26,9 @@ export { firebaseConfig };
 
 // EmailJS account details, used to send OTP codes and welcome emails
 export const EMAILJS_CONFIG = {
-  serviceId: "service_eq2vbrf",
-  templateId: "template_tfoskjm",
-  publicKey: "e5zf2Kl3AwVaSEO9E"
+  serviceId: "service_gnma7zg",
+  templateId: "template_czpb3pl",
+  publicKey: "aTzd4UgqONGMf2ocy"
 };
 
 // How long a login OTP code stays valid for
