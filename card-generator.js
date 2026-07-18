@@ -1,8 +1,4 @@
-// =============================================
-//  ZENDA — ID Card Generator (HTML5 Canvas)
-// =============================================
-
-// ---- Color schemes per role ----
+// Colors used for each role's ID card background
 const CARD_THEMES = {
   company: { gradStart: '#1E1B4B', gradMid: '#312E81', gradEnd: '#4F46E5' },
   owner:   { gradStart: '#78350F', gradMid: '#B45309', gradEnd: '#F59E0B' },
@@ -10,22 +6,24 @@ const CARD_THEMES = {
   staff:   { gradStart: '#064E3B', gradMid: '#065F46', gradEnd: '#10B981' }
 };
 
+// Draws the ID card shown to a company owner after signup
 export function drawCompanyCard(canvas, { companyName, ownerName, email, uniqueCode }) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height, theme = CARD_THEMES.company;
   ctx.clearRect(0, 0, W, H);
 
+  // Background gradient
   const grad = ctx.createLinearGradient(0, 0, W, H);
   grad.addColorStop(0, theme.gradStart); grad.addColorStop(0.5, theme.gradMid); grad.addColorStop(1, theme.gradEnd);
   ctx.fillStyle = grad; roundRect(ctx, 0, 0, W, H, 20); ctx.fill();
 
-  // Subtle background shape
+  // Faint decorative circle in the corner
   ctx.save();
   ctx.globalAlpha = 0.05; ctx.fillStyle = '#fff';
   ctx.beginPath(); ctx.arc(W - 30, -30, 110, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
-  // Top row: brand + badge
+  // Logo top-left, role badge top-right
   ctx.font = 'bold 16px "Outfit", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.9)';
   ctx.fillText('⚡ ZENDA', 24, 34);
@@ -41,11 +39,11 @@ export function drawCompanyCard(canvas, { companyName, ownerName, email, uniqueC
   ctx.fillText(badgeLabel, W - 24 - (badgeWidth / 2), 34);
   ctx.textAlign = 'left';
 
-  // Divider
+  // Line separating header from body
   ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(24, 52); ctx.lineTo(W - 24, 52); ctx.stroke();
 
-  // Big company name + owner line
+  // Company name and owner name
   ctx.font = 'bold 32px "Outfit", sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(truncate(companyName, 20), 24, 92);
@@ -54,7 +52,7 @@ export function drawCompanyCard(canvas, { companyName, ownerName, email, uniqueC
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.fillText(`${ownerName} • Owner`, 24, 112);
 
-  // Credentials box — single email row, centered
+  // Dark box holding the login email
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
   roundRect(ctx, 24, 134, W - 48, 56, 12);
   ctx.fill();
@@ -67,13 +65,13 @@ export function drawCompanyCard(canvas, { companyName, ownerName, email, uniqueC
   ctx.fillStyle = '#ffffff';
   ctx.fillText(email, 95, 167);
 
-  // Bottom row
+  // Footer watermark
   ctx.font = 'bold 11px "Outfit", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
   ctx.textAlign = 'right'; ctx.fillText('zenda.app', W - 24, H - 24); ctx.textAlign = 'left';
 }
 
-// ---- REDESIGNED STAFF / MANAGER CARD ----
+// Draws the ID card for a staff or manager account (email + password + unique ID)
 export function drawStaffCard(canvas, { name, email, role, designation, companyName, uniqueId, companyCode, password }) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
@@ -89,13 +87,13 @@ export function drawStaffCard(canvas, { name, email, role, designation, companyN
   roundRect(ctx, 0, 0, W, H, 20);
   ctx.fill();
 
-  // Subtle background shapes
+  // Faint decorative circle in the corner
   ctx.save();
   ctx.globalAlpha = 0.05; ctx.fillStyle = '#fff';
   ctx.beginPath(); ctx.arc(W - 30, -30, 110, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
-  // Top row: Brand + Big Role Badge
+  // Logo top-left, role badge top-right
   ctx.font = 'bold 16px "Outfit", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.9)';
   ctx.fillText('⚡ ZENDA', 24, 34);
@@ -106,17 +104,17 @@ export function drawStaffCard(canvas, { name, email, role, designation, companyN
   ctx.fillStyle = role === 'manager' ? 'rgba(96, 165, 250, 0.25)' : 'rgba(52, 211, 153, 0.25)';
   roundRect(ctx, W - 24 - roleWidth, 18, roleWidth, 24, 6);
   ctx.fill();
-  ctx.fillStyle = role === 'manager' ? '#93C5FD' : '#6EE7B7'; // Bright blue for manager, green for staff
+  ctx.fillStyle = role === 'manager' ? '#93C5FD' : '#6EE7B7'; // blue for manager, green for staff
   ctx.textAlign = 'center';
-  ctx.fillText(roleLabel, W - 24 - (roleWidth/2), 34);
+  ctx.fillText(roleLabel, W - 24 - (roleWidth / 2), 34);
   ctx.textAlign = 'left';
 
-  // Divider
+  // Line separating header from body
   ctx.strokeStyle = 'rgba(255,255,255,0.15)';
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(24, 52); ctx.lineTo(W - 24, 52); ctx.stroke();
 
-  // BIG Name & Company
+  // Name and company/role line
   ctx.font = 'bold 34px "Outfit", sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(truncate(name, 18), 24, 92);
@@ -125,26 +123,24 @@ export function drawStaffCard(canvas, { name, email, role, designation, companyN
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.fillText(`${companyName} • ${designation || 'Team Member'}`, 24, 112);
 
-  // Credentials Box (Darker inset background)
+  // Dark box holding email + password
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
   roundRect(ctx, 24, 134, W - 48, 80, 12);
   ctx.fill();
 
-  // Labels
   ctx.font = '500 13px "DM Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.fillText('Email:', 40, 160);
   ctx.fillText('Pass:', 40, 192);
 
-  // Values (BIG)
   ctx.font = 'bold 15px "DM Mono", monospace';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(email, 90, 160);
-  
-  ctx.fillStyle = '#FCD34D'; // Bright yellow for password so it stands out
+
+  ctx.fillStyle = '#FCD34D'; // yellow so the password stands out
   ctx.fillText(password || '••••••••', 90, 192);
 
-  // Bottom row UID
+  // Footer: unique ID
   ctx.font = '500 13px "DM Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.fillText('Unique ID:', 24, H - 24);
@@ -154,9 +150,12 @@ export function drawStaffCard(canvas, { name, email, role, designation, companyN
   ctx.fillText(uniqueId, 95, H - 24);
 }
 
+// Saves the card canvas as a PNG file
 export function downloadCard(canvas, filename = 'zenda-card.png') {
   const link = document.createElement('a'); link.download = filename; link.href = canvas.toDataURL('image/png', 1.0); link.click();
 }
+
+// Shares the card image via the phone's native share sheet, or falls back to downloading + opening WhatsApp
 export function shareCardWhatsApp(canvas, fileName = 'Zenda ID Card') {
   return new Promise((resolve) => {
     canvas.toBlob(blob => {
@@ -174,6 +173,8 @@ export function shareCardWhatsApp(canvas, fileName = 'Zenda ID Card') {
     });
   });
 }
+
+// Creates a canvas inside the given container and draws the right card type onto it
 export function renderCardToElement(containerId, type, data) {
   const container = document.getElementById(containerId);
   if (!container) return null;
@@ -184,8 +185,11 @@ export function renderCardToElement(containerId, type, data) {
   if (type === 'company') drawCompanyCard(canvas, data); else drawStaffCard(canvas, data);
   return canvas;
 }
+
+// Draws a rectangle with rounded corners on the canvas
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
 }
+
+// Cuts a string short and adds "…" if it's longer than max
 function truncate(str = '', max = 20) { return str.length > max ? str.substring(0, max) + '…' : str; }
-function formatCode(code = '') { return code.length === 10 ? code.substring(0, 4) + '-' + code.substring(4) : code; }
