@@ -1,24 +1,27 @@
-// =============================================
-//  ZENDA — OTP System
-// =============================================
+// Handles OTP generation, Firestore storage/verification, and email delivery via EmailJS
+// Falls back to an on-screen popup if EmailJS isn't configured
 
 import { db, OTP_EXPIRY_MINUTES } from './firebase-config.js';
 import { doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// EmailJS project keys — used to send the OTP email
 const EMAILJS_CONFIG = {
   serviceId: 'service_eq2vbrf',
   templateId: 'template_tfoskjm',
   publicKey: 'e5zf2Kl3AwVaSEO9E'
 };
 
+// 6-digit numeric OTP
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Firestore doc IDs can't contain '.' or '@', so sanitize the email into a safe key
 function emailToKey(email) {
   return email.replace(/[.@]/g, '_');
 }
 
+// Writes the OTP + expiry to Firestore under otps/{safeEmailKey}
 async function storeOTP(email, otp) {
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
   const key = emailToKey(email);
@@ -30,7 +33,8 @@ async function storeOTP(email, otp) {
   });
 }
 
-// Show OTP on screen when EmailJS is not set up
+// Dev-mode fallback: displays the OTP in a popup instead of emailing it,
+// so login/signup still works locally without EmailJS set up
 function showOTPOnScreen(otp, email) {
   const existing = document.getElementById('zenda-otp-devbox');
   if (existing) existing.remove();
@@ -58,6 +62,7 @@ function showOTPOnScreen(otp, email) {
   document.body.appendChild(box);
 }
 
+// True only if EmailJS SDK is loaded and all config keys are present
 function isEmailJSConfigured() {
   return (
     typeof emailjs !== 'undefined' &&
@@ -67,22 +72,23 @@ function isEmailJSConfigured() {
   );
 }
 
+// Sends the OTP via EmailJS; falls back to the on-screen popup on missing config or send failure
 async function sendOTPEmail(email, otp, userName = '', companyName = 'Zenda') {
   if (!isEmailJSConfigured()) {
     console.warn(`[ZENDA DEV] OTP for ${email}: ${otp}`);
     showOTPOnScreen(otp, email);
     return true;
   }
-  
+
   try {
     await emailjs.send(
       EMAILJS_CONFIG.serviceId,
       EMAILJS_CONFIG.templateId,
-      { 
-        to_email: email, 
-        otp_code: otp, 
-        user_name: userName || email.split('@')[0], 
-        company_name: companyName 
+      {
+        to_email: email,
+        otp_code: otp,
+        user_name: userName || email.split('@')[0],
+        company_name: companyName
       },
       EMAILJS_CONFIG.publicKey
     );
@@ -95,26 +101,28 @@ async function sendOTPEmail(email, otp, userName = '', companyName = 'Zenda') {
   }
 }
 
+// Validates entered OTP against Firestore: checks existence, used flag, expiry, then match
 async function verifyOTP(email, enteredOTP) {
   const key = emailToKey(email);
   const docRef = doc(db, 'otps', key);
   const snap = await getDoc(docRef);
   if (!snap.exists()) return { success: false, message: 'OTP not found. Please request a new one.' };
-  
+
   const data = snap.data();
   if (data.used) return { success: false, message: 'OTP already used. Please request a new one.' };
-  
+
   if (new Date() > new Date(data.expiresAt)) {
     await deleteDoc(docRef);
     return { success: false, message: 'OTP expired. Please request a new one.' };
   }
-  
+
   if (data.otp !== enteredOTP.trim()) return { success: false, message: 'Incorrect OTP. Please try again.' };
-  
+
   await setDoc(docRef, { ...data, used: true });
   return { success: true };
 }
 
+// Public entry point: generate, store, and send an OTP — called from login.html / signup.html
 export async function sendOTP(email, userName = '', companyName = 'Zenda') {
   const otp = generateOTP();
   await storeOTP(email, otp);
@@ -122,67 +130,7 @@ export async function sendOTP(email, userName = '', companyName = 'Zenda') {
   return true;
 }
 
+// Public entry point: verify an entered OTP — called from login.html / signup.html
 export async function verifyUserOTP(email, enteredOTP) {
   return await verifyOTP(email, enteredOTP);
-}
-
-export function initOTPInputs(containerSelector, onComplete) {
-  const container = document.querySelector(containerSelector);
-  if (!container) return;
-  const inputs = container.querySelectorAll('.otp-input');
-  inputs.forEach((input, index) => {
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Backspace' && !input.value && index > 0) {
-        inputs[index - 1].focus();
-        inputs[index - 1].value = '';
-        inputs[index - 1].classList.remove('filled');
-      }
-    });
-    input.addEventListener('input', () => {
-      input.value = input.value.replace(/\D/g, '').slice(-1);
-      if (input.value) {
-        input.classList.add('filled');
-        if (index < inputs.length - 1) inputs[index + 1].focus();
-      } else { input.classList.remove('filled'); }
-      const otp = Array.from(inputs).map(i => i.value).join('');
-      if (otp.length === 6 && typeof onComplete === 'function') onComplete(otp);
-    });
-    input.addEventListener('paste', (e) => {
-      e.preventDefault();
-      const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-      pasted.split('').forEach((char, i) => { if (inputs[i]) { inputs[i].value = char; inputs[i].classList.add('filled'); } });
-      if (pasted.length === 6 && typeof onComplete === 'function') onComplete(pasted);
-    });
-  });
-}
-
-export function getOTPValue(containerSelector) {
-  const container = document.querySelector(containerSelector);
-  if (!container) return '';
-  return Array.from(container.querySelectorAll('.otp-input')).map(i => i.value).join('');
-}
-
-export function clearOTPInputs(containerSelector) {
-  const container = document.querySelector(containerSelector);
-  if (!container) return;
-  const inputs = container.querySelectorAll('.otp-input');
-  inputs.forEach(i => { i.value = ''; i.classList.remove('filled'); });
-  if (inputs[0]) inputs[0].focus();
-}
-
-export function startOTPTimer(timerEl, resendBtn, seconds = 60) {
-  let remaining = seconds;
-  if (resendBtn) resendBtn.disabled = true;
-  const interval = setInterval(() => {
-    remaining--;
-    const m = Math.floor(remaining / 60).toString().padStart(2, '0');
-    const s = (remaining % 60).toString().padStart(2, '0');
-    if (timerEl) timerEl.textContent = `${m}:${s}`;
-    if (remaining <= 0) {
-      clearInterval(interval);
-      if (timerEl) timerEl.textContent = '';
-      if (resendBtn) resendBtn.disabled = false;
-    }
-  }, 1000);
-  return interval;
 }
