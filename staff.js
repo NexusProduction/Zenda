@@ -38,38 +38,41 @@ async function getSecondaryAuth() {
 
   return secAuth;
 }
-
-// Creates a new staff member: a Firebase Auth account + matching
-// Firestore 'users' doc. Called by the owner (via secondary app) after
-// a staff-add request has been approved.
 export async function createStaff({ name, email, password, role, companyId, companyName, createdBy, designation }) {
-  // Inline validation. The "FIELD:<inputId>:<message>" format lets a
-  // caller parse out which specific input to highlight — the current
-  // caller in dashboard.html does not parse this, so today it just
-  // shows the raw string in a toast.
   if (!name?.trim())        throw new Error('FIELD:cs-name:Full name is required.');
   if (!email?.trim())       throw new Error('FIELD:cs-email:Email address is required.');
   if (!password?.trim())    throw new Error('FIELD:cs-password:Password is required.');
   if (password.length < 6)  throw new Error('FIELD:cs-password:Password must be at least 6 characters.');
   if (!designation?.trim()) throw new Error('FIELD:cs-designation:Designation is required.');
 
-  // Unique display ID for the staff member, formatted based on their role
+  // Check premium status BEFORE touching Firebase Auth — avoids creating
+  // an orphaned Auth account if this check fails.
+  const compRef = doc(db, 'companies', companyId);
+  const compSnap = await getDoc(compRef);
+  if (compSnap.exists()) {
+    const compData = compSnap.data();
+
+    let isUpgraded = compData.isPremium === true;
+    if (isUpgraded && compData.subscriptionExpiry && new Date(compData.subscriptionExpiry) <= new Date()) {
+      isUpgraded = false;
+    }
+
+    if (!isUpgraded) {
+      throw new Error("Your account is not upgraded. Please upgrade from the Subscription page to add staff.");
+    }
+  }
+
   const uniqueId = generateStaffId(role);
   let uid;
 
   try {
     const secAuth = await getSecondaryAuth();
 
-    // Attempt to create the Auth user on the secondary app
     try {
       const cred = await createUserWithEmailAndPassword(secAuth, email.trim(), password.trim());
       uid = cred.user.uid;
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
-        // RECYCLE LOGIC: this email already has an Auth account (likely an
-        // orphan left behind by a previous deleted/failed staff record).
-        // Try signing into it with the password just given — if it matches,
-        // reuse that same UID instead of failing outright.
         try {
           const cred = await signInWithEmailAndPassword(secAuth, email.trim(), password.trim());
           uid = cred.user.uid;
@@ -79,34 +82,9 @@ export async function createStaff({ name, email, password, role, companyId, comp
         }
       } else {
         await secAuth.signOut();
-        // Map Firebase's raw error codes back to field-specific messages
         if (err.code === 'auth/weak-password') throw new Error('FIELD:cs-password:Password must be at least 6 characters.');
         if (err.code === 'auth/invalid-email') throw new Error('FIELD:cs-email:Invalid email address.');
         throw err;
-      }
-    }
-
-    // Staff creation requires an active company premium subscription.
-    // (The old per-seat "Unlimited Staff Add-on" purchase system has
-    // been removed — this is now a simple upgraded / not-upgraded gate.)
-    //
-    // NOTE: this check runs AFTER the Auth user above was created/recycled.
-    // If it fails here, the Auth account is signed out but NOT deleted —
-    // it's left behind as an orphan (only cleaned up later if someone
-    // retries the same email, via the recycle path above).
-    const compRef = doc(db, 'companies', companyId);
-    const compSnap = await getDoc(compRef);
-    if (compSnap.exists()) {
-      const compData = compSnap.data();
-
-      let isUpgraded = compData.isPremium === true;
-      if (isUpgraded && compData.subscriptionExpiry && new Date(compData.subscriptionExpiry) <= new Date()) {
-        isUpgraded = false;
-      }
-
-      if (!isUpgraded) {
-        await secAuth.signOut();
-        throw new Error("Your account is not upgraded. Please upgrade from the Subscription page to add staff.");
       }
     }
 
@@ -173,46 +151,4 @@ export function listenCompanyStaff(companyId, onUpdate) {
     staff.sort((a, b) => (order[a.role] || 3) - (order[b.role] || 3));
     onUpdate(staff);
   });
-}
-
-// One-off fetch of staff who can be assigned tasks: everyone in the
-// company except the current user and the owner.
-export async function getAssignableStaff(companyId, currentUserId) {
-  const q = query(collection(db, 'users'), where('companyId', '==', companyId));
-  const snap = await getDocs(q);
-  return snap.docs
-    .map(d => ({ uid: d.id, ...d.data() }))
-    .filter(u => u.uid !== currentUserId && u.role !== 'owner');
-}
-
-// Updates a user's profile fields (e.g. name, designation). Email
-// changes are additionally gated behind an active premium subscription.
-export async function updateUserProfile(uid, updates) {
-  const userRef = doc(db, 'users', uid);
-  const userSnap = await getDoc(userRef);
-
-  if (userSnap.exists()) {
-    const userData = userSnap.data();
-
-    // Editing a staff member's email requires an active company premium
-    // subscription. (Add-on/staff-card purchase system removed.)
-    if (updates.email && updates.email !== userData.email) {
-      const compRef = doc(db, 'companies', userData.companyId);
-      const compSnap = await getDoc(compRef);
-
-      if (compSnap.exists()) {
-        const compData = compSnap.data();
-        let isUpgraded = compData.isPremium === true;
-        if (isUpgraded && compData.subscriptionExpiry && new Date(compData.subscriptionExpiry) <= new Date()) {
-          isUpgraded = false;
-        }
-
-        if (!isUpgraded) {
-          throw new Error("Your account is not upgraded. Please upgrade to modify staff emails.");
-        }
-      }
-    }
-  }
-
-  await updateDoc(userRef, updates);
 }
