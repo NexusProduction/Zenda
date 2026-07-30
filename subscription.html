@@ -147,6 +147,24 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
   width: 18px;
   height: 18px;
 }
+
+.coupon-box{background:var(--surface);border:1.5px dashed var(--brand);border-radius:16px;padding:20px 24px;margin:0 auto 32px;max-width:480px;display:flex;flex-direction:column;gap:10px;transition:transform .2s;}
+.coupon-box.shake{animation:couponShake .4s;}
+@keyframes couponShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.coupon-row{display:flex;gap:10px;}
+#couponInput{flex:1;padding:12px 14px;border-radius:10px;border:1px solid var(--border);font-family:var(--f-body);font-size:14px;text-transform:uppercase;letter-spacing:.04em;}
+#couponInput:focus{outline:none;border-color:var(--brand);}
+.btn-coupon-apply{padding:12px 22px;border-radius:10px;background:var(--brand);color:#fff;font-weight:700;border:none;cursor:pointer;font-family:var(--f-disp);white-space:nowrap;}
+.btn-coupon-apply:disabled{opacity:.55;cursor:not-allowed;}
+.coupon-msg{font-size:13px;font-weight:600;min-height:16px;}
+.coupon-msg.error{color:#DC2626;}
+
+.coupon-applied-banner{max-width:480px;margin:0 auto 32px;background:var(--success-bg);border:1.5px solid var(--success);border-radius:16px;padding:16px 20px;display:none;align-items:center;justify-content:center;gap:10px;color:var(--success-tx);font-family:var(--f-disp);font-weight:800;font-size:15px;}
+.tick-circle{width:22px;height:22px;flex-shrink:0;}
+.tick-circle circle{stroke:var(--success);stroke-width:2;fill:none;stroke-dasharray:63;stroke-dashoffset:63;animation:circleDraw .4s ease forwards;}
+.tick-circle path{stroke:var(--success);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:20;stroke-dashoffset:20;animation:tickDraw .3s ease forwards .35s;}
+@keyframes circleDraw{to{stroke-dashoffset:0;}}
+@keyframes tickDraw{to{stroke-dashoffset:0;}}
 </style>
 </head>
 <body>
@@ -163,6 +181,23 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
 <div class="container" id="mainContainer">
   <h1 class="title">Choose your plan</h1>
   <p class="subtitle">Select the offer that best suits your team's needs.</p>
+
+  <div class="coupon-box" id="couponBox" style="display:none;">
+    <div class="coupon-row">
+      <input type="text" id="couponInput" placeholder="Have a coupon code?" maxlength="20" autocomplete="off">
+      <button class="btn-coupon-apply" id="couponApplyBtn" onclick="applyCoupon()">Apply</button>
+    </div>
+    <div class="coupon-msg" id="couponMsg"></div>
+  </div>
+
+  <div class="coupon-applied-banner" id="couponAppliedBanner">
+    <svg class="tick-circle" viewBox="0 0 36 36">
+      <circle cx="18" cy="18" r="16"/>
+      <path d="M10 18 L15 23 L26 12"/>
+    </svg>
+    <span></span>
+  </div>
+
 <div class="grid">
     <div class="card" id="cardBasic">
       <div class="c-price-wrap">
@@ -183,7 +218,7 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
       <div class="badge gold">Most Popular</div>
       <div class="c-price-wrap">
         <span class="price-sym">₹</span>
-        <span class="c-price">120</span>
+        <span class="c-price" id="priceMonthly">120</span>
         <span class="c-period">/30 days</span>
       </div>
       <ul class="features">
@@ -200,7 +235,7 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
       <div class="badge green">2 Months Free</div>
       <div class="c-price-wrap">
         <span class="price-sym">₹</span>
-        <span class="c-price">1200</span>
+        <span class="c-price" id="priceAnnual">1200</span>
         <span class="c-period">/365 days</span>
       </div>
       <ul class="features">
@@ -232,7 +267,7 @@ body { background: var(--bg-canvas); color: var(--tx-body); font-family: var(--f
 
 <script type="module">
 import { auth, db } from './firebase-config.js';
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { doc, getDoc, updateDoc, runTransaction, increment, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const UPI_VPA = "yourshop@okhdfcbank";   
@@ -243,6 +278,9 @@ window.selectedPrice = 0;
 window.selectedDays = 0;
 let currentUserData = null;
 let countdownTimer = null;
+const BASE_PRICE = { monthly: 120, annual: 1200 };
+window.appliedCoupon = null;
+window.couponDiscountPct = 0;
 
 function setButtonState(btn, text, cls, disabled, onclick) {
   btn.textContent = text;
@@ -292,6 +330,7 @@ onAuthStateChanged(auth, async (user) => {
         if (compSnap.exists()) {
           const compData = compSnap.data();
           currentUserData.companyName = compData.name;
+          currentUserData.couponUsed = compData.couponUsed === true;
 
           if (compData.isPremium && compData.subscriptionExpiry) {
             const expiry = new Date(compData.subscriptionExpiry);
@@ -344,6 +383,9 @@ onAuthStateChanged(auth, async (user) => {
 
     if (!isStillActive) {
       unlockButtonsForPayment();
+      if (!currentUserData.couponUsed) {
+        document.getElementById('couponBox').style.display = 'flex';
+      }
     }
 
   } catch (error) {
@@ -353,15 +395,74 @@ onAuthStateChanged(auth, async (user) => {
 });
 const QR_IMAGE_MONTHLY = "qr-monthly-39.png";
 const QR_IMAGE_ANNUAL  = "qr-annual-399.png";
+window.applyCoupon = async function() {
+  const btn = document.getElementById('couponApplyBtn');
+  const input = document.getElementById('couponInput');
+  const msg = document.getElementById('couponMsg');
+  const box = document.getElementById('couponBox');
+  const code = input.value.trim().toUpperCase();
 
+  msg.textContent = '';
+  msg.className = 'coupon-msg';
+
+  if (!code) {
+    msg.textContent = 'Enter a coupon code.';
+    msg.className = 'coupon-msg error';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+
+  try {
+    const couponSnap = await getDoc(doc(db, 'coupons', code));
+
+    if (!couponSnap.exists() || couponSnap.data().active !== true) {
+      msg.textContent = 'Invalid or expired coupon code.';
+      msg.className = 'coupon-msg error';
+      box.classList.add('shake');
+      setTimeout(() => box.classList.remove('shake'), 400);
+      btn.disabled = false;
+      btn.textContent = 'Apply';
+      return;
+    }
+
+    const pct = couponSnap.data().discountPercent || 20;
+    window.appliedCoupon = code;
+    window.couponDiscountPct = pct;
+
+    document.getElementById('priceMonthly').textContent = Math.round(BASE_PRICE.monthly * (1 - pct / 100));
+    document.getElementById('priceAnnual').textContent = Math.round(BASE_PRICE.annual * (1 - pct / 100));
+
+    box.style.display = 'none';
+    const banner = document.getElementById('couponAppliedBanner');
+    banner.querySelector('span').textContent = `Coupon Applied — ${pct}% OFF`;
+    banner.style.display = 'flex';
+
+  } catch (err) {
+    console.error('Coupon check failed:', err);
+    msg.textContent = 'Could not verify code. Try again.';
+    msg.className = 'coupon-msg error';
+    btn.disabled = false;
+    btn.textContent = 'Apply';
+  }
+};
 window.openPayment = function(planLabel, price, days) {
+  const finalPrice = window.appliedCoupon
+    ? Math.round(price * (1 - window.couponDiscountPct / 100))
+    : price;
+
   window.selectedPlan = planLabel;
-  window.selectedPrice = price;
+  window.selectedPrice = finalPrice;
   window.selectedDays = days;
 
-  document.getElementById('qrAmountLabel').innerHTML = `₹${price}<span>INR</span>`;
-  document.getElementById('payQrImage').src = days === 30 ? QR_IMAGE_MONTHLY : QR_IMAGE_ANNUAL;
+  document.getElementById('qrAmountLabel').innerHTML = `₹${finalPrice}<span>INR</span>`;
 
+  const qrImage = window.appliedCoupon
+    ? (days === 30 ? 'rs96.jpeg' : 'rs960.jpeg')
+    : (days === 30 ? QR_IMAGE_MONTHLY : QR_IMAGE_ANNUAL);
+
+  document.getElementById('payQrImage').src = qrImage;
   document.getElementById('payModal').classList.add('open');
   startCountdown(33);
 };
@@ -426,23 +527,63 @@ window.handlePaymentConfirm = async function() {
     if (!companyId) throw new Error("No company ID found.");
 
     const compRef = doc(db, 'companies', companyId);
-    const compSnap = await getDoc(compRef);
-    const compData = compSnap.exists() ? compSnap.data() : {};
+    const couponToRedeem = window.appliedCoupon;
+    let redemptionCompanyName = '';
 
-    let expiry = compData.subscriptionExpiry ? new Date(compData.subscriptionExpiry) : new Date();
-    if (expiry < new Date()) expiry = new Date();
+    await runTransaction(db, async (tx) => {
+      const compSnap = await tx.get(compRef);
+      const compData = compSnap.exists() ? compSnap.data() : {};
+      redemptionCompanyName = compData.name || currentUserData.companyName || '';
 
-    if (window.selectedDays === 30) {
-      expiry.setMonth(expiry.getMonth() + 1);
-    } else if (window.selectedDays === 365) {
-      expiry.setFullYear(expiry.getFullYear() + 1);
-    }
+      let couponRef = null;
+      if (couponToRedeem) {
+        if (compData.couponUsed === true) throw new Error('COUPON_ALREADY_USED');
+        couponRef = doc(db, 'coupons', couponToRedeem);
+        const couponSnap = await tx.get(couponRef);
+        if (!couponSnap.exists() || couponSnap.data().active !== true) throw new Error('COUPON_INVALID');
+      }
 
-    await updateDoc(compRef, {
-      isPremium: true,
-      planType: window.selectedPlan,
-      subscriptionExpiry: expiry.toISOString()
+      let expiry = compData.subscriptionExpiry ? new Date(compData.subscriptionExpiry) : new Date();
+      if (expiry < new Date()) expiry = new Date();
+      if (window.selectedDays === 30) expiry.setMonth(expiry.getMonth() + 1);
+      else if (window.selectedDays === 365) expiry.setFullYear(expiry.getFullYear() + 1);
+
+      const compUpdate = {
+        isPremium: true,
+        planType: window.selectedPlan,
+        subscriptionExpiry: expiry.toISOString()
+      };
+      if (couponToRedeem) {
+        compUpdate.couponUsed = true;
+        compUpdate.couponCodeUsed = couponToRedeem;
+      }
+      tx.update(compRef, compUpdate);
+
+      if (couponToRedeem) {
+        tx.update(couponRef, { totalRedemptions: increment(1) });
+        const now = new Date();
+        tx.set(doc(collection(db, 'couponRedemptions')), {
+          code: couponToRedeem,
+          companyId,
+          companyName: redemptionCompanyName,
+          amountPaid: window.selectedPrice,
+          payout: 60,
+          month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+          dateISO: now.toISOString(),
+          createdAt: serverTimestamp()
+        });
+      }
     });
+
+    if (couponToRedeem) {
+      addDoc(collection(db, 'mail'), {
+        to: ['buisness65201@gmaiul.com'],
+        message: {
+          subject: `Coupon ${couponToRedeem} redeemed`,
+          text: `${redemptionCompanyName || 'A company'} redeemed ${couponToRedeem} on the ${window.selectedPlan} plan for ₹${window.selectedPrice}. Payout owed: ₹60.`
+        }
+      }).catch(e => console.error('Mail queue failed (non-critical):', e));
+    }
 
     window.closePayment();
 
@@ -457,9 +598,16 @@ window.handlePaymentConfirm = async function() {
   } catch (error) {
     console.error("Firebase Error:", error);
     const overlay = document.getElementById('simpleOverlay');
-    if(overlay) overlay.remove(); 
+    if (overlay) overlay.remove();
     btn.disabled = false;
-    alert("Something went wrong processing your payment. Please try again.");
+
+    if (error.message === 'COUPON_ALREADY_USED' || error.message === 'COUPON_INVALID') {
+      alert("That coupon can't be used anymore. Refreshing — you can still pay at full price.");
+      window.appliedCoupon = null;
+      window.location.reload();
+    } else {
+      alert("Something went wrong processing your payment. Please try again.");
+    }
   }
 };
 </script>
