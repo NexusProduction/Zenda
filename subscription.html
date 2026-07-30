@@ -536,11 +536,14 @@ window.handlePaymentConfirm = async function() {
       redemptionCompanyName = compData.name || currentUserData.companyName || '';
 
       let couponRef = null;
+      let fetchedCouponData = null; // Fix: We declare this outside so the whole transaction can see it
+
       if (couponToRedeem) {
         if (compData.couponUsed === true) throw new Error('COUPON_ALREADY_USED');
         couponRef = doc(db, 'coupons', couponToRedeem);
-        const couponSnap = await tx.get(couponRef);
-        if (!couponSnap.exists() || couponSnap.data().active !== true) throw new Error('COUPON_INVALID');
+        const tempCouponSnap = await tx.get(couponRef);
+        if (!tempCouponSnap.exists() || tempCouponSnap.data().active !== true) throw new Error('COUPON_INVALID');
+        fetchedCouponData = tempCouponSnap.data(); // Save the data globally for the transaction
       }
 
       let expiry = compData.subscriptionExpiry ? new Date(compData.subscriptionExpiry) : new Date();
@@ -553,6 +556,7 @@ window.handlePaymentConfirm = async function() {
         planType: window.selectedPlan,
         subscriptionExpiry: expiry.toISOString()
       };
+      
       if (couponToRedeem) {
         compUpdate.couponUsed = true;
         compUpdate.couponCodeUsed = couponToRedeem;
@@ -562,21 +566,19 @@ window.handlePaymentConfirm = async function() {
       if (couponToRedeem) {
         const now = new Date();
         const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const cData = couponSnap.data();
-
+        
         // Check if the last redemption was in the current month. If yes, add 1. If no, reset to 1.
         let newMonthlyCount = 1;
-        if (cData.lastRedemptionMonth === currentMonthStr) {
-          newMonthlyCount = (cData.totalRedemptionsThisMonth || 0) + 1;
+        if (fetchedCouponData && fetchedCouponData.lastRedemptionMonth === currentMonthStr) {
+          newMonthlyCount = (fetchedCouponData.totalRedemptionsThisMonth || 0) + 1;
         }
 
-        // Update the coupon document with both counters
         tx.update(couponRef, { 
           totalRedemptions: increment(1),
           totalRedemptionsThisMonth: newMonthlyCount,
           lastRedemptionMonth: currentMonthStr
         });
-
+        
         tx.set(doc(collection(db, 'couponRedemptions')), {
           code: couponToRedeem,
           companyId,
