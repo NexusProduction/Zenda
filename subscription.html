@@ -560,8 +560,23 @@ window.handlePaymentConfirm = async function() {
       tx.update(compRef, compUpdate);
 
       if (couponToRedeem) {
-        tx.update(couponRef, { totalRedemptions: increment(1) });
         const now = new Date();
+        const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const cData = couponSnap.data();
+
+        // Check if the last redemption was in the current month. If yes, add 1. If no, reset to 1.
+        let newMonthlyCount = 1;
+        if (cData.lastRedemptionMonth === currentMonthStr) {
+          newMonthlyCount = (cData.totalRedemptionsThisMonth || 0) + 1;
+        }
+
+        // Update the coupon document with both counters
+        tx.update(couponRef, { 
+          totalRedemptions: increment(1),
+          totalRedemptionsThisMonth: newMonthlyCount,
+          lastRedemptionMonth: currentMonthStr
+        });
+
         tx.set(doc(collection(db, 'couponRedemptions')), {
           code: couponToRedeem,
           companyId,
