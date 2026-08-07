@@ -505,7 +505,7 @@ async function computeAllTotals(){
   ledgerTotals = {};
   await Promise.all(ledgers.map(async (l) => {
     try {
-      const snap = await getDocs(query(collection(db,'ledgerEntries'), where('ledgerId','==', l.id)));
+      const snap = await getDocs(query(collection(db,'ledgerEntries'), where('ledgerId','==', l.id), where('companyId','==', CU.companyId)));
       let cashIn=0, cashOut=0, count=0, lastDate=null;
       snap.forEach(d => {
         const e = d.data();
@@ -610,11 +610,11 @@ window.openLedger = function(id){
   renderDetailHeader();
 
   if(entriesUnsub) entriesUnsub();
-  const q = query(collection(db,'ledgerEntries'), where('ledgerId','==', id));
-  entriesUnsub = onSnapshot(q, snap => {
-    curEntries = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    renderEntries();
-  }, err => console.error(err));
+const q = query(collection(db,'ledgerEntries'), where('ledgerId','==', id), where('companyId','==', CU.companyId));
+entriesUnsub = onSnapshot(q, snap => {
+  curEntries = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  renderEntries();
+}, err => { console.error(err); toast('Could not load entries: ' + err.message, 'error'); });
 };
 
 window.backToList = function(){
@@ -847,9 +847,9 @@ window.confirmDelLedger = async function(){
       window.backToList();
     });
   } catch(e){
-    console.error(e);
-    toast('Failed to delete account.', 'error');
-    if(btn){ btn.disabled = false; btn.textContent = 'Delete'; }
+    } catch(e){
+  console.error(e);
+  toast('Failed to delete account: ' + e.message, 'error');
     ledgerDeleteBusy = false;
   }
 };
