@@ -438,8 +438,16 @@ function toast(msg, type='success'){
   setTimeout(() => t.remove(), 3000);
 }
 
-window.openM = function(id){ document.getElementById(id).classList.add('open'); document.body.style.overflow='hidden'; };
-window.closeM = function(id){ document.getElementById(id).classList.remove('open'); document.body.style.overflow=''; };
+window.openM = function(id){
+  const el = document.getElementById(id);
+  if(!el){ console.error('[Zenda] Modal not found:', id); toast('Could not open this form (missing #' + id + '). Try a hard refresh.', 'error'); return; }
+  el.classList.add('open'); document.body.style.overflow='hidden';
+};
+window.closeM = function(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('open'); document.body.style.overflow='';
+};
 
 function playTick(tickId, textId, text, onDone){
   const tick = document.getElementById(tickId);
@@ -683,14 +691,22 @@ function renderEntries(){
   });
   listEl.innerHTML = html;
 }
-
-// ── Add Entry ──
 window.openAddEntryModal = function(){
-  document.getElementById('ae-date').value = todayStr();
-  document.getElementById('ae-amount').value = '';
-  document.getElementById('ae-payee').value = '';
-  document.getElementById('ae-desc').value = '';
-  document.getElementById('ae-method').selectedIndex = 0;
+  const dateEl = document.getElementById('ae-date');
+  const amtEl = document.getElementById('ae-amount');
+  const payeeEl = document.getElementById('ae-payee');
+  const descEl = document.getElementById('ae-desc');
+  const methodEl = document.getElementById('ae-method');
+  if(!dateEl || !amtEl || !payeeEl || !descEl || !methodEl){
+    console.error('[Zenda] Add Entry form fields missing from the page:', {dateEl, amtEl, payeeEl, descEl, methodEl});
+    toast('This page is out of date — please hard refresh (Ctrl/Cmd+Shift+R).', 'error');
+    return;
+  }
+  dateEl.value = todayStr();
+  amtEl.value = '';
+  payeeEl.value = '';
+  descEl.value = '';
+  methodEl.selectedIndex = 0;
   window.setEntryType('in');
   window.openM('m-add-entry');
 };
