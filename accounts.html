@@ -232,6 +232,9 @@ body[data-state="connected"][data-premium="false"][data-role="owner"] #sync-stat
 .field label{display:block;font-family:var(--f-display);font-size:.75rem;font-weight:800;color:var(--text-1);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .finp{width:100%;padding:14px 16px;border:2px solid var(--border-strong);border-radius:var(--r-md);background:var(--white-pure);color:var(--text-1);font-family:var(--f-body);font-size:.95rem;font-weight:700;outline:none;transition:all .2s;box-shadow:0 4px 12px rgba(0,0,0,.02)}
 .finp:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 4px var(--accent-glow)}
+.finp.err{border-color:var(--red)!important;background:var(--red-soft)!important}
+.field-err{display:none;font-size:.78rem;color:var(--red);font-weight:600;margin-top:6px}
+.field-err.show{display:block}
 textarea.finp{resize:none;min-height:76px}
 select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236C6F80' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 .nl-input-wrap{position:relative}
@@ -439,6 +442,7 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
           <input class="finp" id="nl-name" placeholder="" maxlength="20" autocomplete="off">
           <div class="nl-anim-placeholder" id="nl-anim-placeholder">e.g. Ram Kumar</div>
         </div>
+        <div class="field-err" id="nl-name-err">Name must be 5-20 characters.</div>
       </div>
     </div>
     <div class="mfoot">
@@ -725,6 +729,9 @@ function nlStopPlaceholderAnim(){
 window.openNewLedgerModal = function(){
   const nameInp = document.getElementById('nl-name');
   nameInp.value = '';
+  nameInp.classList.remove('err');
+  const errEl = document.getElementById('nl-name-err');
+  if(errEl) errEl.classList.remove('show');
   const ph = document.getElementById('nl-anim-placeholder');
   if(ph) ph.classList.remove('ph-hidden');
   nlStartPlaceholderAnim();
@@ -733,8 +740,16 @@ window.openNewLedgerModal = function(){
 };
 window.saveNewLedger = async function(){
   const nameInp = document.getElementById('nl-name');
+  const errEl = document.getElementById('nl-name-err');
   const name = nameInp.value.trim();
-  if(name.length < 5 || name.length > 20){ toast('Name must be 5-20 characters.', 'error'); nameInp.focus(); return; }
+  if(name.length < 5 || name.length > 20){
+    nameInp.classList.add('err');
+    errEl.classList.add('show');
+    nameInp.focus();
+    return;
+  }
+  nameInp.classList.remove('err');
+  errEl.classList.remove('show');
 
   const btn = document.getElementById('btn-save-ledger');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -761,6 +776,9 @@ window.saveNewLedger = async function(){
   const inp = document.getElementById('nl-name');
   if(!inp) return;
   inp.addEventListener('input', function(){
+    this.classList.remove('err');
+    const errEl = document.getElementById('nl-name-err');
+    if(errEl) errEl.classList.remove('show');
     const ph = document.getElementById('nl-anim-placeholder');
     if(this.value.length > 0){
       nlStopPlaceholderAnim();
