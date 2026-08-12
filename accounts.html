@@ -156,6 +156,23 @@ body[data-state="connected"][data-premium="false"][data-role="owner"] #sync-stat
 .lr-tag{padding:6px 12px;border-radius:99px;border:1.5px solid var(--border);background:var(--white-cool);color:var(--text-2);font-family:var(--f-display);font-size:.78rem;font-weight:700;white-space:nowrap}
 .lr-tag.pos{color:var(--green);border-color:var(--green-border);background:var(--green-soft)}
 .lr-tag.neg{color:var(--red);border-color:var(--red-border);background:var(--red-soft)}
+.pag-wrap{display:none;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--surface-1);border-top:1.5px solid var(--border);border-radius:0 0 18px 18px}
+.pag-info{display:flex;align-items:center;gap:7px;padding:6px 15px;border-radius:99px;background:var(--white-pure);border:1.5px solid var(--border);box-shadow:var(--shadow-xs)}
+.pag-info-current{font-family:var(--f-mono);font-size:.9rem;font-weight:800;color:var(--text-1);letter-spacing:-.01em}
+.pag-info-sep{font-size:.66rem;font-weight:700;color:var(--text-4);text-transform:uppercase;letter-spacing:.05em}
+.pag-info-total{font-family:var(--f-mono);font-size:.9rem;font-weight:800;color:var(--text-3)}
+.pag-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;border:1.5px solid var(--border-strong);border-radius:10px;background:var(--white-pure);font-family:var(--f-display);font-size:.83rem;font-weight:700;color:var(--text-1);cursor:pointer;box-shadow:var(--shadow-xs);transition:all .2s cubic-bezier(.22,1,.36,1)}
+.pag-btn svg{flex-shrink:0;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.pag-btn:hover:not(:disabled){border-color:var(--text-1);background:var(--text-1);color:#fff;box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+.pag-btn-prev:hover:not(:disabled) svg{transform:translateX(-2px)}
+.pag-btn-next:hover:not(:disabled) svg{transform:translateX(2px)}
+.pag-btn:active:not(:disabled){transform:scale(.95)}
+.pag-btn:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
+@media(max-width:480px){
+  .pag-wrap{padding:12px 14px}
+  .pag-btn{padding:7px 12px;font-size:.78rem}
+  .pag-info{padding:5px 12px}
+}
 @media(max-width:480px){
   .ledger-row{padding:14px 16px;gap:10px}
   .lr-tags{flex-direction:column;align-items:flex-end;gap:4px}
@@ -371,6 +388,17 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
       <div class="es-ttl">No accounts yet</div>
       <div class="es-sub">Create an account for a person or party to start tracking cash in and out.</div>
     </div>
+    <div class="pag-wrap" id="ledger-pag-wrap">
+      <button class="pag-btn pag-btn-prev" id="ledger-pag-prev">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        <span>Prev</span>
+      </button>
+      <span class="pag-info" id="ledger-pag-info"><span class="pag-info-current">1</span><span class="pag-info-sep">/</span><span class="pag-info-total">1</span></span>
+      <button class="pag-btn pag-btn-next" id="ledger-pag-next">
+        <span>Next</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
     <button class="fab-entry fab-show" onclick="window.openNewLedgerModal()">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
@@ -549,6 +577,8 @@ let curLedger = null;
 let curEntries = [];
 let entryType = 'in';
 let searchVal = '';
+let ledgerPage = 1;
+const LEDGER_PER_PAGE = 10;
 let entryToDeleteId = null;
 let ledgerDeleteBusy = false;
 const NL_PLACEHOLDERS = ['e.g. Ram Kumar', 'e.g. Sharma Global Traders', 'e.g. Arjun Fernandes'];
@@ -672,6 +702,7 @@ function renderSummary(){
 function renderLedgerGrid(){
   const el = document.getElementById('ledger-grid');
   const empty = document.getElementById('ledger-empty');
+  const pw = document.getElementById('ledger-pag-wrap');
   const filtered = ledgers
     .filter(l => (l.name||'').toLowerCase().includes(searchVal.toLowerCase()))
     .sort((a,b) => (a.name||'').localeCompare(b.name||''));
@@ -679,11 +710,17 @@ function renderLedgerGrid(){
   if(!filtered.length){
     el.innerHTML = '';
     empty.classList.remove('hidden');
+    if(pw) pw.style.display = 'none';
     return;
   }
   empty.classList.add('hidden');
 
-  el.innerHTML = filtered.map((l,i) => {
+  const total = Math.ceil(filtered.length / LEDGER_PER_PAGE);
+  if(ledgerPage > total) ledgerPage = total;
+  if(ledgerPage < 1) ledgerPage = 1;
+  const slice = filtered.slice((ledgerPage-1)*LEDGER_PER_PAGE, ledgerPage*LEDGER_PER_PAGE);
+
+  el.innerHTML = slice.map((l,i) => {
     const t = ledgerTotals[l.id] || { bal:0, count:0, lastDate:null };
     const balClass = t.bal>0?'pos':(t.bal<0?'neg':'');
     const col = avatarColor(l.name);
@@ -699,9 +736,28 @@ function renderLedgerGrid(){
       </div>
     </div>`;
   }).join('');
+
+  if(pw){
+    if(total > 1){
+      pw.style.display = 'flex';
+      document.getElementById('ledger-pag-prev').disabled = ledgerPage === 1;
+      document.getElementById('ledger-pag-next').disabled = ledgerPage === total;
+      document.getElementById('ledger-pag-info').innerHTML = `<span class="pag-info-current">${ledgerPage}</span><span class="pag-info-sep">/</span><span class="pag-info-total">${total}</span>`;
+    } else {
+      pw.style.display = 'none';
+    }
+  }
 }
 
-window.onLedgerSearch = function(v){ searchVal = v; renderLedgerGrid(); };
+window.onLedgerSearch = function(v){ searchVal = v; ledgerPage = 1; renderLedgerGrid(); };
+
+document.getElementById('ledger-pag-prev').addEventListener('click', () => {
+  if(ledgerPage > 1){ ledgerPage--; renderLedgerGrid(); }
+});
+document.getElementById('ledger-pag-next').addEventListener('click', () => {
+  const total = Math.ceil(ledgers.filter(l => (l.name||'').toLowerCase().includes(searchVal.toLowerCase())).length / LEDGER_PER_PAGE);
+  if(ledgerPage < total){ ledgerPage++; renderLedgerGrid(); }
+});
 function nlStartPlaceholderAnim(){
   nlStopPlaceholderAnim();
   const el = document.getElementById('nl-anim-placeholder');
