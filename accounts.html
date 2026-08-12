@@ -234,6 +234,10 @@ body[data-state="connected"][data-premium="false"][data-role="owner"] #sync-stat
 .finp:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 4px var(--accent-glow)}
 textarea.finp{resize:none;min-height:76px}
 select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236C6F80' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.nl-input-wrap{position:relative}
+.nl-anim-placeholder{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text-4);font-family:var(--f-body);font-size:.95rem;font-weight:600;pointer-events:none;opacity:1;transition:opacity .28s ease,top .28s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 32px)}
+.nl-anim-placeholder.ph-out{opacity:0;top:calc(50% - 8px)}
+.nl-anim-placeholder.ph-hidden{opacity:0!important;transition:none}
 .mfoot{padding:0 22px 22px;display:flex;gap:10px}
 .type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
 .type-opt{height:44px;padding:0;border:2px solid var(--border-strong);background:var(--white-pure);color:var(--text-2);border-radius:12px;font-family:var(--f-display);font-weight:800;font-size:.85rem;transition:all .2s ease}
@@ -421,22 +425,21 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 <button class="fab-entry" id="fab-add-entry" onclick="window.openAddEntryModal()">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
-
 <!-- MODAL: New Account -->
 <div class="mo" id="m-new-ledger" onclick="if(event.target===this) window.closeM('m-new-ledger')">
   <div class="mbox">
     <div class="mhdr">
       <span class="mttl">New Account</span>
-      <button class="mclose" onclick="window.closeM('m-new-ledger')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="mbody">
       <div class="field">
-        <label>Name</label>
-        <input class="finp" id="nl-name" placeholder="e.g. Ram Kumar" maxlength="60" autocomplete="off">
+        <div class="nl-input-wrap">
+          <input class="finp" id="nl-name" placeholder="" maxlength="60" autocomplete="off">
+          <div class="nl-anim-placeholder" id="nl-anim-placeholder">e.g. Ram Kumar</div>
+        </div>
       </div>
     </div>
     <div class="mfoot">
-      <button class="btn-ghost btn-full" onclick="window.closeM('m-new-ledger')">Cancel</button>
       <button class="btn-primary btn-full" id="btn-save-ledger" onclick="window.saveNewLedger()">Create</button>
     </div>
     <div class="ppm-success-overlay" id="tick-new-ledger">
@@ -445,8 +448,6 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
     </div>
   </div>
 </div>
-
-<!-- MODAL: Add Entry -->
 <div class="mo" id="m-add-entry" onclick="if(event.target===this) window.closeM('m-add-entry')">
   <div class="mbox">
     <div class="mhdr">
@@ -544,6 +545,9 @@ let entryType = 'in';
 let searchVal = '';
 let entryToDeleteId = null;
 let ledgerDeleteBusy = false;
+const NL_PLACEHOLDERS = ['e.g. Ram Kumar', 'e.g. Sharma Global Traders', 'e.g. Arjun Fernandes'];
+let nlPhIndex = 0;
+let nlPhTimer = null;
 
 const syncEl = document.getElementById('sync-status');
 const AV_COLORS = ['#4F46E5','#059669','#D97706','#DC2626','#7C3AED','#0891B2'];
@@ -572,6 +576,7 @@ window.openM = function(id){
 window.closeM = function(id){
   const el = document.getElementById(id);
   if(!el || !el.classList.contains('open')) return;
+  if(id === 'm-new-ledger') nlStopPlaceholderAnim();
   el.classList.add('closing');
   setTimeout(() => {
     el.classList.remove('open','closing');
@@ -691,12 +696,34 @@ function renderLedgerGrid(){
 }
 
 window.onLedgerSearch = function(v){ searchVal = v; renderLedgerGrid(); };
-
 // ── New Account ──
+function nlStartPlaceholderAnim(){
+  nlStopPlaceholderAnim();
+  const el = document.getElementById('nl-anim-placeholder');
+  if(!el) return;
+  nlPhIndex = 0;
+  el.textContent = NL_PLACEHOLDERS[0];
+  el.classList.remove('ph-out');
+  nlPhTimer = setInterval(() => {
+    el.classList.add('ph-out');
+    setTimeout(() => {
+      nlPhIndex = (nlPhIndex + 1) % NL_PLACEHOLDERS.length;
+      el.textContent = NL_PLACEHOLDERS[nlPhIndex];
+      el.classList.remove('ph-out');
+    }, 280);
+  }, 2000);
+}
+function nlStopPlaceholderAnim(){
+  if(nlPhTimer){ clearInterval(nlPhTimer); nlPhTimer = null; }
+}
 window.openNewLedgerModal = function(){
-  document.getElementById('nl-name').value = '';
+  const nameInp = document.getElementById('nl-name');
+  nameInp.value = '';
+  const ph = document.getElementById('nl-anim-placeholder');
+  if(ph) ph.classList.remove('ph-hidden');
+  nlStartPlaceholderAnim();
   window.openM('m-new-ledger');
-  setTimeout(() => document.getElementById('nl-name').focus(), 150);
+  setTimeout(() => nameInp.focus(), 150);
 };
 window.saveNewLedger = async function(){
   const nameInp = document.getElementById('nl-name');
@@ -724,7 +751,20 @@ window.saveNewLedger = async function(){
   }
 };
 
-// ── Detail view ──
+(function(){
+  const inp = document.getElementById('nl-name');
+  if(!inp) return;
+  inp.addEventListener('input', function(){
+    const ph = document.getElementById('nl-anim-placeholder');
+    if(this.value.length > 0){
+      nlStopPlaceholderAnim();
+      if(ph) ph.classList.add('ph-hidden');
+    } else {
+      if(ph) ph.classList.remove('ph-hidden');
+      nlStartPlaceholderAnim();
+    }
+  });
+})();
 window.openLedger = function(id){
   const l = ledgers.find(x => x.id === id);
   if(!l) return;
