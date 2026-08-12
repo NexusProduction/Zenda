@@ -186,7 +186,19 @@ body[data-state="connected"][data-premium="false"][data-role="owner"] #sync-stat
 .empty-state .es-icon-box{width:96px;height:96px;background:var(--white-cool);border:1.5px solid var(--border-faint);border-radius:28px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:inset 0 4px 12px rgba(0,0,0,.02)}
 .empty-state .es-ttl{font-family:var(--f-display);font-weight:800;font-size:1.05rem;color:var(--text-1);margin-bottom:6px;letter-spacing:-.01em}
 .empty-state .es-sub{font-size:.85rem;max-width:260px;line-height:1.5}
-.detail-hdr{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.detail-card{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--white-pure);border:1.5px solid var(--border);border-radius:var(--r-lg);padding:16px 20px;margin-bottom:20px;box-shadow:var(--shadow-xs)}
+.dc-main{display:flex;align-items:center;gap:14px;min-width:0;flex:1}
+.dc-info{min-width:0}
+.dc-info .dh-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn-danger:disabled,.icon-btn-danger.disabled{background:var(--white-cool);border-color:var(--border);color:var(--text-4);cursor:not-allowed;box-shadow:none}
+.icon-btn-danger:disabled:hover,.icon-btn-danger.disabled:hover{background:var(--white-cool);border-color:var(--border);color:var(--text-4)}
+@media(max-width:480px){
+  .detail-card{padding:12px 14px;gap:10px}
+  .dc-main{gap:10px}
+  .dh-avatar{width:44px;height:44px;font-size:1rem;border-radius:12px}
+  .dh-name{font-size:1.05rem}
+  .icon-btn-danger{width:40px;height:40px}
+}
 .dh-avatar{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1.15rem;flex-shrink:0}
 .dh-name{font-family:var(--f-display);font-weight:800;font-size:1.25rem;color:var(--text-1)}
 .dh-sub{font-size:.8rem;color:var(--text-3);margin-top:2px}
@@ -407,20 +419,17 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 
   <!-- DETAIL VIEW -->
   <div class="view" id="view-detail">
-    <div class="detail-hdr">
-      <button class="icon-btn" style="color:var(--text-3);" onclick="window.backToList()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    <div class="detail-card">
+      <div class="dc-main">
+        <div class="dh-avatar" id="dh-avatar"></div>
+        <div class="dc-info">
+          <div class="dh-name" id="dh-name">—</div>
+          <div class="dh-sub" id="dh-sub"></div>
+        </div>
+      </div>
+      <button class="icon-btn icon-btn-danger" id="btn-delete-ledger" onclick="window.openDeleteLedgerModal()" title="Delete account">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </button>
-      <div class="dh-avatar" id="dh-avatar"></div>
-      <div>
-        <div class="dh-name" id="dh-name">—</div>
-        <div class="dh-sub" id="dh-sub"></div>
-      </div>
-      <div class="dh-actions">
-        <button class="icon-btn icon-btn-danger" id="btn-delete-ledger" onclick="window.openDeleteLedgerModal()" title="Delete account">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-        </button>
-      </div>
     </div>
 
     <div class="stat-strip">
@@ -871,14 +880,29 @@ window.backToList = function(){
   document.getElementById('view-list').classList.add('active');
   document.getElementById('fab-add-entry').classList.remove('fab-show');
 };
+window.handleTopBack = function(){
+  const inDetail = document.getElementById('view-detail').classList.contains('active');
+  if(inDetail){
+    window.backToList();
+  } else {
+    window.location.href = 'dashboard.html';
+  }
+};
 function renderDetailHeader(){
   if(!curLedger) return;
   document.getElementById('dh-avatar').style.background = avatarColor(curLedger.name);
   document.getElementById('dh-avatar').textContent = getInitials(curLedger.name);
   document.getElementById('dh-name').textContent = curLedger.name;
   document.getElementById('dh-sub').textContent = 'Added by ' + staffName(curLedger.createdBy, curLedger.createdByName);
-}
 
+  const delBtn = document.getElementById('btn-delete-ledger');
+  if(delBtn){
+    const canDelete = CU.role === 'owner' || curLedger.createdBy === CU.uid;
+    delBtn.disabled = !canDelete;
+    delBtn.classList.toggle('disabled', !canDelete);
+    delBtn.title = canDelete ? 'Delete account' : 'Only the account owner or its creator can delete this';
+  }
+}
 function computeTotals(entries){
   let cashIn=0, cashOut=0;
   entries.forEach(e => { if(e.type==='in') cashIn += Number(e.amount)||0; else cashOut += Number(e.amount)||0; });
