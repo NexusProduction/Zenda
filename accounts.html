@@ -594,7 +594,7 @@ function getInitials(name){ return (name||'?').trim().split(/\s+/).map(n=>n[0]).
 function fmtMoney(n){ return '₹' + Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:0}); }
 function fmtDate(d){ if(!d) return ''; const dt = d instanceof Date ? d : new Date(d + 'T00:00:00'); return dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}); }
 function todayStr(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
-
+function capitalizeWords(s){ return String(s||'').replace(/(^|\s)([a-z])/g, (m, sep, ch) => sep + ch.toUpperCase()); }
 function toast(msg, type='success'){
   const c = document.getElementById('toast-container');
   const t = document.createElement('div');
@@ -795,7 +795,9 @@ window.openNewLedgerModal = function(){
 window.saveNewLedger = async function(){
   const nameInp = document.getElementById('nl-name');
   const errEl = document.getElementById('nl-name-err');
-  const name = nameInp.value.trim();
+  let name = nameInp.value.trim().replace(/[^a-zA-Z0-9,. ]/g, '').replace(/\s+/g, ' ');
+  name = capitalizeWords(name);
+  nameInp.value = name;
   if(name.length < 5 || name.length > 20){
     nameInp.classList.add('err');
     errEl.classList.add('show');
@@ -830,6 +832,8 @@ window.saveNewLedger = async function(){
   const inp = document.getElementById('nl-name');
   if(!inp) return;
   inp.addEventListener('input', function(){
+    const cleaned = this.value.replace(/[^a-zA-Z0-9,. ]/g, '');
+    if(cleaned !== this.value) this.value = cleaned;
     this.classList.remove('err');
     const errEl = document.getElementById('nl-name-err');
     if(errEl) errEl.classList.remove('show');
