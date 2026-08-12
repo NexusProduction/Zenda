@@ -235,9 +235,7 @@ body[data-state="connected"][data-premium="false"][data-role="owner"] #sync-stat
 textarea.finp{resize:none;min-height:76px}
 select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236C6F80' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 .nl-input-wrap{position:relative}
-.nl-anim-placeholder{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text-4);font-family:var(--f-body);font-size:.95rem;font-weight:600;pointer-events:none;opacity:1;transition:opacity .28s ease,top .28s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 32px)}
-.nl-anim-placeholder.ph-out{opacity:0;top:calc(50% - 8px)}
-.nl-anim-placeholder.ph-hidden{opacity:0!important;transition:none}
+.nl-anim-placeholder{position:absolute;left:16px;top:50%;transform:tran
 .mfoot{padding:0 22px 22px;display:flex;gap:10px}
 .type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
 .type-opt{height:44px;padding:0;border:2px solid var(--border-strong);background:var(--white-pure);color:var(--text-2);border-radius:12px;font-family:var(--f-display);font-weight:800;font-size:.85rem;transition:all .2s ease}
@@ -696,20 +694,24 @@ function renderLedgerGrid(){
 }
 
 window.onLedgerSearch = function(v){ searchVal = v; renderLedgerGrid(); };
-// ── New Account ──
 function nlStartPlaceholderAnim(){
   nlStopPlaceholderAnim();
   const el = document.getElementById('nl-anim-placeholder');
   if(!el) return;
   nlPhIndex = 0;
   el.textContent = NL_PLACEHOLDERS[0];
-  el.classList.remove('ph-out');
+  el.classList.remove('ph-out','ph-in','ph-instant');
   nlPhTimer = setInterval(() => {
-    el.classList.add('ph-out');
+    el.classList.add('ph-out'); // old text slides up and fades
     setTimeout(() => {
       nlPhIndex = (nlPhIndex + 1) % NL_PLACEHOLDERS.length;
       el.textContent = NL_PLACEHOLDERS[nlPhIndex];
+      el.classList.add('ph-instant');   // jump into place below, no transition
       el.classList.remove('ph-out');
+      el.classList.add('ph-in');
+      void el.offsetWidth;              // force reflow
+      el.classList.remove('ph-instant'); // re-enable transition
+      requestAnimationFrame(() => { el.classList.remove('ph-in'); }); // slide up from bottom into view
     }, 280);
   }, 2000);
 }
