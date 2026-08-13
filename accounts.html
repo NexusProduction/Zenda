@@ -241,15 +241,6 @@ body[data-state="connected"][data-premium="false"][data-role="owner"] #sync-stat
 /* Permission Denied popup */
 .pd-title{font-family:var(--f-display);font-weight:800;font-size:1.15rem;color:var(--text-1);margin-bottom:10px}
 .pd-msg{font-size:.88rem;color:var(--text-3);line-height:1.55}
-
-.stat-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
-.stat-chip{background:var(--white-pure);border:2px solid var(--border-strong);border-radius:18px;padding:14px 16px;box-shadow:var(--shadow-xs);transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s}
-.stat-chip:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
-.sc-lbl{display:flex;align-items:center;gap:6px;font-size:.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
-.sc-lbl svg{width:13px;height:13px}
-.sc-val{font-family:var(--f-mono);font-weight:800;font-size:1.15rem}
-#stat-in .sc-val{color:var(--green)}#stat-out .sc-val{color:var(--red)}
-
 .section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .section-ttl{font-family:var(--f-display);font-weight:800;font-size:1rem;color:var(--text-1)}
 
@@ -331,7 +322,6 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
   .toolbar{flex-wrap:wrap}
   .search-wrap{flex-basis:100%}
   .ledger-grid{grid-template-columns:1fr 1fr}
-  .stat-strip{grid-template-columns:1fr;gap:8px}
   .mo{align-items:flex-end;padding:0}
   .mbox{max-width:100%;border-radius:var(--r-xl) var(--r-xl) 0 0;max-height:85vh;animation:sheetUp .32s cubic-bezier(.16,1,.3,1)}
   .mo.closing .mbox{animation:sheetDown .26s cubic-bezier(.4,0,.2,1) forwards}
@@ -465,22 +455,6 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
   </button>
 </div>
-
-    <!-- Hiding the stat-strip temporarily as requested -->
-    <div class="stat-strip" style="display: none;">
-      <div class="stat-chip" id="stat-in">
-        <div class="sc-lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 19 19 12"/></svg>Cash In</div>
-        <div class="sc-val" id="sc-in-val">₹0</div>
-      </div>
-      <div class="stat-chip" id="stat-out">
-        <div class="sc-lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 5 5 12"/></svg>Cash Out</div>
-        <div class="sc-val" id="sc-out-val">₹0</div>
-      </div>
-      <div class="stat-chip" id="stat-balance">
-        <div class="sc-lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Balance</div>
-        <div class="sc-val" id="sc-bal-val">₹0</div>
-      </div>
-    </div>
 
     <div class="section-row">
       <div class="section-ttl">Entries</div>
@@ -956,11 +930,15 @@ function computeTotals(entries){
 
 function renderEntries(){
   const totals = computeTotals(curEntries);
-  document.getElementById('sc-in-val').textContent = fmtMoney(totals.cashIn);
-  document.getElementById('sc-out-val').textContent = fmtMoney(totals.cashOut);
+  const inEl = document.getElementById('sc-in-val');
+  if(inEl) inEl.textContent = fmtMoney(totals.cashIn);
+  const outEl = document.getElementById('sc-out-val');
+  if(outEl) outEl.textContent = fmtMoney(totals.cashOut);
   const balEl = document.getElementById('sc-bal-val');
-  balEl.textContent = fmtMoney(totals.bal);
-  balEl.style.color = totals.bal > 0 ? 'var(--green)' : (totals.bal < 0 ? 'var(--red)' : 'var(--text-1)');
+  if(balEl){
+    balEl.textContent = fmtMoney(totals.bal);
+    balEl.style.color = totals.bal > 0 ? 'var(--green)' : (totals.bal < 0 ? 'var(--red)' : 'var(--text-1)');
+  }
 
   ledgerTotals[curLedger.id] = { in: totals.cashIn, out: totals.cashOut, bal: totals.bal, count: curEntries.length, lastDate: ledgerTotals[curLedger.id]?.lastDate };
 
