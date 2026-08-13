@@ -1110,10 +1110,10 @@ window.openDeleteLedgerModal = function(){
   if(!isOwner && !isCreator){
     window.openPermissionDenied(staffName(curLedger.createdBy, curLedger.createdByName));
     return;
-  }
+  } 
 
   const content = document.getElementById('del-ledger-content');
-  content.innerHTML = `
+  content.innerHTML = isOwner ? `
     <div style="padding:22px 24px;border-bottom:1px solid var(--border-faint);">
       <div style="font-family:var(--f-display);font-size:1.15rem;font-weight:800;color:var(--red);text-align:center;">Delete Account</div>
     </div>
@@ -1124,6 +1124,19 @@ window.openDeleteLedgerModal = function(){
       <div style="display:flex;gap:12px;width:100%;">
         <button onclick="window.closeM('m-del-ledger')" class="btn-ghost btn-full">Cancel</button>
         <button id="btn-confirm-del-ledger" onclick="window.confirmDelLedger()" class="btn-black-red btn-full">Delete</button>
+      </div>
+    </div>` : `
+    <div style="padding:22px 24px;border-bottom:1px solid var(--border-faint);">
+      <div style="font-family:var(--f-display);font-size:1.15rem;font-weight:800;color:var(--text-1);text-align:center;">Request Deletion</div>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;align-items:center;">
+      <div style="font-weight:500;font-size:.9rem;color:var(--text-2);text-align:center;margin-bottom:16px;line-height:1.5;">
+        Only the owner can delete <strong style="color:var(--text-1);">${esc(curLedger.name)}</strong>. Send a request with a reason.
+      </div>
+      <textarea id="ld-del-reason" class="finp" maxlength="20" placeholder="Reason (10-20 chars)" oninput="window.checkLedgerDelReasonBtn(this)" style="margin-bottom:16px;min-height:60px;"></textarea>
+      <div style="display:flex;gap:12px;width:100%;">
+        <button onclick="window.closeM('m-del-ledger')" class="btn-ghost btn-full">Cancel</button>
+        <button id="ld-del-request-btn" onclick="window.sendLedgerDeleteRequest()" class="btn-primary btn-full" disabled style="opacity:.4;">Send Request</button>
       </div>
     </div>`;
   window.openM('m-del-ledger');
