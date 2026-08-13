@@ -330,19 +330,21 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 @keyframes sheetDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(100%)}}
 /* --- NEW LEDGER BOARD (Replaces simple entries list) --- */
 .ledger-board { background: var(--white-pure); border: 2px solid rgba(0,0,0,0.25); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-xs); margin-bottom: 30px; }
-.lb-header { display: grid; grid-template-columns: 1fr 100px 100px; gap: 12px; padding: 16px 20px; background: var(--surface-2); border-bottom: 1.5px solid var(--border); font-family: var(--f-display); font-weight: 800; font-size: 0.75rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
-.lb-row { display: grid; grid-template-columns: 1fr 100px 100px; gap: 12px; padding: 18px 20px; border-bottom: 1.5px solid rgba(0,0,0,0.06); cursor: pointer; transition: background 0.15s; align-items: center; }
+.lb-header { display: grid; grid-template-columns: 1fr 110px 110px; background: var(--surface-2); border-bottom: 1.5px solid var(--border); font-family: var(--f-display); font-weight: 800; font-size: 0.75rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+.lb-h-col { padding: 16px 20px; }
+.lb-h-col.col-in { text-align: right; padding-right: 16px; }
+.lb-h-col.col-out { text-align: right; border-left: 1.5px solid rgba(0,0,0,0.1); }
+.lb-row { display: grid; grid-template-columns: 1fr 110px 110px; border-bottom: 1.5px solid rgba(0,0,0,0.06); cursor: pointer; transition: background 0.15s; align-items: center; }
 .lb-row:hover { background: var(--surface-1); }
-.lb-col-main { min-width: 0; }
+.lb-col-main { min-width: 0; padding: 18px 16px 18px 20px; }
 .lb-part { font-family: var(--f-display); font-weight: 800; font-size: 0.95rem; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px; }
 .lb-date-sub { font-size: 0.78rem; color: var(--text-3); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lb-date-sub .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text-4); flex-shrink: 0; }
-.lb-amt { font-family: var(--f-mono); font-weight: 800; font-size: 1rem; text-align: right; white-space: nowrap; }
+.lb-amt { font-family: var(--f-mono); font-weight: 800; font-size: 1rem; text-align: right; white-space: nowrap; padding: 18px 20px; }
+.lb-amt.col-in { padding-right: 16px; }
+.lb-amt.col-out { border-left: 1.5px solid rgba(0,0,0,0.1); }
 .lb-amt.in { color: var(--green); }
 .lb-amt.out { color: var(--red); }
 .lb-amt.empty { color: var(--border); font-weight: 500; }
-
-/* Ledger Summary (From Paper Sketch) */
 .lb-summary { background: var(--white-pure); padding: 20px 24px; border-top: 2px solid rgba(0,0,0,0.15); }
 .lb-sum-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-family: var(--f-display); font-size: 0.95rem; font-weight: 700; color: var(--text-2); }
 .lb-sum-row.total-bal { font-size: 1.2rem; font-weight: 800; color: var(--text-1); margin-top: 18px; padding-top: 18px; border-top: 1.5px dashed var(--border); }
@@ -360,11 +362,14 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 .ed-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .ed-lbl { font-family: var(--f-display); font-size: 0.78rem; font-weight: 700; color: var(--text-4); text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; padding-top: 2px; }
 .ed-val { font-family: var(--f-body); font-weight: 600; font-size: 0.95rem; color: var(--text-1); text-align: right; word-break: break-word; line-height: 1.4; }
-
 @media(max-width: 600px) {
-  .lb-header { grid-template-columns: 1fr 85px 85px; padding: 14px; }
-  .lb-row { grid-template-columns: 1fr 85px 85px; padding: 16px 14px; }
-  .lb-amt { font-size: 0.9rem; }
+  .lb-header { grid-template-columns: 1fr 90px 90px; }
+  .lb-h-col { padding: 14px 10px; }
+  .lb-h-col.col-in { padding-right: 12px; }
+  .lb-row { grid-template-columns: 1fr 90px 90px; }
+  .lb-col-main { padding: 16px 10px 16px 14px; }
+  .lb-amt { font-size: 0.9rem; padding: 16px 10px; }
+  .lb-amt.col-in { padding-right: 12px; }
 }
 </style>
 </head>
@@ -506,8 +511,8 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
     <div class="ledger-board" id="ledger-board">
         <div class="lb-header">
             <div class="lb-h-col">Date & Particulars</div>
-            <div class="lb-h-col" style="text-align:right;">Cash In</div>
-            <div class="lb-h-col" style="text-align:right;">Cash Out</div>
+            <div class="lb-h-col col-in">Cash In</div>
+            <div class="lb-h-col col-out">Cash Out</div>
         </div>
         
         <div id="entries-list-content"></div>
@@ -1062,20 +1067,22 @@ function renderEntries(){
   let html = '';
   sorted.forEach(e => {
     const isIn = e.type === 'in';
-    const title = isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out');
-    const sub = e.description ? esc(e.description) : (isIn ? 'Received' : 'Stock Out');
+    let title = isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out');
+    
+    // Capitalize the first letter automatically
+    if(title) title = title.charAt(0).toUpperCase() + title.slice(1);
     
     const inAmt = isIn ? fmtMoney(e.amount) : '-';
-    const outAmt = !isIn ? fmtMoney(e.amount) : '-';
+    const outAmt = !isIn ? fmtMoney(e.amount) : '-'; 
 
     html += `
     <div class="lb-row" onclick="window.openEntryDetail('${e.id}')">
       <div class="lb-col-main">
         <div class="lb-part">${esc(title)}</div>
-        <div class="lb-date-sub">${fmtDate(e.date)} <span class="dot"></span> ${sub}</div>
+        <div class="lb-date-sub">${fmtDate(e.date)}</div>
       </div>
-      <div class="lb-amt ${isIn ? 'in' : 'empty'}">${inAmt}</div>
-      <div class="lb-amt ${!isIn ? 'out' : 'empty'}">${outAmt}</div>
+      <div class="lb-amt col-in ${isIn ? 'in' : 'empty'}">${inAmt}</div>
+      <div class="lb-amt col-out ${!isIn ? 'out' : 'empty'}">${outAmt}</div>
     </div>`;
   });
   if(listEl) listEl.innerHTML = html;
