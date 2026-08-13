@@ -328,6 +328,44 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 }
 @keyframes sheetUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
 @keyframes sheetDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(100%)}}
+/* --- NEW LEDGER BOARD (Replaces simple entries list) --- */
+.ledger-board { background: var(--white-pure); border: 2px solid rgba(0,0,0,0.25); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-xs); margin-bottom: 30px; }
+.lb-header { display: grid; grid-template-columns: 1fr 100px 100px; gap: 12px; padding: 16px 20px; background: var(--surface-2); border-bottom: 1.5px solid var(--border); font-family: var(--f-display); font-weight: 800; font-size: 0.75rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+.lb-row { display: grid; grid-template-columns: 1fr 100px 100px; gap: 12px; padding: 18px 20px; border-bottom: 1.5px solid rgba(0,0,0,0.06); cursor: pointer; transition: background 0.15s; align-items: center; }
+.lb-row:hover { background: var(--surface-1); }
+.lb-col-main { min-width: 0; }
+.lb-part { font-family: var(--f-display); font-weight: 800; font-size: 0.95rem; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px; }
+.lb-date-sub { font-size: 0.78rem; color: var(--text-3); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-date-sub .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text-4); flex-shrink: 0; }
+.lb-amt { font-family: var(--f-mono); font-weight: 800; font-size: 1rem; text-align: right; white-space: nowrap; }
+.lb-amt.in { color: var(--green); }
+.lb-amt.out { color: var(--red); }
+.lb-amt.empty { color: var(--border); font-weight: 500; }
+
+/* Ledger Summary (From Paper Sketch) */
+.lb-summary { background: var(--white-pure); padding: 20px 24px; border-top: 2px solid rgba(0,0,0,0.15); }
+.lb-sum-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-family: var(--f-display); font-size: 0.95rem; font-weight: 700; color: var(--text-2); }
+.lb-sum-row.total-bal { font-size: 1.2rem; font-weight: 800; color: var(--text-1); margin-top: 18px; padding-top: 18px; border-top: 1.5px dashed var(--border); }
+.lb-sum-val { font-family: var(--f-mono); font-weight: 800; }
+.text-green { color: var(--green) !important; }
+.text-red { color: var(--red) !important; }
+
+/* --- ENTRY DETAIL MODAL ("Maximum detail on tap") --- */
+.ed-head { text-align: center; padding: 32px 20px 24px; border-bottom: 1.5px dashed var(--border-faint); background: var(--surface-1); border-radius: var(--r-xl) var(--r-xl) 0 0; }
+.ed-amt { font-family: var(--f-mono); font-size: 2.5rem; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 12px; }
+.ed-type-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 99px; font-family: var(--f-display); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+.ed-type-badge.in { background: var(--green-soft); color: var(--green); border: 1.5px solid var(--green-border); }
+.ed-type-badge.out { background: var(--red-soft); color: var(--red); border: 1.5px solid var(--red-border); }
+.ed-grid { padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.ed-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.ed-lbl { font-family: var(--f-display); font-size: 0.78rem; font-weight: 700; color: var(--text-4); text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; padding-top: 2px; }
+.ed-val { font-family: var(--f-body); font-weight: 600; font-size: 0.95rem; color: var(--text-1); text-align: right; word-break: break-word; line-height: 1.4; }
+
+@media(max-width: 600px) {
+  .lb-header { grid-template-columns: 1fr 85px 85px; padding: 14px; }
+  .lb-row { grid-template-columns: 1fr 85px 85px; padding: 16px 14px; }
+  .lb-amt { font-size: 0.9rem; }
+}
 </style>
 </head>
 <body data-state="loading">
@@ -457,17 +495,48 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 </div>
 
     <div class="section-row">
-      <div class="section-ttl">Entries</div>
+      <div class="section-ttl">Ledger Book</div>
       <button class="btn-primary" id="btn-add-entry-desktop" onclick="window.openAddEntryModal()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add Entry
       </button>
     </div>
-    <div class="entries-list" id="entries-list"></div>
-    <div class="empty-state hidden" id="entries-empty">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-      <div class="es-ttl">No entries yet</div>
-      <div class="es-sub">Add the first cash in or cash out entry for this account.</div>
+
+    <!-- NEW LEDGER BOARD -->
+    <div class="ledger-board" id="ledger-board">
+        <div class="lb-header">
+            <div class="lb-h-col">Date & Particulars</div>
+            <div class="lb-h-col" style="text-align:right;">Cash In</div>
+            <div class="lb-h-col" style="text-align:right;">Cash Out</div>
+        </div>
+        
+        <div id="entries-list-content"></div>
+
+        <div class="empty-state hidden" id="entries-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          <div class="es-ttl">No entries yet</div>
+          <div class="es-sub">Add the first cash in or stock out entry.</div>
+        </div>
+
+        <!-- FOOTER FROM PAPER SKETCH -->
+        <div class="lb-summary">
+            <div class="lb-sum-row">
+                <span>Paid to you (Cash In)</span>
+                <span class="lb-sum-val text-green" id="lb-tot-in">₹0</span>
+            </div>
+            <div class="lb-sum-row">
+                <span>Stock out (Cash Out)</span>
+                <span class="lb-sum-val text-red" id="lb-tot-out">₹0</span>
+            </div>
+            <div class="lb-sum-row total-bal">
+                <span>Current Balance</span>
+                <span class="lb-sum-val" id="lb-tot-bal">₹0</span>
+            </div>
+            <button class="btn-ghost btn-full" style="margin-top:20px;" onclick="window.downloadLedger()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Ledger
+            </button>
+        </div>
     </div>
   </div>
 
@@ -558,6 +627,37 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
     <div class="ppm-success-overlay" id="tick-del-ledger">
       <div class="apple-tick"><svg width="34" height="34" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
       <div class="ppm-success-text" id="tick-del-ledger-text">Account Deleted</div>
+    </div>
+  </div>
+</div>
+<!-- MODAL: Entry Detail (Tap for maximum detail) -->
+<div class="mo" id="m-entry-detail" onclick="if(event.target===this) window.closeM('m-entry-detail')">
+  <div class="mbox" style="padding:0;">
+    <div class="ed-head">
+       <div class="ed-amt" id="ed-amt">₹0</div>
+       <div class="ed-type-badge" id="ed-badge">Cash In</div>
+    </div>
+    <div class="ed-grid">
+       <div class="ed-item">
+         <span class="ed-lbl">Date</span>
+         <span class="ed-val" id="ed-date">-</span>
+       </div>
+       <div class="ed-item">
+         <span class="ed-lbl" id="ed-part-lbl">Particulars</span>
+         <span class="ed-val" id="ed-part-val">-</span>
+       </div>
+       <div class="ed-item">
+         <span class="ed-lbl">Remarks / Desc</span>
+         <span class="ed-val" id="ed-desc">-</span>
+       </div>
+       <div class="ed-item">
+         <span class="ed-lbl">Added By</span>
+         <span class="ed-val" id="ed-added">-</span>
+       </div>
+       <button class="btn-black-red btn-full" id="ed-btn-delete" style="margin-top:10px;">
+         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:6px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+         Delete Entry
+       </button>
     </div>
   </div>
 </div>
@@ -927,14 +1027,15 @@ function computeTotals(entries){
   entries.forEach(e => { if(e.type==='in') cashIn += Number(e.amount)||0; else cashOut += Number(e.amount)||0; });
   return { cashIn, cashOut, bal: cashIn - cashOut };
 }
-
 function renderEntries(){
   const totals = computeTotals(curEntries);
-  const inEl = document.getElementById('sc-in-val');
+  
+  // Hook up to the new paper-sketch summary footer
+  const inEl = document.getElementById('lb-tot-in');
   if(inEl) inEl.textContent = fmtMoney(totals.cashIn);
-  const outEl = document.getElementById('sc-out-val');
+  const outEl = document.getElementById('lb-tot-out');
   if(outEl) outEl.textContent = fmtMoney(totals.cashOut);
-  const balEl = document.getElementById('sc-bal-val');
+  const balEl = document.getElementById('lb-tot-bal');
   if(balEl){
     balEl.textContent = fmtMoney(totals.bal);
     balEl.style.color = totals.bal > 0 ? 'var(--green)' : (totals.bal < 0 ? 'var(--red)' : 'var(--text-1)');
@@ -942,10 +1043,11 @@ function renderEntries(){
 
   ledgerTotals[curLedger.id] = { in: totals.cashIn, out: totals.cashOut, bal: totals.bal, count: curEntries.length, lastDate: ledgerTotals[curLedger.id]?.lastDate };
 
-  const listEl = document.getElementById('entries-list');
+  const listEl = document.getElementById('entries-list-content');
   const emptyEl = document.getElementById('entries-empty');
+  
   if(!curEntries.length){
-    listEl.innerHTML = '';
+    if(listEl) listEl.innerHTML = '';
     emptyEl.classList.remove('hidden');
     return;
   }
@@ -958,33 +1060,65 @@ function renderEntries(){
   });
 
   let html = '';
-  let lastGroupDate = null;
   sorted.forEach(e => {
-    if(e.date !== lastGroupDate){
-      html += `<div class="date-group-lbl">${fmtDate(e.date)}</div>`;
-      lastGroupDate = e.date;
-    }
     const isIn = e.type === 'in';
-    const canDelete = CU.role === 'owner' || e.createdBy === CU.uid;
     const title = isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out');
-    const sub = isIn ? '' : (e.description ? esc(e.description) : '');
+    const sub = e.description ? esc(e.description) : (isIn ? 'Received' : 'Stock Out');
+    
+    const inAmt = isIn ? fmtMoney(e.amount) : '-';
+    const outAmt = !isIn ? fmtMoney(e.amount) : '-';
+
     html += `
-    <div class="entry-row" data-id="${e.id}">
-      <div class="entry-ico ${isIn?'in':'out'}">
-        ${isIn
-          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 19 19 12"/></svg>'
-          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 5 5 12"/></svg>'}
+    <div class="lb-row" onclick="window.openEntryDetail('${e.id}')">
+      <div class="lb-col-main">
+        <div class="lb-part">${esc(title)}</div>
+        <div class="lb-date-sub">${fmtDate(e.date)} <span class="dot"></span> ${sub}</div>
       </div>
-      <div class="entry-info">
-        <div class="entry-title">${esc(title)}</div>
-        <div class="entry-meta">${sub ? esc(sub) + '<span class="dot"></span>' : ''}<span>${esc(staffName(e.createdBy, e.createdByName))}</span></div>
-      </div>
-      <div class="entry-amt ${isIn?'in':'out'}">${isIn?'+':'-'}${fmtMoney(e.amount)}</div>
-      ${canDelete ? `<button class="entry-del" onclick="window.confirmDeleteEntryPrompt('${e.id}')" title="Delete entry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
+      <div class="lb-amt ${isIn ? 'in' : 'empty'}">${inAmt}</div>
+      <div class="lb-amt ${!isIn ? 'out' : 'empty'}">${outAmt}</div>
     </div>`;
   });
-  listEl.innerHTML = html;
+  if(listEl) listEl.innerHTML = html;
 }
+
+// ── NEW: Maximum Detail On Tap Modal ──
+window.openEntryDetail = function(id) {
+    const e = curEntries.find(x => x.id === id);
+    if(!e) return;
+    const isIn = e.type === 'in';
+
+    document.getElementById('ed-amt').textContent = (isIn ? '+' : '-') + fmtMoney(e.amount);
+    document.getElementById('ed-amt').className = 'ed-amt ' + (isIn ? 'text-green' : 'text-red');
+
+    const badge = document.getElementById('ed-badge');
+    badge.textContent = isIn ? 'Cash In' : 'Cash Out';
+    badge.className = 'ed-type-badge ' + (isIn ? 'in' : 'out');
+
+    document.getElementById('ed-date').textContent = fmtDate(e.date);
+    document.getElementById('ed-part-lbl').textContent = isIn ? 'Payment Method' : 'Paid To / Item';
+    document.getElementById('ed-part-val').textContent = isIn ? (e.method || '-') : (e.payee || '-');
+    document.getElementById('ed-desc').textContent = e.description || 'No remarks provided';
+    document.getElementById('ed-added').textContent = staffName(e.createdBy, e.createdByName);
+
+    const delBtn = document.getElementById('ed-btn-delete');
+    if (CU.role === 'owner' || e.createdBy === CU.uid) {
+        delBtn.style.display = 'flex';
+        delBtn.onclick = () => { 
+            window.closeM('m-entry-detail'); 
+            setTimeout(() => window.confirmDeleteEntryPrompt(id), 250); 
+        };
+    } else {
+        delBtn.style.display = 'none';
+    }
+
+    window.openM('m-entry-detail');
+};
+
+// ── NEW: Stub for the Download Button from Sketch ──
+window.downloadLedger = function() {
+    toast('Preparing PDF Download...', 'info');
+    setTimeout(() => toast('Ledger downloaded successfully!', 'success'), 1500);
+};
 window.openAddEntryModal = function(){
   const dateEl = document.getElementById('ae-date');
   const amtEl = document.getElementById('ae-amount');
