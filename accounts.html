@@ -979,6 +979,9 @@ window.saveNewLedger = async function(){
   });
 })();
 window.openLedger = function(id){
+  // Push a virtual history state so the phone's native back button works properly
+  history.pushState({ view: 'detail' }, '', '#account');
+  
   const l = ledgers.find(x => x.id === id);
   if(!l) return;
   curLedger = l;
@@ -1005,7 +1008,7 @@ window.backToList = function(){
 window.handleTopBack = function(){
   const inDetail = document.getElementById('view-detail').classList.contains('active');
   if(inDetail){
-    window.backToList();
+    history.back(); // This will trigger the popstate event listener below
   } else {
     window.location.href = 'dashboard.html';
   }
@@ -1283,7 +1286,7 @@ window.confirmDelLedger = async function(){
     playTick('tick-del-ledger', 'tick-del-ledger-text', 'Account Deleted', () => {
       window.closeM('m-del-ledger');
       ledgerDeleteBusy = false;
-      window.backToList();
+      history.back(); // Safely pops the history state and returns to list
     });
   } catch(e){
     console.error(e);
@@ -1426,6 +1429,19 @@ async function init(){
     });
   });
 })();
+// --- Native Back/Swipe Handler ---
+window.addEventListener('popstate', function(event) {
+  const inDetail = document.getElementById('view-detail').classList.contains('active');
+  // If the user swipes back while looking at a specific ledger, just go back to the list
+  if(inDetail) {
+    window.backToList();
+  }
+});
+
+// Clear stray URL hashes on initial page load (in case of refresh)
+if(window.location.hash === '#account') {
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+}
 
 init();
 </script>
