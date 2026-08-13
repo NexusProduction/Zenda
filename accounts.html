@@ -1185,18 +1185,23 @@ window.sendLedgerDeleteRequest = async function(){
   try {
     if(!CU.ownerId){ toast('Owner not found.', 'error'); return; }
 
-    // Avoid stacking duplicate pending requests for the same account
-    const existing = await getDocs(query(
-      collection(db,'users', CU.ownerId, 'notifications'),
-      where('type','==','ledger_delete_request'),
-      where('status','==','unread')
-    ));
-    const dupe = existing.docs.find(d => d.data().ledgerData && d.data().ledgerData.id === curLedger.id);
-    if(dupe){
-      toast('A delete request for this account is already pending with the owner.', 'info');
-      window.closeM('m-del-ledger');
-      return;
-    }
+    // Dedupe check is best-effort: staff can't read the owner's
+    // notifications collection under current rules, so a permission
+    // error here should not block sending the request.
+    try {
+      const existing = await getDocs(query(
+        collection(db,'users', CU.ownerId, 'notifications'),
+        where('type','==','ledger_delete_request'),
+        where('status','==','unread')
+      ));
+      const dupe = existing.docs.find(d => d.data().ledgerData && d.data().ledgerData.id === curLedger.id);
+      if(dupe){
+        toast('A delete request for this account is already pending with the owner.', 'info');
+        window.closeM('m-del-ledger');
+        ledgerDeleteBusy = false;
+        return;
+      }
+    } catch(_) { /* ignore — can't dedupe, fall through and send anyway */ }
 
     const totals = computeTotals(curEntries);
     await addDoc(collection(db,'users', CU.ownerId, 'notifications'), {
