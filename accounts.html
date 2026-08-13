@@ -391,6 +391,21 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 
 /* Make date picker clickable everywhere */
 input[type="date"] { cursor: pointer; }
+/* --- CUSTOM DATE PICKER --- */
+.date-picker-dropdown { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--white-pure); border: 2px solid var(--border-strong); border-radius: 14px; box-shadow: var(--shadow-md); overflow: hidden; z-index: 300; padding: 16px; display: none; animation: popUp .2s cubic-bezier(.22,1,.36,1); }
+.date-picker-dropdown.open { display: block; }
+.dp-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.dp-title{font-family:var(--f-display);font-size:.9rem;font-weight:800;color:var(--text-1)}
+.dp-nav{width:28px;height:28px;border:1.5px solid var(--border-strong);background:var(--white-pure);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-2);transition:all .18s}
+.dp-nav:hover:not(:disabled){border-color:var(--text-1);color:var(--text-1);background:var(--surface-2)}
+.dp-nav:disabled{opacity:0.3;cursor:not-allowed}
+.dp-weekdays{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px}
+.dp-weekdays span{font-size:.65rem;font-weight:800;color:var(--text-3);text-align:center;text-transform:uppercase;letter-spacing:0.05em}
+.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dp-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:600;color:var(--text-1);border-radius:8px;cursor:pointer;transition:all .15s}
+.dp-day:hover:not(.is-selected){background:var(--surface-2)}
+.dp-day.is-today{color:var(--accent);font-weight:800}
+.dp-day.is-selected{background:var(--accent);color:#fff;font-weight:800;box-shadow:0 4px 12px var(--accent-glow)}
 </style>
 </head>
 <body data-state="loading">
@@ -595,28 +610,31 @@ input[type="date"] { cursor: pointer; }
     </div>
   </div>
 </div>
-<!-- MODAL: Entry Detail (Tap for maximum detail) -->
-<div class="mo" id="m-add-entry" onclick="if(event.target===this) window.closeM('m-add-entry')">
-  <div class="mbox" style="overflow: visible;"> 
-    <div class="mbody" style="padding-top: 32px;"> 
+<div class="mbody" style="padding-top: 32px;"> 
       <div class="type-toggle">
         <button class="type-opt in active" id="type-opt-in" onclick="window.setEntryType('in')">Cash In</button>
         <button class="type-opt out" id="type-opt-out" onclick="window.setEntryType('out')">Cash Out</button>
       </div>
       
-      <div class="field">
+      <!-- CUSTOM DATE PICKER -->
+      <div class="field" style="position: relative; z-index: 105;">
         <label>Date</label>
-        <!-- Safe showPicker() to open native calendar when clicking anywhere in the box -->
-        <input class="finp" type="date" id="ae-date" onclick="if(this.showPicker) this.showPicker();">
+        <div class="cd-wrap" id="dp-wrap">
+          <button type="button" class="cd-trigger" onclick="window.datePickerToggle()">
+             <span id="dp-trigger-text">Select Date</span>
+          </button>
+          <div class="date-picker-dropdown" id="date-picker-dd"></div>
+        </div>
+        <input type="hidden" id="ae-date" value="">
       </div>
       
-      <div class="field">
+      <div class="field" style="position: relative; z-index: 100;">
         <label>Amount (₹)</label>
-        <!-- JS handles the 7 digit limit and the commas perfectly -->
-        <input class="finp" type="text" inputmode="numeric" id="ae-amount" placeholder="0" autocomplete="off" oninput="this.value = window.formatIndianNumber(this.value); document.getElementById('ae-amt-err').classList.remove('show');">
+        <!-- Allows exactly 7 digits + 2 commas (e.g. 99,99,999) -->
+        <input class="finp" type="text" inputmode="numeric" id="ae-amount" placeholder="0" maxlength="9" autocomplete="off" oninput="this.value = window.formatIndianNumber(this.value); document.getElementById('ae-amt-err').classList.remove('show');">
       </div>
       
-      <div class="field" id="field-method">
+      <div class="field" id="field-method" style="position: relative; z-index: 95;">
         <label>Payment Method</label>
         <div class="cd-wrap" id="cd-wrap">
           <button type="button" class="cd-trigger" onclick="window.togglePayMethod()">
@@ -1058,7 +1076,7 @@ window.capitalizeWords = function(str) {
     return str.replace(/\b\w/g, l => l.toUpperCase());
 };
 
-// --- Custom Dropdown Logic ---
+// --- Custom Payment Dropdown Logic ---
 window.togglePayMethod = function() {
     const dropdown = document.getElementById('cd-dropdown');
     if(dropdown) dropdown.classList.toggle('open');
@@ -1073,174 +1091,101 @@ window.selectPayMethod = function(val, el) {
     el.classList.add('active');
 };
 
-// Click outside to close dropdown
+// --- Custom Date Picker Logic ---
+let dpOpen = false;
+let dpCurrentDate = new Date();
+let dpSelectedDate = new Date();
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function toYMD(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function toDisplayDate(d){ return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+
+window.setDateValue = function(d){
+    dpSelectedDate = d;
+    document.getElementById('ae-date').value = toYMD(d);
+    document.getElementById('dp-trigger-text').textContent = toDisplayDate(d);
+};
+
+window.renderDatePicker = function(){
+    const dd = document.getElementById('date-picker-dd');
+    const y = dpCurrentDate.getFullYear(), m = dpCurrentDate.getMonth();
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const firstDay = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    const todayStr = toYMD(new Date()), selStr = toYMD(dpSelectedDate);
+    
+    let cells = '';
+    for(let i=0;i<firstDay;i++) cells += `<div></div>`;
+    for(let day=1; day<=daysInMonth; day++){
+        const dStr = y+'-'+pad2(m+1)+'-'+pad2(day);
+        const isToday = dStr === todayStr, isSel = dStr === selStr;
+        cells += `<div class="dp-day${isSel?' is-selected':''}${isToday&&!isSel?' is-today':''}" onclick="window.dpSelectDay(${y},${m},${day})">${day}</div>`;
+    }
+
+    // Limits: Jan 2022 to CurrentYear + 5
+    const maxYear = new Date().getFullYear() + 5; 
+    const disablePrev = (y <= 2022 && m === 0);   
+    const disableNext = (y >= maxYear && m === 11); 
+
+    dd.innerHTML = `<div class="dp-hdr"><button type="button" class="dp-nav" onclick="event.stopPropagation(); window.dpChangeMonth(-1)" ${disablePrev ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button><span class="dp-title">${monthNames[m]} ${y}</span><button type="button" class="dp-nav" onclick="event.stopPropagation(); window.dpChangeMonth(1)" ${disableNext ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button></div><div class="dp-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div><div class="dp-grid">${cells}</div>`;
+};
+
+window.datePickerToggle = function(){
+    dpOpen = !dpOpen;
+    const dd = document.getElementById('date-picker-dd');
+    if(dpOpen){ 
+        dpCurrentDate = new Date(dpSelectedDate); 
+        window.renderDatePicker(); 
+        dd.classList.add('open'); 
+    } else { 
+        dd.classList.remove('open'); 
+    }
+};
+
+window.dpChangeMonth = function(delta){ 
+    const maxYear = new Date().getFullYear() + 5;
+    let testDate = new Date(dpCurrentDate);
+    testDate.setMonth(testDate.getMonth() + delta);
+    
+    // Enforce limits
+    if (testDate.getFullYear() < 2022 || testDate.getFullYear() > maxYear) return;
+    
+    dpCurrentDate.setMonth(dpCurrentDate.getMonth() + delta); 
+    window.renderDatePicker(); 
+};
+
+window.dpSelectDay = function(y,m,day){ 
+    window.setDateValue(new Date(y,m,day)); 
+    document.getElementById('date-picker-dd').classList.remove('open');
+    dpOpen = false;
+};
+
+// Click outside to close both dropdowns
 document.addEventListener('click', function(e) {
-    const wrap = document.getElementById('cd-wrap');
-    if (wrap && !wrap.contains(e.target)) {
-        const dropdown = document.getElementById('cd-dropdown');
-        if(dropdown) dropdown.classList.remove('open');
+    const payWrap = document.getElementById('cd-wrap');
+    if (payWrap && !payWrap.contains(e.target)) {
+        const pdd = document.getElementById('cd-dropdown');
+        if(pdd) pdd.classList.remove('open');
+    }
+    
+    const dpWrap = document.getElementById('dp-wrap');
+    if (dpWrap && !dpWrap.contains(e.target)) {
+        const dpdd = document.getElementById('date-picker-dd');
+        if(dpdd) dpdd.classList.remove('open');
+        dpOpen = false;
     }
 });
-window.openLedger = function(id){
-  // Push a virtual history state so the phone's native back button works properly
-  history.pushState({ view: 'detail' }, '', '#account');
-  
-  const l = ledgers.find(x => x.id === id);
-  if(!l) return;
-  curLedger = l;
-  document.getElementById('view-list').classList.remove('active');
-  document.getElementById('view-detail').classList.add('active');
-  document.getElementById('btn-delete-ledger').classList.remove('hidden');
-  document.getElementById('fab-add-entry').classList.add('fab-show');
-  renderDetailHeader();
 
-  // Load instantly from cached memory (Zero delay!)
-  curEntries = allEntries.filter(e => e.ledgerId === id);
-  renderEntries();
-};
-
-window.backToList = function(){
-  curLedger = null; curEntries = [];
-  document.getElementById('view-detail').classList.remove('active');
-  document.getElementById('view-list').classList.add('active');
-  document.getElementById('fab-add-entry').classList.remove('fab-show');
-};
-window.handleTopBack = function(){
-  const inDetail = document.getElementById('view-detail').classList.contains('active');
-  if(inDetail){
-    history.back(); // This will trigger the popstate event listener below
-  } else {
-    window.location.href = 'dashboard.html';
-  }
-};
-function renderDetailHeader(){
-  if(!curLedger) return;
-  const accentColor = avatarColor(curLedger.name);
-  const cardEl = document.getElementById('detail-card');
-  if(cardEl) cardEl.style.setProperty('--card-accent', accentColor);
-  document.getElementById('dh-avatar').style.background = accentColor;
-  document.getElementById('dh-avatar').textContent = getInitials(curLedger.name);
-  document.getElementById('dh-name').textContent = curLedger.name;
-  document.getElementById('dh-sub').textContent = 'Added by ' + staffName(curLedger.createdBy, curLedger.createdByName);
-
-  const delBtn = document.getElementById('btn-delete-ledger');
-  if(delBtn){
-    delBtn.disabled = false;
-    delBtn.classList.remove('disabled');
-    delBtn.title = 'Delete account';
-  }
-}
-function computeTotals(entries){
-  let cashIn=0, cashOut=0;
-  entries.forEach(e => { if(e.type==='in') cashIn += Number(e.amount)||0; else cashOut += Number(e.amount)||0; });
-  return { cashIn, cashOut, bal: cashIn - cashOut };
-}
-function renderEntries(){
-  const totals = computeTotals(curEntries);
-  
-  // Hook up to the new paper-sketch summary footer
-  const inEl = document.getElementById('lb-tot-in');
-  if(inEl) inEl.textContent = fmtMoney(totals.cashIn);
-  const outEl = document.getElementById('lb-tot-out');
-  if(outEl) outEl.textContent = fmtMoney(totals.cashOut);
-  const balEl = document.getElementById('lb-tot-bal');
-  if(balEl){
-    balEl.textContent = fmtMoney(totals.bal);
-    balEl.style.color = totals.bal > 0 ? 'var(--green)' : (totals.bal < 0 ? 'var(--red)' : 'var(--text-1)');
-  }
-
-  ledgerTotals[curLedger.id] = { in: totals.cashIn, out: totals.cashOut, bal: totals.bal, count: curEntries.length, lastDate: ledgerTotals[curLedger.id]?.lastDate };
-
-  const listEl = document.getElementById('entries-list-content');
-  const emptyEl = document.getElementById('entries-empty');
-  
-  if(!curEntries.length){
-    if(listEl) listEl.innerHTML = '';
-    emptyEl.classList.remove('hidden');
-    return;
-  }
-  emptyEl.classList.add('hidden');
-
-  const sorted = [...curEntries].sort((a,b) => {
-    const da = a.date || '', db_ = b.date || '';
-    if(da !== db_) return da.localeCompare(db_); // Flipped for Ascending Date
-    return (a.createdAt||0) - (b.createdAt||0);  // Flipped for Ascending Time
-  });
-
-  let html = '';
-  sorted.forEach(e => {
-    const isIn = e.type === 'in';
-    let title = isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out');
-    
-    // Capitalize the first letter automatically
-    if(title) title = title.charAt(0).toUpperCase() + title.slice(1);
-    
-    // Combines sign with the currency formatter (e.g. +₹4,564 or -₹12)
-    const amtText = (isIn ? '+' : '-') + fmtMoney(e.amount);
-
-    html += `
-    <div class="lb-row" onclick="window.openEntryDetail('${e.id}')">
-      <div class="lb-col-main">
-        <div class="lb-part">${esc(title)}</div>
-        <div class="lb-date-sub">${fmtDate(e.date)}</div>
-      </div>
-      <div class="lb-amt ${isIn ? 'in' : 'out'}">${amtText}</div>
-    </div>`;
-  });
-  if(listEl) listEl.innerHTML = html;
-}
-
-// ── NEW: Maximum Detail On Tap Modal ──
-window.openEntryDetail = function(id) {
-    const e = curEntries.find(x => x.id === id);
-    if(!e) return;
-    const isIn = e.type === 'in';
-
-    document.getElementById('ed-amt').textContent = (isIn ? '+' : '-') + fmtMoney(e.amount);
-    document.getElementById('ed-amt').className = 'ed-amt ' + (isIn ? 'text-green' : 'text-red');
-
-    const badge = document.getElementById('ed-badge');
-    badge.textContent = isIn ? 'Cash In' : 'Cash Out';
-    badge.className = 'ed-type-badge ' + (isIn ? 'in' : 'out');
-
-    document.getElementById('ed-date').textContent = fmtDate(e.date);
-    document.getElementById('ed-part-lbl').textContent = isIn ? 'Payment Method' : 'Paid To / Item';
-    document.getElementById('ed-part-val').textContent = isIn ? (e.method || '-') : (e.payee || '-');
-    document.getElementById('ed-desc').textContent = e.description || 'No remarks provided';
-    document.getElementById('ed-added').textContent = staffName(e.createdBy, e.createdByName);
-
-    const delBtn = document.getElementById('ed-btn-delete');
-    if (CU.role === 'owner' || e.createdBy === CU.uid) {
-        delBtn.style.display = 'flex';
-        delBtn.onclick = () => { 
-            window.closeM('m-entry-detail'); 
-            setTimeout(() => window.confirmDeleteEntryPrompt(id), 250); 
-        };
-    } else {
-        delBtn.style.display = 'none';
-    }
-
-    window.openM('m-entry-detail');
-};
-
-// ── NEW: Stub for the Download Button from Sketch ──
-window.downloadLedger = function() {
-    toast('Preparing PDF Download...', 'info');
-    setTimeout(() => toast('Ledger downloaded successfully!', 'success'), 1500);
-};
+// --- Modal Open & Setup Logic ---
 window.openAddEntryModal = function(){
-  const dateEl = document.getElementById('ae-date');
   const amtEl = document.getElementById('ae-amount');
   const payeeEl = document.getElementById('ae-payee');
   const descEl = document.getElementById('ae-desc');
   const methodEl = document.getElementById('ae-method');
-  if(!dateEl || !amtEl || !payeeEl || !descEl || !methodEl) return;
+  if(!amtEl || !payeeEl || !descEl || !methodEl) return;
   
-  // Set Date Constraints dynamically (2022 to Current Year + 5)
-  const currYear = new Date().getFullYear();
-  dateEl.min = "2022-01-01";
-  dateEl.max = (currYear + 5) + "-12-31";
-  dateEl.value = todayStr();
+  // Initialize Custom Date Picker to Today
+  window.setDateValue(new Date());
 
   amtEl.value = '';
   payeeEl.value = '';
@@ -1256,7 +1201,6 @@ window.openAddEntryModal = function(){
   window.setEntryType('in');
   window.openM('m-add-entry');
 };
-
 window.setEntryType = function(type){
   entryType = type;
   document.getElementById('type-opt-in').classList.toggle('active', type==='in');
