@@ -594,9 +594,10 @@ input[type="date"] { cursor: pointer; }
     </div>
   </div>
 </div>
+<!-- MODAL: Entry Detail (Tap for maximum detail) -->
 <div class="mo" id="m-add-entry" onclick="if(event.target===this) window.closeM('m-add-entry')">
-  <div class="mbox" style="overflow: visible;"> <!-- visible overflow allows dropdowns -->
-    <div class="mbody" style="padding-top: 32px;"> <!-- Pushed down since header is gone -->
+  <div class="mbox" style="overflow: visible;"> 
+    <div class="mbody" style="padding-top: 32px;"> 
       <div class="type-toggle">
         <button class="type-opt in active" id="type-opt-in" onclick="window.setEntryType('in')">Cash In</button>
         <button class="type-opt out" id="type-opt-out" onclick="window.setEntryType('out')">Cash Out</button>
@@ -604,19 +605,18 @@ input[type="date"] { cursor: pointer; }
       
       <div class="field">
         <label>Date</label>
-        <!-- showPicker() makes it open when clicking anywhere inside the box -->
-        <input class="finp" type="date" id="ae-date" onclick="this.showPicker()">
+        <!-- Safe showPicker() to open native calendar when clicking anywhere in the box -->
+        <input class="finp" type="date" id="ae-date" onclick="if(this.showPicker) this.showPicker();">
       </div>
       
       <div class="field">
         <label>Amount (₹)</label>
-        <!-- Max 9 characters allows for 7 digits + 2 commas -->
-        <input class="finp" type="text" inputmode="numeric" id="ae-amount" placeholder="0" maxlength="9" oninput="this.value = window.formatIndianNumber(this.value); document.getElementById('ae-amt-err').classList.remove('show');">
+        <!-- JS handles the 7 digit limit and the commas perfectly -->
+        <input class="finp" type="text" inputmode="numeric" id="ae-amount" placeholder="0" autocomplete="off" oninput="this.value = window.formatIndianNumber(this.value); document.getElementById('ae-amt-err').classList.remove('show');">
       </div>
       
       <div class="field" id="field-method">
         <label>Payment Method</label>
-        <!-- Custom UI Picker -->
         <div class="cd-wrap" id="cd-wrap">
           <button type="button" class="cd-trigger" onclick="window.togglePayMethod()">
              <span id="cd-trigger-text">Cash</span>
@@ -634,7 +634,6 @@ input[type="date"] { cursor: pointer; }
         <input type="hidden" id="ae-method" value="Cash">
       </div>
       
-      <!-- Inline Error perfectly positioned under Payment Method -->
       <div class="field-err" id="ae-amt-err" style="text-align: center; margin-top: -6px; margin-bottom: 16px;">Enter a valid amount</div>
 
       <div class="field hidden" id="field-payee">
@@ -644,13 +643,11 @@ input[type="date"] { cursor: pointer; }
       
       <div class="field" id="field-desc">
         <label>Remarks (Optional)</label>
-        <!-- Changed to a single line input, max 25 chars, auto-capitalize -->
         <input class="finp" type="text" id="ae-desc" placeholder="Add a note" maxlength="25" autocomplete="off" oninput="this.value = window.capitalizeWords(this.value)">
       </div>
     </div>
     
     <div class="mfoot" style="padding-top: 0;">
-      <!-- Removed the Cancel button entirely -->
       <button class="btn-primary btn-full" id="btn-save-entry" onclick="window.saveEntry()">Save Entry</button>
     </div>
     
@@ -1035,6 +1032,55 @@ window.saveNewLedger = async function(){
     }
   });
 })();
+// --- Global Formatters & Helpers ---
+window.formatIndianNumber = function(val) {
+    if (!val) return '';
+    // 1. Strip everything except pure numbers
+    let num = val.toString().replace(/[^0-9]/g, '');
+    if (!num) return '';
+    
+    // 2. Strict Hard limit to 7 digits (Max: 99,99,999)
+    if (num.length > 7) {
+        num = num.substring(0, 7);
+    }
+    
+    // 3. Apply Indian Comma System
+    let lastThree = num.substring(num.length - 3);
+    let otherNumbers = num.substring(0, num.length - 3);
+    if (otherNumbers !== '') {
+        lastThree = ',' + lastThree;
+    }
+    return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+};
+
+window.capitalizeWords = function(str) {
+    if (!str) return '';
+    return str.replace(/\b\w/g, l => l.toUpperCase());
+};
+
+// --- Custom Dropdown Logic ---
+window.togglePayMethod = function() {
+    const dropdown = document.getElementById('cd-dropdown');
+    if(dropdown) dropdown.classList.toggle('open');
+};
+
+window.selectPayMethod = function(val, el) {
+    document.getElementById('ae-method').value = val;
+    document.getElementById('cd-trigger-text').textContent = val;
+    document.getElementById('cd-dropdown').classList.remove('open');
+    
+    document.querySelectorAll('.cd-opt').forEach(opt => opt.classList.remove('active'));
+    el.classList.add('active');
+};
+
+// Click outside to close dropdown
+document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('cd-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+        const dropdown = document.getElementById('cd-dropdown');
+        if(dropdown) dropdown.classList.remove('open');
+    }
+});
 window.openLedger = function(id){
   // Push a virtual history state so the phone's native back button works properly
   history.pushState({ view: 'detail' }, '', '#account');
