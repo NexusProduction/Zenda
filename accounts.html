@@ -330,21 +330,17 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 @keyframes sheetDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(100%)}}
 /* --- NEW LEDGER BOARD (Replaces simple entries list) --- */
 .ledger-board { background: var(--white-pure); border: 2px solid rgba(0,0,0,0.25); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-xs); margin-bottom: 30px; }
-.lb-header { display: grid; grid-template-columns: 1fr 140px 140px; background: var(--surface-2); border-bottom: 1.5px solid var(--border); font-family: var(--f-display); font-weight: 800; font-size: 0.75rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+.lb-header { display: grid; grid-template-columns: 1fr 130px; background: var(--surface-2); border-bottom: 1.5px solid var(--border); font-family: var(--f-display); font-weight: 800; font-size: 0.75rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
 .lb-h-col { padding: 16px 20px; }
-.lb-h-col.col-in { text-align: center; }
-.lb-h-col.col-out { text-align: center; }
-.lb-row { display: grid; grid-template-columns: 1fr 140px 140px; border-bottom: 1.5px solid rgba(0,0,0,0.06); cursor: pointer; transition: background 0.15s; align-items: center; }
+.lb-h-col.col-amt { text-align: right; }
+.lb-row { display: grid; grid-template-columns: 1fr 130px; border-bottom: 1.5px solid rgba(0,0,0,0.06); cursor: pointer; transition: background 0.15s; align-items: center; }
 .lb-row:hover { background: var(--surface-1); }
 .lb-col-main { min-width: 0; padding: 18px 16px 18px 20px; }
 .lb-part { font-family: var(--f-display); font-weight: 800; font-size: 0.95rem; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px; }
 .lb-date-sub { font-size: 0.78rem; color: var(--text-3); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lb-amt { font-family: var(--f-mono); font-weight: 800; font-size: 1rem; text-align: center; white-space: nowrap; padding: 18px 20px; }
-.lb-amt.col-in { }
-.lb-amt.col-out { }
+.lb-amt { font-family: var(--f-mono); font-weight: 800; font-size: 1rem; text-align: right; white-space: nowrap; padding: 18px 20px; }
 .lb-amt.in { color: var(--green); }
 .lb-amt.out { color: var(--red); }
-.lb-amt.empty { color: var(--border); font-weight: 500; }
 .lb-summary { background: var(--white-pure); padding: 20px 24px; border-top: 2px solid rgba(0,0,0,0.15); }
 .lb-sum-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-family: var(--f-display); font-size: 0.95rem; font-weight: 700; color: var(--text-2); }
 .lb-sum-row.total-bal { font-size: 1.2rem; font-weight: 800; color: var(--text-1); margin-top: 18px; padding-top: 18px; border-top: 1.5px dashed var(--border); }
@@ -363,11 +359,11 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 .ed-lbl { font-family: var(--f-display); font-size: 0.78rem; font-weight: 700; color: var(--text-4); text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; padding-top: 2px; }
 .ed-val { font-family: var(--f-body); font-weight: 600; font-size: 0.95rem; color: var(--text-1); text-align: right; word-break: break-word; line-height: 1.4; }
 @media(max-width: 600px) {
-  .lb-header { grid-template-columns: 1fr 90px 90px; }
-  .lb-h-col { padding: 14px 10px; }
-  .lb-row { grid-template-columns: 1fr 90px 90px; }
+  .lb-header { grid-template-columns: 1fr 110px; }
+  .lb-h-col { padding: 14px 14px; }
+  .lb-row { grid-template-columns: 1fr 110px; }
   .lb-col-main { padding: 16px 10px 16px 14px; }
-  .lb-amt { font-size: 0.9rem; padding: 16px 10px; }
+  .lb-amt { font-size: 0.95rem; padding: 16px 14px; }
 }
 </style>
 </head>
@@ -509,8 +505,7 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
     <div class="ledger-board" id="ledger-board">
         <div class="lb-header">
             <div class="lb-h-col">Date & Particulars</div>
-            <div class="lb-h-col col-in">Cash In</div>
-            <div class="lb-h-col col-out">Cash Out</div>
+            <div class="lb-h-col col-amt">Amount</div>
         </div>
         
         <div id="entries-list-content"></div>
@@ -1093,8 +1088,8 @@ function renderEntries(){
     // Capitalize the first letter automatically
     if(title) title = title.charAt(0).toUpperCase() + title.slice(1);
     
-    const inAmt = isIn ? fmtMoney(e.amount) : '-';
-    const outAmt = !isIn ? fmtMoney(e.amount) : '-'; 
+    // Combines sign with the currency formatter (e.g. +₹4,564 or -₹12)
+    const amtText = (isIn ? '+' : '-') + fmtMoney(e.amount);
 
     html += `
     <div class="lb-row" onclick="window.openEntryDetail('${e.id}')">
@@ -1102,8 +1097,7 @@ function renderEntries(){
         <div class="lb-part">${esc(title)}</div>
         <div class="lb-date-sub">${fmtDate(e.date)}</div>
       </div>
-      <div class="lb-amt col-in ${isIn ? 'in' : 'empty'}">${inAmt}</div>
-      <div class="lb-amt col-out ${!isIn ? 'out' : 'empty'}">${outAmt}</div>
+      <div class="lb-amt ${isIn ? 'in' : 'out'}">${amtText}</div>
     </div>`;
   });
   if(listEl) listEl.innerHTML = html;
