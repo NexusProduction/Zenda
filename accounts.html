@@ -260,7 +260,24 @@ body[data-state="connected"][data-premium="false"][data-role="owner"] #sync-stat
 
 .section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .section-ttl{font-family:var(--f-display);font-weight:800;font-size:1rem;color:var(--text-1)}
+.dc-info{min-width:0}
+.dc-textbox{
+  display:flex;flex-direction:column;gap:4px;min-width:0;
+  padding:8px 16px 10px 14px;border-radius:14px;
+  border:1.5px solid rgba(13,15,20,.08);
+  background:rgba(255,255,255,.45);
+  transition:border-color .3s ease,background .3s ease,box-shadow .3s ease;
+}
+.detail-card:hover .dc-textbox{
+  border-color:var(--card-accent);
+  background:rgba(255,255,255,.8);
+  box-shadow:0 4px 14px rgba(13,15,20,.06);
+}
+.dc-textbox .dh-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* Permission Denied popup */
+.pd-title{font-family:var(--f-display);font-weight:800;font-size:1.15rem;color:var(--text-1);margin-bottom:10px}
+.pd-msg{font-size:.88rem;color:var(--text-3);line-height:1.55}
 .entries-list{background:var(--white-pure);border:2px solid rgba(0,0,0,.25);border-radius:20px;overflow:hidden;box-shadow:var(--shadow-xs)}
 .date-group-lbl{padding:10px 18px;background:var(--surface-2);font-size:.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border-faint)}
 @keyframes rowIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
@@ -463,10 +480,11 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
   <div class="dc-main">
     <div class="dh-avatar" id="dh-avatar"></div>
     <div class="dc-info">
-      <div class="dh-name" id="dh-name">—</div>
-      <div class="dh-sub" id="dh-sub"></div>
-    </div>
+  <div class="dc-textbox">
+    <div class="dh-name" id="dh-name">—</div>
+    <div class="dh-sub" id="dh-sub"></div>
   </div>
+</div>
   <button class="icon-btn icon-btn-danger" id="btn-delete-ledger" onclick="window.openDeleteLedgerModal()" title="Delete account">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
   </button>
@@ -592,7 +610,15 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
     </div>
   </div>
 </div>
-
+<!-- MODAL: Permission Denied -->
+<div class="mo" id="m-perm-denied" onclick="if(event.target===this) window.closeM('m-perm-denied')">
+  <div class="mbox" style="max-width:380px;">
+    <div class="mbody" style="padding:34px 28px;text-align:center;">
+      <div class="pd-title">Permission Denied</div>
+      <div class="pd-msg" id="pd-message">You can't delete this account.</div>
+    </div>
+  </div>
+</div>
 <!-- MODAL: Delete Entry -->
 <div class="mo" id="m-del-entry" onclick="if(event.target===this) window.closeM('m-del-entry')">
   <div class="mbox" style="max-width:380px;">
@@ -939,12 +965,11 @@ function renderDetailHeader(){
   document.getElementById('dh-sub').textContent = 'Added by ' + staffName(curLedger.createdBy, curLedger.createdByName);
 
   const delBtn = document.getElementById('btn-delete-ledger');
-  if(delBtn){
-    const canDelete = CU.role === 'owner' || curLedger.createdBy === CU.uid;
-    delBtn.disabled = !canDelete;
-    delBtn.classList.toggle('disabled', !canDelete);
-    delBtn.title = canDelete ? 'Delete account' : 'Only the account owner or its creator can delete this';
-  }
+if(delBtn){
+  delBtn.disabled = false;
+  delBtn.classList.remove('disabled');
+  delBtn.title = 'Delete account';
+}
 }
 function computeTotals(entries){
   let cashIn=0, cashOut=0;
@@ -1095,47 +1120,38 @@ window.deleteEntryConfirmed = async function(){
   }
 };
 
-// ── Delete Ledger (owner = direct, staff = request to owner) ──
+window.openPermissionDenied = function(creatorName){
+  const msgEl = document.getElementById('pd-message');
+  if(msgEl) msgEl.textContent = `This account was created by ${creatorName}. Only ${creatorName} or the workspace owner can delete it.`;
+  window.openM('m-perm-denied');
+};
+
 window.openDeleteLedgerModal = function(){
   if(!curLedger) return;
   const isOwner = CU.role === 'owner';
-  const content = document.getElementById('del-ledger-content');
-  if(isOwner){
-    content.innerHTML = `
-      <div style="padding:22px 24px;border-bottom:1px solid var(--border-faint);">
-        <div style="font-family:var(--f-display);font-size:1.15rem;font-weight:800;color:var(--red);text-align:center;">Delete Account</div>
-      </div>
-      <div style="padding:24px;display:flex;flex-direction:column;align-items:center;">
-        <div style="font-weight:500;font-size:.9rem;color:var(--text-2);text-align:center;margin-bottom:22px;line-height:1.5;">
-          Are you sure? All entries for <strong style="color:var(--text-1);">${esc(curLedger.name)}</strong> will be permanently removed.
-        </div>
-        <div style="display:flex;gap:12px;width:100%;">
-          <button onclick="window.closeM('m-del-ledger')" class="btn-ghost btn-full">Cancel</button>
-          <button id="btn-confirm-del-ledger" onclick="window.confirmDelLedger()" class="btn-black-red btn-full">Delete</button>
-        </div>
-      </div>`;
-  } else {
-    content.innerHTML = `
-      <div style="padding:22px 24px;border-bottom:1px solid var(--border-faint);">
-        <div style="font-family:var(--f-display);font-size:1.15rem;font-weight:800;color:var(--amber);text-align:center;">Request Deletion</div>
-      </div>
-      <div style="padding:24px;display:flex;flex-direction:column;align-items:center;">
-        <div style="font-weight:500;font-size:.9rem;color:var(--text-2);text-align:center;margin-bottom:16px;line-height:1.5;">
-          Submit a request to the owner to permanently delete <strong style="color:var(--text-1);">${esc(curLedger.name)}</strong>.
-        </div>
-        <div style="width:100%;margin-bottom:20px;text-align:left;">
-          <label style="display:block;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Reason (10-20 chars)</label>
-          <textarea id="ld-del-reason" class="finp" placeholder="Provide a reason…" maxlength="20" oninput="window.checkLedgerDelReasonBtn(this)"></textarea>
-        </div>
-        <div style="display:flex;gap:12px;width:100%;">
-          <button onclick="window.closeM('m-del-ledger')" class="btn-ghost btn-full">Cancel</button>
-          <button id="ld-del-request-btn" onclick="window.sendLedgerDeleteRequest()" disabled class="btn-amber btn-full" style="opacity:.4;">Send Request</button>
-        </div>
-      </div>`;
+  const isCreator = curLedger.createdBy === CU.uid;
+
+  if(!isOwner && !isCreator){
+    window.openPermissionDenied(staffName(curLedger.createdBy, curLedger.createdByName));
+    return;
   }
+
+  const content = document.getElementById('del-ledger-content');
+  content.innerHTML = `
+    <div style="padding:22px 24px;border-bottom:1px solid var(--border-faint);">
+      <div style="font-family:var(--f-display);font-size:1.15rem;font-weight:800;color:var(--red);text-align:center;">Delete Account</div>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;align-items:center;">
+      <div style="font-weight:500;font-size:.9rem;color:var(--text-2);text-align:center;margin-bottom:22px;line-height:1.5;">
+        Are you sure? All entries for <strong style="color:var(--text-1);">${esc(curLedger.name)}</strong> will be permanently removed.
+      </div>
+      <div style="display:flex;gap:12px;width:100%;">
+        <button onclick="window.closeM('m-del-ledger')" class="btn-ghost btn-full">Cancel</button>
+        <button id="btn-confirm-del-ledger" onclick="window.confirmDelLedger()" class="btn-black-red btn-full">Delete</button>
+      </div>
+    </div>`;
   window.openM('m-del-ledger');
 };
-
 window.checkLedgerDelReasonBtn = function(ta){
   const len = ta.value.trim().length;
   const ok = len >= 10 && len <= 20;
