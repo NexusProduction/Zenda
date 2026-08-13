@@ -700,8 +700,9 @@ import {
 let CU = { uid:null, role:'staff', companyId:null, name:'Staff', isPremium:false, ownerId:null };
 let staffMap = {};
 let ledgers = [];
-let ledgerTotals = {}; // ledgerId -> {in,out,bal,count,lastDate}
-let ledgersUnsub = null, staffUnsub = null, entriesUnsub = null;
+let allEntries = []; // NEW: Stores all entries globally for zero-delay loading
+let ledgerTotals = {}; 
+let ledgersUnsub = null, staffUnsub = null, allEntriesUnsub = null;
 let curLedger = null;
 let curEntries = [];
 let entryType = 'in';
@@ -777,47 +778,69 @@ function startStaffListener(){
 function staffName(uid, fallback){
   return (staffMap[uid] && staffMap[uid].name) || fallback || 'Staff';
 }
+// ── Lightning Fast Global Data Sync (Ledgers + Entries simultaneously) ──
+let ledgersLoaded = false;
+let entriesLoaded = false;
 
-// ── Ledgers list (real-time) ──
-function startLedgersListener(){
+function startDataListeners(){
   if(ledgersUnsub) ledgersUnsub();
-  const q = query(collection(db,'ledgers'), where('companyId','==',CU.companyId));
-  ledgersUnsub = onSnapshot(q, snap => {
+  if(allEntriesUnsub) allEntriesUnsub();
+
+  const qL = query(collection(db,'ledgers'), where('companyId','==',CU.companyId));
+  const qE = query(collection(db,'ledgerEntries'), where('companyId','==',CU.companyId));
+
+  ledgersUnsub = onSnapshot(qL, snap => {
     ledgers = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    syncEl.textContent = 'Connected'; syncEl.className = 'sync-badge ok';
-    document.body.setAttribute('data-state','connected');
-    computeAllTotals().then(() => {
-      renderLedgerGrid();
-      renderSummary();
-      if(curLedger){
-        const still = ledgers.find(l => l.id === curLedger.id);
-        if(still){ curLedger = still; renderDetailHeader(); }
-      }
-    });
-  }, err => {
-    syncEl.textContent = 'Sync Error'; syncEl.className = 'sync-badge err';
-    console.error(err);
-  });
+    ledgersLoaded = true;
+    if(entriesLoaded) updateAllUI();
+  }, err => handleError(err));
+
+  allEntriesUnsub = onSnapshot(qE, snap => {
+    allEntries = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    entriesLoaded = true;
+    if(ledgersLoaded) updateAllUI();
+  }, err => handleError(err));
 }
 
-// Pulls every ledger's entries once (light — used for list totals/balances)
-async function computeAllTotals(){
+function handleError(err) {
+  syncEl.textContent = 'Sync Error'; syncEl.className = 'sync-badge err';
+  console.error(err);
+}
+
+function updateAllUI() {
+  // App is officially fully loaded!
+  syncEl.textContent = 'Connected'; syncEl.className = 'sync-badge ok';
+  document.body.setAttribute('data-state','connected');
+
+  // Super-fast in-memory totals calculation (No network requests!)
   ledgerTotals = {};
-  await Promise.all(ledgers.map(async (l) => {
-    try {
-      const snap = await getDocs(query(collection(db,'ledgerEntries'), where('ledgerId','==', l.id), where('companyId','==', CU.companyId)));
-      let cashIn=0, cashOut=0, count=0, lastDate=null;
-      snap.forEach(d => {
-        const e = d.data();
-        if(e.type==='in') cashIn += Number(e.amount)||0; else cashOut += Number(e.amount)||0;
-        count++;
-        if(!lastDate || (e.date && e.date > lastDate)) lastDate = e.date;
-      });
-      ledgerTotals[l.id] = { in:cashIn, out:cashOut, bal:cashIn-cashOut, count, lastDate };
-    } catch(e){ ledgerTotals[l.id] = { in:0, out:0, bal:0, count:0, lastDate:null }; }
-  }));
-}
+  ledgers.forEach(l => { ledgerTotals[l.id] = { in:0, out:0, bal:0, count:0, lastDate:null }; });
 
+  allEntries.forEach(e => {
+    if(!ledgerTotals[e.ledgerId]) return;
+    const t = ledgerTotals[e.ledgerId];
+    const amt = Number(e.amount) || 0;
+    if(e.type === 'in') t.in += amt; else t.out += amt;
+    t.bal = t.in - t.out;
+    t.count++;
+    if(!t.lastDate || (e.date && e.date > t.lastDate)) t.lastDate = e.date;
+  });
+
+  renderLedgerGrid();
+  renderSummary();
+
+  if(curLedger) {
+    const still = ledgers.find(l => l.id === curLedger.id);
+    if(still) {
+      curLedger = still;
+      curEntries = allEntries.filter(e => e.ledgerId === curLedger.id);
+      renderDetailHeader();
+      renderEntries();
+    } else {
+      window.backToList();
+    }
+  }
+}
 function renderSummary(){
   let totalIn=0, totalOut=0;
   ledgers.forEach(l => { const t = ledgerTotals[l.id]; if(t){ totalIn += t.in; totalOut += t.out; } });
@@ -989,15 +1012,12 @@ window.openLedger = function(id){
   document.getElementById('fab-add-entry').classList.add('fab-show');
   renderDetailHeader();
 
-  if(entriesUnsub) entriesUnsub();
-const q = query(collection(db,'ledgerEntries'), where('ledgerId','==', id), where('companyId','==', CU.companyId));
-entriesUnsub = onSnapshot(q, snap => {
-  curEntries = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  // Load instantly from cached memory (Zero delay!)
+  curEntries = allEntries.filter(e => e.ledgerId === id);
   renderEntries();
-}, err => { console.error(err); toast('Could not load entries: ' + err.message, 'error'); });
 };
+
 window.backToList = function(){
-  if(entriesUnsub){ entriesUnsub(); entriesUnsub = null; }
   curLedger = null; curEntries = [];
   document.getElementById('view-detail').classList.remove('active');
   document.getElementById('view-list').classList.add('active');
@@ -1371,7 +1391,7 @@ async function init(){
     document.body.setAttribute('data-role', CU.role);
 
     startStaffListener();
-    startLedgersListener();
+    startDataListeners(); // Trigger the new dual-loader
   } catch(err){
     console.error(err);
     syncEl.textContent = 'Error'; syncEl.className = 'sync-badge err';
