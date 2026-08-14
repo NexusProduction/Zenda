@@ -393,8 +393,25 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 .cd-opt .tick { display: none; width: 16px; height: 16px; stroke-width: 3; }
 .cd-opt.active .tick { display: block; }
 
-/* Make date picker clickable everywhere */
-input[type="date"] { cursor: pointer; }
+/* --- CUSTOM CALENDAR DATE PICKER --- */
+.dp-dropdown{ display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--white-pure); border:2px solid var(--border-strong); border-radius:var(--r-md); box-shadow:var(--shadow-md); z-index:100; padding:14px; }
+.dp-dropdown.open{ display:block; animation:dpPopUp .2s cubic-bezier(.22,1,.36,1); }
+@keyframes dpPopUp{ from{opacity:0;transform:translateY(6px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+.dp-hdr{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.dp-title{ font-family:var(--f-display); font-size:.85rem; font-weight:800; color:var(--text-1); }
+.dp-nav{ width:28px; height:28px; border:1.5px solid var(--border-strong); background:var(--white-pure); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-2); transition:all .18s; }
+.dp-nav:hover{ border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+.dp-nav:disabled{ opacity:.35; cursor:not-allowed; }
+.dp-nav:disabled:hover{ border-color:var(--border-strong); color:var(--text-2); background:var(--white-pure); }
+.dp-weekdays{ display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:4px; }
+.dp-weekdays span{ font-size:.65rem; font-weight:700; color:var(--text-4); text-align:center; text-transform:uppercase; }
+.dp-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.dp-day{ aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:.82rem; font-weight:700; color:var(--text-1); border-radius:8px; cursor:pointer; transition:all .15s; }
+.dp-day:hover{ background:var(--white-cool); }
+.dp-day.is-today{ color:var(--accent); font-weight:800; }
+.dp-day.is-selected{ background:var(--accent); color:#fff; font-weight:800; }
+.dp-today-btn{ margin-top:10px; text-align:center; padding:8px; border-radius:9px; background:var(--accent-soft); color:var(--accent); font-size:.78rem; font-weight:700; cursor:pointer; transition:all .18s; }
+.dp-today-btn:hover{ background:var(--white-dim); }
 </style>
 </head>
 <body data-state="loading">
@@ -609,8 +626,13 @@ input[type="date"] { cursor: pointer; }
       
       <div class="field">
         <label>Date</label>
-        <!-- showPicker() makes it open when clicking anywhere inside the box -->
-        <input class="finp" type="date" id="ae-date" onclick="this.showPicker()">
+        <div class="cd-wrap" id="date-picker-wrap">
+          <button type="button" class="cd-trigger" onclick="window.toggleDatePicker()">
+             <span id="date-picker-label">Select date</span>
+          </button>
+          <div class="dp-dropdown" id="dp-dropdown"></div>
+        </div>
+        <input type="hidden" id="ae-date" value="">
       </div>
       
       <div class="field">
@@ -752,6 +774,9 @@ let ledgerPage = 1;
 const LEDGER_PER_PAGE = 10;
 let entryToDeleteId = null;
 let ledgerDeleteBusy = false;
+let dpOpen = false;
+let dpCurrentDate = new Date();
+let dpSelectedDate = new Date();
 const NL_PLACEHOLDERS = ['e.g. Ram Kumar', 'e.g. Sharma Global Traders', 'e.g. Arjun Fernandes'];
 let nlPhIndex = 0;
 let nlPhTimer = null;
@@ -1197,19 +1222,111 @@ window.downloadLedger = function() {
     toast('Preparing PDF Download...', 'info');
     setTimeout(() => toast('Ledger downloaded successfully!', 'success'), 1500);
 };
+function pad2(n){ return String(n).padStart(2,'0'); }
+function toYMD(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function toDisplayDate(d){ return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+
+function setDateValue(d){
+  dpSelectedDate = d;
+  const hidden = document.getElementById('ae-date');
+  const label = document.getElementById('date-picker-label');
+  if(hidden) hidden.value = toYMD(d);
+  if(label) label.textContent = toDisplayDate(d);
+}
+
+function renderDatePicker(){
+  const dd = document.getElementById('dp-dropdown');
+  if(!dd) return;
+  const y = dpCurrentDate.getFullYear(), m = dpCurrentDate.getMonth();
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const todayYMD = toYMD(new Date()), selYMD = toYMD(dpSelectedDate);
+
+  let cells = '';
+  for(let i=0;i<firstDay;i++) cells += `<div></div>`;
+  for(let day=1; day<=daysInMonth; day++){
+    const dStr = y+'-'+pad2(m+1)+'-'+pad2(day);
+    const isToday = dStr === todayYMD, isSel = dStr === selYMD;
+    cells += `<div class="dp-day${isSel?' is-selected':''}${isToday&&!isSel?' is-today':''}" onclick="window.dpSelectDay(${y},${m},${day})">${day}</div>`;
+  }
+
+  const currYear = new Date().getFullYear();
+  const maxYear = currYear + 5;
+  const disablePrev = (y <= 2022 && m === 0);
+  const disableNext = (y >= maxYear && m === 11);
+
+  dd.innerHTML = `
+    <div class="dp-hdr">
+      <button type="button" class="dp-nav" onclick="event.stopPropagation();window.dpChangeMonth(-1)" ${disablePrev?'disabled':''}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="dp-title">${monthNames[m]} ${y}</span>
+      <button type="button" class="dp-nav" onclick="event.stopPropagation();window.dpChangeMonth(1)" ${disableNext?'disabled':''}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <div class="dp-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+    <div class="dp-grid">${cells}</div>
+    <div class="dp-today-btn" onclick="window.dpGoToday()">Today</div>
+  `;
+}
+
+window.toggleDatePicker = function(){
+  dpOpen = !dpOpen;
+  const dd = document.getElementById('dp-dropdown');
+  if(!dd) return;
+  if(dpOpen){
+    dpCurrentDate = new Date(dpSelectedDate);
+    renderDatePicker();
+    dd.classList.add('open');
+  } else {
+    dd.classList.remove('open');
+  }
+};
+
+window.dpChangeMonth = function(delta){
+  const currYear = new Date().getFullYear();
+  const maxYear = currYear + 5;
+  let testDate = new Date(dpCurrentDate);
+  testDate.setMonth(testDate.getMonth() + delta);
+  if(testDate.getFullYear() < 2022 || testDate.getFullYear() > maxYear) return;
+  dpCurrentDate.setMonth(dpCurrentDate.getMonth() + delta);
+  renderDatePicker();
+};
+
+window.dpSelectDay = function(y,m,day){
+  setDateValue(new Date(y,m,day));
+  closeDatePicker();
+};
+
+window.dpGoToday = function(){
+  const t = new Date();
+  dpCurrentDate = new Date(t);
+  setDateValue(t);
+  closeDatePicker();
+};
+
+function closeDatePicker(){
+  dpOpen = false;
+  const dd = document.getElementById('dp-dropdown');
+  if(dd) dd.classList.remove('open');
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('date-picker-wrap');
+  if(wrap && !wrap.contains(e.target)) closeDatePicker();
+});
+
 window.openAddEntryModal = function(){
-  const dateEl = document.getElementById('ae-date');
   const amtEl = document.getElementById('ae-amount');
   const payeeEl = document.getElementById('ae-payee');
   const descEl = document.getElementById('ae-desc');
   const methodEl = document.getElementById('ae-method');
-  if(!dateEl || !amtEl || !payeeEl || !descEl || !methodEl) return;
-  
-  // Set Date Constraints dynamically (2022 to Current Year + 5)
-  const currYear = new Date().getFullYear();
-  dateEl.min = "2022-01-01";
-  dateEl.max = (currYear + 5) + "-12-31";
-  dateEl.value = todayStr();
+  if(!amtEl || !payeeEl || !descEl || !methodEl) return;
+
+  setDateValue(new Date());
+  closeDatePicker();
 
   amtEl.value = '';
   payeeEl.value = '';
