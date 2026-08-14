@@ -898,6 +898,7 @@ function updateAllUI() {
 
   allEntries.forEach(e => {
     if(!ledgerTotals[e.ledgerId]) return;
+    if(e.type !== 'in' && e.type !== 'out') return; // ignore malformed/unknown entry types
     const t = ledgerTotals[e.ledgerId];
     const amt = Number(e.amount) || 0;
     if(e.type === 'in') t.in += amt; else t.out += amt;
@@ -1130,7 +1131,11 @@ function renderDetailHeader(){
 }
 function computeTotals(entries){
   let cashIn=0, cashOut=0;
-  entries.forEach(e => { if(e.type==='in') cashIn += Number(e.amount)||0; else cashOut += Number(e.amount)||0; });
+  entries.forEach(e => {
+    const amt = Number(e.amount) || 0;
+    if(e.type==='in') cashIn += amt;
+    else if(e.type==='out') cashOut += amt;
+  });
   return { cashIn, cashOut, bal: cashIn - cashOut };
 }
 function renderEntries(){
