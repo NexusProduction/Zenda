@@ -1414,6 +1414,158 @@ window.sendLedgerDeleteRequest = async function(){
   }
 };
 
+// ── Ledger detail view (was missing — this is why clicking an account did nothing) ──
+window.openLedger = function(id){
+  const ledger = ledgers.find(l => l.id === id);
+  if(!ledger){ toast('Account not found.', 'error'); return; }
+  curLedger = ledger;
+  curEntries = allEntries.filter(e => e.ledgerId === id);
+
+  document.getElementById('view-list').classList.remove('active');
+  document.getElementById('view-detail').classList.add('active');
+  document.getElementById('fab-add-entry').classList.add('fab-show');
+
+  history.pushState({ view:'detail', id }, '', '#account');
+
+  renderDetailHeader();
+  renderEntries();
+};
+
+window.backToList = function(){
+  document.getElementById('view-detail').classList.remove('active');
+  document.getElementById('view-list').classList.add('active');
+  document.getElementById('fab-add-entry').classList.remove('fab-show');
+  curLedger = null;
+  curEntries = [];
+  if(window.location.hash === '#account'){
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+};
+
+window.handleTopBack = function(){
+  const inDetail = document.getElementById('view-detail').classList.contains('active');
+  if(inDetail){
+    history.back(); // triggers the popstate listener below, which calls backToList()
+  } else {
+    // Adjust to wherever "Accounts" should return to in your app
+    if(document.referrer){ history.back(); } else { window.location.href = 'dashboard.html'; }
+  }
+};
+
+function renderDetailHeader(){
+  if(!curLedger) return;
+  const col = avatarColor(curLedger.name);
+  const avatarEl = document.getElementById('dh-avatar');
+  avatarEl.style.background = col;
+  avatarEl.textContent = getInitials(curLedger.name);
+  document.getElementById('dh-name').textContent = curLedger.name;
+  const t = ledgerTotals[curLedger.id] || { count:0 };
+  document.getElementById('dh-sub').textContent =
+    `${t.count||0} ${t.count===1?'entry':'entries'} • Added by ${staffName(curLedger.createdBy, curLedger.createdByName)}`;
+  document.getElementById('detail-card').style.setProperty('--card-accent', col);
+}
+
+function computeTotals(entries){
+  let cashIn = 0, cashOut = 0;
+  entries.forEach(e => {
+    const amt = Number(e.amount) || 0;
+    if(e.type === 'in') cashIn += amt; else cashOut += amt;
+  });
+  return { cashIn, cashOut };
+}
+
+function renderEntries(){
+  const container = document.getElementById('entries-list-content');
+  const emptyEl = document.getElementById('entries-empty');
+  const sorted = [...curEntries].sort((a,b) => {
+    if(a.date !== b.date) return (b.date||'').localeCompare(a.date||'');
+    return (b.createdAt||0) - (a.createdAt||0);
+  });
+
+  if(!sorted.length){
+    container.innerHTML = '';
+    emptyEl.classList.remove('hidden');
+  } else {
+    emptyEl.classList.add('hidden');
+    let html = '';
+    let lastDate = null;
+    sorted.forEach((e, i) => {
+      if(e.date !== lastDate){
+        html += `<div class="date-group-lbl">${fmtDate(e.date)}</div>`;
+        lastDate = e.date;
+      }
+      const isIn = e.type === 'in';
+      const title = isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out');
+      const sub = e.description ? esc(e.description) : (isIn ? 'Cash In' : 'Cash Out');
+      html += `<div class="lb-row" style="animation-delay:${i*20}ms" onclick="window.openEntryDetail('${e.id}')">
+        <div class="lb-col-main">
+          <div class="lb-part">${esc(title)}</div>
+          <div class="lb-date-sub">${sub}</div>
+        </div>
+        <div class="lb-amt ${isIn?'in':'out'}">${isIn?'+':'-'}${fmtMoney(e.amount)}</div>
+      </div>`;
+    });
+    container.innerHTML = html;
+  }
+
+  const totals = computeTotals(curEntries);
+  document.getElementById('lb-tot-in').textContent = fmtMoney(totals.cashIn);
+  document.getElementById('lb-tot-out').textContent = fmtMoney(totals.cashOut);
+  document.getElementById('lb-tot-bal').textContent = fmtMoney(totals.cashIn - totals.cashOut);
+}
+
+// ── Entry detail modal (tap a row to see full info + delete) ──
+let currentDetailEntryId = null;
+window.openEntryDetail = function(entryId){
+  const e = curEntries.find(x => x.id === entryId);
+  if(!e) return;
+  currentDetailEntryId = entryId;
+  const isIn = e.type === 'in';
+
+  const amtEl = document.getElementById('ed-amt');
+  amtEl.textContent = (isIn?'+':'-') + fmtMoney(e.amount);
+  amtEl.style.color = isIn ? 'var(--green)' : 'var(--red)';
+
+  const badge = document.getElementById('ed-badge');
+  badge.textContent = isIn ? 'Cash In' : 'Cash Out';
+  badge.className = 'ed-type-badge ' + (isIn ? 'in' : 'out');
+
+  document.getElementById('ed-date').textContent = fmtDate(e.date);
+  document.getElementById('ed-part-lbl').textContent = isIn ? 'Payment Method' : 'Paid To / For';
+  document.getElementById('ed-part-val').textContent = isIn ? (e.method || '-') : (e.payee || '-');
+  document.getElementById('ed-desc').textContent = e.description || '-';
+  document.getElementById('ed-added').textContent = staffName(e.createdBy, e.createdByName);
+
+  window.openM('m-entry-detail');
+};
+
+const edDeleteBtn = document.getElementById('ed-btn-delete');
+if(edDeleteBtn){
+  edDeleteBtn.addEventListener('click', () => {
+    if(!currentDetailEntryId) return;
+    window.closeM('m-entry-detail');
+    window.confirmDeleteEntryPrompt(currentDetailEntryId);
+  });
+}
+
+// ── Download ledger (was also referenced but missing) ──
+window.downloadLedger = function(){
+  if(!curLedger) return;
+  const rows = [['Date','Type','Particulars','Remarks','Amount']];
+  [...curEntries].sort((a,b) => (a.date||'').localeCompare(b.date||'')).forEach(e => {
+    const particulars = e.type === 'in' ? (e.method||'') : (e.payee||'');
+    rows.push([e.date||'', e.type==='in'?'Cash In':'Cash Out', particulars, e.description||'', e.amount]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${curLedger.name.replace(/[^a-z0-9]/gi,'_')}_ledger.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 // ── Init ──
 async function init(){
   try {
