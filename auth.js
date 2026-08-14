@@ -105,20 +105,34 @@ export async function completeOTPLogin(email) {
   return user;
 }
 
-// Create a new owner account. Passwordless — user only ever gives email, name, company.
+// Create a new owner account. Passwordless – user only ever gives email, name, company.
 export async function ownerSignUp(companyName, name, email) {
   const authKey = generateAuthKey();
   const user = (await createUserWithEmailAndPassword(auth, email, authKey)).user;
   await updateProfile(user, { displayName: name });
-
+  
   const companyRef = doc(collection(db, 'companies'));
-  await setDoc(companyRef, { name: companyName, ownerId: user.uid, createdAt: Date.now(), isPremium: false });
+  
+  // Calculate expiry date: 30 days from now
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + 30);
+
+  // Set company to Premium automatically
+  await setDoc(companyRef, { 
+    name: companyName, 
+    ownerId: user.uid, 
+    createdAt: Date.now(), 
+    isPremium: true, 
+    planType: '30 Days Free Trial',
+    subscriptionExpiry: expiryDate.toISOString() 
+  });
 
   const uniqueCode = 'Z' + Math.floor(100000 + Math.random() * 900000).toString() + 'XXXX';
   await setDoc(doc(db, 'users', user.uid), {
     name, email, role: 'owner', companyId: companyRef.id, companyName,
     uniqueId: uniqueCode, createdAt: Date.now(), passwordHint: authKey
   });
+
   await setDoc(doc(db, 'installedApps', user.uid), { apps: ['calculator'] });
   return { uid: user.uid, uniqueCode, companyId: companyRef.id };
 }
