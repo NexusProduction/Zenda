@@ -739,7 +739,6 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
     </div>
   </div>
 </div>
-<!-- MODAL: Delete Entry -->
 <div class="mo" id="m-del-entry" onclick="if(event.target===this) window.closeM('m-del-entry')">
   <div class="mbox" style="max-width:380px;">
     <div class="mhdr"><span class="mttl">Delete Entry</span></div>
@@ -753,7 +752,28 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
   </div>
 </div>
 
+<!-- MODAL: Export Ledger -->
+<div class="mo" id="m-export-ledger" onclick="if(event.target===this) window.closeM('m-export-ledger')">
+  <div class="mbox" style="max-width:360px;">
+    <div class="mhdr"><span class="mttl">Download Ledger</span></div>
+    <div class="mbody" style="display:flex;flex-direction:column;gap:12px;">
+      <button class="btn-ghost btn-full" style="display:flex;align-items:center;justify-content:flex-start;gap:10px;" onclick="window.exportLedgerExcel()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 3v18M16 3v18M3 9h18M3 15h18"/></svg>
+        Export as Excel (.xlsx)
+      </button>
+      <button class="btn-ghost btn-full" style="display:flex;align-items:center;justify-content:flex-start;gap:10px;" onclick="window.exportLedgerPDF()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Export as PDF
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
 <script type="module">
 import { db, auth } from './firebase-config.js';
@@ -1248,8 +1268,200 @@ window.deleteEntryDirect = async function(entryId){
   }
 };
 window.downloadLedger = function() {
-    toast('Preparing PDF Download...', 'info');
-    setTimeout(() => toast('Ledger downloaded successfully!', 'success'), 1500);
+    if(!curLedger) return;
+    if(!curEntries.length){ toast('No entries to export yet.', 'info'); return; }
+    window.openM('m-export-ledger');
+};
+
+function sortedForExport(){
+  return [...curEntries].sort((a,b)=>{
+    const da=a.date||'', db_=b.date||'';
+    if(da!==db_) return da.localeCompare(db_);
+    return (a.createdAt||0)-(b.createdAt||0);
+  });
+}
+
+window.exportLedgerExcel = async function(){
+  if(!curLedger) return;
+  window.closeM('m-export-ledger');
+  toast('Preparing Excel file…', 'info');
+  try {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Zenda';
+    wb.created = new Date();
+    const ws = wb.addWorksheet((curLedger.name || 'Ledger').substring(0,28), { views:[{ showGridLines:false }] });
+    ws.columns = [{ width:13 },{ width:24 },{ width:26 },{ width:15 },{ width:15 },{ width:16 }];
+
+    ws.mergeCells('A1:F1');
+    ws.getCell('A1').value = 'ZENDA';
+    ws.getCell('A1').font = { bold:true, size:16, color:{argb:'FF4F46E5'} };
+
+    ws.mergeCells('A2:F2');
+    ws.getCell('A2').value = 'zenda.site.je  •  Digital Cash Ledger';
+    ws.getCell('A2').font = { size:9, color:{argb:'FF6C6F80'} };
+
+    ws.mergeCells('A4:F4');
+    ws.getCell('A4').value = curLedger.name;
+    ws.getCell('A4').font = { bold:true, size:14, color:{argb:'FF0D0F14'} };
+
+    ws.mergeCells('A5:F5');
+    ws.getCell('A5').value = 'Generated ' + new Date().toLocaleString('en-IN');
+    ws.getCell('A5').font = { size:9, italic:true, color:{argb:'FF9EA1B0'} };
+
+    const headerRowIdx = 7;
+    const headerRow = ws.getRow(headerRowIdx);
+    ['Date','Particulars','Remarks','Cash In (₹)','Cash Out (₹)','Added By'].forEach((h,i)=>{ headerRow.getCell(i+1).value = h; });
+    headerRow.eachCell(c => {
+      c.font = { bold:true, color:{argb:'FFFFFFFF'}, size:10 };
+      c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF4F46E5'} };
+      c.alignment = { vertical:'middle', horizontal:'center' };
+    });
+    headerRow.height = 22;
+
+    const sorted = sortedForExport();
+    let rowIdx = headerRowIdx + 1, totalIn = 0, totalOut = 0;
+
+    sorted.forEach((e, i) => {
+      const isIn = e.type === 'in';
+      const amt = Number(e.amount) || 0;
+      if(isIn) totalIn += amt; else totalOut += amt;
+
+      const row = ws.getRow(rowIdx);
+      row.getCell(1).value = fmtDate(e.date);
+      row.getCell(2).value = isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out');
+      row.getCell(3).value = e.description || '—';
+      row.getCell(4).value = isIn ? amt : null;
+      row.getCell(5).value = isIn ? null : amt;
+      row.getCell(6).value = staffName(e.createdBy, e.createdByName);
+
+      row.getCell(4).numFmt = '#,##,##0';
+      row.getCell(5).numFmt = '#,##,##0';
+      if(isIn) row.getCell(4).font = { color:{argb:'FF059669'}, bold:true };
+      else row.getCell(5).font = { color:{argb:'FFDC2626'}, bold:true };
+      row.eachCell(c => { c.border = { bottom:{style:'hair',color:{argb:'FFEBEBEF'}} }; c.alignment = { vertical:'middle' }; });
+      if(i % 2 === 1) row.eachCell({includeEmpty:true}, c => { c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFAFAFA'} }; });
+      rowIdx++;
+    });
+
+    rowIdx += 1;
+    ws.mergeCells(`A${rowIdx}:C${rowIdx}`);
+    ws.getCell(`A${rowIdx}`).value = 'TOTAL CASH IN';
+    ws.getCell(`A${rowIdx}`).font = { bold:true, size:10, color:{argb:'FF3D3F4A'} };
+    ws.getCell(`D${rowIdx}`).value = totalIn;
+    ws.getCell(`D${rowIdx}`).numFmt = '#,##,##0';
+    ws.getCell(`D${rowIdx}`).font = { bold:true, color:{argb:'FF059669'} };
+    rowIdx++;
+
+    ws.mergeCells(`A${rowIdx}:C${rowIdx}`);
+    ws.getCell(`A${rowIdx}`).value = 'TOTAL CASH OUT';
+    ws.getCell(`A${rowIdx}`).font = { bold:true, size:10, color:{argb:'FF3D3F4A'} };
+    ws.getCell(`E${rowIdx}`).value = totalOut;
+    ws.getCell(`E${rowIdx}`).numFmt = '#,##,##0';
+    ws.getCell(`E${rowIdx}`).font = { bold:true, color:{argb:'FFDC2626'} };
+    rowIdx += 2;
+
+    const bal = totalIn - totalOut;
+    ws.mergeCells(`A${rowIdx}:C${rowIdx}`);
+    ws.getCell(`A${rowIdx}`).value = 'CURRENT BALANCE';
+    ws.getCell(`A${rowIdx}`).font = { bold:true, size:12, color:{argb:'FF0D0F14'} };
+    ws.mergeCells(`D${rowIdx}:F${rowIdx}`);
+    ws.getCell(`D${rowIdx}`).value = bal;
+    ws.getCell(`D${rowIdx}`).numFmt = '"₹"#,##,##0';
+    ws.getCell(`D${rowIdx}`).font = { bold:true, size:13, color:{argb: bal>=0 ? 'FF059669':'FFDC2626'} };
+    ws.getCell(`D${rowIdx}`).alignment = { horizontal:'right' };
+    ws.getRow(rowIdx).eachCell({includeEmpty:true}, c => { c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFEEF2FF'} }; });
+    rowIdx += 2;
+
+    ws.mergeCells(`A${rowIdx}:F${rowIdx}`);
+    ws.getCell(`A${rowIdx}`).value = 'This is a computer-generated document — Zenda (zenda.site.je)';
+    ws.getCell(`A${rowIdx}`).font = { italic:true, size:8, color:{argb:'FF9EA1B0'} };
+    ws.getCell(`A${rowIdx}`).alignment = { horizontal:'center' };
+
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type:'application/octet-stream' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (curLedger.name || 'Ledger').replace(/[^a-z0-9]/gi,'_') + '_Zenda.xlsx';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('Excel file downloaded.', 'success');
+  } catch(err){
+    console.error(err);
+    toast('Failed to generate Excel file.', 'error');
+  }
+};
+
+window.exportLedgerPDF = function(){
+  if(!curLedger) return;
+  window.closeM('m-export-ledger');
+  toast('Preparing PDF…', 'info');
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(79,70,229);
+    doc.text('ZENDA', 40, 46);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(108,111,128);
+    doc.text('zenda.site.je  •  Digital Cash Ledger', 40, 60);
+    doc.setDrawColor(226,227,233); doc.line(40, 70, pageWidth-40, 70);
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(13,15,20);
+    doc.text(curLedger.name, 40, 92);
+    doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(158,161,176);
+    doc.text('Generated ' + new Date().toLocaleString('en-IN'), 40, 106);
+
+    let totalIn = 0, totalOut = 0;
+    const rows = sortedForExport().map(e => {
+      const isIn = e.type === 'in';
+      const amt = Number(e.amount) || 0;
+      if(isIn) totalIn += amt; else totalOut += amt;
+      return [ fmtDate(e.date), isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out'), e.description || '—',
+        isIn ? fmtMoney(amt) : '—', !isIn ? fmtMoney(amt) : '—', staffName(e.createdBy, e.createdByName) ];
+    });
+
+    doc.autoTable({
+      startY: 122,
+      head: [['Date','Particulars','Remarks','Cash In','Cash Out','Added By']],
+      body: rows,
+      styles: { font:'helvetica', fontSize:8.5, cellPadding:6, textColor:[13,15,20] },
+      headStyles: { fillColor:[79,70,229], textColor:255, fontStyle:'bold' },
+      alternateRowStyles: { fillColor:[250,250,250] },
+      columnStyles: { 3:{ textColor:[5,150,105], fontStyle:'bold', halign:'right' }, 4:{ textColor:[220,38,38], fontStyle:'bold', halign:'right' } },
+      margin: { left:40, right:40 }
+    });
+
+    let y = doc.lastAutoTable.finalY + 24;
+    const bal = totalIn - totalOut;
+    doc.setFontSize(9.5); doc.setFont('helvetica','bold'); doc.setTextColor(61,63,74);
+    doc.text('Total Cash In', 40, y); doc.setTextColor(5,150,105); doc.text(fmtMoney(totalIn), pageWidth-40, y, { align:'right' });
+    y += 16;
+    doc.setTextColor(61,63,74); doc.text('Total Cash Out', 40, y); doc.setTextColor(220,38,38); doc.text(fmtMoney(totalOut), pageWidth-40, y, { align:'right' });
+    y += 6;
+    doc.setDrawColor(208,210,219); doc.line(40, y+8, pageWidth-40, y+8);
+    y += 26;
+
+    doc.setFillColor(238,242,255);
+    doc.roundedRect(40, y-16, pageWidth-80, 30, 6, 6, 'F');
+    doc.setFontSize(11); doc.setTextColor(13,15,20);
+    doc.text('CURRENT BALANCE', 52, y+3);
+    doc.setFontSize(13);
+    doc.setTextColor(bal>=0?5:220, bal>=0?150:38, bal>=0?105:38);
+    doc.text(fmtMoney(bal), pageWidth-52, y+3, { align:'right' });
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for(let p=1;p<=pageCount;p++){
+      doc.setPage(p);
+      doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(158,161,176);
+      doc.text('This is a computer-generated document — Zenda (zenda.site.je)', pageWidth/2, doc.internal.pageSize.getHeight()-24, { align:'center' });
+    }
+
+    doc.save((curLedger.name || 'Ledger').replace(/[^a-z0-9]/gi,'_') + '_Zenda.pdf');
+    toast('PDF downloaded.', 'success');
+  } catch(err){
+    console.error(err);
+    toast('Failed to generate PDF.', 'error');
+  }
 };
 function pad2(n){ return String(n).padStart(2,'0'); }
 function toYMD(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
