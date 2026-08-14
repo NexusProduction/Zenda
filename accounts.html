@@ -663,13 +663,12 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
 
       <div class="field hidden" id="field-payee">
         <label>Paid To / For</label>
-        <input class="finp" id="ae-payee" placeholder="e.g. DC Wire, Earthing" maxlength="80">
+        <input class="finp" id="ae-payee" placeholder="e.g. DC Wire, Earthing" maxlength="25">
       </div>
       
       <div class="field" id="field-desc">
         <label>Remarks (Optional)</label>
-        <!-- Changed to a single line input, max 25 chars, auto-capitalize -->
-        <input class="finp" type="text" id="ae-desc" placeholder="Add a note" maxlength="25" autocomplete="off" oninput="this.value = window.capitalizeWords(this.value)">
+      <input class="finp" type="text" id="ae-desc" placeholder="Add a note" maxlength="35" autocomplete="off" oninput="this.value = window.capitalizeWords(this.value)">
       </div>
     </div>
     
@@ -1366,7 +1365,6 @@ window.openAddEntryModal = function(){
   window.setEntryType('in');
   window.openM('m-add-entry');
 };
-
 window.setEntryType = function(type){
   entryType = type;
   document.getElementById('type-opt-in').classList.toggle('active', type==='in');
@@ -1374,6 +1372,19 @@ window.setEntryType = function(type){
   document.getElementById('field-method').classList.toggle('hidden', type!=='in');
   document.getElementById('field-payee').classList.toggle('hidden', type!=='out');
   // Remarks is always visible now, no need to toggle field-desc
+
+  // Switching type clears the whole form back to a fresh state
+  document.getElementById('ae-amount').value = '';
+  document.getElementById('ae-amt-err').classList.remove('show');
+  document.getElementById('ae-payee').value = '';
+  document.getElementById('ae-desc').value = '';
+  document.getElementById('ae-method').value = 'Cash';
+  document.getElementById('cd-trigger-text').textContent = 'Cash';
+  document.querySelectorAll('.cd-opt').forEach(opt => opt.classList.remove('active'));
+  const firstOpt = document.querySelector('.cd-opt');
+  if(firstOpt) firstOpt.classList.add('active');
+  setDateValue(new Date());
+  closeDatePicker();
 };
 
 window.saveEntry = async function(){
