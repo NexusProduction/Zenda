@@ -244,6 +244,16 @@ body[data-state="connected"][data-premium="false"][data-role="owner"] #sync-stat
 /* Permission Denied popup */
 .pd-title{font-family:var(--f-display);font-weight:800;font-size:1.15rem;color:var(--text-1);margin-bottom:10px}
 .pd-msg{font-size:.88rem;color:var(--text-3);line-height:1.55}
+/* STAFF LOCKED OVERLAY (Paywall) */
+.lock-overlay{position:fixed;inset:0;background:rgba(244,245,248,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:800;display:none;align-items:center;justify-content:center;padding:20px}
+.lock-overlay.open{display:flex;animation:backdropIn .22s ease}
+.lock-box{background:var(--white-pure);border:1px solid var(--border-faint);border-radius:var(--r-xl);max-width:340px;width:100%;padding:32px 26px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.15);animation:modalIn .28s cubic-bezier(.34,1.56,.64,1)}
+.lock-icon{width:56px;height:56px;border-radius:16px;background:var(--amber-soft);border:1.5px solid var(--amber-border);color:var(--amber);display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.lock-icon svg{width:26px;height:26px}
+.lock-ttl{font-family:var(--f-display);font-weight:800;font-size:1.05rem;color:var(--text-1);margin-bottom:8px}
+.lock-msg{font-size:.86rem;color:var(--text-3);line-height:1.55;margin-bottom:20px}
+.lock-close{height:42px;padding:0 20px;background:var(--text-1);color:#fff;border:none;border-radius:var(--r-md);font-family:var(--f-display);font-weight:700;font-size:.85rem}
+.lock-close:hover{background:var(--accent)}
 .section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .section-ttl{font-family:var(--f-display);font-weight:800;font-size:1rem;color:var(--text-1)}
 .panel{background:var(--white-pure);border:2px solid var(--border-strong);border-radius:20px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.04)}
@@ -781,6 +791,15 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
   </div>
 </div>
 
+<div class="lock-overlay" id="lock-overlay" onclick="if(event.target===this) window.closeLockOverlay()">
+  <div class="lock-box">
+    <div class="lock-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+    <div class="lock-ttl">Upgrade Required</div>
+    <div class="lock-msg">This workspace hasn't been upgraded yet. Tell your owner to upgrade the account to add or delete entries.</div>
+    <button class="lock-close" onclick="window.location.href='subscription.html'">Upgrade</button>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
@@ -818,6 +837,10 @@ let nlPhTimer = null;
 
 const syncEl = document.getElementById('sync-status');
 const AV_COLORS = ['#4F46E5','#059669','#D97706','#DC2626','#7C3AED','#0891B2'];
+
+function staffLocked(){ return CU.role !== 'owner' && CU.isPremium !== true; }
+window.showLockOverlay = function(){ const el = document.getElementById('lock-overlay'); if(el) el.classList.add('open'); };
+window.closeLockOverlay = function(){ const el = document.getElementById('lock-overlay'); if(el) el.classList.remove('open'); };
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function avatarColor(name){ let h=0; for(let i=0;i<(name||'').length;i++) h=name.charCodeAt(i)+((h<<5)-h); return AV_COLORS[Math.abs(h)%AV_COLORS.length]; }
@@ -1055,6 +1078,7 @@ function nlStopPlaceholderAnim(){
   if(nlPhTimer){ clearInterval(nlPhTimer); nlPhTimer = null; }
 }
 window.openNewLedgerModal = function(){
+  if(staffLocked()){ window.showLockOverlay(); return; }
   const nameInp = document.getElementById('nl-name');
   nameInp.value = '';
   nameInp.classList.remove('err');
@@ -1067,6 +1091,7 @@ window.openNewLedgerModal = function(){
   setTimeout(() => nameInp.focus(), 150);
 };
 window.saveNewLedger = async function(){
+  if(staffLocked()){ window.showLockOverlay(); return; }
   const nameInp = document.getElementById('nl-name');
   const errEl = document.getElementById('nl-name-err');
   let name = nameInp.value.trim().replace(/[^a-zA-Z0-9,. ]/g, '').replace(/\s+/g, ' ');
@@ -1264,6 +1289,7 @@ window.openEntryDetail = function(id) {
 };
 
 window.deleteEntryDirect = async function(entryId){
+  if(staffLocked()){ window.showLockOverlay(); return; }
   const e = curEntries.find(x => x.id === entryId);
   if(!e) return;
   if(!(CU.role === 'owner' || e.createdBy === CU.uid)){
@@ -1656,6 +1682,7 @@ document.addEventListener('click', e => {
   if(cdWrap && cdDropdown && !cdWrap.contains(e.target)) cdDropdown.classList.remove('open');
 });
 window.openAddEntryModal = function(){
+  if(staffLocked()){ window.showLockOverlay(); return; }
   const amtEl = document.getElementById('ae-amount');
   const payeeEl = document.getElementById('ae-payee');
   const descEl = document.getElementById('ae-desc');
@@ -1700,8 +1727,8 @@ window.setEntryType = function(type){
   setDateValue(new Date());
   closeDatePicker();
 };
-
 window.saveEntry = async function(){
+  if(staffLocked()){ window.showLockOverlay(); return; }
   if(!curLedger) return;
   const date = document.getElementById('ae-date').value || todayStr();
   
@@ -1749,6 +1776,7 @@ window.saveEntry = async function(){
   }
 };
 window.confirmDeleteEntryPrompt = function(entryId){
+  if(staffLocked()){ window.showLockOverlay(); return; }
   const e = curEntries.find(x => x.id === entryId);
   if(!e) return;
   if(!(CU.role === 'owner' || e.createdBy === CU.uid)){
@@ -1780,9 +1808,9 @@ window.openPermissionDenied = function(creatorName){
   if(msgEl) msgEl.textContent = `This account was created by ${creatorName}. Only ${creatorName} or the workspace owner can delete it.`;
   window.openM('m-perm-denied');
 };
-
 window.openDeleteLedgerModal = function(){
   if(!curLedger) return;
+  if(staffLocked()){ window.showLockOverlay(); return; }
   const isOwner = CU.role === 'owner';
   const isCreator = curLedger.createdBy === CU.uid;
 
