@@ -1090,7 +1090,7 @@ function nlStopPlaceholderAnim(){
   if(nlPhTimer){ clearInterval(nlPhTimer); nlPhTimer = null; }
 }
 window.openNewLedgerModal = function(){
-  if(staffLocked()){ window.showLockOverlay(); return; }
+  if(isLocked()){ window.showLockOverlay(); return; }
   const nameInp = document.getElementById('nl-name');
   nameInp.value = '';
   nameInp.classList.remove('err');
@@ -1103,7 +1103,7 @@ window.openNewLedgerModal = function(){
   setTimeout(() => nameInp.focus(), 150);
 };
 window.saveNewLedger = async function(){
-  if(staffLocked()){ window.showLockOverlay(); return; }
+  if(isLocked()){ window.showLockOverlay(); return; }
   const nameInp = document.getElementById('nl-name');
   const errEl = document.getElementById('nl-name-err');
   let name = nameInp.value.trim().replace(/[^a-zA-Z0-9,. ]/g, '').replace(/\s+/g, ' ');
@@ -1299,9 +1299,8 @@ window.openEntryDetail = function(id) {
 
     window.openM('m-entry-detail');
 };
-
 window.deleteEntryDirect = async function(entryId){
-  if(staffLocked()){ window.showLockOverlay(); return; }
+  if(isLocked()){ window.showLockOverlay(); return; }
   const e = curEntries.find(x => x.id === entryId);
   if(!e) return;
   if(!(CU.role === 'owner' || e.createdBy === CU.uid)){
@@ -1697,7 +1696,7 @@ document.addEventListener('click', e => {
   if(cdWrap && cdDropdown && !cdWrap.contains(e.target)) cdDropdown.classList.remove('open');
 });
 window.openAddEntryModal = function(){
-  if(staffLocked()){ window.showLockOverlay(); return; }
+  if(isLocked()){ window.showLockOverlay(); return; }
   const amtEl = document.getElementById('ae-amount');
   const payeeEl = document.getElementById('ae-payee');
   const descEl = document.getElementById('ae-desc');
@@ -1714,7 +1713,6 @@ window.openAddEntryModal = function(){
   document.getElementById('cd-trigger-text').textContent = 'Cash';
   document.getElementById('ae-amt-err').classList.remove('show');
   
-  // Reset active state for dropdown to 'Cash'
   document.querySelectorAll('.cd-opt').forEach(opt => opt.classList.remove('active'));
   document.querySelector('.cd-opt').classList.add('active'); 
 
@@ -1743,16 +1741,14 @@ window.setEntryType = function(type){
   closeDatePicker();
 };
 window.saveEntry = async function(){
-  if(staffLocked()){ window.showLockOverlay(); return; }
+  if(isLocked()){ window.showLockOverlay(); return; }
   if(!curLedger) return;
   const date = document.getElementById('ae-date').value || todayStr();
   
-  // Strip Indian commas before turning it into a number for Firebase
   const rawAmtStr = document.getElementById('ae-amount').value.replace(/,/g, '');
   const amount = parseFloat(rawAmtStr);
   const errEl = document.getElementById('ae-amt-err');
   
-  // Triggers the inline error if amount is 0 or empty
   if(!amount || amount <= 0){ 
      errEl.classList.add('show'); 
      return; 
@@ -1772,7 +1768,6 @@ window.saveEntry = async function(){
     payload.payee = payee;
   }
   
-  // Save description (remarks) for BOTH Cash In and Cash Out
   payload.description = document.getElementById('ae-desc').value.trim();
 
   const btn = document.getElementById('btn-save-entry');
@@ -1791,7 +1786,7 @@ window.saveEntry = async function(){
   }
 };
 window.confirmDeleteEntryPrompt = function(entryId){
-  if(staffLocked()){ window.showLockOverlay(); return; }
+  if(isLocked()){ window.showLockOverlay(); return; }
   const e = curEntries.find(x => x.id === entryId);
   if(!e) return;
   if(!(CU.role === 'owner' || e.createdBy === CU.uid)){
@@ -1825,7 +1820,7 @@ window.openPermissionDenied = function(creatorName){
 };
 window.openDeleteLedgerModal = function(){
   if(!curLedger) return;
-  if(staffLocked()){ window.showLockOverlay(); return; }
+  if(isLocked()){ window.showLockOverlay(); return; }
   const isOwner = CU.role === 'owner';
   const isCreator = curLedger.createdBy === CU.uid;
 
