@@ -1390,7 +1390,6 @@ window.exportLedgerExcel = async function(){
     toast('Failed to generate Excel file.', 'error');
   }
 };
-
 window.exportLedgerPDF = function(){
   if(!curLedger) return;
   window.closeM('m-export-ledger');
@@ -1399,17 +1398,28 @@ window.exportLedgerPDF = function(){
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit:'pt', format:'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const M = 40;
 
-    doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(79,70,229);
-    doc.text('ZENDA', 40, 46);
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(108,111,128);
-    doc.text('zenda.site.je  •  Digital Cash Ledger', 40, 60);
-    doc.setDrawColor(226,227,233); doc.line(40, 70, pageWidth-40, 70);
+    // jsPDF's core "helvetica" font has no ₹ glyph — it prints as a broken
+    // superscript character. Use "Rs." in the PDF only; ₹ stays everywhere else.
+    const pdfMoney = (n) => 'Rs. ' + Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:0});
+    const genDate = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
 
-    doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(13,15,20);
-    doc.text(curLedger.name, 40, 92);
-    doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(158,161,176);
-    doc.text('Generated ' + new Date().toLocaleString('en-IN'), 40, 106);
+    function drawHeader(){
+      doc.setFont('helvetica','bold'); doc.setFontSize(17); doc.setTextColor(13,15,20);
+      doc.text(curLedger.name, M, 44);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(108,111,128);
+      doc.text('Generated ' + genDate, pageWidth-M, 44, { align:'right' });
+      doc.setDrawColor(226,227,233); doc.setLineWidth(1);
+      doc.line(M, 56, pageWidth-M, 56);
+    }
+    function drawFooter(){
+      doc.setDrawColor(226,227,233); doc.setLineWidth(0.75);
+      doc.line(M, pageHeight-38, pageWidth-M, pageHeight-38);
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(120,123,138);
+      doc.text('This is a computer-generated document — Zenda (zenda.site.je)', pageWidth/2, pageHeight-24, { align:'center' });
+    }
 
     let totalIn = 0, totalOut = 0;
     const rows = sortedForExport().map(e => {
@@ -1417,44 +1427,55 @@ window.exportLedgerPDF = function(){
       const amt = Number(e.amount) || 0;
       if(isIn) totalIn += amt; else totalOut += amt;
       return [ fmtDate(e.date), isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out'), e.description || '—',
-        isIn ? fmtMoney(amt) : '—', !isIn ? fmtMoney(amt) : '—', staffName(e.createdBy, e.createdByName) ];
+        isIn ? pdfMoney(amt) : '—', !isIn ? pdfMoney(amt) : '—', staffName(e.createdBy, e.createdByName) ];
     });
 
     doc.autoTable({
-      startY: 122,
+      startY: 72,
+      margin: { left:M, right:M, top:72, bottom:56 },
       head: [['Date','Particulars','Remarks','Cash In','Cash Out','Added By']],
       body: rows,
-      styles: { font:'helvetica', fontSize:8.5, cellPadding:6, textColor:[13,15,20] },
-      headStyles: { fillColor:[79,70,229], textColor:255, fontStyle:'bold' },
+      theme: 'grid',
+      styles: { font:'helvetica', fontSize:8.5, cellPadding:6, textColor:[13,15,20], lineColor:[226,227,233], lineWidth:0.75, overflow:'linebreak', valign:'middle' },
+      headStyles: { fillColor:[79,70,229], textColor:255, fontStyle:'bold', halign:'left' },
       alternateRowStyles: { fillColor:[250,250,250] },
-      columnStyles: { 3:{ textColor:[5,150,105], fontStyle:'bold', halign:'right' }, 4:{ textColor:[220,38,38], fontStyle:'bold', halign:'right' } },
-      margin: { left:40, right:40 }
+      columnStyles: {
+        0:{ cellWidth:62 },
+        1:{ cellWidth:95 },
+        2:{ cellWidth:118 },
+        3:{ cellWidth:78, halign:'right', textColor:[5,150,105], fontStyle:'bold' },
+        4:{ cellWidth:78, halign:'right', textColor:[220,38,38], fontStyle:'bold' },
+        5:{ cellWidth:84 }
+      }
     });
 
-    let y = doc.lastAutoTable.finalY + 24;
+    let y = doc.lastAutoTable.finalY + 22;
+    if(y > pageHeight - 130){ doc.addPage(); y = 88; }
     const bal = totalIn - totalOut;
-    doc.setFontSize(9.5); doc.setFont('helvetica','bold'); doc.setTextColor(61,63,74);
-    doc.text('Total Cash In', 40, y); doc.setTextColor(5,150,105); doc.text(fmtMoney(totalIn), pageWidth-40, y, { align:'right' });
-    y += 16;
-    doc.setTextColor(61,63,74); doc.text('Total Cash Out', 40, y); doc.setTextColor(220,38,38); doc.text(fmtMoney(totalOut), pageWidth-40, y, { align:'right' });
-    y += 6;
-    doc.setDrawColor(208,210,219); doc.line(40, y+8, pageWidth-40, y+8);
-    y += 26;
+    const boxW = pageWidth - M*2;
+
+    doc.setDrawColor(226,227,233); doc.setLineWidth(0.75);
+    doc.roundedRect(M, y, boxW, 92, 6, 6, 'S');
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(61,63,74);
+    doc.text('Total Cash In', M+16, y+24);
+    doc.setTextColor(5,150,105); doc.text(pdfMoney(totalIn), pageWidth-M-16, y+24, { align:'right' });
+
+    doc.setTextColor(61,63,74); doc.text('Total Cash Out', M+16, y+46);
+    doc.setTextColor(220,38,38); doc.text(pdfMoney(totalOut), pageWidth-M-16, y+46, { align:'right' });
+
+    doc.setDrawColor(226,227,233); doc.line(M+16, y+58, pageWidth-M-16, y+58);
 
     doc.setFillColor(238,242,255);
-    doc.roundedRect(40, y-16, pageWidth-80, 30, 6, 6, 'F');
+    doc.roundedRect(M+10, y+64, boxW-20, 22, 5, 5, 'F');
     doc.setFontSize(11); doc.setTextColor(13,15,20);
-    doc.text('CURRENT BALANCE', 52, y+3);
-    doc.setFontSize(13);
+    doc.text('CURRENT BALANCE', M+18, y+79);
+    doc.setFontSize(12.5);
     doc.setTextColor(bal>=0?5:220, bal>=0?150:38, bal>=0?105:38);
-    doc.text(fmtMoney(bal), pageWidth-52, y+3, { align:'right' });
+    doc.text(pdfMoney(bal), pageWidth-M-18, y+79, { align:'right' });
 
     const pageCount = doc.internal.getNumberOfPages();
-    for(let p=1;p<=pageCount;p++){
-      doc.setPage(p);
-      doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(158,161,176);
-      doc.text('This is a computer-generated document — Zenda (zenda.site.je)', pageWidth/2, doc.internal.pageSize.getHeight()-24, { align:'center' });
-    }
+    for(let p=1;p<=pageCount;p++){ doc.setPage(p); drawHeader(); drawFooter(); }
 
     doc.save((curLedger.name || 'Ledger').replace(/[^a-z0-9]/gi,'_') + '_Zenda.pdf');
     toast('PDF downloaded.', 'success');
