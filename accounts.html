@@ -479,7 +479,7 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
   <div class="dsum-card" data-theme="out">
     <div class="dsum-top">
       <div class="dsum-icon-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16V8"/><path d="M8.5 11.5 12 8l3.5 3.5"/></svg></div>
-      <div class="dsum-lbl">Total Cash Out</div>
+      <div class="dsum-lbl">Total Stock Out</div>
     </div>
     <div class="dsum-val" id="d-cash-out">₹0</div>
     <div class="dsum-watermark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16V8"/><path d="M8.5 11.5 12 8l3.5 3.5"/></svg></div>
@@ -497,8 +497,8 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
     <div class="dsum-watermark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8"/><path d="M8.5 12.5 12 16l3.5-3.5"/></svg></div>
   </div>
   <div class="mobile-card mc-2" id="mc2" data-theme="out">
-    <div class="dsum-top"><div class="dsum-icon-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16V8"/><path d="M8.5 11.5 12 8l3.5 3.5"/></svg></div><div class="dsum-lbl">Total Cash Out</div></div>
-    <div class="dsum-val" id="m-cash-out">₹0</div>
+    <div class="dsum-top"><div class="dsum-icon-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16V8"/><path d="M8.5 11.5 12 8l3.5 3.5"/></svg></div><div class="dsum-lbl">Total Stock Out</div></div>
+     <div class="dsum-val" id="m-cash-out">₹0</div>
     <div class="dsum-watermark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16V8"/><path d="M8.5 11.5 12 8l3.5 3.5"/></svg></div>
   </div>
 </div>
@@ -593,7 +593,7 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
                 <span class="lb-sum-val text-green" id="lb-tot-in">₹0</span>
             </div>
             <div class="lb-sum-row">
-                <span>Cash Out</span>
+                <span>Stock Out</span>
                 <span class="lb-sum-val text-red" id="lb-tot-out">₹0</span>
             </div>
             <div class="lb-sum-row total-bal">
@@ -642,7 +642,7 @@ select.finp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmln
     <div class="mbody" style="padding-top: 32px;"> <!-- Pushed down since header is gone -->
       <div class="type-toggle">
         <button class="type-opt in active" id="type-opt-in" onclick="window.setEntryType('in')">Cash In</button>
-        <button class="type-opt out" id="type-opt-out" onclick="window.setEntryType('out')">Cash Out</button>
+        <button class="type-opt out" id="type-opt-out" onclick="window.setEntryType('out')">Stock Out</button>
       </div>
       
       <div class="field">
@@ -1260,7 +1260,7 @@ function renderEntries(){
   let html = '';
   sorted.forEach(e => {
     const isIn = e.type === 'in';
-    let title = isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out');
+    let title = isIn ? (e.method || 'Cash In') : (e.payee || 'Stock Out');
     
     // Capitalize the first letter automatically
     if(title) title = title.charAt(0).toUpperCase() + title.slice(1);
@@ -1378,7 +1378,7 @@ window.exportLedgerExcel = async function(){
 
       const headerRowIdx = 7;
       const headerRow = ws.getRow(headerRowIdx);
-      ['Date','Particulars','Remarks','Cash In (₹)','Cash Out (₹)','Added By'].forEach((h,i)=>{ headerRow.getCell(i+1).value = h; });
+     ['Date','Particulars','Remarks','Cash In (₹)','Stock Out (₹)','Added By'].forEach((h,i)=>{ headerRow.getCell(i+1).value = h; });
       headerRow.eachCell(c => {
         c.font = { bold:true, color:{argb:'FFFFFFFF'}, size:10 };
         c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF4F46E5'} };
@@ -1396,7 +1396,7 @@ window.exportLedgerExcel = async function(){
 
         const row = ws.getRow(rowIdx);
         row.getCell(1).value = fmtDate(e.date);
-        row.getCell(2).value = isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out');
+       row.getCell(2).value = isIn ? (e.method || 'Cash In') : (e.payee || 'Stock Out');
         row.getCell(3).value = e.description || '—';
         row.getCell(4).value = isIn ? amt : null;
         row.getCell(5).value = isIn ? null : amt;
@@ -1412,20 +1412,32 @@ window.exportLedgerExcel = async function(){
       });
 
       rowIdx += 1;
-      ws.mergeCells(`A${rowIdx}:C${rowIdx}`);
-      ws.getCell(`A${rowIdx}`).value = 'TOTAL CASH IN';
-      ws.getCell(`A${rowIdx}`).font = { bold:true, size:10, color:{argb:'FF3D3F4A'} };
-      ws.getCell(`D${rowIdx}`).value = totalIn;
-      ws.getCell(`D${rowIdx}`).numFmt = '#,##,##0';
-      ws.getCell(`D${rowIdx}`).font = { bold:true, color:{argb:'FF059669'} };
+      ws.mergeCells(`A${rowIdx}:F${rowIdx}`);
+      ws.getRow(rowIdx).eachCell({includeEmpty:true}, c => { c.border = { top:{style:'medium',color:{argb:'FFD0D2DB'}} }; });
       rowIdx++;
 
       ws.mergeCells(`A${rowIdx}:C${rowIdx}`);
-      ws.getCell(`A${rowIdx}`).value = 'TOTAL CASH OUT';
+      ws.getCell(`A${rowIdx}`).value = 'TOTAL CASH IN';
       ws.getCell(`A${rowIdx}`).font = { bold:true, size:10, color:{argb:'FF3D3F4A'} };
-      ws.getCell(`E${rowIdx}`).value = totalOut;
-      ws.getCell(`E${rowIdx}`).numFmt = '#,##,##0';
-      ws.getCell(`E${rowIdx}`).font = { bold:true, color:{argb:'FFDC2626'} };
+      ws.mergeCells(`D${rowIdx}:F${rowIdx}`);
+      ws.getCell(`D${rowIdx}`).value = totalIn;
+      ws.getCell(`D${rowIdx}`).numFmt = '"₹"#,##,##0';
+      ws.getCell(`D${rowIdx}`).font = { bold:true, size:11, color:{argb:'FF059669'} };
+      ws.getCell(`D${rowIdx}`).alignment = { horizontal:'right' };
+      rowIdx++;
+
+      ws.mergeCells(`A${rowIdx}:C${rowIdx}`);
+      ws.getCell(`A${rowIdx}`).value = 'TOTAL STOCK OUT';
+      ws.getCell(`A${rowIdx}`).font = { bold:true, size:10, color:{argb:'FF3D3F4A'} };
+      ws.mergeCells(`D${rowIdx}:F${rowIdx}`);
+      ws.getCell(`D${rowIdx}`).value = totalOut;
+      ws.getCell(`D${rowIdx}`).numFmt = '"₹"#,##,##0';
+      ws.getCell(`D${rowIdx}`).font = { bold:true, size:11, color:{argb:'FFDC2626'} };
+      ws.getCell(`D${rowIdx}`).alignment = { horizontal:'right' };
+      rowIdx++;
+
+      ws.mergeCells(`A${rowIdx}:F${rowIdx}`);
+      ws.getRow(rowIdx).eachCell({includeEmpty:true}, c => { c.border = { top:{style:'thin',color:{argb:'FFE2E3E9'}} }; });
       rowIdx += 2;
 
       const bal = totalIn - totalOut;
@@ -1437,6 +1449,7 @@ window.exportLedgerExcel = async function(){
       ws.getCell(`D${rowIdx}`).numFmt = '"₹"#,##,##0';
       ws.getCell(`D${rowIdx}`).font = { bold:true, size:13, color:{argb: bal>=0 ? 'FF059669':'FFDC2626'} };
       ws.getCell(`D${rowIdx}`).alignment = { horizontal:'right' };
+      ws.getRow(rowIdx).height = 24;
       ws.getRow(rowIdx).eachCell({includeEmpty:true}, c => { c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFEEF2FF'} }; });
       rowIdx += 2;
 
@@ -1518,53 +1531,65 @@ window.exportLedgerPDF = function(){
         const isIn = e.type === 'in';
         const amt = Number(e.amount) || 0;
         if(isIn) totalIn += amt; else totalOut += amt;
-        return [ fmtDate(e.date), isIn ? (e.method || 'Cash In') : (e.payee || 'Cash Out'), e.description || '—',
+        return [ fmtDate(e.date), isIn ? (e.method || 'Cash In') : (e.payee || 'Stock Out'), e.description || '—',
           isIn ? pdfMoney(amt) : '—', !isIn ? pdfMoney(amt) : '—', staffName(e.createdBy, e.createdByName) ];
       });
 
       doc.autoTable({
         startY: 92,
         margin: { left:M, right:M, top:92, bottom:56 },
-        head: [['Date','Particulars','Remarks','Cash In','Cash Out','Added By']],
+        head: [['Date','Particulars','Remarks','Cash In','Stock Out','Added By']],
         body: rows,
-        theme: 'grid',
-        styles: { font:'helvetica', fontSize:8.5, cellPadding:6, textColor:[13,15,20], lineColor:[226,227,233], lineWidth:0.75, overflow:'linebreak', valign:'middle' },
-        headStyles: { fillColor:[79,70,229], textColor:255, fontStyle:'bold', halign:'left' },
-        alternateRowStyles: { fillColor:[250,250,250] },
+        theme: 'plain',
+        styles: { font:'helvetica', fontSize:8.5, cellPadding:{top:9,bottom:9,left:6,right:6}, textColor:[13,15,20], overflow:'linebreak', valign:'middle' },
+        headStyles: { fillColor:[79,70,229], textColor:255, fontStyle:'bold', halign:'left', cellPadding:{top:10,bottom:10,left:6,right:6} },
+        alternateRowStyles: { fillColor:[250,250,251] },
         columnStyles: {
           0:{ cellWidth:62 },
-          1:{ cellWidth:95 },
-          2:{ cellWidth:118 },
-          3:{ cellWidth:78, halign:'right', textColor:[5,150,105], fontStyle:'bold' },
-          4:{ cellWidth:78, halign:'right', textColor:[220,38,38], fontStyle:'bold' },
-          5:{ cellWidth:84 }
+          1:{ cellWidth:92 },
+          2:{ cellWidth:112 },
+          3:{ cellWidth:80, halign:'right', textColor:[5,150,105], fontStyle:'bold' },
+          4:{ cellWidth:80, halign:'right', textColor:[220,38,38], fontStyle:'bold' },
+          5:{ cellWidth:87 }
+        },
+        didDrawCell: function(data){
+          if(data.section === 'body'){
+            doc.setDrawColor(235,235,239);
+            doc.setLineWidth(0.5);
+            doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+          }
         }
       });
 
-      let y = doc.lastAutoTable.finalY + 22;
+      let y = doc.lastAutoTable.finalY + 26;
       if(y > pageHeight - 130){ doc.addPage(); y = 88; }
       const bal = totalIn - totalOut;
       const boxW = pageWidth - M*2;
 
-      doc.setDrawColor(226,227,233); doc.setLineWidth(0.75);
-      doc.roundedRect(M, y, boxW, 92, 6, 6, 'S');
+      doc.setDrawColor(226,227,233); doc.setLineWidth(1);
+      doc.line(M, y, pageWidth-M, y);
+      y += 22;
 
       doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(61,63,74);
-      doc.text('Total Cash In', M+16, y+24);
-      doc.setTextColor(5,150,105); doc.text(pdfMoney(totalIn), pageWidth-M-16, y+24, { align:'right' });
+      doc.text('TOTAL CASH IN', M, y);
+      doc.setTextColor(5,150,105); doc.text(pdfMoney(totalIn), pageWidth-M, y, { align:'right' });
+      y += 20;
 
-      doc.setTextColor(61,63,74); doc.text('Total Cash Out', M+16, y+46);
-      doc.setTextColor(220,38,38); doc.text(pdfMoney(totalOut), pageWidth-M-16, y+46, { align:'right' });
+      doc.setTextColor(61,63,74); doc.text('TOTAL STOCK OUT', M, y);
+      doc.setTextColor(220,38,38); doc.text(pdfMoney(totalOut), pageWidth-M, y, { align:'right' });
+      y += 18;
 
-      doc.setDrawColor(226,227,233); doc.line(M+16, y+58, pageWidth-M-16, y+58);
+      doc.setDrawColor(226,227,233); doc.setLineWidth(0.75);
+      doc.line(M, y, pageWidth-M, y);
+      y += 20;
 
       doc.setFillColor(238,242,255);
-      doc.roundedRect(M+10, y+64, boxW-20, 22, 5, 5, 'F');
-      doc.setFontSize(11); doc.setTextColor(13,15,20);
-      doc.text('CURRENT BALANCE', M+18, y+79);
-      doc.setFontSize(12.5);
+      doc.roundedRect(M, y-16, boxW, 30, 6, 6, 'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(13,15,20);
+      doc.text('CURRENT BALANCE', M+14, y+4);
+      doc.setFontSize(13);
       doc.setTextColor(bal>=0?5:220, bal>=0?150:38, bal>=0?105:38);
-      doc.text(pdfMoney(bal), pageWidth-M-18, y+79, { align:'right' });
+      doc.text(pdfMoney(bal), pageWidth-M-14, y+4, { align:'right' });
 
       const pageCount = doc.internal.getNumberOfPages();
       for(let p=1;p<=pageCount;p++){ doc.setPage(p); drawHeader(); drawFooter(); }
